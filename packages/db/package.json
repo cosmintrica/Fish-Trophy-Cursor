@@ -19,5 +19,9 @@
     "drizzle-kit": "^0.20.9",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": "10.15.0"
   }
 }

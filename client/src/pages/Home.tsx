@@ -21,7 +21,10 @@ export default function Home() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
-  const [showLocationRequest, setShowLocationRequest] = useState(true);
+  const [showLocationRequest, setShowLocationRequest] = useState(() => {
+    // Verifică dacă utilizatorul a dat deja permisiunea sau a închis pop-up-ul
+    return !localStorage.getItem('locationRequestShown');
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function Home() {
     const permissionStatus = geolocationService.getPermissionStatus();
     if (permissionStatus.granted) {
       setShowLocationRequest(false);
+      localStorage.setItem('locationRequestShown', 'true');
     }
 
     return () => {
@@ -146,6 +150,7 @@ export default function Home() {
       if (mapInstanceRef.current && position) {
         mapInstanceRef.current.setView([position.latitude, position.longitude], 12);
         setShowLocationRequest(false);
+        localStorage.setItem('locationRequestShown', 'true');
       }
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
@@ -158,6 +163,7 @@ export default function Home() {
       await centerOnUserLocation();
     }
     setShowLocationRequest(false);
+    localStorage.setItem('locationRequestShown', 'true');
   };
 
   // Funcție pentru deschiderea popup-ului magazin
@@ -412,7 +418,7 @@ export default function Home() {
                 Închide
               </button>
               <Link
-                to="/shop-submission"
+                to="/fishing-shops"
                 onClick={() => setShowShopPopup(false)}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
               >

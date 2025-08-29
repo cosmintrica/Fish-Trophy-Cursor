@@ -34,19 +34,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center justify-between">
             {/* Logo - Modern, Centered */}
             <Link to="/" className="flex items-center space-x-3 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
-                  console.error('Failed to load icon:', e);
-                  e.currentTarget.style.display = 'none';
-                }} />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+              <img src="/icon_free.png" alt="Fish Trophy" className="w-16 h-16" onError={(e) => {
+                console.error('Failed to load icon:', e);
+                e.currentTarget.style.display = 'none';
+              }} />
+              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                 Fish Trophy
               </span>
             </Link>
 
             {/* Navigation - Clean, Modern */}
-            <nav className="hidden md:flex items-center space-x-8">
+            <nav className="hidden lg:flex items-center space-x-6">
               <Link
                 to="/"
                 className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
@@ -146,12 +144,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Logo & Description */}
             <div>
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
-                    console.error('Failed to load footer icon:', e);
-                    e.currentTarget.style.display = 'none';
-                  }} />
-                </div>
+                <img src="/icon_free.png" alt="Fish Trophy" className="w-12 h-12" onError={(e) => {
+                  console.error('Failed to load footer icon:', e);
+                  e.currentTarget.style.display = 'none';
+                }} />
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                   Fish Trophy
                 </span>
@@ -166,22 +162,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-lg font-semibold text-slate-900 mb-6">Link-uri rapide</h3>
               <ul className="space-y-3">
                 <li>
-                  <Link to="/" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
+                  <Link 
+                    to="/" 
+                    onClick={() => window.scrollTo(0, 0)}
+                    className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block"
+                  >
                     Acasă
                   </Link>
                 </li>
                 <li>
-                  <Link to="/species" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
+                  <Link 
+                    to="/species" 
+                    onClick={() => window.scrollTo(0, 0)}
+                    className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block"
+                  >
                     Specii
                   </Link>
                 </li>
                 <li>
-                  <Link to="/leaderboards" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
+                  <Link 
+                    to="/leaderboards" 
+                    onClick={() => window.scrollTo(0, 0)}
+                    className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block"
+                  >
                     Recorduri
                   </Link>
                 </li>
                 <li>
-                  <Link to="/submission-guide" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
+                  <Link 
+                    to="/submission-guide" 
+                    onClick={() => window.scrollTo(0, 0)}
+                    className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block"
+                  >
                     Ghid Submisie
                   </Link>
                 </li>

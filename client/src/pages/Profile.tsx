@@ -21,6 +21,7 @@ import {
   Ruler
 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiService, { ProfileData } from '@/services/api';
 
 const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -67,11 +68,40 @@ const Profile: React.FC = () => {
   ];
 
   const handleProfileUpdate = async () => {
+    if (!user?.uid) {
+      toast.error('Utilizatorul nu este autentificat');
+      return;
+    }
+
     try {
-      // Aici va fi logica pentru actualizarea profilului
-      toast.success('Profilul a fost actualizat cu succes!');
-      setIsEditing(false);
+      const profileDataToSend: ProfileData = {
+        displayName: profileData.displayName,
+        email: profileData.email,
+        phone: profileData.phone,
+        location: profileData.location,
+        bio: profileData.bio
+      };
+
+      const response = await apiService.updateProfile(user.uid, profileDataToSend);
+      
+      if (response.success) {
+        toast.success('Profilul a fost actualizat cu succes!');
+        setIsEditing(false);
+        // Actualizează datele locale
+        if (response.data) {
+          setProfileData({
+            displayName: response.data.displayName,
+            email: response.data.email,
+            phone: response.data.phone || '',
+            location: response.data.location || '',
+            bio: response.data.bio || ''
+          });
+        }
+      } else {
+        toast.error(response.error || 'Eroare la actualizarea profilului');
+      }
     } catch (error) {
+      console.error('Error updating profile:', error);
       toast.error('Eroare la actualizarea profilului');
     }
   };
@@ -92,11 +122,25 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleProfileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // Aici va fi logica pentru upload-ul imaginii
-      toast.success('Imaginea de profil a fost actualizată!');
+    if (!file || !user?.uid) {
+      toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
+      return;
+    }
+
+    try {
+      const response = await apiService.uploadProfileImage(user.uid, file);
+      
+      if (response.success) {
+        toast.success('Imaginea de profil a fost actualizată cu succes!');
+        // Aici poți actualiza imaginea în UI
+      } else {
+        toast.error(response.error || 'Eroare la upload-ul imaginii');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Eroare la upload-ul imaginii');
     }
   };
 

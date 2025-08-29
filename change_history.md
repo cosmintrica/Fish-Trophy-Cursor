@@ -130,6 +130,7 @@
 #### Dependency Management Issues
 - Fixed `ERR_PNPM_OUTDATED_LOCKFILE` error by allowing lockfile updates
 - Added `--no-frozen-lockfile` flag to `buildCommand` in `vercel.json`
+- Fixed PowerShell compatibility by replacing `&&` with `;` in all scripts
 - Resolved version mismatch between pnpm-lock.yaml and package.json files
 - Added explicit Node.js 20.x runtime configuration for API functions
 - Created `.npmrc` and `.nvmrc` files to force correct versions
