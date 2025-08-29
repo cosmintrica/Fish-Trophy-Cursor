@@ -1,0 +1,36 @@
+{
+  "name": "romanian-fishing-hub",
+  "version": "1.0.0",
+  "description": "Comprehensive platform for anglers in Romania",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:client\" \"pnpm dev:api\"",
+    "dev:client": "cd client && pnpm dev",
+    "dev:api": "cd api && pnpm dev",
+    "build": "pnpm build:client && pnpm build:api",
+    "build:client": "cd client && pnpm build",
+    "build:api": "cd api && pnpm build",
+    "lint": "pnpm lint:client && pnpm lint:api",
+    "lint:client": "cd client && pnpm lint",
+    "lint:api": "cd api && pnpm lint",
+    "lint:fix": "pnpm lint:fix:client && pnpm lint:fix:api",
+    "lint:fix:client": "cd client && pnpm lint:fix",
+    "lint:fix:api": "cd api && pnpm lint:fix",
+    "type-check": "pnpm type-check:client && pnpm type-check:api",
+    "type-check:client": "cd client && pnpm type-check",
+    "type-check:api": "cd api && pnpm type-check",
+    "db:generate": "cd packages/db && pnpm generate",
+    "db:push": "cd packages/db && pnpm push",
+    "db:studio": "cd packages/db && pnpm studio"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

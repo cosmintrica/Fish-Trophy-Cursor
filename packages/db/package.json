@@ -1,0 +1,22 @@
+{
+  "name": "@romanian-fishing-hub/db",
+  "version": "1.0.0",
+  "description": "Database schema and migrations",
+  "main": "index.ts",
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "push": "drizzle-kit push",
+    "studio": "drizzle-kit studio",
+    "migrate": "tsx migrate.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.29.3",
+    "postgres": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.9",
+    "drizzle-kit": "^0.20.9",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  }
+}
