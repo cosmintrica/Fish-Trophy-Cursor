@@ -1,9 +1,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Fish, Users, Map, Search, Filter, X } from 'lucide-react';
+import { Trophy, Fish, Users, Map, Search, Filter } from 'lucide-react';
 import L from 'leaflet';
-import { fishingLocations, fishingZones, FishingLocation } from '@/services/locations';
+import { fishingLocations, fishingZones } from '@/services/locations';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
