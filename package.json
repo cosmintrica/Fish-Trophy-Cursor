@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Comprehensive platform for anglers in Romania",
   "private": true,
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "concurrently \"pnpm dev:client\" \"pnpm dev:api\"",
     "dev:client": "cd client && pnpm dev",
@@ -18,7 +19,7 @@
     "lint:fix:api": "cd api && pnpm lint:fix",
     "type-check": "pnpm type-check:client && pnpm type-check:api",
     "type-check:client": "cd client && pnpm type-check",
-    "type-check:api": "cd api && pnpm type-check",
+    "type-check:api": "cd client && pnpm type-check",
     "db:generate": "cd packages/db && pnpm generate",
     "db:push": "cd packages/db && pnpm push",
     "db:studio": "cd packages/db && pnpm studio"
