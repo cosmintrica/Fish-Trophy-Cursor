@@ -3,11 +3,6 @@
   "outputDirectory": "client/dist",
   "installCommand": "pnpm install",
   "framework": "vite",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs20"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
