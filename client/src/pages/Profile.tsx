@@ -293,7 +293,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="displayName"
                           value={profileData.displayName}
-                          onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, displayName: e.target.value})}
                           disabled={!isEditing}
                         />
                       </div>
@@ -302,7 +302,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="email"
                           value={profileData.email}
-                          onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, email: e.target.value})}
                           disabled={!isEditing}
                         />
                       </div>
@@ -314,7 +314,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="phone"
                           value={profileData.phone}
-                          onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, phone: e.target.value})}
                           disabled={!isEditing}
                           placeholder="+40 7XX XXX XXX"
                         />
@@ -324,7 +324,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="location"
                           value={profileData.location}
-                          onChange={(e) => setProfileData({...profileData, location: e.target.value})}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, location: e.target.value})}
                           disabled={!isEditing}
                           placeholder="Oraș, Județ"
                         />
@@ -336,7 +336,7 @@ const Profile: React.FC = () => {
                       <textarea
                         id="bio"
                         value={profileData.bio}
-                        onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setProfileData({...profileData, bio: e.target.value})}
                         disabled={!isEditing}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         rows={3}
@@ -387,7 +387,7 @@ const Profile: React.FC = () => {
                             id="currentPassword"
                             type="password"
                             value={passwordData.currentPassword}
-                            onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                           />
                         </div>
                         <div>
@@ -396,7 +396,7 @@ const Profile: React.FC = () => {
                             id="newPassword"
                             type="password"
                             value={passwordData.newPassword}
-                            onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
                           />
                         </div>
                         <div>
@@ -405,7 +405,7 @@ const Profile: React.FC = () => {
                             id="confirmPassword"
                             type="password"
                             value={passwordData.confirmPassword}
-                            onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                           />
                         </div>
                         <div className="flex space-x-2">

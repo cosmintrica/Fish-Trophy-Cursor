@@ -25,54 +25,59 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-lg">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-3">
-              <img src="/icon_free.png" alt="Fish Trophy" className="h-10 w-10"/>
-              <span className="text-2xl font-bold text-blue-800">Fish Trophy</span>
+            {/* Logo - Modern, Centered */}
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8"/>
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+                Fish Trophy
+              </span>
             </Link>
             
-            {/* Navigation */}
+            {/* Navigation - Clean, Modern */}
             <nav className="hidden md:flex items-center space-x-8">
               <Link
                 to="/"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive('/') ? 'text-blue-600' : 'text-gray-700'
+                className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
+                  isActive('/') ? 'text-blue-600' : 'text-slate-700'
                 }`}
               >
                 Acasă
               </Link>
               <Link
                 to="/black-sea"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive('/black-sea') ? 'text-blue-600' : 'text-gray-700'
+                className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
+                  isActive('/black-sea') ? 'text-blue-600' : 'text-slate-700'
                 }`}
               >
                 Marea Neagră
               </Link>
               <Link
                 to="/species"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive('/species') ? 'text-blue-600' : 'text-gray-700'
+                className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
+                  isActive('/species') ? 'text-blue-600' : 'text-slate-700'
                 }`}
               >
                 Specii
               </Link>
               <Link
                 to="/leaderboards"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive('/leaderboards') ? 'text-blue-600' : 'text-gray-700'
+                className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 flex items-center space-x-2 ${
+                  isActive('/leaderboards') ? 'text-blue-600' : 'text-slate-700'
                 }`}
               >
-                <Trophy className="h-4 w-4 inline mr-1" />
-                Recorduri
+                <Trophy className="w-4 h-4" />
+                <span>Recorduri</span>
               </Link>
               <Link
                 to="/submission-guide"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive('/submission-guide') ? 'text-blue-600' : 'text-gray-700'
+                className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
+                  isActive('/submission-guide') ? 'text-blue-600' : 'text-slate-700'
                 }`}
               >
                 Ghid Submisie
@@ -80,8 +85,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {user && (
                 <Link
                   to="/admin"
-                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                    isActive('/admin') ? 'text-blue-600' : 'text-gray-700'
+                  className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
+                    isActive('/admin') ? 'text-blue-600' : 'text-slate-700'
                   }`}
                 >
                   Admin
@@ -89,16 +94,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               )}
             </nav>
             
-            {/* User Menu */}
+            {/* User Menu - Modern Design */}
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-slate-600 bg-slate-100 px-3 py-2 rounded-xl">
                     {user.email}
                   </span>
                   <Link
                     to="/profile"
-                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium bg-blue-50 px-3 py-2 rounded-xl hover:bg-blue-100"
                   >
                     Profilul meu
                   </Link>
@@ -106,7 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     variant="outline"
                     size="sm"
                     onClick={handleLogout}
-                    className="flex items-center space-x-2 border-gray-300 hover:bg-gray-50"
+                    className="flex items-center space-x-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 rounded-xl"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>Ieșire</span>
@@ -115,7 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               ) : (
                 <Button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <User className="h-4 w-4 mr-2" />
                   Conectare / Înregistrare
@@ -128,55 +133,67 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       <main className="flex-1">{children}</main>
       
-      <footer className="border-t bg-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Footer - Modern, Clean */}
+      <footer className="bg-white/80 backdrop-blur-sm border-t border-white/20 mt-auto">
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {/* Logo & Description */}
             <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <img src="/icon_free.png" alt="Fish Trophy" className="h-8 w-8"/>
-                <span className="text-xl font-bold text-blue-800">Fish Trophy</span>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8"/>
+                </div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+                  Fish Trophy
+                </span>
               </div>
-              <p className="text-gray-600">
-                Platformă completă pentru pescarii din România
+              <p className="text-slate-600 leading-relaxed">
+                Platforma completă pentru pescarii din România
               </p>
             </div>
+            
+            {/* Quick Links */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Link-uri rapide</h3>
-              <ul className="space-y-2">
+              <h3 className="text-lg font-semibold text-slate-900 mb-6">Link-uri rapide</h3>
+              <ul className="space-y-3">
                 <li>
-                  <Link to="/" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link to="/" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
                     Acasă
                   </Link>
                 </li>
                 <li>
-                  <Link to="/species" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link to="/species" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
                     Specii
                   </Link>
                 </li>
                 <li>
-                  <Link to="/leaderboards" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link to="/leaderboards" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
                     Recorduri
                   </Link>
                 </li>
                 <li>
-                  <Link to="/submission-guide" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link to="/submission-guide" className="text-slate-600 hover:text-blue-600 transition-colors duration-200 hover:translate-x-1 inline-block">
                     Ghid Submisie
                   </Link>
                 </li>
               </ul>
             </div>
+            
+            {/* Contact */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg font-semibold text-slate-900 mb-6">Contact</h3>
+              <p className="text-slate-600 mb-4">
                 Pentru suport și sugestii
               </p>
-              <p className="text-gray-600 mt-2">
+              <p className="text-slate-600 bg-slate-100 px-4 py-2 rounded-xl inline-block">
                 contact@fishtrophy.ro
               </p>
             </div>
           </div>
-          <div className="border-t pt-8 mt-8 text-center text-gray-500">
-            <p>&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
+          
+          {/* Copyright */}
+          <div className="border-t border-slate-200 pt-8 mt-12 text-center">
+            <p className="text-slate-500">&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
           </div>
         </div>
       </footer>
