@@ -13,7 +13,14 @@ const destDir = join(__dirname, '../dist');
 // Ensure dist directory exists
 if (!existsSync(destDir)) {
   mkdirSync(destDir, { recursive: true });
+  console.log(`📁 Created dist directory: ${destDir}`);
 }
+
+// Wait a bit for Vite to finish building
+console.log(`🔍 Source directory: ${sourceDir}`);
+console.log(`🔍 Destination directory: ${destDir}`);
+console.log(`🔍 Source exists: ${existsSync(sourceDir)}`);
+console.log(`🔍 Dest exists: ${existsSync(destDir)}`);
 
 // Files to copy
 const filesToCopy = [
@@ -33,9 +40,17 @@ filesToCopy.forEach(file => {
   const sourcePath = join(sourceDir, file);
   const destPath = join(destDir, file);
   
+  console.log(`🔍 Checking: ${file}`);
+  console.log(`   Source: ${sourcePath} (exists: ${existsSync(sourcePath)})`);
+  console.log(`   Dest: ${destPath}`);
+  
   if (existsSync(sourcePath)) {
-    copyFileSync(sourcePath, destPath);
-    console.log(`✅ Copied ${file} to dist/`);
+    try {
+      copyFileSync(sourcePath, destPath);
+      console.log(`✅ Copied ${file} to dist/`);
+    } catch (error) {
+      console.error(`❌ Error copying ${file}:`, error.message);
+    }
   } else {
     console.log(`⚠️  Warning: ${file} not found in public/`);
   }

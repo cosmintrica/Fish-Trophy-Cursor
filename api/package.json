@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fishtrophy/db": "workspace:*",
+    "@vercel/og": "^0.6.2",
     "drizzle-orm": "^0.29.3",
     "firebase-admin": "^12.0.0",
     "postgres": "^3.4.3",
