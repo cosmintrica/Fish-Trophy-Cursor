@@ -1,4 +1,4 @@
-# 🎣 Romanian Fishing Hub
+# 🎣 Fish Trophy
 
 Platformă completă pentru pescarii din România cu hărți interactive, recorduri, specii și comunitate.
 
@@ -34,7 +34,7 @@ Platformă completă pentru pescarii din România cu hărți interactive, record
 ### 1. Clone și Install
 ```bash
 git clone <your-repo>
-cd romanian-fishing-hub
+cd fishtrophy
 pnpm install
 ```
 

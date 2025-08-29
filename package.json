@@ -1,5 +1,5 @@
 {
-  "name": "romanian-fishing-hub",
+  "name": "fishtrophy",
   "version": "1.0.0",
   "description": "Comprehensive platform for anglers in Romania",
   "private": true,
@@ -16,7 +16,7 @@
     "lint:api": "cd api && pnpm lint",
     "lint:fix": "pnpm lint:fix:client && pnpm lint:fix:api",
     "lint:fix:client": "cd client && pnpm lint:fix",
-    "lint:fix:api": "cd api && pnpm lint:fix",
+    "lint:fix:api": "cd client && pnpm lint:fix",
     "type-check": "pnpm type-check:client && pnpm type-check:api",
     "type-check:client": "cd client && pnpm type-check",
     "type-check:api": "cd client && pnpm type-check",

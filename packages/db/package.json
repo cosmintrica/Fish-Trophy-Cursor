@@ -1,5 +1,5 @@
 {
-  "name": "@romanian-fishing-hub/db",
+  "name": "@fishtrophy/db",
   "version": "1.0.0",
   "description": "Database schema and migrations",
   "main": "index.ts",
