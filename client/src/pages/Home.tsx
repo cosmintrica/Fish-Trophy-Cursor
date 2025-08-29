@@ -1,10 +1,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Fish, MapPin, Navigation, X, Menu, Trophy, Users, ShoppingBag } from 'lucide-react';
+import { Fish, MapPin, Navigation, X } from 'lucide-react';
 import L from 'leaflet';
-import { fishingLocations, fishingShops } from '@/services/locations';
+import { fishingLocations } from '@/services/locations';
 import { geolocationService } from '@/services/geolocation';
 
 // Import Leaflet CSS
@@ -47,7 +46,8 @@ export default function Home() {
     addLocationsToMap(map, 'all');
 
     // Verifică dacă utilizatorul a dat deja permisiunea pentru locație
-    if (geolocationService.getPermissionStatus() === 'granted') {
+    const permissionStatus = geolocationService.getPermissionStatus();
+    if (permissionStatus.granted) {
       setShowLocationRequest(false);
     }
 
@@ -144,7 +144,7 @@ export default function Home() {
     try {
       const position = await geolocationService.getCurrentPosition();
       if (mapInstanceRef.current && position) {
-        mapInstanceRef.current.setView([position.coords.latitude, position.coords.longitude], 12);
+        mapInstanceRef.current.setView([position.latitude, position.longitude], 12);
         setShowLocationRequest(false);
       }
     } catch (error) {
