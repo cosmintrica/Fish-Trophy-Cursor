@@ -76,6 +76,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Trophy className="h-4 w-4 inline mr-1" />
                 Recorduri
               </Link>
+              <Link
+                to="/submission-guide"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActive('/submission-guide') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Ghid Submisie
+              </Link>
               {user && (
                 <Link
                   to="/admin"
