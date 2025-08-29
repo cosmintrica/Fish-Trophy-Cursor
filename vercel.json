@@ -2,6 +2,7 @@
   "buildCommand": "pnpm install --no-frozen-lockfile && pnpm build",
   "builds": [
     { "src": "client/package.json", "use": "@vercel/static-build", "config": { "distDir": "client/dist" } },
+    { "src": "api/og.tsx", "use": "@vercel/og" },
     { "src": "api/**/*.ts", "use": "@vercel/node" }
   ],
   "routes": [
@@ -12,6 +13,9 @@
   "functions": {
     "api/**/*.ts": {
       "runtime": "nodejs20.x"
+    },
+    "api/og.tsx": {
+      "runtime": "edge"
     }
   }
 }
