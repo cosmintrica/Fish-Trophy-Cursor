@@ -202,7 +202,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Copyright */}
           <div className="border-t border-slate-200 pt-8 mt-12 text-center">
-            <p className="text-slate-500">&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
+            <p className="text-slate-500">&copy; 2025 Fish Trophy. Toate drepturile rezervate.</p>
           </div>
         </div>
       </footer>
