@@ -2,7 +2,7 @@
 
 ## 🚀 **Phase 1: Project Setup & Initial Configuration**
 
-### **2024-12-19 - Project Initialization**
+### **2025-08-29 - Project Initialization**
 - ✅ Created monorepo structure with pnpm workspaces
 - ✅ Set up client (React + Vite + Tailwind), api (Vercel Functions), db (Drizzle + PostGIS)
 - ✅ Configured TypeScript, ESLint, Prettier, Husky
@@ -10,19 +10,19 @@
 - ✅ Created basic layout and pages structure
 - ✅ Integrated Fish Trophy branding and icons
 
-### **2024-12-19 - Project Renaming**
+### **2025-08-29 - Project Renaming**
 - ✅ Renamed from "Romanian Fishing Hub" to "Fish Trophy"
 - ✅ Updated all package names: `@fishtrophy/*`
 - ✅ Regenerated pnpm-lock.yaml with new package names
 - ✅ Fixed GitHub Actions and Vercel deployment issues
 
-### **2024-12-19 - ESLint Configuration Fixes**
+### **2025-08-29 - ESLint Configuration Fixes**
 - ✅ Fixed ESLint configuration missing `@typescript-eslint/recommended`
 - ✅ Created separate `.eslintrc.json` files for client and API
 - ✅ Resolved all linting errors in both packages
 - ✅ Added proper TypeScript and JSX support
 
-### **2024-12-19 - Current Issues Identified & Fixed**
+### **2025-08-29 - Current Issues Identified & Fixed**
 - ✅ ESLint configuration - RESOLVED
 - ❌ Vercel Function Runtime error: "Function Runtimes must have a valid version"
 - ❌ Drizzle-kit commands: "unknown command 'generate'" (needs `generate:pg`)
@@ -32,7 +32,7 @@
 - ❌ Leaflet map not implemented yet (planned for Phase 3)
 - ❌ Authentication not working yet (planned for Phase 2)
 
-### **2024-12-19 - Latest Fixes Applied**
+### **2025-08-29 - Latest Fixes Applied**
 - ✅ Fixed Vercel runtime from "nodejs20.x" to "nodejs20"
 - ✅ Fixed drizzle-kit commands: "generate" → "generate:pg", "push" → "push:pg"
 - ✅ Restored Vite from v5 to v7 and @vitejs/plugin-react from v4 to v5
@@ -99,6 +99,10 @@
 - Created `api/og.tsx` Edge Function using `@vercel/og` for dynamic image generation
 - Created `api/share/[id].ts` Edge Function for per-URL dynamic meta tags
 - Implemented strategy for crawler-friendly social media previews
+- Enhanced OG image generation with professional design (gradient background, decorative elements)
+- Updated meta tags with improved Romanian descriptions and dynamic image URLs
+- Implemented professional social media banner with Inter font, decorative circles, and modern gradient
+- Added support for dynamic title, subtitle, and domain parameters in OG image generation
 
 #### TypeScript Error Fixes
 - Fixed unused import errors in `client/src/pages/Home.tsx`
@@ -113,11 +117,21 @@
 - Enhanced `copy-assets.js` script with better error handling and debugging
 - Fixed Vercel static build configuration issues
 - Added comprehensive logging for asset copying process
+- Fixed pnpm lockfile issue by using `--no-frozen-lockfile` flag
+- Added explicit Node.js runtime configuration for API functions
 
 #### File Structure Verification
 - Confirmed all icon files are present in `client/public/`
 - Verified `site.webmanifest` and PWA support files
 - Ensured proper asset copying from `public/` to `dist/`
+
+### **2025-08-29 - Vercel Deployment Fixes**
+
+#### Dependency Management Issues
+- Fixed `ERR_PNPM_OUTDATED_LOCKFILE` error by allowing lockfile updates
+- Added `--no-frozen-lockfile` flag to `installCommand` in `vercel.json`
+- Resolved version mismatch between pnpm-lock.yaml and package.json files
+- Added explicit Node.js 20.x runtime configuration for API functions
 
 ---
 
