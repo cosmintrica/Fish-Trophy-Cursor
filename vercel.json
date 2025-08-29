@@ -2,5 +2,20 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "client/dist",
   "installCommand": "pnpm install",
-  "framework": "vite"
+  "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
