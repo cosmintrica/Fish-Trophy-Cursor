@@ -2,6 +2,7 @@
   "name": "@fishtrophy/api",
   "version": "1.0.0",
   "description": "Vercel Functions API for Fish Trophy",
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "vercel dev",
     "build": "tsc",

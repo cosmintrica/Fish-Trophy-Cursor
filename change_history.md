@@ -129,9 +129,13 @@
 
 #### Dependency Management Issues
 - Fixed `ERR_PNPM_OUTDATED_LOCKFILE` error by allowing lockfile updates
-- Added `--no-frozen-lockfile` flag to `installCommand` in `vercel.json`
+- Added `--no-frozen-lockfile` flag to `buildCommand` in `vercel.json`
 - Resolved version mismatch between pnpm-lock.yaml and package.json files
 - Added explicit Node.js 20.x runtime configuration for API functions
+- Created `.npmrc` and `.nvmrc` files to force correct versions
+- Updated `package.json` to specify exact pnpm version (10.15.0)
+- Added `packageManager` field to all workspace packages
+- Configured `.npmrc` to disable frozen lockfile and force pnpm@10.15.0
 
 ---
 
