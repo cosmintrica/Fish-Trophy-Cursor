@@ -3,7 +3,7 @@ import { ImageResponse } from '@vercel/og';
 
 export const config = { runtime: 'edge' };
 
-export default async function handler(req: Request) {
+export default function handler(req: Request) {
   const { searchParams } = new URL(req.url);
   const title    = searchParams.get('title')    ?? 'Fish Trophy';
   const subtitle = searchParams.get('subtitle') ?? 'Trofeul Pescarilor din România';
