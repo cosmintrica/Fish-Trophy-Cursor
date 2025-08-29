@@ -12,6 +12,7 @@ import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Admin from '@/pages/Admin';
 import SubmissionGuide from '@/pages/SubmissionGuide';
+import Profile from '@/pages/Profile';
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,14 @@ function App() {
               <Route path="/species" element={<Species />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
               <Route path="/submission-guide" element={<SubmissionGuide />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/admin/*"
                 element={

@@ -25,52 +25,45 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gray-50">
+      <header className="border-b bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <img 
-                src="/icon_free.png" 
-                alt="Fish Trophy" 
-                className="h-8 w-8"
-              />
-              <span className="text-xl font-bold text-primary">
-                Fish Trophy
-              </span>
+            <Link to="/" className="flex items-center space-x-3">
+              <img src="/icon_free.png" alt="Fish Trophy" className="h-10 w-10"/>
+              <span className="text-2xl font-bold text-blue-800">Fish Trophy</span>
             </Link>
-
+            
             {/* Navigation */}
-            <nav className="hidden md:flex items-center space-x-6">
+            <nav className="hidden md:flex items-center space-x-8">
               <Link
                 to="/"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/') ? 'text-primary' : 'text-muted-foreground'
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  isActive('/') ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 Acasă
               </Link>
               <Link
                 to="/black-sea"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/black-sea') ? 'text-primary' : 'text-muted-foreground'
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  isActive('/black-sea') ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 Marea Neagră
               </Link>
               <Link
                 to="/species"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/species') ? 'text-primary' : 'text-muted-foreground'
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  isActive('/species') ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 Specii
               </Link>
               <Link
                 to="/leaderboards"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/leaderboards') ? 'text-primary' : 'text-muted-foreground'
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  isActive('/leaderboards') ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 <Trophy className="h-4 w-4 inline mr-1" />
@@ -78,8 +71,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
               <Link
                 to="/submission-guide"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/submission-guide') ? 'text-primary' : 'text-muted-foreground'
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  isActive('/submission-guide') ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
                 Ghid Submisie
@@ -87,101 +80,111 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {user && (
                 <Link
                   to="/admin"
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive('/admin') ? 'text-primary' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    isActive('/admin') ? 'text-blue-600' : 'text-gray-700'
                   }`}
                 >
                   Admin
                 </Link>
               )}
             </nav>
-
+            
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               {user ? (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600">
                     {user.email}
                   </span>
+                  <Link
+                    to="/profile"
+                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                  >
+                    Profilul meu
+                  </Link>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleLogout}
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 border-gray-300 hover:bg-gray-50"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>Ieșire</span>
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsAuthModalOpen(true)}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Autentificare
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Conectare / Înregistrare
+                </Button>
               )}
             </div>
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t bg-card mt-auto">
-        <div className="container mx-auto px-4 py-8">
+      
+      <main className="flex-1">{children}</main>
+      
+      <footer className="border-t bg-white mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Fish Trophy</h3>
-              <p className="text-muted-foreground">
+              <div className="flex items-center space-x-3 mb-4">
+                <img src="/icon_free.png" alt="Fish Trophy" className="h-8 w-8"/>
+                <span className="text-xl font-bold text-blue-800">Fish Trophy</span>
+              </div>
+              <p className="text-gray-600">
                 Platformă completă pentru pescarii din România
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Link-uri rapide</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Link-uri rapide</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/" className="text-muted-foreground hover:text-primary">
+                  <Link to="/" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Acasă
                   </Link>
                 </li>
                 <li>
-                  <Link to="/species" className="text-muted-foreground hover:text-primary">
+                  <Link to="/species" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Specii
                   </Link>
                 </li>
                 <li>
-                  <Link to="/leaderboards" className="text-muted-foreground hover:text-primary">
+                  <Link to="/leaderboards" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Recorduri
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/submission-guide" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    Ghid Submisie
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Contact</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact</h3>
+              <p className="text-gray-600">
                 Pentru suport și sugestii
+              </p>
+              <p className="text-gray-600 mt-2">
+                contact@fishtrophy.ro
               </p>
             </div>
           </div>
-          <div className="border-t pt-8 mt-8 text-center text-muted-foreground">
+          <div className="border-t pt-8 mt-8 text-center text-gray-500">
             <p>&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
           </div>
         </div>
       </footer>
-
+      
       {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
   );

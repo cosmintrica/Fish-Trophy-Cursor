@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Trophy, Map, Fish, Users, Star } from 'lucide-react';
+import { Trophy, Fish, Users, Map, Star } from 'lucide-react';
 
 const Home: React.FC = () => {
   return (
