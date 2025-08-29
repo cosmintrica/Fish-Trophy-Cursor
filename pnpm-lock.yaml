@@ -23,7 +23,7 @@ importers:
 
   api:
     dependencies:
-      '@romanian-fishing-hub/db':
+      '@fishtrophy/db':
         specifier: workspace:*
         version: link:../packages/db
       drizzle-orm:
