@@ -18,8 +18,7 @@ import {
   Calendar,
   MapPin,
   Scale,
-  Ruler,
-  Trash2
+  Ruler
 } from 'lucide-react';
 import { toast } from 'sonner';
 
