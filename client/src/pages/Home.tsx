@@ -24,7 +24,6 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showShops, setShowShops] = useState(false);
   const [showShopPopup, setShowShopPopup] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -179,7 +178,6 @@ export default function Home() {
   const getUserLocation = async () => {
     try {
       const location = await geolocationService.getCurrentPosition();
-      setUserLocation({ lat: location.latitude, lng: location.longitude });
       
       if (mapInstanceRef.current) {
         mapInstanceRef.current.setView([location.latitude, location.longitude], 12);

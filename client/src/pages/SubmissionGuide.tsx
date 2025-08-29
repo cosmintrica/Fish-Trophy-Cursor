@@ -1,5 +1,5 @@
 import React from 'react';
-import { Video, Camera, Scale, CheckCircle, AlertTriangle, Rocket, Ruler } from 'lucide-react';
+import { Video, Camera, Scale, CheckCircle, AlertTriangle, Rocket, Ruler, X } from 'lucide-react';
 
 const SubmissionGuide: React.FC = () => {
   return (
