@@ -1,8 +1,133 @@
-import React from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Fish, Users, Map } from 'lucide-react';
+import L from 'leaflet';
+
+// Import Leaflet CSS
+import 'leaflet/dist/leaflet.css';
 
 const Home: React.FC = () => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (mapRef.current && !mapInstanceRef.current) {
+      // Initialize Leaflet map
+      const map = L.map(mapRef.current).setView([45.9432, 24.9668], 7); // Romania center
+      
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add fishing locations
+      const fishingLocations: Array<{
+        name: string;
+        coords: [number, number];
+        type: string;
+        description: string;
+      }> = [
+        {
+          name: 'Marea Neagră - Constanța',
+          coords: [44.1733, 28.6383],
+          type: 'Maritim',
+          description: 'Pescuit în larg și de coastă'
+        },
+        {
+          name: 'Delta Dunării',
+          coords: [45.4167, 29.2833],
+          type: 'Delta',
+          description: 'Pescuit în canale și lacuri'
+        },
+        {
+          name: 'Lacul Snagov',
+          coords: [44.7167, 26.1833],
+          type: 'Lac',
+          description: 'Pescuit de crap și știucă'
+        },
+        {
+          name: 'Lacul Bicaz',
+          coords: [46.8167, 25.9167],
+          type: 'Lac de munte',
+          description: 'Pescuit de păstrăv și lipan'
+        },
+        {
+          name: 'Râul Someș',
+          coords: [47.1833, 23.9167],
+          type: 'Râu de munte',
+          description: 'Pescuit de păstrăv și lipan'
+        },
+        {
+          name: 'Lacul Vidra',
+          coords: [45.3667, 26.1667],
+          type: 'Lac artificial',
+          description: 'Pescuit de crap și caras'
+        }
+      ];
+
+      // Custom icon for fishing locations
+      const fishingIcon = L.divIcon({
+        className: 'custom-fishing-icon',
+        html: '🎣',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+
+      // Add markers for each location
+      fishingLocations.forEach(location => {
+        const marker = L.marker(location.coords, { icon: fishingIcon })
+          .addTo(map)
+          .bindPopup(`
+            <div class="p-3">
+              <h3 class="font-bold text-lg mb-2">${location.name}</h3>
+              <p class="text-sm text-gray-600 mb-2">${location.type}</p>
+              <p class="text-sm text-gray-700">${location.description}</p>
+              <button class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                Vezi recorduri
+              </button>
+            </div>
+          `);
+      });
+
+      // Add some fishing zones
+      const fishingZones: Array<{
+        name: string;
+        coords: [number, number][];
+        color: string;
+      }> = [
+        {
+          name: 'Zona Marea Neagră',
+          coords: [[43.5, 27.5], [43.5, 29.5], [45.5, 29.5], [45.5, 27.5]],
+          color: '#3B82F6'
+        },
+        {
+          name: 'Zona Delta Dunării',
+          coords: [[44.5, 28.5], [44.5, 30.5], [46.5, 30.5], [46.5, 28.5]],
+          color: '#10B981'
+        }
+      ];
+
+      fishingZones.forEach(zone => {
+        L.polygon(zone.coords, {
+          color: zone.color,
+          weight: 2,
+          fillColor: zone.color,
+          fillOpacity: 0.1
+        }).addTo(map).bindTooltip(zone.name);
+      });
+
+      mapInstanceRef.current = map;
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero Section - Mic și elegant */}
@@ -56,28 +181,49 @@ const Home: React.FC = () => {
             </p>
           </div>
           
-          {/* Placeholder pentru harta Leaflet */}
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl p-12 text-center border-2 border-dashed border-slate-300">
-            <Map className="w-24 h-24 text-slate-400 mx-auto mb-6" />
-            <h3 className="text-2xl font-semibold text-slate-700 mb-4">
-              Harta Interactivă
-            </h3>
-            <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              Aici va fi integrată harta Leaflet cu toate locațiile de pescuit din România, 
-              inclusiv Marea Neagră și lacurile interioare.
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-                <span className="text-sm font-medium text-slate-700">Marea Neagră</span>
+          {/* Harta Leaflet Interactivă */}
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+            <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-slate-800">
+                  🗺️ Harta Interactivă
+                </h3>
+                <div className="flex items-center space-x-4 text-sm text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                    <span>Zone de pescuit</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">🎣</span>
+                    <span>Locații</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-                <span className="text-sm font-medium text-slate-700">Delta Dunării</span>
-              </div>
-              <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-                <span className="text-sm font-medium text-slate-700">Lacurile din Transilvania</span>
-              </div>
-              <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-                <span className="text-sm font-medium text-slate-700">Râurile din Munții Apuseni</span>
+            </div>
+            
+            <div 
+              ref={mapRef} 
+              className="w-full h-96 bg-slate-100"
+              style={{ minHeight: '400px' }}
+            ></div>
+            
+            <div className="p-6 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="text-center">
+                  <span className="text-lg">🌊</span>
+                  <p className="font-medium text-slate-700">Marea Neagră</p>
+                  <p className="text-slate-500">Pescuit maritim</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-lg">🏞️</span>
+                  <p className="font-medium text-slate-700">Lacuri</p>
+                  <p className="text-slate-500">Pescuit de pește dulce</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-lg">🏔️</span>
+                  <p className="font-medium text-slate-700">Râuri de munte</p>
+                  <p className="text-slate-500">Pescuit de păstrăv</p>
+                </div>
               </div>
             </div>
           </div>
