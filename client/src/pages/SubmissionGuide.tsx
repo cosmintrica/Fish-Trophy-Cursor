@@ -1,22 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { X, Video, Camera, Scale, CheckCircle, AlertTriangle, Rocket, Ruler } from 'lucide-react';
+import { Video, Camera, Scale, CheckCircle, AlertTriangle, Rocket, Ruler } from 'lucide-react';
 
 const SubmissionGuide: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with back button */}
-        <div className="flex items-center justify-between mb-8">
-          <Link
-            to="/"
-            className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <X className="h-5 w-5 rotate-45" />
-            <span>Înapoi la Acasă</span>
-          </Link>
-        </div>
-
         {/* Page Title */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">

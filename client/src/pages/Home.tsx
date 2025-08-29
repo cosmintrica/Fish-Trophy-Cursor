@@ -1,9 +1,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Fish, Users, Map, MapPin, ShoppingBag } from 'lucide-react';
+import { Trophy, Fish, Users, Map, MapPin, ShoppingBag, Navigation, X } from 'lucide-react';
 import L from 'leaflet';
 import { fishingLocations, fishingZones, fishingShops } from '@/services/locations';
+import { geolocationService } from '@/services/geolocation';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -22,6 +23,8 @@ export default function Home() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showShops, setShowShops] = useState(false);
+  const [showShopPopup, setShowShopPopup] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -53,64 +56,81 @@ export default function Home() {
       `);
     });
 
-    // Adaugă locațiile de pescuit
-    fishingLocations.forEach(location => {
-      const iconSize = 32;
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                 <Fish className="w-5 h-5 text-white" />
-               </div>`,
-        iconSize: [iconSize, iconSize],
-        iconAnchor: [iconSize / 2, iconSize / 2]
+    // Funcție pentru adăugarea locațiilor pe hartă
+    const addLocationsToMap = (locations: typeof fishingLocations, showAll: boolean = false) => {
+      // Șterge markerii existenți
+      map.eachLayer((layer) => {
+        if (layer instanceof L.Marker) {
+          map.removeLayer(layer);
+        }
       });
 
-      const marker = L.marker(location.coords, { icon }).addTo(map);
-      
-      marker.bindPopup(`
-        <div class="p-4 min-w-[300px]">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Fish className="w-6 h-6 text-blue-600" />
+      // Adaugă locațiile filtrate
+      const locationsToShow = showAll ? locations : 
+        activeFilter === 'all' ? locations : 
+        locations.filter(loc => loc.type === activeFilter);
+
+      locationsToShow.forEach(location => {
+        const iconSize = 32;
+        const icon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                   <Fish className="w-5 h-5 text-white" />
+                 </div>`,
+          iconSize: [iconSize, iconSize],
+          iconAnchor: [iconSize / 2, iconSize / 2]
+        });
+
+        const marker = L.marker(location.coords, { icon }).addTo(map);
+        
+        marker.bindPopup(`
+          <div class="p-4 min-w-[300px]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Fish className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 class="font-bold text-lg">${location.name}</h3>
+                <p class="text-sm text-gray-600">${location.county}, ${location.region}</p>
+              </div>
             </div>
-            <div>
-              <h3 class="font-bold text-lg">${location.name}</h3>
-              <p class="text-sm text-gray-600">${location.county}, ${location.region}</p>
+            
+            <p class="text-gray-700 mb-3">${location.description}</p>
+            
+            <div class="mb-3">
+              <div class="flex flex-wrap gap-1 mb-2">
+                ${location.species.map(species => 
+                  `<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">${species}</span>`
+                ).join('')}
+              </div>
+              <div class="flex flex-wrap gap-1">
+                ${location.facilities.map(facility => 
+                  `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${facility}</span>`
+                ).join('')}
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm text-gray-600 mb-3">
+              <span>📊 ${location.recordCount} recorduri</span>
+              <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
+              <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
+            </div>
+            
+            <div class="flex gap-2">
+              <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Vezi recorduri
+              </button>
+              <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Adaugă record
+              </button>
             </div>
           </div>
-          
-          <p class="text-gray-700 mb-3">${location.description}</p>
-          
-          <div class="mb-3">
-            <div class="flex flex-wrap gap-1 mb-2">
-              ${location.species.map(species => 
-                `<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">${species}</span>`
-              ).join('')}
-            </div>
-            <div class="flex flex-wrap gap-1">
-              ${location.facilities.map(facility => 
-                `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${facility}</span>`
-              ).join('')}
-            </div>
-          </div>
-          
-          <div class="flex items-center justify-between text-sm text-gray-600 mb-3">
-            <span>📊 ${location.recordCount} recorduri</span>
-            <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
-            <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
-          </div>
-          
-          <div class="flex gap-2">
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-              Vezi recorduri
-            </button>
-            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-              Adaugă record
-            </button>
-          </div>
-        </div>
-      `);
-    });
+        `);
+      });
+    };
+
+    // Adaugă locațiile inițiale
+    addLocationsToMap(fishingLocations, true);
 
     // Adaugă magazinele de pescuit (dacă sunt vizibile)
     if (showShops) {
@@ -137,6 +157,11 @@ export default function Home() {
             <p class="text-gray-700 mb-2">${shop.description}</p>
             ${shop.phone ? `<p class="text-sm text-blue-600">📞 ${shop.phone}</p>` : ''}
             ${shop.website ? `<a href="${shop.website}" target="_blank" class="text-sm text-blue-600 hover:underline">🌐 Website</a>` : ''}
+            <div class="mt-3 pt-3 border-t">
+              <button onclick="window.showShopPopup = true" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Vrei să apară pe hartă?
+              </button>
+            </div>
           </div>
         `);
       });
@@ -148,11 +173,26 @@ export default function Home() {
         mapInstanceRef.current = null;
       }
     };
-  }, [showShops]);
+  }, [showShops, activeFilter]);
 
+  // Funcție pentru obținerea locației utilizatorului
+  const getUserLocation = async () => {
+    try {
+      const location = await geolocationService.getCurrentPosition();
+      setUserLocation({ lat: location.latitude, lng: location.longitude });
+      
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setView([location.latitude, location.longitude], 12);
+      }
+    } catch (error) {
+      console.error('Eroare la obținerea locației:', error);
+      alert('Nu s-a putut obține locația. Verifică permisiunile browser-ului.');
+    }
+  };
+
+  // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
     setActiveFilter(type);
-    // Aici poți implementa filtrarea pe hartă
   };
 
   return (
@@ -243,7 +283,7 @@ export default function Home() {
           </div>
 
           {/* Map Container */}
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden relative">
             <div className="p-4 bg-gray-50 border-b">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <Map className="w-6 h-6 text-blue-500" />
@@ -253,10 +293,56 @@ export default function Home() {
                 {fishingLocations.length} locații de pescuit • {fishingShops.length} magazine • {fishingZones.length} zone protejate
               </p>
             </div>
-            <div ref={mapRef} className="h-[600px] w-full" />
+            
+            {/* Buton de geolocație */}
+            <button
+              onClick={getUserLocation}
+              className="absolute top-20 right-4 z-[1000] bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+              title="Centreză pe locația mea"
+            >
+              <Navigation className="w-5 h-5" />
+            </button>
+            
+            <div ref={mapRef} className="h-[600px] w-full relative z-10" />
           </div>
         </div>
       </section>
+
+      {/* Popup pentru magazine */}
+      {showShopPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Vrei să apară pe hartă?</h3>
+              <button
+                onClick={() => setShowShopPopup(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Dacă ai un magazin de pescuit și vrei să apară pe hartă, trimite-ne un email cu:
+            </p>
+            <ul className="text-sm text-gray-600 mb-6 space-y-2">
+              <li>• Numele magazinului</li>
+              <li>• Adresa completă</li>
+              <li>• Numărul de telefon</li>
+              <li>• Website (dacă ai)</li>
+              <li>• Program de funcționare</li>
+              <li>• Descrierea serviciilor</li>
+            </ul>
+            <div className="text-center">
+              <a
+                href="mailto:contact@fishtrophy.ro?subject=Magazin de pescuit pentru hartă"
+                className="inline-block bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                Trimite email
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Features Section */}
       <section className="py-16 bg-white">
