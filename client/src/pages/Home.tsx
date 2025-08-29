@@ -212,15 +212,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center mb-6">
             <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl mr-4">
-              <img 
-                src="/icon_free.png" 
-                alt="Fish Trophy" 
-                className="w-10 h-10 md:w-12 md:h-12"
-                onError={(e) => {
-                  console.error('Failed to load hero icon:', e);
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+              <svg className="w-10 h-10 md:w-12 md:h-12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" opacity="0.3" />
+                <path d="M6 7c2 1 4 1.5 6 1.5S16 8 18 7c-1 4-3 7-6 9-3-2-5-5-6-9z" />
+              </svg>
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">

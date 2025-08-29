@@ -35,10 +35,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Logo - Modern, Centered */}
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
-                  console.error('Failed to load icon:', e);
-                  e.currentTarget.style.display = 'none';
-                }} />
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" opacity="0.3" />
+                  <path d="M6 7c2 1 4 1.5 6 1.5S16 8 18 7c-1 4-3 7-6 9-3-2-5-5-6-9z" />
+                </svg>
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                 Fish Trophy
@@ -147,10 +147,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div>
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
-                    console.error('Failed to load footer icon:', e);
-                    e.currentTarget.style.display = 'none';
-                  }} />
+                  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" opacity="0.3" />
+                    <path d="M6 7c2 1 4 1.5 6 1.5S16 8 18 7c-1 4-3 7-6 9-3-2-5-5-6-9z" />
+                  </svg>
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                   Fish Trophy
