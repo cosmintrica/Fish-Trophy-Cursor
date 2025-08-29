@@ -5,6 +5,8 @@ import { AuthProvider } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from '@/components/ScrollToTop';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/vite';
 
 
 // Pages
@@ -53,6 +55,8 @@ function App() {
           </Layout>
         </Router>
         <Toaster />
+        <Analytics />
+        <SpeedInsights />
       </AuthProvider>
     </QueryClientProvider>
   );
