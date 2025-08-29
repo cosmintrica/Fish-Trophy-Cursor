@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag } from 'lucide-react';
+import { MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -43,18 +43,7 @@ const FishingShops: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-3 text-blue-600 hover:text-blue-700 transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Înapoi la Acasă</span>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Magazine de Pescuit</h1>
-          </div>
-        </div>
-      </div>
+
 
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
