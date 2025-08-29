@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Trophy } from 'lucide-react';
+import AuthModal from './AuthModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -24,7 +26,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -106,7 +107,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsAuthModalOpen(true)}
+                  >
                     <User className="h-4 w-4 mr-2" />
                     Autentificare
                   </Button>
@@ -127,47 +132,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <img 
-                  src="/icon_free.png" 
-                  alt="Fish Trophy" 
-                  className="h-6 w-6"
-                />
-                <span className="text-lg font-bold">Fish Trophy</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Platforma completă pentru pescarii din România
+              <h3 className="text-lg font-semibold mb-4">Fish Trophy</h3>
+              <p className="text-muted-foreground">
+                Platformă completă pentru pescarii din România
               </p>
             </div>
-            
             <div>
-              <h3 className="font-semibold mb-4">Link-uri Rapide</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link to="/" className="hover:text-primary">Acasă</Link></li>
-                <li><Link to="/black-sea" className="hover:text-primary">Marea Neagră</Link></li>
-                <li><Link to="/species" className="hover:text-primary">Specii</Link></li>
-                <li><Link to="/leaderboards" className="hover:text-primary">Recorduri</Link></li>
+              <h3 className="text-lg font-semibold mb-4">Link-uri rapide</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link to="/" className="text-muted-foreground hover:text-primary">
+                    Acasă
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/species" className="text-muted-foreground hover:text-primary">
+                    Specii
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/leaderboards" className="text-muted-foreground hover:text-primary">
+                    Recorduri
+                  </Link>
+                </li>
               </ul>
             </div>
-            
             <div>
-              <h3 className="font-semibold mb-4">Contact</h3>
-              <p className="text-sm text-muted-foreground">
-                Pentru suport și întrebări
-              </p>
-              <p className="text-sm text-muted-foreground">
-                contact@fishtrophy.ro
+              <h3 className="text-lg font-semibold mb-4">Contact</h3>
+              <p className="text-muted-foreground">
+                Pentru suport și sugestii
               </p>
             </div>
           </div>
-          
-          <div className="border-t pt-6 mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              © 2024 Fish Trophy. Toate drepturile rezervate.
-            </p>
+          <div className="border-t pt-8 mt-8 text-center text-muted-foreground">
+            <p>&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </div>
   );
 };
