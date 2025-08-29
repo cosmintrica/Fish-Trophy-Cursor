@@ -37,7 +37,7 @@ class GeolocationService {
 
     try {
       // Încearcă să obții locația curentă
-      const position = await this.getCurrentPosition();
+      await this.getCurrentPosition();
       this.permissionStatus.granted = true;
       return this.permissionStatus;
     } catch (error: any) {
