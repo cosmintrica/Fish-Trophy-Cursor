@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
 import { LogOut, User, Trophy } from 'lucide-react';
-import AuthModal from './AuthModal';
+import { Button } from '@/components/ui/button';
+import AuthModal from '@/components/AuthModal';
+import { useAuth } from '@/lib/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,9 +20,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     try {
       await logout();
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Logout error:', error);
     }
   };
+
+  // Check if user is admin
+  const isAdmin = user?.email === 'cosmin.trica@outlook.com';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -32,13 +35,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Logo - Modern, Centered */}
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8"/>
+                <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
+                  console.error('Failed to load icon:', e);
+                  e.currentTarget.style.display = 'none';
+                }} />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                 Fish Trophy
               </span>
             </Link>
-            
+
             {/* Navigation - Clean, Modern */}
             <nav className="hidden md:flex items-center space-x-8">
               <Link
@@ -82,7 +88,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               >
                 Ghid Submisie
               </Link>
-              {user && (
+              {isAdmin && (
                 <Link
                   to="/admin"
                   className={`text-sm font-medium transition-all duration-200 hover:text-blue-600 ${
@@ -93,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
               )}
             </nav>
-            
+
             {/* User Menu - Modern Design */}
             <div className="flex items-center space-x-4">
               {user ? (
@@ -130,9 +136,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </header>
-      
+
       <main className="flex-1">{children}</main>
-      
+
       {/* Footer - Modern, Clean */}
       <footer className="bg-white/80 backdrop-blur-sm border-t border-white/20 mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-16">
@@ -141,17 +147,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div>
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8"/>
+                  <img src="/icon_free.png" alt="Fish Trophy" className="w-8 h-8" onError={(e) => {
+                    console.error('Failed to load footer icon:', e);
+                    e.currentTarget.style.display = 'none';
+                  }} />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
                   Fish Trophy
                 </span>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Platforma completă pentru pescarii din România
+                Platformă completă pentru pescarii din România
               </p>
             </div>
-            
+
             {/* Quick Links */}
             <div>
               <h3 className="text-lg font-semibold text-slate-900 mb-6">Link-uri rapide</h3>
@@ -178,7 +187,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </li>
               </ul>
             </div>
-            
+
             {/* Contact */}
             <div>
               <h3 className="text-lg font-semibold text-slate-900 mb-6">Contact</h3>
@@ -190,14 +199,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </p>
             </div>
           </div>
-          
+
           {/* Copyright */}
           <div className="border-t border-slate-200 pt-8 mt-12 text-center">
             <p className="text-slate-500">&copy; 2024 Fish Trophy. Toate drepturile rezervate.</p>
           </div>
         </div>
       </footer>
-      
+
       {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -206,5 +215,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     </div>
   );
 };
-
 export default Layout;

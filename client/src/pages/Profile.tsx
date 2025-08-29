@@ -18,7 +18,8 @@ import {
   Calendar,
   MapPin,
   Scale,
-  Ruler
+  Ruler,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +27,9 @@ const Profile: React.FC = () => {
   const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Check if user is admin
+  const isAdmin = user?.email === 'cosmin.trica@outlook.com';
   const [profileData, setProfileData] = useState({
     displayName: user?.displayName || '',
     email: user?.email || '',
@@ -263,9 +267,16 @@ const Profile: React.FC = () => {
                             <Button variant="outline" size="sm" className="flex-1">
                               Vezi detalii
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1">
-                              Editează
-                            </Button>
+                            {record.status === 'pending' && (
+                              <Button variant="outline" size="sm" className="flex-1">
+                                Editează
+                              </Button>
+                            )}
+                            {isAdmin && record.status === 'verified' && (
+                              <Button variant="outline" size="sm" className="flex-1 text-orange-600 border-orange-300">
+                                Editează (Admin)
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
