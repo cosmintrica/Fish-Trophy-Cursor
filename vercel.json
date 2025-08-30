@@ -1,6 +1,6 @@
 {
   "builds": [
-    { "src": "client/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist", "buildCommand": "pnpm --filter client build" } },
+    { "src": "client/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist", "buildCommand": "corepack enable && pnpm --filter client build" } },
     { "src": "api/**/*.[tj]s", "use": "@vercel/node" }
   ],
   "routes": [

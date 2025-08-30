@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Fish, MapPin, Navigation, Waves, Anchor, Ship, Compass } from 'lucide-react';
+import { Fish, Waves, Ship, Compass } from 'lucide-react';
 import L from 'leaflet';
 import { fishingLocations } from '@/services/locations';
 
