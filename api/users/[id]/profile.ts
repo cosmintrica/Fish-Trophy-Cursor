@@ -1,7 +1,6 @@
 
 
 /// <reference lib="dom" />
-export const config = { runtime: 'edge' } as const;
 
 export default async function GET(request: Request) {
   const { pathname } = new URL(request.url);

@@ -1,5 +1,4 @@
 /// <reference lib="dom" />
-export const config = { runtime: 'edge' } as const;
 
 type RecordDTO = {
   species: string;

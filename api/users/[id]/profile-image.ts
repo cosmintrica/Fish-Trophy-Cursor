@@ -1,7 +1,6 @@
 
 
 /// <reference lib="dom" />
-export const config = { runtime: 'edge' } as const;
 
 export default async function POST(request: Request) {
   try {
