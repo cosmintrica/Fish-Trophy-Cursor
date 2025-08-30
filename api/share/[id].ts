@@ -5,8 +5,13 @@ export default async function handler(req: Request) {
   const pathParts = url.pathname.split('/');
   const id = pathParts[pathParts.length - 1] || '';
   
-  // 1) iei datele recordului (titlu, specie, greutate, poză) din API-ul tău
-  const record = await fetch(`https://fishtrophy.ro/api/records/${id}`).then(r => r.json());
+  try {
+    // 1) iei datele recordului (titlu, specie, greutate, poză) din API-ul tău
+    const response = await fetch(`https://fishtrophy.ro/api/records/${id}`);
+    if (!response.ok) {
+      throw new Error('Record not found');
+    }
+    const record = await response.json();
 
   const title = `${record.species} – ${record.weight} • ${record.angler}`;
   const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;
@@ -28,5 +33,11 @@ export default async function handler(req: Request) {
 <meta http-equiv="refresh" content="0; url=/records/${id}" />
 </head><body></body></html>`;
 
-  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+  } catch (error) {
+    return new Response('Record not found', { 
+      status: 404,
+      headers: { 'content-type': 'text/plain' } 
+    });
+  }
 }
