@@ -1,4 +1,4 @@
-export default async function handler(req: Request) {
+export default async function handler(req: any) {
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/');
   const id = pathParts[pathParts.length - 1] || '';
@@ -9,7 +9,7 @@ export default async function handler(req: Request) {
     if (!response.ok) {
       throw new Error('Record not found');
     }
-    const record = await response.json() as Record<string, unknown>;
+    const record = await response.json() as any;
 
     const title = `${record.species} – ${record.weight} • ${record.angler}`;
     const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;

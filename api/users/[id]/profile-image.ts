@@ -1,6 +1,6 @@
 
 
-export default async function POST(request: Request) {
+export default async function POST(request: any) {
   try {
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/');

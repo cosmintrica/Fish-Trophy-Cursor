@@ -1,6 +1,6 @@
 
 
-export default async function GET(request: Request) {
+export default async function GET(request: any) {
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const userId = pathParts[pathParts.length - 1] || '';
