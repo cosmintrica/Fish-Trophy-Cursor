@@ -19,6 +19,22 @@
       "dest": "/api/$1"
     },
     {
+      "src": "^/$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/assets/(.*)$",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/favicon.ico$",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "^/icon_.*\\.png$",
+      "dest": "/icon_$1.png"
+    },
+    {
       "handle": "filesystem"
     },
     {
