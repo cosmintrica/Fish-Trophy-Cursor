@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ImageResponse } from '@vercel/og';
 
-export const config = { runtime: 'edge' };
-
 export default async function handler(req: Request) {
   const { searchParams } = new URL(req.url);
   const title    = searchParams.get('title')    ?? 'Fish Trophy';
