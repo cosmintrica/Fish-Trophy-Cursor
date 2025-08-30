@@ -1,10 +1,12 @@
 
 
-export default async function POST(request: any) {
+/// <reference lib="dom" />
+export const config = { runtime: 'edge' } as const;
+
+export default async function POST(request: Request) {
   try {
-    const url = new URL(request.url);
-    const pathParts = url.pathname.split('/');
-    const userId = pathParts[pathParts.length - 1] || '';
+    const { pathname } = new URL(request.url);
+    const userId = pathname.split('/')[3]; // /api/users/{id}/profile-image
     
     const formData = await request.formData();
     const file = formData.get('image') as File;

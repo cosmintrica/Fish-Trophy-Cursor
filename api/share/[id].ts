@@ -1,7 +1,18 @@
-export default async function handler(req: any) {
-  const url = new URL(req.url);
-  const pathParts = url.pathname.split('/');
-  const id = pathParts[pathParts.length - 1] || '';
+/// <reference lib="dom" />
+export const config = { runtime: 'edge' } as const;
+
+type RecordDTO = {
+  species: string;
+  weight?: string | number;
+  location?: string;
+  date?: string;
+  title?: string;
+  angler?: string;
+};
+
+export default async function handler(req: Request) {
+  const { pathname } = new URL(req.url);
+  const id = pathname.split('/').pop()!; // /api/share/[id]
   
   try {
     // 1) iei datele recordului (titlu, specie, greutate, poză) din API-ul tău
@@ -9,7 +20,7 @@ export default async function handler(req: any) {
     if (!response.ok) {
       throw new Error('Record not found');
     }
-    const record = await response.json() as any;
+    const record = await response.json() as RecordDTO;
 
     const title = `${record.species} – ${record.weight} • ${record.angler}`;
     const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;

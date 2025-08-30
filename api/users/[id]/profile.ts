@@ -1,9 +1,11 @@
 
 
-export default async function GET(request: any) {
-  const url = new URL(request.url);
-  const pathParts = url.pathname.split('/');
-  const userId = pathParts[pathParts.length - 1] || '';
+/// <reference lib="dom" />
+export const config = { runtime: 'edge' } as const;
+
+export default async function GET(request: Request) {
+  const { pathname } = new URL(request.url);
+  const userId = pathname.split('/').pop()!; // /api/users/[id]
   
   try {
     // Mock user data for now - replace with actual database call later
