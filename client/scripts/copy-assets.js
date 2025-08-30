@@ -14,8 +14,8 @@ const distDir = path.join(__dirname, '../dist');
 const isVercel = process.env.VERCEL === '1';
 console.log('🚀 Environment:', isVercel ? 'Vercel' : 'Local');
 
-// In Vercel, copy essential files directly to dist if public doesn't exist
-if (isVercel && !fs.existsSync(publicDir)) {
+// If public directory doesn't exist, copy essential files directly to dist
+if (!fs.existsSync(publicDir)) {
   console.log('📁 Public directory not found, copying essential files directly to dist...');
   
   // Copy favicon directly to dist
@@ -29,8 +29,23 @@ if (isVercel && !fs.existsSync(publicDir)) {
     console.log('⚠️ Could not copy favicon:', error.message);
   }
   
-  // Skip the copy-assets script since we're copying directly
-  console.log('✅ Essential files copied, skipping copy-assets');
+  // Also try to copy other essential files from src/assets
+  const assetsDir = path.join(__dirname, '../src/assets');
+  if (fs.existsSync(assetsDir)) {
+    try {
+      const assets = fs.readdirSync(assetsDir);
+      for (const asset of assets) {
+        if (asset.endsWith('.png') || asset.endsWith('.svg') || asset.endsWith('.ico')) {
+          fs.copyFileSync(path.join(assetsDir, asset), path.join(distDir, asset));
+          console.log(`✅ Copied ${asset} to dist`);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Could not copy assets:', error.message);
+    }
+  }
+  
+  console.log('✅ Essential files copied, build should work now');
   process.exit(0);
 }
 
