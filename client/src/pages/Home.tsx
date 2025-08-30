@@ -76,11 +76,38 @@ export default function Home() {
       fishingLocations.filter(loc => loc.type === filterType);
 
     locationsToShow.forEach(location => {
-      const iconSize = 32;
+      // Determină culoarea în funcție de tipul locației
+      let markerColor = 'bg-gray-500'; // default pentru 'all'
+      let borderColor = 'border-gray-600';
+      
+      switch (location.type) {
+        case 'river':
+          markerColor = 'bg-teal-500';
+          borderColor = 'border-teal-600';
+          break;
+        case 'lake':
+          markerColor = 'bg-blue-500';
+          borderColor = 'border-blue-600';
+          break;
+        case 'pond':
+          markerColor = 'bg-red-500';
+          borderColor = 'border-red-600';
+          break;
+        case 'private_pond':
+          markerColor = 'bg-purple-500';
+          borderColor = 'border-purple-600';
+          break;
+        case 'maritime':
+          markerColor = 'bg-indigo-500';
+          borderColor = 'border-indigo-600';
+          break;
+      }
+
+      const iconSize = 40; // Marker mai mare
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                 <Fish className="w-5 h-5 text-white" />
+        html: `<div class="w-10 h-10 ${markerColor} ${borderColor} rounded-full border-4 border-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform duration-200">
+                 <Fish className="w-6 h-6 text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
@@ -91,8 +118,8 @@ export default function Home() {
       marker.bindPopup(`
         <div class="p-4 min-w-[280px] max-w-[320px]">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Fish className="w-6 h-6 text-blue-600" />
+            <div class="w-12 h-12 ${markerColor} rounded-full flex items-center justify-center">
+              <Fish className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 class="font-bold text-lg">${location.name}</h3>
@@ -213,35 +240,17 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section - Mobile Optimized */}
-      <section className="relative py-8 md:py-12 lg:py-16 px-4 md:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl mr-4">
-              <img 
-                src="/icon_free.png" 
-                alt="Fish Trophy" 
-                className="w-10 h-10 md:w-12 md:h-12"
-                onError={(e) => {
-                  console.error('Failed to load hero icon:', e);
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-                Fish Trophy
-              </h1>
-              <p className="text-lg md:text-xl text-slate-600 mt-2">
-                Trofeul Pescarilor din România
-              </p>
-            </div>
+      {/* Hero Section - Small Banner */}
+      <section className="relative py-4 md:py-6 px-4 md:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-4 md:p-6 text-center shadow-lg">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
+              Descoperă cele mai bune locuri de pescuit din România
+            </h1>
+            <p className="text-sm md:text-base text-white">
+              Explorează harta interactivă, înregistrează recordurile tale și concurează în clasamentele naționale!
+            </p>
           </div>
-          
-          <p className="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Descoperă cele mai bune locații de pescuit din România, 
-            urmărește recordurile și concurează cu alți pescari pasionați.
-          </p>
         </div>
       </section>
 
@@ -253,9 +262,9 @@ export default function Home() {
             <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
               {[
                 { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
-                { type: 'river', label: 'Râuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
+                { type: 'river', label: 'Râuri', icon: MapPin, color: 'bg-teal-500 hover:bg-teal-600' },
                 { type: 'lake', label: 'Lacuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
-                { type: 'pond', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-green-500 hover:bg-green-600' },
+                { type: 'pond', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
                 { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
               ].map(({ type, label, icon: Icon, color }) => (
                 <button
