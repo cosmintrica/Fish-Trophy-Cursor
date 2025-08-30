@@ -9,7 +9,7 @@
       }
     },
     {
-      "src": "api/**/*.[tj]s",
+      "src": "api/**/*.ts",
       "use": "@vercel/node"
     }
   ],
