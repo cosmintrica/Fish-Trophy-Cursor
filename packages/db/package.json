@@ -2,7 +2,6 @@
   "name": "@fishtrophy/db",
   "version": "1.0.0",
   "description": "Database schema and migrations",
-  "packageManager": "pnpm@10.15.0",
   "main": "index.ts",
   "scripts": {
     "generate": "drizzle-kit generate:pg",
@@ -21,7 +20,6 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=22",
-    "pnpm": "10.15.0"
+    "node": ">=22"
   }
 }
