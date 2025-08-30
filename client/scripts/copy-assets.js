@@ -10,6 +10,13 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, '../public');
 const distDir = path.join(__dirname, '../dist');
 
+console.log('🔍 Debug paths:');
+console.log('__dirname:', __dirname);
+console.log('publicDir:', publicDir);
+console.log('distDir:', distDir);
+console.log('publicDir exists:', fs.existsSync(publicDir));
+console.log('distDir exists:', fs.existsSync(distDir));
+
 // Ensure dist directory exists
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
