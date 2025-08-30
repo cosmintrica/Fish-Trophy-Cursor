@@ -11,10 +11,10 @@ export default async function handler(req: Request) {
     if (!response.ok) {
       throw new Error('Record not found');
     }
-    const record = await response.json();
+    const record = await response.json() as any;
 
-  const title = `${record.species} – ${record.weight} • ${record.angler}`;
-  const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;
+    const title = `${record.species} – ${record.weight} • ${record.angler}`;
+    const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;
 
   const html = `<!doctype html>
 <html lang="ro"><head>
