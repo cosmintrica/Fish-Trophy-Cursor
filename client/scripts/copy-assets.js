@@ -7,28 +7,31 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Copy public assets to dist
-const publicDir = path.join(__dirname, '../public');
+let publicDir = path.join(__dirname, '../public');
 const distDir = path.join(__dirname, '../dist');
 
 // Check if we're in Vercel build environment
 const isVercel = process.env.VERCEL === '1';
 console.log('🚀 Environment:', isVercel ? 'Vercel' : 'Local');
 
-// In Vercel, try different possible locations for public files
-if (isVercel) {
-  const possiblePaths = [
-    path.join(__dirname, '../public'),           // client/public
-    path.join(__dirname, '../../client/public'), // workspace/client/public
-    path.join(__dirname, '../../public'),        // workspace/public
-  ];
+// In Vercel, copy essential files directly to dist if public doesn't exist
+if (isVercel && !fs.existsSync(publicDir)) {
+  console.log('📁 Public directory not found, copying essential files directly to dist...');
   
-  for (const testPath of possiblePaths) {
-    if (fs.existsSync(testPath)) {
-      console.log('📁 Found public at:', testPath);
-      publicDir = testPath;
-      break;
+  // Copy favicon directly to dist
+  try {
+    const faviconSrc = path.join(__dirname, '../src/assets/favicon.ico');
+    if (fs.existsSync(faviconSrc)) {
+      fs.copyFileSync(faviconSrc, path.join(distDir, 'favicon.ico'));
+      console.log('✅ Copied favicon.ico to dist');
     }
+  } catch (error) {
+    console.log('⚠️ Could not copy favicon:', error.message);
   }
+  
+  // Skip the copy-assets script since we're copying directly
+  console.log('✅ Essential files copied, skipping copy-assets');
+  process.exit(0);
 }
 
 console.log('🔍 Debug paths:');
