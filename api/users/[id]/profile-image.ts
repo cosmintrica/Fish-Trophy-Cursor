@@ -1,4 +1,4 @@
-export const config = { runtime: 'edge' };
+
 
 export default async function POST(request: Request) {
   try {

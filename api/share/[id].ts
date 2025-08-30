@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 export default async function handler(req: Request) {
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/');
@@ -11,12 +9,12 @@ export default async function handler(req: Request) {
     if (!response.ok) {
       throw new Error('Record not found');
     }
-    const record = await response.json() as any;
+    const record = await response.json() as Record<string, unknown>;
 
     const title = `${record.species} – ${record.weight} • ${record.angler}`;
     const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;
 
-  const html = `<!doctype html>
+    const html = `<!doctype html>
 <html lang="ro"><head>
 <meta charset="utf-8" />
 <title>${title}</title>
