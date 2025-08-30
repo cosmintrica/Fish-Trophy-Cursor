@@ -4,7 +4,8 @@ import { neon } from '@neondatabase/serverless';
 import { users } from '../../../../packages/db/schema';
 import { eq } from 'drizzle-orm';
 
-const sql = neon(process.env.DATABASE_URL!);
+const databaseUrl = process.env.DATABASE_URL || '';
+const sql = neon(databaseUrl);
 const db = drizzle(sql);
 
 export async function POST(

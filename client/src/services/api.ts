@@ -1,5 +1,12 @@
 // API service for Fish Trophy backend
 
+// Add RequestInit type for fetch options
+type RequestInit = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string | FormData;
+};
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 export interface ProfileData {
@@ -14,6 +21,16 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export interface FishingRecord {
+  id: string;
+  species: string;
+  weight: number;
+  location: string;
+  date: string;
+  angler: string;
+  imageUrl?: string;
 }
 
 class ApiService {
@@ -68,19 +85,19 @@ class ApiService {
   }
 
   // Records methods
-  async getUserRecords(userId: string): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>(`/users/${userId}/records`);
+  async getUserRecords(userId: string): Promise<ApiResponse<FishingRecord[]>> {
+    return this.request<FishingRecord[]>(`/users/${userId}/records`);
   }
 
-  async createRecord(recordData: any): Promise<ApiResponse<any>> {
-    return this.request<any>('/records', {
+  async createRecord(recordData: FishingRecord): Promise<ApiResponse<FishingRecord>> {
+    return this.request<FishingRecord>('/records', {
       method: 'POST',
       body: JSON.stringify(recordData),
     });
   }
 
-  async updateRecord(recordId: string, recordData: any): Promise<ApiResponse<any>> {
-    return this.request<any>(`/records/${recordId}`, {
+  async updateRecord(recordId: string, recordData: Partial<FishingRecord>): Promise<ApiResponse<FishingRecord>> {
+    return this.request<FishingRecord>(`/records/${recordId}`, {
       method: 'PUT',
       body: JSON.stringify(recordData),
     });

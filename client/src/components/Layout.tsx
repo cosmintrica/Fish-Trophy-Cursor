@@ -4,12 +4,18 @@ import { Fish, Menu, X, Home, MapPin, User, BookOpen, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/auth';
 import AuthModal from './AuthModal';
 
+// PWA Install Prompt Event interface
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const location = useLocation();
 
   // Check if user is admin
@@ -19,7 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPWAInstallPrompt(true);
     };
 

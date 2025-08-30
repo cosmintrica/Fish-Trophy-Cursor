@@ -2,7 +2,8 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
   const url = new URL(req.url);
-  const id  = url.pathname.split('/').pop()!;
+  const pathParts = url.pathname.split('/');
+  const id = pathParts[pathParts.length - 1] || '';
   
   // 1) iei datele recordului (titlu, specie, greutate, poză) din API-ul tău
   const record = await fetch(`https://fishtrophy.ro/api/records/${id}`).then(r => r.json());

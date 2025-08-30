@@ -4,7 +4,8 @@ import { neon } from '@neondatabase/serverless';
 import { users } from '../../../../packages/db/schema';
 import { eq } from 'drizzle-orm';
 
-const sql = neon(process.env.DATABASE_URL!);
+const databaseUrl = process.env.DATABASE_URL || '';
+const sql = neon(databaseUrl);
 const db = drizzle(sql);
 
 export async function GET(
@@ -47,7 +48,7 @@ export async function PUT(
     const userId = params.id;
     const body = await request.json();
     
-    const { displayName, email, phone, location, bio } = body;
+    const { displayName, email } = body;
 
     // Update user profile
     const updatedUser = await db

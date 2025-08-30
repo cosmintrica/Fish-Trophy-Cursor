@@ -32,22 +32,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         await signUp(email, password);
       }
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Corectez eroarea cu Firebase
-      if (err.code === 'auth/unauthorized-domain') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/unauthorized-domain') {
         setError('Domeniul nu este autorizat pentru autentificare. Încearcă din nou.');
-      } else if (err.code === 'auth/user-not-found') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/user-not-found') {
         setError('Utilizatorul nu a fost găsit. Verifică email-ul sau înregistrează-te.');
-      } else if (err.code === 'auth/wrong-password') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/wrong-password') {
         setError('Parola este incorectă. Încearcă din nou.');
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/email-already-in-use') {
         setError('Acest email este deja folosit. Încearcă să te autentifici.');
-      } else if (err.code === 'auth/weak-password') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/weak-password') {
         setError('Parola este prea slabă. Folosește cel puțin 6 caractere.');
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/invalid-email') {
         setError('Email-ul nu este valid. Verifică formatul.');
       } else {
-        setError(err.message || 'A apărut o eroare');
+        setError((err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') ? err.message : 'A apărut o eroare');
       }
     } finally {
       setLoading(false);
@@ -61,20 +61,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       await signInWithGoogle();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Corectez eroarea cu Firebase
-      if (err.code === 'auth/unauthorized-domain') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/unauthorized-domain') {
         setError('Domeniul nu este autorizat pentru autentificare. Încearcă din nou.');
-      } else if (err.code === 'auth/popup-closed-by-user') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/popup-closed-by-user') {
         setError('Fereastra de autentificare a fost închisă. Încearcă din nou.');
-      } else if (err.code === 'auth/popup-blocked') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/popup-blocked') {
         setError('Popup-ul a fost blocat de browser. Permite popup-urile pentru acest site.');
-      } else if (err.code === 'auth/cancelled-popup-request') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/cancelled-popup-request') {
         setError('Cererea de autentificare a fost anulată. Încearcă din nou.');
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/network-request-failed') {
         setError('Eroare de rețea. Verifică conexiunea la internet.');
       } else {
-        setError(err.message || 'A apărut o eroare la autentificarea cu Google');
+        setError((err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') ? err.message : 'A apărut o eroare la autentificarea cu Google');
       }
     } finally {
       setLoading(false);

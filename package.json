@@ -11,9 +11,9 @@
     "build": "pnpm build:client && pnpm build:api",
     "build:client": "cd client && pnpm build",
     "build:api": "cd api && pnpm build",
-    "lint": "pnpm lint:client && pnpm lint:api",
-    "lint:client": "cd client && pnpm lint",
-    "lint:api": "cd api && pnpm lint",
+    "lint": "eslint . --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
+    "lint:client": "eslint client --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
+    "lint:api": "eslint api --ext .ts --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
     "lint:fix": "pnpm lint:fix:client && pnpm lint:fix:api",
     "lint:fix:client": "cd client && pnpm lint:fix",
     "lint:fix:api": "cd client && pnpm lint:fix",
@@ -25,16 +25,15 @@
     "db:studio": "cd packages/db && pnpm studio"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "concurrently": "^8.2.2",
-    "eslint": "^8.55.0",
+    "eslint": "^8.57.1",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
     "prettier": "^3.1.0"
   },
   "engines": {
-    "node": ">=22",
-    "pnpm": "10.15.0"
+    "node": ">=22"
   }
 }

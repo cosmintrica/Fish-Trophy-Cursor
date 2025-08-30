@@ -1,16 +1,27 @@
 {
   "root": true,
-  "env": {
-    "browser": true,
-    "es2020": true,
-    "node": true
-  },
-  "extends": [
-    "eslint:recommended"
-  ],
-  "ignorePatterns": ["dist", ".vercel"],
-  "rules": {
-    "prefer-const": "error",
-    "no-var": "error"
-  }
+  "ignorePatterns": ["**/dist", "**/build", "**/node_modules", "**/vite.config.ts", "**/packages/**", "**/og.tsx"],
+  "overrides": [
+    {
+      "files": ["client/**/*.{ts,tsx}"],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "project": "client/tsconfig.json",
+        "sourceType": "module"
+      },
+      "plugins": ["@typescript-eslint"],
+      "extends": ["plugin:@typescript-eslint/recommended"]
+    },
+    {
+      "files": ["api/**/*.ts"],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "project": "api/tsconfig.json",
+        "sourceType": "module"
+      },
+      "plugins": ["@typescript-eslint"],
+      "extends": ["plugin:@typescript-eslint/recommended"],
+      "env": { "node": true }
+    }
+  ]
 }

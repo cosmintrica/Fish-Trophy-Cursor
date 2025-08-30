@@ -40,8 +40,8 @@ class GeolocationService {
       await this.getCurrentPosition();
       this.permissionStatus.granted = true;
       return this.permissionStatus;
-    } catch (error: any) {
-      if (error.code === 1) {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 1) {
         this.permissionStatus.denied = true;
       } else {
         this.permissionStatus.unavailable = true;
