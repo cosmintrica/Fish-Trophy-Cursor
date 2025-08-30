@@ -10,6 +10,27 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, '../public');
 const distDir = path.join(__dirname, '../dist');
 
+// Check if we're in Vercel build environment
+const isVercel = process.env.VERCEL === '1';
+console.log('🚀 Environment:', isVercel ? 'Vercel' : 'Local');
+
+// In Vercel, try different possible locations for public files
+if (isVercel) {
+  const possiblePaths = [
+    path.join(__dirname, '../public'),           // client/public
+    path.join(__dirname, '../../client/public'), // workspace/client/public
+    path.join(__dirname, '../../public'),        // workspace/public
+  ];
+  
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      console.log('📁 Found public at:', testPath);
+      publicDir = testPath;
+      break;
+    }
+  }
+}
+
 console.log('🔍 Debug paths:');
 console.log('__dirname:', __dirname);
 console.log('publicDir:', publicDir);
