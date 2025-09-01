@@ -13,31 +13,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 10.15.0
-    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'pnpm'
+        cache: 'npm'
     
     - name: Install dependencies
-      run: pnpm install
+      run: npm install
     
     - name: Type check
-      run: pnpm type-check
+      run: npm run type-check
     
     - name: Lint
-      run: pnpm lint
+      run: npm run lint
     
     - name: Build
-      run: pnpm build
+      run: npm run build
     
     - name: Build database
-      run: pnpm db:generate
+      run: npm run db:generate
 
   deploy-preview:
     needs: test
