@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 export default function OgGenerator() {
   const [title, setTitle] = useState('Fish Trophy');
-  const [subtitle, setSubtitle] = useState('Trofeul Pescarilor din România');
+  const [subtitle, setSubtitle] = useState('Platforma Pescarilor din România');
   const [domain, setDomain] = useState('FishTrophy.ro');
 
   const url = useMemo(() => {

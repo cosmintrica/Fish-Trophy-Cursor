@@ -284,6 +284,46 @@
   - **Geocoding**: Added comprehensive geocoding service for location handling
 - **Process Improvement**: Established workflow for documenting all major changes and issues
 
+### 2024-12-19 - Comprehensive Vercel Build Optimization
+
+- **Bundle Size Optimization**: ✅ Resolved - Reduced main.js from 782KB to 252KB
+  - Implemented code splitting with manual chunks for vendor libraries
+  - Separated React, UI, Map, and Firebase into separate chunks
+  - Increased chunk size warning limit to 1000KB
+- **Node.js Version Warnings**: ✅ Resolved - Updated engines to specific version range
+  - Changed from `"node": ">=20"` to `"node": ">=20.0.0 <23.0.0"`
+  - Applied to all package.json files (root, client, packages/db)
+- **API Entrypoint Warnings**: ✅ Resolved - Added explicit function configuration
+  - Added `functions` configuration in vercel.json with nodejs20.x runtime
+  - Specified runtime for both .ts and .tsx API files
+- **Drizzle Dependencies**: ✅ Resolved - Fixed missing dependencies
+  - Cleaned pnpm cache conflicts completely
+  - Installed Drizzle ORM with --legacy-peer-deps flag
+  - Dependencies now install successfully
+- **Build Performance**: ✅ Improved - Build time reduced and optimized
+  - All assets copy successfully
+  - No TypeScript compilation errors
+  - Clean build output with proper chunking
+
+### 2024-12-19 - Mobile Menu & Branding Improvements
+
+- **Diacritice Fix**: ✅ Resolved - Fixed Romanian diacritics in mobile hamburger menu
+  - Fixed "AcasÄƒ" → "Acasă" 
+  - Fixed "Marea NeagrÄƒ" → "Marea Neagră"
+  - All Romanian characters now display correctly on mobile
+- **Branding Update**: ✅ Improved - Changed site title to be more professional
+  - Changed from "Trofeul Pescarilor din România" to "Platforma Pescarilor din România"
+  - Updated across all files: index.html, Home.tsx, OgGenerator.tsx, manifest.json, social-preview.html
+  - More professional and accurate description of the platform's purpose
+- **Files Modified**: 
+  - `client/src/components/Layout.tsx` - Fixed diacritics in mobile menu
+  - `client/index.html` - Updated title and meta tags
+  - `client/src/pages/Home.tsx` - Updated branding text
+  - `client/src/pages/OgGenerator.tsx` - Updated default subtitle
+  - `client/public/manifest.json` - Updated PWA manifest
+  - `client/public/social-preview.html` - Updated social preview
+  - `client/scripts/copy-assets.js` - Fixed diacritics in fallback manifest
+
 ### 2024-12-19 - Vercel Build Error Fix
 
 - **Issue**: TypeScript compilation error in `BlackSea.tsx` - `setShowLocationRequest` was used but not defined

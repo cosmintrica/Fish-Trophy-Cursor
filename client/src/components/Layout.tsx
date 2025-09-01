@@ -247,7 +247,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={closeMobileMenu}
             >
               <Home className="w-5 h-5" />
-              <span className="font-medium">AcasÄƒ</span>
+              <span className="font-medium">Acasă</span>
             </Link>
             
             <Link
@@ -260,7 +260,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={closeMobileMenu}
             >
               <MapPin className="w-5 h-5" />
-              <span className="font-medium">Marea NeagrÄƒ</span>
+              <span className="font-medium">Marea Neagră</span>
             </Link>
             
             <Link

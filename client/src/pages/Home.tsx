@@ -108,7 +108,7 @@ export default function Home() {
               </div>
               
               <div class="mt-4 pt-3 border-t border-gray-200">
-                <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Trofeul Pescarilor</p>
+                <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Platforma Pescarilor</p>
               </div>
             </div>
           `, {
@@ -355,7 +355,7 @@ export default function Home() {
                 </div>
                 
                 <div class="mt-4 pt-3 border-t border-gray-200">
-                  <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Trofeul Pescarilor</p>
+                  <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Platforma Pescarilor</p>
                 </div>
               </div>
             `, {

@@ -31,9 +31,9 @@ if (!fs.existsSync(publicDir)) {
     { name: 'favicon.ico', content: '# Placeholder favicon' },
     { name: 'icon_free.png', content: '# Placeholder icon' },
     { name: 'manifest.json', content: JSON.stringify({
-      name: "Fish Trophy - Trofeul Pescarilor din RomÃ¢nia",
+      name: "Fish Trophy - Platforma Pescarilor din România",
       short_name: "Fish Trophy",
-      description: "DescoperÄƒ cele mai bune locaÈ›ii de pescuit din RomÃ¢nia",
+      description: "Descoperă cele mai bune locații de pescuit din România",
       start_url: "/",
       display: "standalone",
       background_color: "#3b82f6",

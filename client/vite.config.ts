@@ -16,9 +16,20 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
       },
+      output: {
+        manualChunks: {
+          // Split vendor libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['lucide-react'],
+          'map-vendor': ['leaflet'],
+          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+        },
+      },
     },
     // Ensure public assets are copied
     assetsDir: 'assets',
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
   },
   publicDir: 'public',
   // Ensure proper asset handling

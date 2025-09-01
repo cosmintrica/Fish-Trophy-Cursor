@@ -49,6 +49,26 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - **Solution**: ✅ Resolved - Removed unused state and function calls
 - **Impact**: Vercel deployment builds successfully
 
+### Issue: Bundle Size Optimization
+- **Problem**: main.js was 782KB (over 500KB limit)
+- **Solution**: ✅ Resolved - Implemented code splitting and reduced to 252KB
+- **Impact**: Better performance, faster loading, no size warnings
+
+### Issue: Node.js Version Warnings
+- **Problem**: Vague version specification causing auto-upgrade warnings
+- **Solution**: ✅ Resolved - Specified exact version range (>=20.0.0 <23.0.0)
+- **Impact**: No more version warnings in Vercel builds
+
+### Issue: API Entrypoint Warnings
+- **Problem**: Vercel couldn't find entrypoints for API functions
+- **Solution**: ✅ Resolved - Added explicit functions configuration in vercel.json
+- **Impact**: Clean deployment without entrypoint warnings
+
+### Issue: Drizzle Dependencies
+- **Problem**: pnpm cache conflicts preventing npm install
+- **Solution**: ✅ Resolved - Cleaned cache and used --legacy-peer-deps
+- **Impact**: Dependencies install successfully
+
 ## 🎯 Current Focus Areas
 1. **Database Integration**: Integrare completă cu PostgreSQL
 2. **User Profiles**: Funcționalități complete pentru profiluri utilizatori
