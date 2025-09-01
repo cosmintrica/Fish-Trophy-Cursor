@@ -1,4 +1,10 @@
 export * from './schema';
 
-// Database connection will be configured in the API layer
-// This package only exports the schema and types
+// Database connection
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import * as schema from './schema';
+
+// Configure database connection
+const sql = neon(process.env.DATABASE_URL!);
+export const db = drizzle(sql, { schema });

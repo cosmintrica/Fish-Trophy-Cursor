@@ -13,8 +13,12 @@ export const usePWAInstall = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
+    // Verifică dacă utilizatorul a văzut deja tutorialul
+    const hasSeenTutorial = localStorage.getItem('pwa-tutorial-seen') === 'true';
+    
     // Verifică dacă aplicația este deja instalată
     const checkIfInstalled = () => {
       // Verifică dacă rulează în mod standalone (instalat)
@@ -60,6 +64,11 @@ export const usePWAInstall = () => {
     // Verifică dacă este deja instalată
     if (checkIfInstalled()) {
       return;
+    }
+
+    // Afișează tutorialul doar prima dată
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
     }
 
     // Pentru Android - folosește beforeinstallprompt
@@ -120,9 +129,22 @@ export const usePWAInstall = () => {
     }
   };
 
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('pwa-tutorial-seen', 'true');
+  };
+
+  const dismissNotification = () => {
+    setIsInstallable(false);
+    localStorage.setItem('pwa-notification-dismissed', 'true');
+  };
+
   return {
     isInstallable,
     isInstalled,
-    installApp
+    showTutorial,
+    installApp,
+    closeTutorial,
+    dismissNotification
   };
 };

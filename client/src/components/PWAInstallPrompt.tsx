@@ -3,9 +3,9 @@ import { X, Download, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 export default function PWAInstallPrompt() {
-  const { isInstallable, isInstalled, installApp } = usePWAInstall();
-  const [showPrompt, setShowPrompt] = useState(false);
+  const { isInstallable, isInstalled, showTutorial, installApp, closeTutorial, dismissNotification } = usePWAInstall();
   const [isIOS, setIsIOS] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
     // Verifică dacă este iOS
@@ -15,32 +15,74 @@ export default function PWAInstallPrompt() {
 
     setIsIOS(checkIOS());
 
-    // Afișează prompt-ul doar dacă este instalabil și nu este deja instalat
+    // Afișează notificarea jos dacă este instalabil și nu a fost respinsă
     if (isInstallable && !isInstalled) {
-      // Verifică dacă utilizatorul a respins prompt-ul anterior
-      const promptDismissed = localStorage.getItem('pwa-prompt-dismissed');
-      if (!promptDismissed) {
-        // Așteaptă puțin înainte să afișeze prompt-ul
-        const timer = setTimeout(() => {
-          setShowPrompt(true);
-        }, 3000); // 3 secunde după încărcare
-
-        return () => clearTimeout(timer);
+      const notificationDismissed = localStorage.getItem('pwa-notification-dismissed') === 'true';
+      if (!notificationDismissed) {
+        setShowNotification(true);
       }
     }
   }, [isInstallable, isInstalled]);
 
   const handleInstall = async () => {
     await installApp();
-    setShowPrompt(false);
+    setShowNotification(false);
   };
 
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem('pwa-prompt-dismissed', 'true');
+  const handleDismissNotification = () => {
+    setShowNotification(false);
+    dismissNotification();
   };
 
-  if (!showPrompt || !isInstallable || isInstalled) {
+  // Tutorial modal (apare doar prima dată)
+  if (showTutorial) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Download className="w-8 h-8 text-white" />
+            </div>
+            
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Instalează Fish Trophy
+            </h2>
+            
+            <p className="text-gray-600 mb-6">
+              {isIOS 
+                ? 'Pentru o experiență mai bună, adaugă aplicația pe ecranul de start:'
+                : 'Pentru o experiență mai bună, instalează aplicația:'
+              }
+            </p>
+
+            {isIOS ? (
+              <div className="text-left text-sm text-gray-700 space-y-2 mb-6">
+                <p>1. Apasă butonul Share (împărtășire) din Safari</p>
+                <p>2. Selectează "Adaugă la ecranul de start"</p>
+                <p>3. Apasă "Adaugă"</p>
+              </div>
+            ) : (
+              <div className="text-left text-sm text-gray-700 space-y-2 mb-6">
+                <p>1. Apasă butonul "Instalează" din notificarea de jos</p>
+                <p>2. Confirmă instalarea</p>
+                <p>3. Aplicația va apărea pe ecranul de start</p>
+              </div>
+            )}
+            
+            <button
+              onClick={closeTutorial}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
+            >
+              Am înțeles
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Notificare jos (rămâne până când utilizatorul o închide)
+  if (!showNotification || !isInstallable || isInstalled) {
     return null;
   }
 
@@ -73,7 +115,7 @@ export default function PWAInstallPrompt() {
               </button>
               
               <button
-                onClick={handleDismiss}
+                onClick={handleDismissNotification}
                 className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
                 title="Închide"
               >

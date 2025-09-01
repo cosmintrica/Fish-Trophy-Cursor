@@ -224,94 +224,31 @@ export default function BlackSea() {
         return;
       }
 
-      // Folosește watchPosition pentru primul fix rapid
-      const watchId = navigator.geolocation.watchPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          if (mapInstanceRef.current) {
-            // Centrează harta pe locația utilizatorului
-            mapInstanceRef.current.setView([latitude, longitude], 12);
-            
-            // Obține adresa prin reverse geocoding
-            const address = await geocodingService.reverseGeocode(latitude, longitude);
-            
-            // Creează marker cu fundal alb și design îmbunătățit
-            const userIcon = L.divIcon({
-              className: 'user-location-marker',
-              html: `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
-              iconSize: [56, 56],
-              iconAnchor: [28, 28]
-            });
-
-            const userMarker = L.marker([latitude, longitude], { icon: userIcon });
-            userLocationMarkerRef.current = userMarker;
-            userMarker.addTo(mapInstanceRef.current);
-
-            // Adaugă popup cu design îmbunătățit
-            const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
-            const userPhoto = user?.photoURL || '';
-            
-            userMarker.bindPopup(`
-              <div class="p-6 min-w-[320px] bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow-2xl border border-cyan-200">
-                <div class="flex items-center gap-4 mb-4">
-                  <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
-                    ${userPhoto ? 
-                      `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                      `<span class="text-white font-bold text-xl">${userName.charAt(0).toUpperCase()}</span>`
-                    }
-                  </div>
-                  <div class="flex-1">
-                    <h3 class="font-bold text-xl text-gray-800 mb-1">${userName}</h3>
-                    <p class="text-sm text-gray-600">📍 Locația ta curentă</p>
-                  </div>
-                </div>
-                
-                <div class="space-y-3">
-                  <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                    <p class="text-sm font-medium text-gray-700 mb-1">Coordonate GPS</p>
-                    <p class="text-sm text-gray-600 font-mono">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
-                  </div>
-                  
-                  <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                    <p class="text-sm font-medium text-gray-700 mb-1">Adresă</p>
-                    <p class="text-sm text-gray-600">${address}</p>
-                  </div>
-                </div>
-                
-                <div class="mt-4 pt-3 border-t border-gray-200">
-                  <p class="text-xs text-gray-500 text-center">🌊 Fish Trophy - Litoralul Românesc</p>
-                </div>
-              </div>
-            `, {
-              className: 'custom-popup',
-              maxWidth: 400,
-              closeButton: true,
-              autoClose: false,
-              closeOnClick: false
-            }).openPopup();
-
-            // Salvează că utilizatorul a acceptat locația
-            localStorage.setItem('locationAccepted', 'true');
-          }
-
-          // Oprește watchPosition după primul fix
-          navigator.geolocation.clearWatch(watchId);
-        },
-        (error) => {
-          console.error('Eroare la obținerea locației:', error);
-          navigator.geolocation.clearWatch(watchId);
-          alert('Nu s-a putut obține locația. Verifică permisiunile browser-ului.');
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 300000 // 5 minute cache
-        }
-      );
+      // Verifică dacă utilizatorul a dat deja permisiunea
+      const locationAccepted = localStorage.getItem('locationAccepted') === 'true';
+      
+      if (locationAccepted) {
+        // Dacă a dat deja permisiunea, centrează direct pe locația sa
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView([latitude, longitude], 12);
+            }
+          },
+          (error) => {
+            console.error('Eroare la obținerea locației:', error);
+            // Dacă nu poate obține locația, afișează popup-ul
+            setShowLocationRequest(true);
+          },
+          { maximumAge: 300000, timeout: 10000, enableHighAccuracy: true }
+        );
+      } else {
+        // Dacă nu a dat permisiunea, afișează popup-ul
+        setShowLocationRequest(true);
+      }
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
-      alert('Eroare la obținerea locației.');
     }
   };
 

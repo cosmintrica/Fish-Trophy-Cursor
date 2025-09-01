@@ -90,6 +90,11 @@ const Profile: React.FC = () => {
             location: result.data.location || '',
             bio: result.data.bio || 'Pescar pasionat din România!'
           });
+          
+          // Afișează mesaj dacă este mock data
+          if (result.message && result.message.includes('Mock')) {
+            console.log('ℹ️ Using mock data - database connection pending');
+          }
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -140,6 +145,11 @@ const Profile: React.FC = () => {
             location: result.data.location || '',
             bio: result.data.bio || ''
           });
+        }
+        
+        // Afișează mesaj dacă este mock data
+        if (result.message && result.message.includes('Mock')) {
+          toast.info('Datele sunt salvate temporar (mock). Conexiunea la baza de date va fi activată în curând.');
         }
       } else {
         toast.error(result.error || 'Eroare la actualizarea profilului');

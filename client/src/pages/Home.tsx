@@ -257,8 +257,29 @@ export default function Home() {
         return;
       }
 
-      // Afișează popup-ul de permisiune
-      setShowLocationRequest(true);
+      // Verifică dacă utilizatorul a dat deja permisiunea
+      const locationAccepted = localStorage.getItem('locationAccepted') === 'true';
+      
+      if (locationAccepted) {
+        // Dacă a dat deja permisiunea, centrează direct pe locația sa
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView([latitude, longitude], 12);
+            }
+          },
+          (error) => {
+            console.error('Eroare la obținerea locației:', error);
+            // Dacă nu poate obține locația, afișează popup-ul
+            setShowLocationRequest(true);
+          },
+          { maximumAge: 300000, timeout: 10000, enableHighAccuracy: true }
+        );
+      } else {
+        // Dacă nu a dat permisiunea, afișează popup-ul
+        setShowLocationRequest(true);
+      }
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
     }
