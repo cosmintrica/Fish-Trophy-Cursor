@@ -1,13 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from '@/components/ScrollToTop';
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
-
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Pages
 import Home from '@/pages/Home';
@@ -20,11 +17,9 @@ import Profile from '@/pages/Profile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 
-const queryClient = new QueryClient();
-
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
       <AuthProvider>
         <Router>
           <Layout>
@@ -58,12 +53,8 @@ function App() {
         </Router>
         <Toaster />
       </AuthProvider>
-    </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
-
-// Initialize Vercel Analytics and Speed Insights
-inject();
-injectSpeedInsights();
 
 export default App;
