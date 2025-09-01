@@ -20,7 +20,11 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm install
+        cd client && npm install
+        cd ../api && npm install
+        cd ../packages/db && npm install
     
     - name: Type check
       run: npm run type-check
