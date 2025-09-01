@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "pnpm@10.15.0",
+
   "scripts": {
     "dev": "vite",
     "build": "tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
