@@ -9,7 +9,11 @@
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*\\.(ico|png|svg|json|css|js))",
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(ico|png|svg|json|css|js|woff|woff2|ttf|eot))",
       "dest": "/$1"
     },
     {

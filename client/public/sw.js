@@ -1,6 +1,6 @@
 // Service Worker pentru Fish Trophy
-const CACHE_NAME = 'fish-trophy-v3';
-const STATIC_CACHE = 'fish-trophy-static-v3';
+const CACHE_NAME = 'fish-trophy-v4';
+const STATIC_CACHE = 'fish-trophy-static-v4';
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
@@ -24,6 +24,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests and chrome-extension requests
   if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
+  // Skip JavaScript modules and assets - let them load directly from network
+  if (event.request.url.includes('/assets/') || 
+      event.request.url.endsWith('.js') || 
+      event.request.url.endsWith('.css') ||
+      event.request.url.endsWith('.woff') ||
+      event.request.url.endsWith('.woff2')) {
     return;
   }
 
