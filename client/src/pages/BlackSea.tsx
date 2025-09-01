@@ -27,12 +27,25 @@ export default function BlackSea() {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Inițializează harta focusată pe litoralul românesc
+    // Detectează dacă este mobile
+    const isMobile = window.innerWidth < 768;
+    
+    // Inițializează harta cu configurații diferite pentru mobile și desktop
     const map = L.map(mapContainerRef.current, {
-      center: [44.1733, 28.6383], // Constanța - centrul litoralului
-      zoom: 8,
+      center: isMobile ? [45.5, 25.0] : [44.1733, 28.6383], // Centru diferit pentru mobile (toată România)
+      zoom: isMobile ? 6 : 8, // Zoom mai mic pe mobile pentru a vedea toată țara
       zoomControl: true,
-      attributionControl: true
+      attributionControl: true,
+      // Configurări pentru performanță pe mobile
+      preferCanvas: isMobile, // Folosește Canvas pentru performanță mai bună pe mobile
+      zoomSnap: isMobile ? 0.5 : 1, // Zoom mai fluid pe mobile
+      zoomDelta: isMobile ? 0.5 : 1,
+      wheelPxPerZoomLevel: isMobile ? 60 : 120, // Zoom mai sensibil pe mobile
+      // Configurări pentru touch
+      tap: true,
+      tapTolerance: 15,
+      // Configurări pentru performanță
+      renderer: isMobile ? L.canvas() : undefined
     });
 
     // Adaugă layer-ul OpenStreetMap
@@ -125,7 +138,22 @@ export default function BlackSea() {
       );
     }
 
+    // Handler pentru resize pe mobile
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        setTimeout(() => {
+          mapInstanceRef.current?.invalidateSize();
+        }, 100);
+      }
+    };
+
+    // Adaugă event listener pentru resize
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
     return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
       }

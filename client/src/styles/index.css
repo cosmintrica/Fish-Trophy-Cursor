@@ -2,6 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Optimizări pentru performanță pe mobile */
+@layer base {
+  * {
+    /* Optimizează rendering-ul pe mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  html {
+    /* Îmbunătățește scroll-ul pe mobile */
+    -webkit-overflow-scrolling: touch;
+    /* Optimizează text rendering */
+    text-rendering: optimizeLegibility;
+  }
+  
+  body {
+    /* Previne scroll-ul orizontal pe mobile */
+    overflow-x: hidden;
+    /* Optimizează touch events */
+    touch-action: manipulation;
+  }
+}
+
+/* Optimizări pentru harta Leaflet pe mobile */
+@layer utilities {
+  .leaflet-container {
+    /* Îmbunătățește performanța hărții pe mobile */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Optimizează touch events */
+    touch-action: pan-x pan-y;
+  }
+  
+  .leaflet-control-zoom {
+    /* Mărește butoanele de zoom pentru mobile */
+    @media (max-width: 768px) {
+      transform: scale(1.2);
+    }
+  }
+  
+  /* Optimizări pentru animații pe mobile */
+  @media (max-width: 768px) {
+    * {
+      /* Reduce animațiile pe mobile pentru performanță */
+      animation-duration: 0.2s !important;
+      transition-duration: 0.2s !important;
+    }
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

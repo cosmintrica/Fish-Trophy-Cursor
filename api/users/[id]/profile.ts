@@ -95,22 +95,66 @@ export async function PUT(request: Request) {
     console.log(`💾 PUT request for user: ${firebaseUid}`);
     console.log('📝 Received data:', { displayName, email, phone, location, bio });
 
-    // Mock update - în realitate va fi salvat în baza de date
-    const updatedUser = {
-      displayName: displayName || 'Cosmin Trica',
-      email: email || 'cosmin.trica@outlook.com',
-      phone: phone || '0729380830',
-      location: location || 'Slatina',
-      bio: bio || 'Pescar pasionat din România!'
-    };
+    // Actualizează utilizatorul în baza de date
+    const updatedUser = await db.update(users)
+      .set({
+        display_name: displayName,
+        email: email,
+        phone: phone,
+        location: location,
+        bio: bio,
+        updated_at: new Date()
+      })
+      .where(eq(users.firebase_uid, firebaseUid))
+      .returning();
 
-    console.log(`✅ Mock update successful for user: ${firebaseUid}`);
-    console.log('💾 Updated data:', updatedUser);
+    if (updatedUser.length === 0) {
+      // Dacă utilizatorul nu există, îl creează
+      console.log(`👤 Creating new user: ${firebaseUid}`);
+      const newUser = await db.insert(users).values({
+        firebase_uid: firebaseUid,
+        email: email || '',
+        display_name: displayName || null,
+        phone: phone || null,
+        location: location || null,
+        bio: bio || null,
+        role: 'user'
+      }).returning();
+      
+      console.log(`✅ Created and updated new user: ${firebaseUid}`);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          displayName: newUser[0].display_name || '',
+          email: newUser[0].email || '',
+          phone: newUser[0].phone || '',
+          location: newUser[0].location || '',
+          bio: newUser[0].bio || 'Pescar pasionat din România!'
+        }
+      }), {
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+    }
+
+    console.log(`✅ Updated existing user: ${firebaseUid}`);
+    console.log('💾 Updated data:', updatedUser[0]);
 
     return new Response(JSON.stringify({
       success: true,
-      data: updatedUser,
-      message: 'Mock update successful - database connection pending'
+      data: {
+        displayName: updatedUser[0].display_name || '',
+        email: updatedUser[0].email || '',
+        phone: updatedUser[0].phone || '',
+        location: updatedUser[0].location || '',
+        bio: updatedUser[0].bio || 'Pescar pasionat din România!'
+      }
     }), {
       status: 200,
       headers: { 
