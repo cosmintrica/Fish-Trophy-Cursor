@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ const Profile: React.FC = () => {
     email: user?.email || '',
     phone: '',
     location: '',
-    bio: 'Pescariu pasionat din România'
+    bio: 'Pescar pasionat din România!'
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -73,6 +73,32 @@ const Profile: React.FC = () => {
   // Show mock records only for admin
   const records = isAdmin ? mockRecords : [];
 
+  // Încarcă datele profilului din API
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const response = await fetch(`/api/users/${user.uid}/profile`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          setProfileData({
+            displayName: result.data.displayName || user.displayName || '',
+            email: result.data.email || user.email || '',
+            phone: result.data.phone || '',
+            location: result.data.location || '',
+            bio: result.data.bio || 'Pescar pasionat din România!'
+          });
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      }
+    };
+
+    loadProfileData();
+  }, [user]);
+
   const handleProfileUpdate = async () => {
     if (!user?.uid) {
       toast.error('Utilizatorul nu este autentificat');
@@ -80,41 +106,43 @@ const Profile: React.FC = () => {
     }
 
     try {
-
-
-      // Mock API response pentru testare
-      const mockResponse = {
-        success: true,
-        data: {
-          displayName: profileData.displayName,
-          email: profileData.email,
-          phone: profileData.phone,
-          location: profileData.location,
-          bio: profileData.bio
-        }
+      const profileDataToSend = {
+        displayName: profileData.displayName,
+        email: profileData.email,
+        phone: profileData.phone,
+        location: profileData.location,
+        bio: profileData.bio
       };
 
       // Actualizează Firebase Auth
       await updateProfile(user, { displayName: profileData.displayName });
       
-      // Simulează delay-ul API-ului
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Salvează în baza de date prin API
+      const response = await fetch(`/api/users/${user.uid}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileDataToSend)
+      });
+
+      const result = await response.json();
       
-      if (mockResponse.success) {
+      if (result.success) {
         toast.success('Profilul a fost actualizat cu succes!');
         setIsEditing(false);
         // Actualizează datele locale
-        if (mockResponse.data) {
+        if (result.data) {
           setProfileData({
-            displayName: mockResponse.data.displayName,
-            email: mockResponse.data.email,
-            phone: mockResponse.data.phone || '',
-            location: mockResponse.data.location || '',
-            bio: mockResponse.data.bio || ''
+            displayName: result.data.displayName,
+            email: result.data.email,
+            phone: result.data.phone || '',
+            location: result.data.location || '',
+            bio: result.data.bio || ''
           });
         }
       } else {
-        toast.error('Eroare la actualizarea profilului');
+        toast.error(result.error || 'Eroare la actualizarea profilului');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -139,23 +167,41 @@ const Profile: React.FC = () => {
   };
 
   const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0];
-  if (!file || !user?.uid) {
-    toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
-    return;
-  }
+    const file = event.target.files?.[0];
+    if (!file || !user?.uid) {
+      toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
+      return;
+    }
 
-  try {
-    const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    await updateProfile(user, { photoURL: url });
-    toast.success('Imaginea de profil a fost actualizată cu succes!');
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    toast.error('Eroare la upload-ul imaginii');
-  }
-};
+    // Validare tip fișier
+    if (!file.type.startsWith('image/')) {
+      toast.error('Te rog selectează doar fișiere imagine (JPG, PNG, etc.)');
+      return;
+    }
+
+    // Validare dimensiune (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Imaginea este prea mare. Te rog selectează o imagine mai mică de 5MB');
+      return;
+    }
+
+    try {
+      toast.info('Se încarcă imaginea...');
+      
+      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await updateProfile(user, { photoURL: url });
+      
+      toast.success('Imaginea de profil a fost actualizată cu succes!');
+      
+      // Actualizează UI-ul imediat
+      window.location.reload();
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Eroare la upload-ul imaginii. Te rog încearcă din nou.');
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
