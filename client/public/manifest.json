@@ -1,0 +1,24 @@
+﻿{
+  "name": "Fish Trophy - Trofeul Pescarilor din România",
+  "short_name": "Fish Trophy",
+  "description": "Descoperă cele mai bune locații de pescuit din România",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#3b82f6",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon_free.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon_free.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
+
