@@ -1,4 +1,6 @@
-// Mock API pentru testare - va fi înlocuit cu conexiunea reală la baza de date
+import { db, users } from '@fishtrophy/db';
+import { eq } from 'drizzle-orm';
+
 export async function GET(request: Request) {
   const { pathname } = new URL(request.url);
   const firebaseUid = pathname.split('/').pop()!; // /api/users/[id] - id este firebase_uid
@@ -6,21 +8,57 @@ export async function GET(request: Request) {
   try {
     console.log(`🔍 GET request for user: ${firebaseUid}`);
     
-    // Mock data pentru testare - va fi înlocuit cu query real la baza de date
-    const mockUser = {
-      displayName: 'Cosmin Trica',
-      email: 'cosmin.trica@outlook.com',
-      phone: '0729380830',
-      location: 'Slatina',
-      bio: 'Pescar pasionat din România!'
-    };
+    // Caută utilizatorul în baza de date
+    const user = await db.select().from(users).where(eq(users.firebase_uid, firebaseUid)).limit(1);
+    
+    if (user.length === 0) {
+      // Dacă utilizatorul nu există, îl creează automat
+      console.log(`👤 Creating new user: ${firebaseUid}`);
+      const newUser = await db.insert(users).values({
+        firebase_uid: firebaseUid,
+        email: '', // Va fi actualizat când utilizatorul va salva profilul
+        display_name: null,
+        phone: null,
+        location: null,
+        bio: null,
+        role: 'user'
+      }).returning();
+      
+      console.log(`✅ Created new user: ${firebaseUid}`);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          displayName: newUser[0].display_name || '',
+          email: newUser[0].email || '',
+          phone: newUser[0].phone || '',
+          location: newUser[0].location || '',
+          bio: newUser[0].bio || 'Pescar pasionat din România!'
+        }
+      }), {
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+    }
 
-    console.log(`✅ Returning mock data for user: ${firebaseUid}`);
-
+    // Returnează datele utilizatorului existent
+    const userData = user[0];
+    console.log(`✅ Found existing user: ${firebaseUid}`);
+    
     return new Response(JSON.stringify({
       success: true,
-      data: mockUser,
-      message: 'Mock data - database connection pending'
+      data: {
+        displayName: userData.display_name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        location: userData.location || '',
+        bio: userData.bio || 'Pescar pasionat din România!'
+      }
     }), {
       status: 200,
       headers: { 
