@@ -238,14 +238,12 @@ export default function BlackSea() {
           },
           (error) => {
             console.error('Eroare la obținerea locației:', error);
-            // Dacă nu poate obține locația, afișează popup-ul
-            setShowLocationRequest(true);
           },
           { maximumAge: 300000, timeout: 10000, enableHighAccuracy: true }
         );
       } else {
-        // Dacă nu a dat permisiunea, afișează popup-ul
-        setShowLocationRequest(true);
+        // Dacă nu a dat permisiunea, nu face nimic
+        console.log('Utilizatorul nu a dat permisiunea pentru locație');
       }
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
