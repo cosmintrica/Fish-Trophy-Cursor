@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Fish, Waves, Ship, Compass } from 'lucide-react';
+import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
 import L from 'leaflet';
 import { fishingLocations } from '@/services/locations';
+import { geocodingService } from '@/services/geocoding';
+import { useAuth } from '@/lib/auth';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -15,8 +17,11 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function BlackSea() {
+  const { user } = useAuth();
   const mapInstanceRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const locationsLayerRef = useRef<L.LayerGroup | null>(null);
+  const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
@@ -37,24 +42,102 @@ export default function BlackSea() {
 
     mapInstanceRef.current = map;
 
+    // Creează layer separat pentru locații
+    const locationsLayer = L.layerGroup().addTo(map);
+    locationsLayerRef.current = locationsLayer;
+
     // Adaugă locațiile maritime inițiale
     addMaritimeLocationsToMap(map, 'all');
+
+    // Verifică dacă utilizatorul a acceptat deja locația și o afișează
+    const locationAccepted = localStorage.getItem('locationAccepted');
+    if (locationAccepted === 'true' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Obține adresa prin reverse geocoding
+          const address = await geocodingService.reverseGeocode(latitude, longitude);
+          
+          // Creează marker cu fundal alb și design îmbunătățit
+          const userIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
+            iconSize: [56, 56],
+            iconAnchor: [28, 28]
+          });
+
+          const userMarker = L.marker([latitude, longitude], { icon: userIcon });
+          userLocationMarkerRef.current = userMarker;
+          userMarker.addTo(map);
+
+          // Adaugă popup cu design îmbunătățit
+          const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
+          const userPhoto = user?.photoURL || '';
+          
+          userMarker.bindPopup(`
+            <div class="p-6 min-w-[320px] bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow-2xl border border-cyan-200">
+              <div class="flex items-center gap-4 mb-4">
+                <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
+                  ${userPhoto ? 
+                    `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
+                    `<span class="text-white font-bold text-xl">${userName.charAt(0).toUpperCase()}</span>`
+                  }
+                </div>
+                <div class="flex-1">
+                  <h3 class="font-bold text-xl text-gray-800 mb-1">${userName}</h3>
+                  <p class="text-sm text-gray-600">📍 Locația ta curentă</p>
+                </div>
+              </div>
+              
+              <div class="space-y-3">
+                <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                  <p class="text-sm font-medium text-gray-700 mb-1">Coordonate GPS</p>
+                  <p class="text-sm text-gray-600 font-mono">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
+                </div>
+                
+                <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                  <p class="text-sm font-medium text-gray-700 mb-1">Adresă</p>
+                  <p class="text-sm text-gray-600">${address}</p>
+                </div>
+              </div>
+              
+              <div class="mt-4 pt-3 border-t border-gray-200">
+                <p class="text-xs text-gray-500 text-center">🌊 Fish Trophy - Litoralul Românesc</p>
+              </div>
+            </div>
+          `, {
+            className: 'custom-popup',
+            maxWidth: 400,
+            closeButton: true,
+            autoClose: false,
+            closeOnClick: false
+          });
+        },
+        (error) => {
+          console.error('Eroare la obținerea locației:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minute cache
+        }
+      );
+    }
 
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
       }
     };
-  }, []);
+  }, [user]);
 
   // Funcție pentru adăugarea locațiilor maritime pe hartă
-  const addMaritimeLocationsToMap = (map: L.Map, filterType: string) => {
-    // Șterge markerii existenți
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
-        map.removeLayer(layer);
-      }
-    });
+  const addMaritimeLocationsToMap = (_map: L.Map, filterType: string) => {
+    // Șterge doar markerii din layer-ul de locații
+    if (locationsLayerRef.current) {
+      locationsLayerRef.current.clearLayers();
+    }
 
     // Filtrează doar locațiile maritime
     const maritimeLocations = fishingLocations.filter(loc => loc.type === 'maritime');
@@ -65,14 +148,15 @@ export default function BlackSea() {
       const iconSize = 45; // Marker mai mare pentru Marea Neagră
       const icon = L.divIcon({
         className: 'custom-marker-maritime',
-        html: `<div class="w-11 h-11 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full border-4 border-white shadow-2xl flex items-center justify-center hover:scale-110 transition-transform duration-200">
-                 <Waves className="w-6 h-6 text-white" />
-               </div>`,
+        html: `<div class="w-11 h-11 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full border-4 border-white shadow-2xl hover:scale-110 transition-transform duration-200"></div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
       });
 
-      const marker = L.marker(location.coords, { icon }).addTo(map);
+      const marker = L.marker(location.coords, { icon });
+      if (locationsLayerRef.current) {
+        locationsLayerRef.current.addLayer(marker);
+      }
       
       marker.bindPopup(`
         <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
@@ -125,7 +209,109 @@ export default function BlackSea() {
     setActiveFilter(type);
     
     if (mapInstanceRef.current) {
+      // Resetează harta la poziția inițială (Litoralul românesc)
+      mapInstanceRef.current.setView([44.1733, 28.6383], 8);
       addMaritimeLocationsToMap(mapInstanceRef.current, type);
+    }
+  };
+
+  // Funcție pentru centrarea pe locația utilizatorului cu watchPosition
+  const centerOnUserLocation = async () => {
+    try {
+      // Verifică dacă geolocation este disponibil
+      if (!navigator.geolocation) {
+        alert('Geolocation nu este suportat de acest browser.');
+        return;
+      }
+
+      // Folosește watchPosition pentru primul fix rapid
+      const watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          if (mapInstanceRef.current) {
+            // Centrează harta pe locația utilizatorului
+            mapInstanceRef.current.setView([latitude, longitude], 12);
+            
+            // Obține adresa prin reverse geocoding
+            const address = await geocodingService.reverseGeocode(latitude, longitude);
+            
+            // Creează marker cu fundal alb și design îmbunătățit
+            const userIcon = L.divIcon({
+              className: 'user-location-marker',
+              html: `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
+              iconSize: [56, 56],
+              iconAnchor: [28, 28]
+            });
+
+            const userMarker = L.marker([latitude, longitude], { icon: userIcon });
+            userLocationMarkerRef.current = userMarker;
+            userMarker.addTo(mapInstanceRef.current);
+
+            // Adaugă popup cu design îmbunătățit
+            const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
+            const userPhoto = user?.photoURL || '';
+            
+            userMarker.bindPopup(`
+              <div class="p-6 min-w-[320px] bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow-2xl border border-cyan-200">
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
+                    ${userPhoto ? 
+                      `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
+                      `<span class="text-white font-bold text-xl">${userName.charAt(0).toUpperCase()}</span>`
+                    }
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-bold text-xl text-gray-800 mb-1">${userName}</h3>
+                    <p class="text-sm text-gray-600">📍 Locația ta curentă</p>
+                  </div>
+                </div>
+                
+                <div class="space-y-3">
+                  <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                    <p class="text-sm font-medium text-gray-700 mb-1">Coordonate GPS</p>
+                    <p class="text-sm text-gray-600 font-mono">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
+                  </div>
+                  
+                  <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                    <p class="text-sm font-medium text-gray-700 mb-1">Adresă</p>
+                    <p class="text-sm text-gray-600">${address}</p>
+                  </div>
+                </div>
+                
+                <div class="mt-4 pt-3 border-t border-gray-200">
+                  <p class="text-xs text-gray-500 text-center">🌊 Fish Trophy - Litoralul Românesc</p>
+                </div>
+              </div>
+            `, {
+              className: 'custom-popup',
+              maxWidth: 400,
+              closeButton: true,
+              autoClose: false,
+              closeOnClick: false
+            }).openPopup();
+
+            // Salvează că utilizatorul a acceptat locația
+            localStorage.setItem('locationAccepted', 'true');
+          }
+
+          // Oprește watchPosition după primul fix
+          navigator.geolocation.clearWatch(watchId);
+        },
+        (error) => {
+          console.error('Eroare la obținerea locației:', error);
+          navigator.geolocation.clearWatch(watchId);
+          alert('Nu s-a putut obține locația. Verifică permisiunile browser-ului.');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 300000 // 5 minute cache
+        }
+      );
+    } catch (error) {
+      console.error('Eroare la obținerea locației:', error);
+      alert('Eroare la obținerea locației.');
     }
   };
 
@@ -197,6 +383,35 @@ export default function BlackSea() {
                 <div>• Eforie - Plaja Modern</div>
                 <div>• Costinești - Plaja Tineretului</div>
               </div>
+            </div>
+
+            {/* Map Controls - Top Left (Zoom) */}
+            <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
+              <button
+                onClick={() => mapInstanceRef.current?.zoomIn()}
+                className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                title="Zoom in"
+              >
+                <span className="text-lg font-bold">+</span>
+              </button>
+              <button
+                onClick={() => mapInstanceRef.current?.zoomOut()}
+                className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                title="Zoom out"
+              >
+                <span className="text-lg font-bold">−</span>
+              </button>
+            </div>
+
+            {/* Geolocation Button - Top Right */}
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={centerOnUserLocation}
+                className="bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                title="Centrare pe locația mea"
+              >
+                <Navigation className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

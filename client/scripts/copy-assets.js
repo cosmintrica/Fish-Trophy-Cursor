@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,44 +12,49 @@ const distDir = path.join(__dirname, '../dist');
 
 // Check if we're in Vercel build environment
 const isVercel = process.env.VERCEL === '1';
-console.log('🚀 Environment:', isVercel ? 'Vercel' : 'Local');
+console.log('ðŸš€ Environment:', isVercel ? 'Vercel' : 'Local');
 
-// If public directory doesn't exist, copy essential files directly to dist
-if (!fs.existsSync(publicDir)) {
-  console.log('📁 Public directory not found, copying essential files directly to dist...');
-  
-  // Copy favicon directly to dist
-  try {
-    const faviconSrc = path.join(__dirname, '../src/assets/favicon.ico');
-    if (fs.existsSync(faviconSrc)) {
-      fs.copyFileSync(faviconSrc, path.join(distDir, 'favicon.ico'));
-      console.log('✅ Copied favicon.ico to dist');
-    }
-  } catch (error) {
-    console.log('⚠️ Could not copy favicon:', error.message);
-  }
-  
-  // Also try to copy other essential files from src/assets
-  const assetsDir = path.join(__dirname, '../src/assets');
-  if (fs.existsSync(assetsDir)) {
-    try {
-      const assets = fs.readdirSync(assetsDir);
-      for (const asset of assets) {
-        if (asset.endsWith('.png') || asset.endsWith('.svg') || asset.endsWith('.ico')) {
-          fs.copyFileSync(path.join(assetsDir, asset), path.join(distDir, asset));
-          console.log(`✅ Copied ${asset} to dist`);
-        }
-      }
-    } catch (error) {
-      console.log('⚠️ Could not copy assets:', error.message);
-    }
-  }
-  
-  console.log('✅ Essential files copied, build should work now');
-  process.exit(0);
+// Ensure dist directory exists
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir, { recursive: true });
 }
 
-console.log('🔍 Debug paths:');
+// If public directory doesn't exist, create essential files
+if (!fs.existsSync(publicDir)) {
+  console.log('ðŸ“ Public directory not found, creating essential files...');
+  
+  // Create public directory
+  fs.mkdirSync(publicDir, { recursive: true });
+  
+  // Create essential files if they don't exist
+  const essentialFiles = [
+    { name: 'favicon.ico', content: '# Placeholder favicon' },
+    { name: 'icon_free.png', content: '# Placeholder icon' },
+    { name: 'manifest.json', content: JSON.stringify({
+      name: "Fish Trophy - Trofeul Pescarilor din RomÃ¢nia",
+      short_name: "Fish Trophy",
+      description: "DescoperÄƒ cele mai bune locaÈ›ii de pescuit din RomÃ¢nia",
+      start_url: "/",
+      display: "standalone",
+      background_color: "#3b82f6",
+      theme_color: "#3b82f6",
+      icons: [
+        { src: "/icon_free.png", sizes: "192x192", type: "image/png" },
+        { src: "/icon_free.png", sizes: "512x512", type: "image/png" }
+      ]
+    }, null, 2) }
+  ];
+  
+  for (const file of essentialFiles) {
+    const filePath = path.join(publicDir, file.name);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, file.content);
+      console.log(`âœ… Created ${file.name}`);
+    }
+  }
+}
+
+console.log('ðŸ” Debug paths:');
 console.log('__dirname:', __dirname);
 console.log('publicDir:', publicDir);
 console.log('distDir:', distDir);
@@ -84,8 +89,10 @@ function copyDir(src, dest) {
 
 try {
   copyDir(publicDir, distDir);
-  console.log('✅ Assets copied successfully!');
+  console.log('âœ… Assets copied successfully!');
 } catch (error) {
-  console.error('❌ Error copying assets:', error);
+  console.error('âŒ Error copying assets:', error);
   process.exit(1);
 }
+
+

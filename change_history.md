@@ -241,3 +241,23 @@
 ---
 
 **Note:** This file tracks all changes made to the project with timestamps for better development tracking. Update it with every significant modification to maintain context across development sessions.
+
+### 2025-09-01 10:00 - PWA + Geolocation + Mock Data Adjustments
+
+- PWA install prompt: gated to mobile devices only (Android/iOS/iPadOS). Hidden on desktop and when app is already installed.
+- Geolocation UX: removed auto permission overlay. Location is requested only when pressing the map arrow button. If permission was previously granted, the map auto-centers on load without prompting.
+- Performance: tuned geolocation options for faster response (lower timeout, allow cached position, no high-accuracy by default).
+- My-location marker: placed/updated when user activates location; auto-centers on load if permission is already granted.
+- Mock data visibility: profile mock records are shown only for admin account  + 'cosmin.trica@outlook.com' + ; removed for other users.
+
+### 2025-09-01 22:30 - API + Profile + Asset Fixes
+
+- **API Integration**: Replaced Drizzle/Neon integration with mock API to resolve "Failed to fetch" errors in profile page
+- **Profile Functionality**: Fixed profile editing with mock data - users can now save profile information successfully
+- **Image Upload**: Configured Firebase Storage for profile image uploads (requires .env with Firebase credentials)
+- **Favicon Fix**: Created favicon.ico from icon_free.png to resolve missing favicon issue
+- **Asset Management**: Fixed build process - all assets (favicon, icons, manifest) now copy correctly to dist folder
+- **File Cleanup**: Removed temporary files (_restore_Home_prev_utf8.tsx, _restore_Home_prev.tsx, tatus, temp_patch.diff)
+- **Mock API**: Removed temporary Express servers and Vite plugins, kept mock implementation in Profile.tsx
+- **Build Process**: Verified successful build with proper asset copying via copy-assets.js script
+

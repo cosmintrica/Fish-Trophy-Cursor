@@ -18,6 +18,10 @@
       "dest": "/api/$1"
     },
     {
+      "src": "/(.*\\.(ico|png|svg|json|css|js))",
+      "dest": "/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {

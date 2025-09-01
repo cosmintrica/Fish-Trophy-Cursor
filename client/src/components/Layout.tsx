@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, BookOpen, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import AuthModal from './AuthModal';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 // PWA Install Prompt Event interface
 interface BeforeInstallPromptEvent extends Event {
@@ -21,8 +22,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // Check if user is admin
   const isAdmin = user?.email === 'cosmin.trica@outlook.com';
 
-  // PWA Install Prompt Logic
+  // PWA Install Prompt Logic (mobile only)
   useEffect(() => {
+    const isStandalone = ((): boolean => {
+      try {
+        // PWA already installed
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+        // iOS Safari
+        // @ts-ignore
+        if (typeof navigator !== 'undefined' && (navigator as any).standalone) return true;
+      } catch {}
+      return false;
+    })();
+
+    const isMobile = ((): boolean => {
+      try {
+        // Prefer UA hints when available
+        // @ts-ignore
+        if ((navigator as any).userAgentData?.mobile) return true;
+      } catch {}
+      const ua = navigator.userAgent || '';
+      const touchIpad = navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1;
+      return /Android|iPhone|iPad|iPod|Windows Phone/i.test(ua) || touchIpad;
+    })();
+
+    if (isStandalone || !isMobile) {
+      // Never show install prompt on desktop or if already installed
+      setShowPWAInstallPrompt(false);
+      setDeferredPrompt(null);
+      return;
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -72,18 +102,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-200/50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+            {/* Logo + Title */}
             <Link to="/" className="flex items-center space-x-3 group">
-              <img 
-                src="/icon_free.png" 
-                alt="Fish Trophy" 
-                className="w-12 h-12 group-hover:scale-110 transition-transform duration-300"
-                onError={(e) => {
-                  console.error('Failed to load header icon:', e);
-                  e.currentTarget.style.display = 'none';
-                }}
+              <img
+                src="/icon_free.png"
+                alt="Fish Trophy"
+                className="w-12 h-12 rounded-xl group-hover:scale-110 transition-transform duration-300"
               />
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:via-indigo-700 group-hover:to-purple-700 transition-all duration-300">
+              <span className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:via-indigo-700 group-hover:to-purple-700 transition-all duration-300">
                 Fish Trophy
               </span>
             </Link>
@@ -221,7 +247,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={closeMobileMenu}
             >
               <Home className="w-5 h-5" />
-              <span className="font-medium">Acasă</span>
+              <span className="font-medium">AcasÄƒ</span>
             </Link>
             
             <Link
@@ -234,7 +260,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={closeMobileMenu}
             >
               <MapPin className="w-5 h-5" />
-              <span className="font-medium">Marea Neagră</span>
+              <span className="font-medium">Marea NeagrÄƒ</span>
             </Link>
             
             <Link
@@ -348,36 +374,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* PWA Install Prompt - Bottom */}
-      {showPWAInstallPrompt && (
-        <div className="fixed bottom-4 left-4 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-blue-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                <Plus className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Adaugă Fish Trophy</h3>
-                <p className="text-sm text-gray-600">Instalează aplicația pe ecranul principal</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleInstallPWA}
-                className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
-              >
-                Instalează
-              </button>
-              <button
-                onClick={() => setShowPWAInstallPrompt(false)}
-                className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white">
@@ -386,13 +384,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Logo Section */}
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                  <Fish className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-2xl font-bold">Fish Trophy</span>
+                <img src="/icon_free.png" alt="Fish Trophy" className="w-12 h-12 rounded-2xl" />
+                <span className="text-2xl md:text-3xl font-bold">Fish Trophy</span>
               </div>
               <p className="text-gray-300 max-w-md">
-                Descoperă cele mai bune locații de pescuit din România, urmărește recordurile și concurează cu alți pescari pasionați.
+                Descoperă cele mai bune locații de pescuit din România, urmărește recordurile și concurează cu alții pescari pasionați.
               </p>
             </div>
 
@@ -428,10 +424,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <h3 className="text-lg font-semibold mb-4">Contact</h3>
               <ul className="space-y-2">
                 <li className="text-gray-300">
-                  Email: contact@fishtrophy.ro
+                  <a href="mailto:contact@fishtrophy.ro" className="hover:text-white transition-colors">
+                    Email: contact@fishtrophy.ro
+                  </a>
                 </li>
                 <li className="text-gray-300">
-                  Website: fishtrophy.ro
+                  <a href="https://fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                    Website: fishtrophy.ro
+                  </a>
                 </li>
               </ul>
             </div>
@@ -453,3 +453,4 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

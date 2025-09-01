@@ -18,6 +18,7 @@ import Admin from '@/pages/Admin';
 import SubmissionGuide from '@/pages/SubmissionGuide';
 import Profile from '@/pages/Profile';
 import FishingShops from '@/pages/FishingShops';
+import OgGenerator from '@/pages/OgGenerator';
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ function App() {
               <Route path="/leaderboards" element={<Leaderboards />} />
               <Route path="/submission-guide" element={<SubmissionGuide />} />
               <Route path="/fishing-shops" element={<FishingShops />} />
+              <Route path="/og-generator" element={<OgGenerator />} />
               <Route
                 path="/profile"
                 element={

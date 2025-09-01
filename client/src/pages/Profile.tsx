@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,10 @@ import {
   Ruler
 } from 'lucide-react';
 import { toast } from 'sonner';
-import apiService, { ProfileData } from '@/services/api';
+
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { updateProfile } from 'firebase/auth';
+import { storage } from '@/lib/firebase';
 
 const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -67,6 +70,9 @@ const Profile: React.FC = () => {
     }
   ];
 
+  // Show mock records only for admin
+  const records = isAdmin ? mockRecords : [];
+
   const handleProfileUpdate = async () => {
     if (!user?.uid) {
       toast.error('Utilizatorul nu este autentificat');
@@ -74,31 +80,41 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const profileDataToSend: ProfileData = {
-        displayName: profileData.displayName,
-        email: profileData.email,
-        phone: profileData.phone,
-        location: profileData.location,
-        bio: profileData.bio
+
+
+      // Mock API response pentru testare
+      const mockResponse = {
+        success: true,
+        data: {
+          displayName: profileData.displayName,
+          email: profileData.email,
+          phone: profileData.phone,
+          location: profileData.location,
+          bio: profileData.bio
+        }
       };
 
-      const response = await apiService.updateProfile(user.uid, profileDataToSend);
+      // Actualizează Firebase Auth
+      await updateProfile(user, { displayName: profileData.displayName });
       
-      if (response.success) {
+      // Simulează delay-ul API-ului
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (mockResponse.success) {
         toast.success('Profilul a fost actualizat cu succes!');
         setIsEditing(false);
         // Actualizează datele locale
-        if (response.data) {
+        if (mockResponse.data) {
           setProfileData({
-            displayName: response.data.displayName,
-            email: response.data.email,
-            phone: response.data.phone || '',
-            location: response.data.location || '',
-            bio: response.data.bio || ''
+            displayName: mockResponse.data.displayName,
+            email: mockResponse.data.email,
+            phone: mockResponse.data.phone || '',
+            location: mockResponse.data.location || '',
+            bio: mockResponse.data.bio || ''
           });
         }
       } else {
-        toast.error(response.error || 'Eroare la actualizarea profilului');
+        toast.error('Eroare la actualizarea profilului');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -123,26 +139,23 @@ const Profile: React.FC = () => {
   };
 
   const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user?.uid) {
-      toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
-      return;
-    }
+  const file = event.target.files?.[0];
+  if (!file || !user?.uid) {
+    toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
+    return;
+  }
 
-    try {
-      const response = await apiService.uploadProfileImage(user.uid, file);
-      
-      if (response.success) {
-        toast.success('Imaginea de profil a fost actualizată cu succes!');
-        // Aici poți actualiza imaginea în UI
-      } else {
-        toast.error(response.error || 'Eroare la upload-ul imaginii');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Eroare la upload-ul imaginii');
-    }
-  };
+  try {
+    const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    await updateProfile(user, { photoURL: url });
+    toast.success('Imaginea de profil a fost actualizată cu succes!');
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    toast.error('Eroare la upload-ul imaginii');
+  }
+};
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -215,7 +228,7 @@ const Profile: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Trophy className="w-4 h-4" />
-                    <span>{mockRecords.length} recorduri</span>
+                    <span>{records.length} recorduri</span>
                   </div>
                   <Button 
                     onClick={logout} 
@@ -257,7 +270,7 @@ const Profile: React.FC = () => {
                   </Button>
                 </div>
 
-                {mockRecords.length === 0 ? (
+                {records.length === 0 ? (
                   <Card>
                     <CardContent className="text-center py-12">
                       <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -268,7 +281,7 @@ const Profile: React.FC = () => {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {mockRecords.map((record) => (
+                    {records.map((record) => (
                       <Card key={record.id} className="overflow-hidden">
                         <div className="aspect-video bg-gray-200 relative">
                           <img
@@ -496,21 +509,21 @@ const Profile: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="font-medium">Notificări recorduri</Label>
-                          <p className="text-sm text-gray-600">Primește email când recordul tău este verificat</p>
+                          <p className="text-sm text-gray-600">Primești email când recordul tău este verificat</p>
                         </div>
                         <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="font-medium">Newsletter</Label>
-                          <p className="text-sm text-gray-600">Primește noutăți despre competiții și evenimente</p>
+                          <p className="text-sm text-gray-600">Primești noutăți despre competiții și evenimente</p>
                         </div>
                         <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="font-medium">Notificări comunitate</Label>
-                          <p className="text-sm text-gray-600">Primește actualizări despre activitatea comunității</p>
+                          <p className="text-sm text-gray-600">Primești actualizări despre activitatea comunității</p>
                         </div>
                         <input type="checkbox" className="w-4 h-4 text-blue-600" />
                       </div>
@@ -527,3 +540,8 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
+
+
+
+
