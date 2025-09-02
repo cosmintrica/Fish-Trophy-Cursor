@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   // Check if user is admin - use environment variable for security
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'cosmin.trica@outlook.com';
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
   const isAdmin = user?.email === adminEmail;
   const [showBlackSeaPopup, setShowBlackSeaPopup] = useState(false);
 

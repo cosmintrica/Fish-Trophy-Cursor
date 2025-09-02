@@ -3,11 +3,11 @@ import { neon } from '@netlify/neon';
 
 export async function handler(event) {
   const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-  
+
   // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
   const pathParts = event.path.split('/');
   const firebaseUid = pathParts[pathParts.length - 1];
-  
+
   if (!firebaseUid || firebaseUid === 'user-profile') {
     return {
       statusCode: 400,
@@ -31,23 +31,26 @@ export async function handler(event) {
 
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
-      
+
       let users = await sql`
         SELECT id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
-        FROM users 
+        FROM users
         WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (users.length === 0) {
-        // Create user if they don't exist
+        // Create user if they don't exist - we'll get Firebase data from the request
         console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
+
+        // For GET requests, we can't get Firebase data from body, so create with minimal data
+        // The user will be updated when they make a PUT request with their Firebase data
         const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-          VALUES (${firebaseUid}, '', '', 'user', NOW(), NOW())
+          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
+          VALUES (${firebaseUid}, '', '', '', 'user', NOW(), NOW())
           RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         `;
         users = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id} (minimal data - will be updated on first PUT)`);
       }
 
       const userData = users[0];
@@ -83,44 +86,96 @@ export async function handler(event) {
 
     if (event.httpMethod === 'PUT') {
       console.log(`🔄 PUT request for user profile: ${firebaseUid}`);
-      
-      const { displayName, display_name, bio, location, website, phone } = JSON.parse(event.body || '{}');
-      
+
+      const { displayName, display_name, bio, location, website, phone, photo_url } = JSON.parse(event.body || '{}');
+
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
+      const photoUrlToSave = photo_url || '';
 
       // Check if user exists first, if not create them
       let existingUsers = await sql`
-        SELECT id FROM users WHERE firebase_uid = ${firebaseUid}
+        SELECT id, email FROM users WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (existingUsers.length === 0) {
-        // Create user if they don't exist
+        // Create user if they don't exist with Firebase data
         console.log(`🆕 Creating new user: ${firebaseUid}`);
+        
+        // Get current Firebase user data to sync email
+        let firebaseEmail = '';
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          firebaseEmail = firebaseUser.email || '';
+          console.log(`📧 Syncing email from Firebase: ${firebaseEmail}`);
+        } catch (firebaseError) {
+          console.error('❌ Error getting Firebase user data:', firebaseError);
+        }
+        
+        // Create user with Firebase email
         const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-          VALUES (${firebaseUid}, ${displayNameToSave || ''}, ${displayNameToSave || ''}, 'user', NOW(), NOW())
+          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
+          VALUES (${firebaseUid}, ${firebaseEmail}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
           RETURNING id
         `;
         existingUsers = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id} and email: ${firebaseEmail}`);
+      } else {
+        // User exists, sync email from Firebase Auth
+        console.log(`✅ User exists: ${existingUsers[0].id}`);
+        
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          const firebaseEmail = firebaseUser.email || '';
+          
+          // Update email if it's different
+          if (firebaseEmail && firebaseEmail !== existingUsers[0].email) {
+            await sql`
+              UPDATE users 
+              SET email = ${firebaseEmail}, updated_at = NOW()
+              WHERE firebase_uid = ${firebaseUid}
+            `;
+            console.log(`📧 Updated email from Firebase: ${firebaseEmail}`);
+          }
+        } catch (firebaseError) {
+          console.error('❌ Error syncing Firebase email:', firebaseError);
+        }
       }
 
-      // Update user profile
+      // Update user profile - CRITICAL: Only update if user exists and belongs to this firebase_uid
       const updatedUsers = await sql`
-        UPDATE users 
-        SET display_name = ${displayNameToSave}, 
-            bio = ${bio}, 
-            location = ${location}, 
-            website = ${website}, 
-            phone = ${phone}, 
+        UPDATE users
+        SET display_name = ${displayNameToSave || null},
+            photo_url = ${photoUrlToSave || null},
+            bio = ${bio || null},
+            location = ${location || null},
+            website = ${website || null},
+            phone = ${phone || null},
             updated_at = NOW()
         WHERE firebase_uid = ${firebaseUid}
         RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
       `;
 
+      if (updatedUsers.length === 0) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'User not found or unauthorized'
+          })
+        };
+      }
+
       const updatedUser = updatedUsers[0];
-      console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email}`);
+      console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email} (firebase_uid: ${firebaseUid})`);
 
       return {
         statusCode: 200,
