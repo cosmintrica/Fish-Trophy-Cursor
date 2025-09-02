@@ -484,21 +484,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Black Sea Coming Soon Popup */}
       {showBlackSeaPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlackSeaPopup(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+          <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full mx-2 sm:mx-0 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Fish className="w-8 h-8 text-white" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <Fish className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
                 Această secțiune este în construcție și va fi disponibilă în curând. 
                 Vom adăuga locații de pescuit, specii marine și recorduri din Marea Neagră.
               </p>
               <button
                 onClick={() => setShowBlackSeaPopup(false)}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg sm:rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 Înțeleg
               </button>

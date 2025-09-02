@@ -67,6 +67,12 @@ export default function Home() {
     // Adaugă locațiile inițiale
     addLocationsToMap(map, 'all');
 
+    // Adaugă event listener pentru click pe hartă să închidă popup-urile
+    map.on('click', () => {
+      setShowShopPopup(false);
+      setShowLocationRequest(false);
+    });
+
     // Verifică dacă utilizatorul a acceptat deja locația și o afișează
     const locationAccepted = localStorage.getItem('locationAccepted');
     if (locationAccepted === 'true' && navigator.geolocation) {
