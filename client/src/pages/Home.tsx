@@ -38,38 +38,59 @@ export default function Home() {
     // Detect if mobile device
     const isMobile = window.innerWidth <= 768;
     
-    // Inițializează harta cu setări optimizate pentru performanță
+    // Inițializează harta cu setări optimizate pentru performanță pe mobil
     const map = L.map(mapContainerRef.current, {
       center: [45.9432, 25.0094], // Centrul României
       zoom: isMobile ? 6 : 7, // Zoom diferit pentru desktop vs mobil
       minZoom: isMobile ? 5 : 6, // Zoom minim diferit
-      maxZoom: 18,
-      zoomControl: true,
-      attributionControl: true,
-      // Optimizări pentru performanță
-      preferCanvas: true, // Folosește Canvas pentru toate dispozitivele
-      zoomSnap: isMobile ? 0.5 : 1,
-      zoomDelta: isMobile ? 0.5 : 1,
-      wheelPxPerZoomLevel: isMobile ? 120 : 60,
+      maxZoom: isMobile ? 15 : 18, // Zoom maxim redus pe mobil
+      zoomControl: !isMobile, // Ascunde zoom control pe mobil
+      attributionControl: !isMobile, // Ascunde attribution pe mobil
+      // Optimizări extreme pentru mobil
+      preferCanvas: true,
+      zoomSnap: isMobile ? 1 : 1,
+      zoomDelta: isMobile ? 1 : 1,
+      wheelPxPerZoomLevel: isMobile ? 200 : 60,
       // Optimizări suplimentare pentru performanță
       renderer: L.canvas(),
       fadeAnimation: false,
-      markerZoomAnimation: false
+      markerZoomAnimation: false,
+      // Optimizări specifice pentru mobil
+      dragging: true,
+      touchZoom: true,
+      doubleClickZoom: !isMobile, // Dezactivează double-click zoom pe mobil
+      scrollWheelZoom: !isMobile, // Dezactivează scroll wheel pe mobil
+      boxZoom: !isMobile, // Dezactivează box zoom pe mobil
+      keyboard: !isMobile, // Dezactivează keyboard pe mobil
+      // Optimizări pentru performanță
+      worldCopyJump: false,
+      maxBounds: isMobile ? L.latLngBounds(
+        L.latLng(43.5, 20.0), // Sud-vest
+        L.latLng(48.5, 30.0)  // Nord-est
+      ) : undefined // Limitează harta la România pe mobil
     });
 
-    // Adaugă layer-ul OpenStreetMap cu optimizări pentru performanță
+    // Adaugă layer-ul OpenStreetMap cu optimizări extreme pentru mobil
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18,
+      attribution: isMobile ? '' : '© OpenStreetMap contributors', // Ascunde attribution pe mobil
+      maxZoom: isMobile ? 15 : 18, // Zoom maxim redus pe mobil
       subdomains: ['a', 'b', 'c'],
-      // Optimizări pentru performanță
-      keepBuffer: 2,
+      // Optimizări extreme pentru mobil
+      keepBuffer: isMobile ? 1 : 2, // Buffer mai mic pe mobil
       updateWhenIdle: false,
       updateWhenZooming: false,
-      // Cache optimizat
-      maxNativeZoom: 18,
+      // Cache optimizat pentru mobil
+      maxNativeZoom: isMobile ? 15 : 18,
       tileSize: 256,
-      zoomOffset: 0
+      zoomOffset: 0,
+      // Optimizări suplimentare pentru mobil
+      bounds: isMobile ? L.latLngBounds(
+        L.latLng(43.5, 20.0), // Sud-vest
+        L.latLng(48.5, 30.0)  // Nord-est
+      ) : undefined, // Limitează tile-urile la România pe mobil
+      // Optimizări pentru performanță
+      crossOrigin: true,
+      detectRetina: !isMobile // Dezactivează retina pe mobil
     }).addTo(map);
 
     mapInstanceRef.current = map;
@@ -78,10 +99,10 @@ export default function Home() {
     const locationsLayer = L.layerGroup().addTo(map);
     locationsLayerRef.current = locationsLayer;
 
-    // Adaugă locațiile inițiale cu delay pentru performanță
+    // Adaugă locațiile inițiale cu delay pentru performanță (mai mare pe mobil)
     setTimeout(() => {
       addLocationsToMap(map, 'all');
-    }, 100);
+    }, isMobile ? 300 : 100);
 
     // Adaugă event listener pentru click pe hartă să închidă popup-urile
     map.on('click', () => {
@@ -102,9 +123,9 @@ export default function Home() {
           // Creează marker cu fundal alb și design îmbunătățit
           const userIcon = L.divIcon({
             className: 'user-location-marker',
-            html: `<div class="w-14 h-14 bg-white border-4 border-blue-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
-            iconSize: [56, 56],
-            iconAnchor: [28, 28]
+            html: `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`,
+            iconSize: [48, 48],
+            iconAnchor: [24, 24]
           });
 
           const userMarker = L.marker([latitude, longitude], { icon: userIcon });
@@ -116,33 +137,26 @@ export default function Home() {
           const userPhoto = user?.photoURL || '';
           
           userMarker.bindPopup(`
-            <div class="p-3 min-w-[180px] max-w-[200px] bg-white rounded-lg shadow-md border border-gray-200">
+            <div class="p-3 min-w-[160px] max-w-[180px] bg-white rounded-lg shadow-lg">
               <div class="text-center mb-2">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 border border-white rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
+                <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
                   ${userPhoto ? 
                     `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                    `<span class="text-white font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
+                    `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
                   }
                 </div>
                 <h3 class="font-bold text-sm text-gray-800 mb-1">${userName}</h3>
                 <p class="text-xs text-gray-600">📍 Locația ta curentă</p>
               </div>
               
-              <div class="space-y-1">
-                <div class="bg-gray-50 rounded p-1.5">
-                  <p class="text-xs font-medium text-gray-700 mb-0.5">GPS</p>
-                  <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-                </div>
-                
-                <div class="bg-gray-50 rounded p-1.5">
-                  <p class="text-xs font-medium text-gray-700 mb-0.5">Adresă</p>
-                  <p class="text-xs text-gray-600">${address}</p>
-                </div>
+              <div class="text-center space-y-1">
+                <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+                <p class="text-xs text-gray-600">${address}</p>
               </div>
             </div>
           `, {
             className: 'custom-popup',
-            maxWidth: 220,
+            maxWidth: 200,
             closeButton: true,
             autoClose: false,
             closeOnClick: false
@@ -173,9 +187,15 @@ export default function Home() {
       locationsLayerRef.current.clearLayers();
     }
 
-    // Adaugă locațiile filtrate
-    const locationsToShow = filterType === 'all' ? fishingLocations : 
+    // Detect if mobile device
+    const isMobile = window.innerWidth <= 768;
+
+    // Adaugă locațiile filtrate (limitează numărul pe mobil)
+    const allLocations = filterType === 'all' ? fishingLocations : 
       fishingLocations.filter(loc => loc.type === filterType);
+    
+    // Limitează numărul de locații pe mobil pentru performanță
+    const locationsToShow = isMobile ? allLocations.slice(0, 20) : allLocations;
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: L.Marker[] = [];
@@ -208,10 +228,10 @@ export default function Home() {
           break;
       }
 
-      const iconSize = 32; // Marker mai mic
+      const iconSize = isMobile ? 24 : 32; // Marker mai mic pe mobil
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="w-8 h-8 ${markerColor} ${borderColor} rounded-full border-3 border-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200">
+        html: `<div class="w-8 h-8 ${markerColor} ${borderColor} rounded-full border-3 border-white shadow-lg flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
                  <Fish className="w-5 h-5 text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
@@ -222,7 +242,7 @@ export default function Home() {
       markers.push(marker);
       
       marker.bindPopup(`
-        <div class="p-3 min-w-[240px] max-w-[280px] bg-white rounded-lg shadow-md border border-gray-200">
+        <div class="p-3 min-w-[240px] max-w-[280px] bg-white rounded-lg shadow-lg">
           <div class="mb-3">
             <h3 class="font-bold text-base text-gray-800 mb-1">${location.name}</h3>
             <p class="text-sm text-gray-600">${location.county}, ${location.region}</p>
@@ -274,12 +294,13 @@ export default function Home() {
     setActiveFilter(type);
     
     if (mapInstanceRef.current) {
+      const isMobile = window.innerWidth <= 768;
       // Resetează harta la poziția inițială (România) cu animație mai rapidă
-      mapInstanceRef.current.setView([45.9432, 25.0094], 7, { animate: true, duration: 0.5 });
-      // Adaugă locațiile cu delay mic pentru performanță
+      mapInstanceRef.current.setView([45.9432, 25.0094], isMobile ? 6 : 7, { animate: true, duration: isMobile ? 0.3 : 0.5 });
+      // Adaugă locațiile cu delay mic pentru performanță (mai mare pe mobil)
       setTimeout(() => {
         addLocationsToMap(mapInstanceRef.current!, type);
-      }, 50);
+      }, isMobile ? 100 : 50);
     }
   };
 
@@ -349,9 +370,9 @@ export default function Home() {
             // Creează marker cu fundal alb și design îmbunătățit
             const userIcon = L.divIcon({
               className: 'user-location-marker',
-              html: `<div class="w-14 h-14 bg-white border-4 border-blue-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
-              iconSize: [56, 56],
-              iconAnchor: [28, 28]
+              html: `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`,
+              iconSize: [48, 48],
+              iconAnchor: [24, 24]
             });
 
             const userMarker = L.marker([latitude, longitude], { icon: userIcon });
@@ -363,33 +384,26 @@ export default function Home() {
             const userPhoto = user?.photoURL || '';
             
             userMarker.bindPopup(`
-              <div class="p-3 min-w-[180px] max-w-[200px] bg-white rounded-lg shadow-md border border-gray-200">
+              <div class="p-3 min-w-[160px] max-w-[180px] bg-white rounded-lg shadow-lg">
                 <div class="text-center mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 border border-white rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
+                  <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
                     ${userPhoto ? 
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                      `<span class="text-white font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
+                      `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
                     }
                   </div>
                   <h3 class="font-bold text-sm text-gray-800 mb-1">${userName}</h3>
                   <p class="text-xs text-gray-600">📍 Locația ta curentă</p>
                 </div>
                 
-                <div class="space-y-1">
-                  <div class="bg-gray-50 rounded p-1.5">
-                    <p class="text-xs font-medium text-gray-700 mb-0.5">GPS</p>
-                    <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-                  </div>
-                  
-                  <div class="bg-gray-50 rounded p-1.5">
-                    <p class="text-xs font-medium text-gray-700 mb-0.5">Adresă</p>
-                    <p class="text-xs text-gray-600">${address}</p>
-                  </div>
+                <div class="text-center space-y-1">
+                  <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+                  <p class="text-xs text-gray-600">${address}</p>
                 </div>
               </div>
             `, {
               className: 'custom-popup',
-              maxWidth: 220,
+              maxWidth: 200,
               closeButton: true,
               autoClose: false,
               closeOnClick: false
