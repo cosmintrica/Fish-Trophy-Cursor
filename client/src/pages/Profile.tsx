@@ -212,28 +212,51 @@ const Profile: React.FC = () => {
     }
   };
 
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
   const handlePasswordChange = async () => {
     if (!user?.uid) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
 
+    // Clear previous errors
+    setPasswordErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+
     if (!passwordData.currentPassword) {
+      setPasswordErrors(prev => ({ ...prev, currentPassword: 'Parola actuală este obligatorie' }));
       toast.error('Parola actuală este obligatorie');
       return;
     }
 
+    if (!passwordData.newPassword) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola nouă este obligatorie' }));
+      toast.error('Parola nouă este obligatorie');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordErrors(prev => ({ ...prev, confirmPassword: 'Parolele nu se potrivesc' }));
       toast.error('Parolele nu se potrivesc');
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      toast.error('Parola trebuie să aibă cel puțin 6 caractere');
+    if (passwordData.newPassword.length < 8) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola trebuie să aibă cel puțin 8 caractere' }));
+      toast.error('Parola trebuie să aibă cel puțin 8 caractere');
       return;
     }
 
     if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola nouă trebuie să fie diferită de cea actuală' }));
       toast.error('Parola nouă trebuie să fie diferită de cea actuală');
       return;
     }
@@ -259,7 +282,16 @@ const Profile: React.FC = () => {
         toast.success('Parola a fost actualizată cu succes!');
         setIsChangingPassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordErrors({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
       } else {
+        // Set field-specific error
+        if (result.field) {
+          setPasswordErrors(prev => ({ ...prev, [result.field]: result.error }));
+        }
         toast.error(result.error || 'Eroare la schimbarea parolei');
       }
     } catch (error) {
@@ -639,7 +671,12 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.currentPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                            className={passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            placeholder="Parola actuală"
                           />
+                          {passwordErrors.currentPassword && (
+                            <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="newPassword">Parola nouă</Label>
@@ -648,7 +685,12 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.newPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                            className={passwordErrors.newPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            placeholder="Parola nouă (min 8 caractere, litere + cifre)"
                           />
+                          {passwordErrors.newPassword && (
+                            <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
@@ -657,7 +699,12 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.confirmPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                            className={passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            placeholder="Confirmă parola nouă"
                           />
+                          {passwordErrors.confirmPassword && (
+                            <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+                          )}
                         </div>
                         <div className="flex space-x-2">
                           <Button onClick={handlePasswordChange} className="bg-blue-600 hover:bg-blue-700">

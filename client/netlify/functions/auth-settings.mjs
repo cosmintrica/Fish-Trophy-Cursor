@@ -144,7 +144,8 @@ export async function handler(event) {
             },
             body: JSON.stringify({
               success: false,
-              error: 'New password is required'
+              error: 'Parola nouă este obligatorie',
+              field: 'newPassword'
             })
           };
         }
@@ -158,7 +159,24 @@ export async function handler(event) {
             },
             body: JSON.stringify({
               success: false,
-              error: 'Current password is required for verification'
+              error: 'Parola actuală este obligatorie pentru verificare',
+              field: 'currentPassword'
+            })
+          };
+        }
+
+        // Check if new password is different from current password
+        if (newPassword === currentPassword) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'Parola nouă trebuie să fie diferită de cea actuală',
+              field: 'newPassword'
             })
           };
         }
@@ -177,7 +195,8 @@ export async function handler(event) {
               },
               body: JSON.stringify({
                 success: false,
-                error: 'Parola trebuie să aibă cel puțin 8 caractere'
+                error: 'Parola trebuie să aibă cel puțin 8 caractere',
+                field: 'newPassword'
               })
             };
           }
@@ -195,49 +214,57 @@ export async function handler(event) {
               },
               body: JSON.stringify({
                 success: false,
-                error: 'Parola trebuie să conțină cel puțin o literă și o cifră'
+                error: 'Parola trebuie să conțină cel puțin o literă și o cifră',
+                field: 'newPassword'
               })
             };
           }
           
-          // CRITICAL: Require very recent authentication (1 minute)
-          const tokenTime = decodedToken.auth_time * 1000;
-          const now = Date.now();
-          const oneMinute = 1 * 60 * 1000;
-          
-          if (now - tokenTime > oneMinute) {
-            return {
-              statusCode: 401,
+          // CRITICAL: Verify current password by attempting to sign in
+          // This is the ONLY way to verify the current password with Firebase Admin SDK
+          try {
+            // We need to use Firebase Auth REST API to verify the current password
+            const verifyPasswordResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`, {
+              method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
               },
               body: JSON.stringify({
-                success: false,
-                error: 'SECURITATE: Te rog să te autentifici din nou pentru a schimba parola. Sesiunea ta este prea veche.'
+                email: user.email,
+                password: currentPassword,
+                returnSecureToken: true
               })
-            };
-          }
-          
-          // Additional security: Check if user has been active very recently
-          const lastSignIn = user.metadata.lastSignInTime;
-          if (lastSignIn) {
-            const lastSignInTime = new Date(lastSignIn).getTime();
-            const twoMinutes = 2 * 60 * 1000;
+            });
+
+            const verifyResult = await verifyPasswordResponse.json();
             
-            if (now - lastSignInTime > twoMinutes) {
+            if (!verifyResult.idToken) {
               return {
-                statusCode: 401,
+                statusCode: 400,
                 headers: {
                   'Content-Type': 'application/json',
                   'Access-Control-Allow-Origin': '*'
                 },
                 body: JSON.stringify({
                   success: false,
-                  error: 'SECURITATE: Te rog să te autentifici din nou pentru a schimba parola.'
+                  error: 'Parola actuală este incorectă',
+                  field: 'currentPassword'
                 })
               };
             }
+          } catch (verifyError) {
+            return {
+              statusCode: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'Parola actuală este incorectă',
+                field: 'currentPassword'
+              })
+            };
           }
           
           // Update password in Firebase Auth
@@ -313,10 +340,16 @@ export async function handler(event) {
             handleCodeInApp: false,
           };
 
-          const emailVerificationLink = await auth.generateEmailVerificationLink(
-            user.email,
-            actionCodeSettings
-          );
+          // Try to send email verification directly
+          try {
+            await auth.generateEmailVerificationLink(
+              user.email,
+              actionCodeSettings
+            );
+          } catch (linkError) {
+            console.error('❌ Error generating email verification link:', linkError);
+            throw linkError;
+          }
 
           console.log(`✅ Email verification link generated for user ${firebaseUid}`);
 
