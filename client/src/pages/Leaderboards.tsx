@@ -32,6 +32,8 @@ const mockTeams = [
 const Leaderboards: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overall');
   const [timeframe, setTimeframe] = useState('all-time');
+  const [selectedSpecies, setSelectedSpecies] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState('all');
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -55,23 +57,59 @@ const Leaderboards: React.FC = () => {
           </p>
         </div>
 
-        {/* Timeframe Selector */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-muted/50 p-1 rounded-lg">
-            {['all-time', 'monthly', 'weekly'].map(period => (
-              <button
-                key={period}
-                onClick={() => setTimeframe(period)}
-                className={`px-4 py-2 rounded-md text-sm transition-colors ${
-                  timeframe === period 
-                    ? 'bg-background text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+        {/* Filters */}
+        <div className="mb-8 space-y-4">
+          {/* Timeframe Selector */}
+          <div className="flex justify-center">
+            <div className="bg-muted/50 p-1 rounded-lg">
+              {['all-time', 'monthly', 'weekly'].map(period => (
+                <button
+                  key={period}
+                  onClick={() => setTimeframe(period)}
+                  className={`px-4 py-2 rounded-md text-sm transition-colors ${
+                    timeframe === period 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {period === 'all-time' ? 'Tot Timpul' : 
+                   period === 'monthly' ? 'Luna Aceasta' : 'Săptămâna Aceasta'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-muted-foreground">Specie:</label>
+              <select 
+                value={selectedSpecies} 
+                onChange={(e) => setSelectedSpecies(e.target.value)}
+                className="px-3 py-1 border border-border rounded-md bg-background text-foreground text-sm"
               >
-                {period === 'all-time' ? 'Tot Timpul' : 
-                 period === 'monthly' ? 'Luna Aceasta' : 'Săptămâna Aceasta'}
-              </button>
-            ))}
+                <option value="all">Toate speciile</option>
+                <option value="crap">Crap</option>
+                <option value="salau">Șalău</option>
+                <option value="biban">Biban</option>
+                <option value="platca">Platca</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-muted-foreground">Locație:</label>
+              <select 
+                value={selectedLocation} 
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="px-3 py-1 border border-border rounded-md bg-background text-foreground text-sm"
+              >
+                <option value="all">Toate locațiile</option>
+                <option value="snagov">Lacul Snagov</option>
+                <option value="dunarea">Dunărea</option>
+                <option value="herastrau">Lacul Herăstrău</option>
+                <option value="cernica">Lacul Cernica</option>
+              </select>
+            </div>
           </div>
         </div>
 
