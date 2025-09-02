@@ -29,7 +29,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         // PWA already installed
         if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
         // iOS Safari
-        // @ts-expect-error - iOS Safari standalone property
+        // @ts-ignore - iOS Safari standalone property
         if (typeof navigator !== 'undefined' && (navigator as { standalone?: boolean }).standalone) return true;
       } catch {}
       return false;
@@ -38,7 +38,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const isMobile = ((): boolean => {
       try {
         // Prefer UA hints when available
-        // @ts-expect-error - User Agent Client Hints API
+        // @ts-ignore - User Agent Client Hints API
         if ((navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile) return true;
       } catch {}
       const ua = navigator.userAgent || '';
