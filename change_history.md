@@ -287,6 +287,15 @@
 - **Impact**: API endpoints now work correctly in production environment
 - **Deployment**: Changes pushed to GitHub and deployed to Netlify
 
+### 2025-01-27 - Netlify Functions Dependency Fix
+
+- **Dependency Issue**: @netlify/neon was only in client/package.json but functions run from root
+- **Security Concern**: Adding @netlify/neon to root caused 21 vulnerabilities from netlify-cli dependencies
+- **Solution**: Moved Netlify Functions to client/netlify/functions/ directory
+- **Benefits**: Functions can now use @netlify/neon from client dependencies without security issues
+- **Configuration**: Updated netlify.toml to use client/netlify/functions directory
+- **Deployment**: Changes deployed to production
+
 ### 2025-09-01 - Project Documentation & Latest Sync
 
 - **Documentation System**: Created comprehensive project documentation system
