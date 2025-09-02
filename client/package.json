@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node_modules\\.bin\\tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
+    "build": "npx tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "preview": "vite preview",

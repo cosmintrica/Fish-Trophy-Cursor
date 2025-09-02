@@ -409,7 +409,7 @@ export default function Home() {
         image="https://fishtrophy.ro/api/og?title=Fish%20Trophy&subtitle=Platforma%20Pescarilor%20din%20Rom%C3%A2nia&domain=fishtrophy.ro"
         url="https://fishtrophy.ro"
         type="website"
-        structuredData={[websiteData, organizationData]}
+        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
       />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Mobile Menu Overlay */}
