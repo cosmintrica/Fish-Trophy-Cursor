@@ -136,7 +136,7 @@ const Leaderboards: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {mockLeaderboards.overall.map((angler, index) => (
+              {mockLeaderboards.overall.map((angler) => (
                 <div key={angler.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -175,7 +175,7 @@ const Leaderboards: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {mockLeaderboards.monthly.map((angler, index) => (
+              {mockLeaderboards.monthly.map((angler) => (
                 <div key={angler.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -214,7 +214,7 @@ const Leaderboards: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockLeaderboards.species.map((record, index) => (
+              {mockLeaderboards.species.map((record) => (
                 <div key={record.species} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-foreground">{record.species}</h3>
@@ -254,7 +254,7 @@ const Leaderboards: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {mockTeams.map((team, index) => (
+              {mockTeams.map((team) => (
                 <div key={team.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
