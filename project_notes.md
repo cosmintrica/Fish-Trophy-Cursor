@@ -1,5 +1,19 @@
 # Fish Trophy Cursor - Project Notes
 
+## Current Status (2024-09-03)
+
+### Recent Fixes
+- **OG Banner**: Simplified to clean white background with gradient title only
+- **Popup Buttons**: Fixed oversized buttons - now properly sized and rectangular
+- **Console Errors**: Added error handling for map marker operations
+- **Footer Links**: Restored missing /species and /records links
+- **Mobile Performance**: Additional optimizations for smoother map interaction
+
+### Current Focus
+- Map performance optimization for mobile devices
+- UI/UX refinement based on user feedback
+- Error handling and stability improvements
+
 ## 📋 Overview
 Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își înregistreze și să își partajeze capturile.
 

@@ -277,10 +277,10 @@ export default function Home() {
           </div>
           
           <div class="flex gap-2">
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors">
               Adaugă record
             </button>
           </div>
@@ -292,12 +292,18 @@ export default function Home() {
     
     // Adaugă toți markerii în batch pentru performanță mai bună
     if (locationsLayerRef.current && markers.length > 0) {
-      // Clear existing markers first
-      locationsLayerRef.current.clearLayers();
-      // Add all markers
-      markers.forEach(marker => {
-        locationsLayerRef.current!.addLayer(marker);
-      });
+      try {
+        // Clear existing markers first
+        locationsLayerRef.current.clearLayers();
+        // Add all markers
+        markers.forEach(marker => {
+          if (locationsLayerRef.current && marker) {
+            locationsLayerRef.current.addLayer(marker);
+          }
+        });
+      } catch (error) {
+        console.error('Error adding markers to map:', error);
+      }
     }
   };
 

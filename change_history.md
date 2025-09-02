@@ -1,5 +1,34 @@
 # 📝 Change History - Fish Trophy Project
 
+## [2024-09-03] - Critical UI/UX Fixes
+
+### Fixed
+- **OG Banner**: Simplified to clean design
+  - Pure white background
+  - Only title with blue gradient (like homepage header)
+  - Removed all decorative elements and icons
+  - Font: 72px, weight 900, centered
+
+- **Popup Buttons**: Fixed "immense" button sizes
+  - Changed from px-3 py-2 to px-2 py-1.5
+  - Changed from text-sm to text-xs
+  - Buttons now properly sized and rectangular
+
+- **Console Errors**: Fixed JavaScript runtime errors
+  - Added try-catch blocks around marker addition
+  - Added null checks for locationsLayerRef.current
+  - Improved error handling for map operations
+
+- **Footer Links**: Restored missing links
+  - Added /species and /records links to footer
+  - Links now properly accessible
+
+- **Mobile Performance**: Additional optimizations
+  - Restored all locations on mobile (no artificial limits)
+  - Added bounceAtZoomLimits: false
+  - Added inertia controls for smoother scrolling
+  - Improved touch handling
+
 ## 🚀 **Phase 1: Project Setup & Initial Configuration**
 
 ### **2025-08-29 09:00 - Project Initialization**
