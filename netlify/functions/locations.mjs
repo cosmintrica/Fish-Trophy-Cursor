@@ -1,8 +1,8 @@
 // netlify/functions/locations.mjs
-import { neon } from '@neondatabase/serverless';
+import { neon } from '@netlify/neon';
 
 export async function handler(event) {
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
   
   try {
     if (event.httpMethod === 'GET') {

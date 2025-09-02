@@ -1,8 +1,8 @@
 // netlify/functions/user-profile.mjs
-import { neon } from '@neondatabase/serverless';
+import { neon } from '@netlify/neon';
 
 export async function handler(event) {
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
   
   // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
   const pathParts = event.path.split('/');
