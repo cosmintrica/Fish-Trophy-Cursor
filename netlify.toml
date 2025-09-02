@@ -3,12 +3,18 @@
   command = "npm ci && npm run build"
   publish = "dist"
 
+[dev]
+  command = "npm run dev:client"
+  port = 5173
+  targetPort = 5173
+
 [build.environment]
   NODE_VERSION = "20"
   DEBUG = "vite:*"
   SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*"
   CI = "false"
 
+# API redirects - must come BEFORE catch-all redirect
 [[redirects]]
   from = "/api/users/*/profile"
   to = "/.netlify/functions/user-profile/:splat"
@@ -21,6 +27,7 @@
   status = 200
   force = true
 
+# Catch-all redirect for SPA - must come LAST
 [[redirects]]
   from = "/*"
   to = "/index.html"
