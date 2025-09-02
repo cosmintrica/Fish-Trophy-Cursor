@@ -2,29 +2,20 @@
 import { neon } from '@netlify/neon';
 
 export async function handler(event) {
-  console.log('🔍 User Profile function called');
+  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
   
+  // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
+  const pathParts = event.path.split('/');
+  const firebaseUid = pathParts[pathParts.length - 1];
+  
+  if (!firebaseUid || firebaseUid === 'user-profile') {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Firebase UID is required' })
+    };
+  }
+
   try {
-    const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-    console.log('✅ Database connection created');
-  
-    // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
-    const pathParts = event.path.split('/');
-    const firebaseUid = pathParts[pathParts.length - 1];
-    
-    console.log('Firebase UID:', firebaseUid);
-    console.log('HTTP Method:', event.httpMethod);
-    
-    if (!firebaseUid || firebaseUid === 'user-profile') {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ error: 'Firebase UID is required' })
-      };
-    }
     // Handle CORS preflight requests
     if (event.httpMethod === 'OPTIONS') {
       return {
@@ -41,21 +32,22 @@ export async function handler(event) {
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
       
-      const users = await sql`
+      let users = await sql`
         SELECT id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         FROM users 
         WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (users.length === 0) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({ error: 'User not found' })
-        };
+        // Create user if they don't exist
+        console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
+        const newUsers = await sql`
+          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+          VALUES (${firebaseUid}, '', '', 'user', NOW(), NOW())
+          RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
+        `;
+        users = newUsers;
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
       }
 
       const userData = users[0];
@@ -97,20 +89,21 @@ export async function handler(event) {
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
 
-      // Check if user exists first
-      const existingUsers = await sql`
+      // Check if user exists first, if not create them
+      let existingUsers = await sql`
         SELECT id FROM users WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (existingUsers.length === 0) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({ error: 'User not found' })
-        };
+        // Create user if they don't exist
+        console.log(`🆕 Creating new user: ${firebaseUid}`);
+        const newUsers = await sql`
+          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+          VALUES (${firebaseUid}, ${displayNameToSave || ''}, ${displayNameToSave || ''}, 'user', NOW(), NOW())
+          RETURNING id
+        `;
+        existingUsers = newUsers;
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
       }
 
       // Update user profile
@@ -167,11 +160,7 @@ export async function handler(event) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        message: error.message,
-        stack: error.stack
-      })
+      body: JSON.stringify({ error: 'Internal server error' })
     };
   }
 }
