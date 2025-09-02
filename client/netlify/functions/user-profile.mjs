@@ -115,7 +115,7 @@ export async function handler(event) {
         console.log(`✅ User exists: ${existingUsers[0].id}`);
       }
 
-      // Update user profile - use simple template literals for safety
+      // Update user profile - CRITICAL: Only update if user exists and belongs to this firebase_uid
       const updatedUsers = await sql`
         UPDATE users
         SET display_name = ${displayNameToSave || null},
@@ -129,8 +129,22 @@ export async function handler(event) {
         RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
       `;
 
+      if (updatedUsers.length === 0) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'User not found or unauthorized'
+          })
+        };
+      }
+
       const updatedUser = updatedUsers[0];
-      console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email}`);
+      console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email} (firebase_uid: ${firebaseUid})`);
 
       return {
         statusCode: 200,

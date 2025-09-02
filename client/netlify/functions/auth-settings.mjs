@@ -167,16 +167,45 @@ export async function handler(event) {
           // Get user info
           const user = await auth.getUser(firebaseUid);
           
-          // CRITICAL: We need to verify the current password
-          // Since Firebase Admin SDK cannot verify passwords directly,
-          // we'll use a different approach - require reauthentication
+          // CRITICAL: Validate new password meets Firebase requirements
+          if (newPassword.length < 8) {
+            return {
+              statusCode: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'Parola trebuie să aibă cel puțin 8 caractere'
+              })
+            };
+          }
+
+          // Check if password contains at least one letter and one number
+          const hasLetter = /[a-zA-Z]/.test(newPassword);
+          const hasNumber = /[0-9]/.test(newPassword);
           
-          // Check if token is very recent (within last 2 minutes)
+          if (!hasLetter || !hasNumber) {
+            return {
+              statusCode: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'Parola trebuie să conțină cel puțin o literă și o cifră'
+              })
+            };
+          }
+          
+          // CRITICAL: Require very recent authentication (1 minute)
           const tokenTime = decodedToken.auth_time * 1000;
           const now = Date.now();
-          const twoMinutes = 2 * 60 * 1000;
+          const oneMinute = 1 * 60 * 1000;
           
-          if (now - tokenTime > twoMinutes) {
+          if (now - tokenTime > oneMinute) {
             return {
               statusCode: 401,
               headers: {
@@ -185,18 +214,18 @@ export async function handler(event) {
               },
               body: JSON.stringify({
                 success: false,
-                error: 'Security: Please re-authenticate to change password. Your session is too old.'
+                error: 'SECURITATE: Te rog să te autentifici din nou pentru a schimba parola. Sesiunea ta este prea veche.'
               })
             };
           }
           
-          // Additional security: Check if user has been active recently
+          // Additional security: Check if user has been active very recently
           const lastSignIn = user.metadata.lastSignInTime;
           if (lastSignIn) {
             const lastSignInTime = new Date(lastSignIn).getTime();
-            const fiveMinutes = 5 * 60 * 1000;
+            const twoMinutes = 2 * 60 * 1000;
             
-            if (now - lastSignInTime > fiveMinutes) {
+            if (now - lastSignInTime > twoMinutes) {
               return {
                 statusCode: 401,
                 headers: {
@@ -205,7 +234,7 @@ export async function handler(event) {
                 },
                 body: JSON.stringify({
                   success: false,
-                  error: 'Security: Please sign in again to change password.'
+                  error: 'SECURITATE: Te rog să te autentifici din nou pentru a schimba parola.'
                 })
               };
             }
@@ -263,7 +292,22 @@ export async function handler(event) {
             };
           }
 
-          // Generate email verification link
+          // Check if user has email
+          if (!user.email) {
+            return {
+              statusCode: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'No email address found for user'
+              })
+            };
+          }
+
+          // Generate email verification link with proper error handling
           const actionCodeSettings = {
             url: `${event.headers.origin || 'https://fishtrophy.ro'}/profile?verified=true`,
             handleCodeInApp: false,
@@ -288,7 +332,7 @@ export async function handler(event) {
             },
             body: JSON.stringify({
               success: true,
-              message: 'Email verification link generated. Check server logs for the link.',
+              message: 'Email verification link generated successfully. Check server logs for the link.',
               data: { 
                 email: user.email,
                 note: 'Email service not configured yet - link available in server logs',
@@ -298,6 +342,22 @@ export async function handler(event) {
           };
         } catch (error) {
           console.error('❌ Error generating email verification:', error);
+          
+          // Handle specific Firebase errors
+          if (error.code === 'auth/too-many-requests') {
+            return {
+              statusCode: 429,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'Prea multe încercări. Te rog să aștepți câteva minute înainte de a încerca din nou.'
+              })
+            };
+          }
+          
           return {
             statusCode: 400,
             headers: {
