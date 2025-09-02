@@ -131,6 +131,8 @@ const Species: React.FC = () => {
                   src={species.image} 
                   alt={species.name}
                   className="w-16 h-16 rounded-lg object-cover mr-4"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div>
                   <h3 className="text-xl font-bold text-foreground">{species.name}</h3>

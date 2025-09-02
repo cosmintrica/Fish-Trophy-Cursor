@@ -185,6 +185,8 @@ const Leaderboards: React.FC = () => {
                         src={angler.avatar} 
                         alt={angler.name}
                         className="w-12 h-12 rounded-full object-cover mr-4"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <div>
                         <h3 className="text-lg font-bold text-foreground">{angler.name}</h3>
@@ -224,6 +226,8 @@ const Leaderboards: React.FC = () => {
                         src={angler.avatar} 
                         alt={angler.name}
                         className="w-12 h-12 rounded-full object-cover mr-4"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <div>
                         <h3 className="text-lg font-bold text-foreground">{angler.name}</h3>

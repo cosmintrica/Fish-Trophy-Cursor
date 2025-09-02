@@ -38,7 +38,7 @@ export default function Home() {
     // Detect if mobile device
     const isMobile = window.innerWidth <= 768;
     
-    // Inițializează harta cu setări diferite pentru desktop vs mobil
+    // Inițializează harta cu setări optimizate pentru performanță
     const map = L.map(mapContainerRef.current, {
       center: [45.9432, 25.0094], // Centrul României
       zoom: isMobile ? 6 : 7, // Zoom diferit pentru desktop vs mobil
@@ -46,16 +46,30 @@ export default function Home() {
       maxZoom: 18,
       zoomControl: true,
       attributionControl: true,
-      // Optimizări pentru performanță pe mobil
-      preferCanvas: isMobile,
+      // Optimizări pentru performanță
+      preferCanvas: true, // Folosește Canvas pentru toate dispozitivele
       zoomSnap: isMobile ? 0.5 : 1,
       zoomDelta: isMobile ? 0.5 : 1,
-      wheelPxPerZoomLevel: isMobile ? 120 : 60
+      wheelPxPerZoomLevel: isMobile ? 120 : 60,
+      // Optimizări suplimentare pentru performanță
+      renderer: L.canvas(),
+      fadeAnimation: false,
+      markerZoomAnimation: false
     });
 
-    // Adaugă layer-ul OpenStreetMap
+    // Adaugă layer-ul OpenStreetMap cu optimizări pentru performanță
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18,
+      subdomains: ['a', 'b', 'c'],
+      // Optimizări pentru performanță
+      keepBuffer: 2,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      // Cache optimizat
+      maxNativeZoom: 18,
+      tileSize: 256,
+      zoomOffset: 0
     }).addTo(map);
 
     mapInstanceRef.current = map;
@@ -64,8 +78,10 @@ export default function Home() {
     const locationsLayer = L.layerGroup().addTo(map);
     locationsLayerRef.current = locationsLayer;
 
-    // Adaugă locațiile inițiale
-    addLocationsToMap(map, 'all');
+    // Adaugă locațiile inițiale cu delay pentru performanță
+    setTimeout(() => {
+      addLocationsToMap(map, 'all');
+    }, 100);
 
     // Adaugă event listener pentru click pe hartă să închidă popup-urile
     map.on('click', () => {
@@ -161,6 +177,9 @@ export default function Home() {
     const locationsToShow = filterType === 'all' ? fishingLocations : 
       fishingLocations.filter(loc => loc.type === filterType);
 
+    // Adaugă markerii în batch pentru performanță mai bună
+    const markers: L.Marker[] = [];
+    
     locationsToShow.forEach(location => {
       // Determină culoarea în funcție de tipul locației
       let markerColor = 'bg-gray-500'; // default pentru 'all'
@@ -200,9 +219,7 @@ export default function Home() {
       });
 
       const marker = L.marker(location.coords, { icon });
-      if (locationsLayerRef.current) {
-        locationsLayerRef.current.addLayer(marker);
-      }
+      markers.push(marker);
       
       marker.bindPopup(`
         <div class="p-3 min-w-[240px] max-w-[280px] bg-white rounded-lg shadow-md border border-gray-200">
@@ -245,6 +262,11 @@ export default function Home() {
         maxWidth: 300
       });
     });
+    
+    // Adaugă toți markerii în batch pentru performanță mai bună
+    if (locationsLayerRef.current && markers.length > 0) {
+      locationsLayerRef.current.addLayers(markers);
+    }
   };
 
   // Funcție pentru filtrarea locațiilor
@@ -252,9 +274,12 @@ export default function Home() {
     setActiveFilter(type);
     
     if (mapInstanceRef.current) {
-      // Resetează harta la poziția inițială (România)
-      mapInstanceRef.current.setView([45.9432, 25.0094], 7);
-      addLocationsToMap(mapInstanceRef.current, type);
+      // Resetează harta la poziția inițială (România) cu animație mai rapidă
+      mapInstanceRef.current.setView([45.9432, 25.0094], 7, { animate: true, duration: 0.5 });
+      // Adaugă locațiile cu delay mic pentru performanță
+      setTimeout(() => {
+        addLocationsToMap(mapInstanceRef.current!, type);
+      }, 50);
     }
   };
 
