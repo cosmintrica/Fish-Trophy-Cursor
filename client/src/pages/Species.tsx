@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Fish, MapPin, Calendar, Trophy } from 'lucide-react';
+import { Search, MapPin, Calendar, Trophy } from 'lucide-react';
 
 // Mock data pentru demonstrație
 const mockSpecies = [
