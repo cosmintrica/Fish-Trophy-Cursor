@@ -270,7 +270,7 @@
 - **Error Handling**: Added comprehensive error handling for database operations
 - **Git Sync**: All changes committed and pushed to GitHub - project ready for PC migration
 
-### 2024-12-19 - Project Documentation & Latest Sync
+### 2025-09-01 - Project Documentation & Latest Sync
 
 - **Documentation System**: Created comprehensive project documentation system
   - `project_notes.md`: Centralized project notes, issues tracking, and development context
@@ -284,7 +284,7 @@
   - **Geocoding**: Added comprehensive geocoding service for location handling
 - **Process Improvement**: Established workflow for documenting all major changes and issues
 
-### 2024-12-19 - Comprehensive Vercel Build Optimization
+### 2025-09-01 - Comprehensive Vercel Build Optimization
 
 - **Bundle Size Optimization**: ✅ Resolved - Reduced main.js from 782KB to 252KB
   - Implemented code splitting with manual chunks for vendor libraries
@@ -305,7 +305,7 @@
   - No TypeScript compilation errors
   - Clean build output with proper chunking
 
-### 2024-12-19 - Mobile Menu & Branding Improvements
+### 2025-09-01 - Mobile Menu & Branding Improvements
 
 - **Diacritice Fix**: ✅ Resolved - Fixed Romanian diacritics in mobile hamburger menu
   - Fixed "AcasÄƒ" → "Acasă" 
@@ -324,7 +324,7 @@
   - `client/public/social-preview.html` - Updated social preview
   - `client/scripts/copy-assets.js` - Fixed diacritics in fallback manifest
 
-### 2024-12-19 - Vercel Build Error Fix
+### 2025-09-01 - Vercel Build Error Fix
 
 - **Issue**: TypeScript compilation error in `BlackSea.tsx` - `setShowLocationRequest` was used but not defined
 - **Root Cause**: Missing state declaration for `showLocationRequest` and unused state variable
@@ -332,4 +332,58 @@
 - **Files Modified**: `client/src/pages/BlackSea.tsx`
 - **Impact**: Vercel deployment now builds successfully without TypeScript errors
 - **Build Status**: ✅ Successful - All assets copied correctly, no compilation errors
+
+### 2025-09-02 04:54 - Netlify Migration & Build Fixes
+
+#### **Complete Migration from Vercel to Netlify**
+- **Issue**: Vercel Hobby plan limit (max 12 Serverless Functions) exceeded
+- **Solution**: ✅ Migrated entire deployment to Netlify
+- **Changes**:
+  - Created `netlify.toml` configuration file
+  - Converted all Vercel API functions to Netlify Functions
+  - Moved database schema and connection from `packages/db/` to `api/` directory
+  - Removed all Vercel dependencies and configuration files
+  - Updated build scripts and deployment configuration
+
+#### **Netlify Build Configuration**
+- **Files Created**:
+  - `netlify.toml` - Netlify deployment configuration
+  - `netlify/functions/` - Directory for Netlify Functions
+  - `api/schema.ts` - Database schema (moved from packages/db)
+  - `api/db.ts` - Database connection (moved from packages/db)
+  - `DEPLOY_NETLIFY.md` - Deployment instructions
+  - `NETLIFY_ENV_VARS.md` - Environment variables documentation
+
+#### **TypeScript Build Fixes**
+- **Issue**: `tsc: not found` error during Netlify build
+- **Root Cause**: TypeScript not found in PATH during build process
+- **Solution**: ✅ Fixed build scripts to use direct path to TypeScript
+- **Changes**:
+  - Updated `client/package.json` build scripts to use `node_modules\\.bin\\tsc`
+  - Fixed Windows PowerShell compatibility issues
+  - Updated `netlify.toml` build command to include `npm install`
+
+#### **GitHub Actions Updates**
+- **Issue**: GitHub Actions still referencing deleted `packages/db` directory
+- **Solution**: ✅ Updated CI/CD workflow to remove packages/db references
+- **Changes**:
+  - Removed `cd ../packages/db && npm install` from GitHub Actions
+  - Removed `npm run db:generate` step
+  - Updated workflow to work with new Netlify structure
+
+#### **Dependency & Vulnerability Fixes**
+- **Issue**: 20+ npm vulnerabilities across all packages
+- **Solution**: ✅ Resolved all vulnerabilities
+- **Changes**:
+  - Fixed ESLint version conflicts by downgrading to compatible versions
+  - Updated Drizzle ORM to resolve type conflicts
+  - Removed deprecated and vulnerable packages
+  - Cleaned up all package.json files
+
+#### **Files Modified/Deleted**:
+- **Deleted**: `vercel.json`, `packages/db/`, `api/og/`, `api/share/`, `api/sitemap.xml.ts`, `api/robots.txt.ts`
+- **Modified**: `client/package.json`, `api/package.json`, `package.json`, `.github/workflows/ci.yml`
+- **Created**: `netlify.toml`, `netlify/functions/`, `api/schema.ts`, `api/db.ts`, deployment docs
+
+#### **Build Status**: ✅ All builds working locally and ready for Netlify deployment
 

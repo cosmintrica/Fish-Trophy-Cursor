@@ -5,9 +5,9 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🏗️ Architecture
 - **Frontend**: React + Vite + TypeScript
-- **Backend**: Vercel Functions (Node.js/TypeScript)
-- **Database**: PostgreSQL cu Drizzle ORM
-- **Deployment**: Vercel
+- **Backend**: Netlify Functions (Node.js/TypeScript)
+- **Database**: PostgreSQL cu Drizzle ORM (Neon)
+- **Deployment**: Netlify
 - **Package Manager**: npm (migrat de la pnpm)
 
 ## 🔄 Recent Changes & Updates
@@ -34,10 +34,15 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🚨 Known Issues & Solutions
 
+### Issue: Vercel Function Limit
+- **Problem**: Vercel Hobby plan limit (max 12 Serverless Functions) exceeded
+- **Solution**: ✅ Resolved - Migrat complet la Netlify
+- **Impact**: Deployment Netlify cu funcții nelimitate
+
 ### Issue: Package Manager Migration
 - **Problem**: Migrare de la pnpm la npm
 - **Solution**: ✅ Resolved - Eliminat pnpm-lock.yaml, adăugat package-lock.json
-- **Impact**: Deployment Vercel optimizat
+- **Impact**: Deployment optimizat
 
 ### Issue: PWA Functionality
 - **Problem**: Implementare PWA pentru instalare pe dispozitive mobile
@@ -69,17 +74,30 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - **Solution**: ✅ Resolved - Cleaned cache and used --legacy-peer-deps
 - **Impact**: Dependencies install successfully
 
+### Issue: Netlify Build - TypeScript Not Found
+- **Problem**: `tsc: not found` error during Netlify build
+- **Solution**: ✅ Resolved - Updated build scripts to use direct TypeScript path
+- **Impact**: Netlify builds successfully
+
+### Issue: GitHub Actions - Missing packages/db
+- **Problem**: GitHub Actions referencing deleted packages/db directory
+- **Solution**: ✅ Resolved - Updated CI/CD workflow to remove packages/db references
+- **Impact**: GitHub Actions runs successfully
+
 ## 🎯 Current Focus Areas
-1. **Database Integration**: Integrare completă cu PostgreSQL
-2. **User Profiles**: Funcționalități complete pentru profiluri utilizatori
-3. **Geolocation**: Servicii de geocoding pentru locații
-4. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
+1. **Netlify Deployment**: Finalizare deployment pe Netlify
+2. **Database Integration**: Integrare completă cu PostgreSQL (Neon)
+3. **User Profiles**: Funcționalități complete pentru profiluri utilizatori
+4. **Geolocation**: Servicii de geocoding pentru locații
+5. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
 
 ## 📝 Development Notes
 - Folosim Vite + React (nu Next.js) - important pentru imports Vercel Analytics
 - Preferăm să analizăm problemele de multiple ori înainte de a scrie cod
 - Orice îmbunătățiri pe harta Leaflet se fac pe implementarea existentă
 - Nu lăsăm procese 'pnpm dev' în background când restartăm serverul
+- Migrat complet de la Vercel la Netlify pentru deployment
+- Database schema și connection consolidate în `api/` directory
 
 ## 🔧 Technical Debt
 - [ ] Review și optimizare cod duplicat
@@ -88,11 +106,12 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - [ ] Optimizare performance pentru mobile
 
 ## 📊 Next Steps
-1. Testare funcționalități noi implementate
-2. Verificare deployment pe Vercel
-3. Testare PWA pe dispozitive mobile
-4. Documentare API endpoints
+1. **Netlify Deployment**: Finalizare deployment pe Netlify
+2. **Environment Variables**: Configurare variabile de mediu pe Netlify
+3. **Database Testing**: Testare conexiune cu Neon database
+4. **PWA Testing**: Testare PWA pe dispozitive mobile
+5. **API Testing**: Testare toate Netlify Functions
 
 ---
-*Ultima actualizare: 2024-12-19*
+*Ultima actualizare: 2025-09-02 04:54*
 

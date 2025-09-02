@@ -24,7 +24,6 @@ jobs:
         npm install
         cd client && npm install
         cd ../api && npm install
-        cd ../packages/db && npm install
     
     - name: Type check
       run: npm run type-check
@@ -34,9 +33,6 @@ jobs:
     
     - name: Build
       run: npm run build
-    
-    - name: Build database
-      run: npm run db:generate
 
   deploy-preview:
     needs: test
