@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, MapPin, User, BookOpen, Plus } from 'lucide-react';
+import { Fish, Menu, X, Home, MapPin, User, BookOpen, Plus, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
@@ -238,9 +238,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Menu Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Fish className="w-5 h-5 text-white" />
-              </div>
+              <img 
+                src="/icon_free.png" 
+                alt="Fish Trophy" 
+                className="w-8 h-8 rounded-xl"
+              />
               <span className="text-lg font-bold text-gray-900">Meniu</span>
             </div>
             <button
@@ -280,7 +282,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={closeMobileMenu}
             >
-              <BookOpen className="w-5 h-5" />
+              <Trophy className="w-5 h-5" />
               <span className="font-medium">Recorduri</span>
             </Link>
             
@@ -289,7 +291,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={closeMobileMenu}
             >
-              <BookOpen className="w-5 h-5" />
+              <FileText className="w-5 h-5" />
               <span className="font-medium">Ghid Submisie</span>
             </Link>
             
@@ -307,11 +309,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span className="font-medium">Marea Neagră</span>
               </Link>
             ) : (
-              <div className="flex items-center space-x-3 p-3 rounded-xl text-gray-400 cursor-not-allowed">
+              <button
+                onClick={() => {
+                  setShowBlackSeaPopup(true);
+                  closeMobileMenu();
+                }}
+                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors w-full text-left"
+              >
                 <MapPin className="w-5 h-5" />
                 <span className="font-medium">Marea Neagră</span>
-                <span className="text-xs text-gray-400">(În curând)</span>
-              </div>
+              </button>
             )}
             
             {isAdmin && (
