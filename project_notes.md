@@ -210,5 +210,5 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - Scalabil pentru multiple roluri (admin, moderator, user)
 
 ---
-*Ultima actualizare: 2025-09-02 21:45*
+*Ultima actualizare: 2025-09-03 15:30*
 
