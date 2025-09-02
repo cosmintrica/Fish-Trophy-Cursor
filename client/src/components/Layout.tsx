@@ -31,7 +31,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         // iOS Safari
         // @ts-ignore - iOS Safari standalone property
         if (typeof navigator !== 'undefined' && (navigator as { standalone?: boolean }).standalone) return true;
-      } catch {}
+      } catch {
+        // Ignore errors
+      }
       return false;
     })();
 
@@ -40,9 +42,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         // Prefer UA hints when available
         // @ts-ignore - User Agent Client Hints API
         if ((navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile) return true;
-      } catch {}
+      } catch {
+        // Ignore errors
+      }
       const ua = navigator.userAgent || '';
-      const touchIpad = navigator.platform === 'MacIntel' && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1;
+      const maxTouchPoints = (navigator as { maxTouchPoints?: number }).maxTouchPoints ?? 0;
+      const touchIpad = navigator.platform === 'MacIntel' && maxTouchPoints > 1;
       return /Android|iPhone|iPad|iPod|Windows Phone/i.test(ua) || touchIpad;
     })();
 

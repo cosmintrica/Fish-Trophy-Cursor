@@ -1,3 +1,12 @@
+// DOM types for geolocation - use the correct interface
+interface PositionOptions {
+  enableHighAccuracy?: boolean;
+  timeout?: number;
+  maximumAge?: number;
+}
+
+// GeolocationPositionError is a built-in DOM type
+
 export interface UserLocation {
   latitude: number;
   longitude: number;

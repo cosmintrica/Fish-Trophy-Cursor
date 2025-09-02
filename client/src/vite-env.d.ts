@@ -15,7 +15,9 @@ interface ImportMetaEnv {
   readonly VITE_PREMIUM_FEATURES_ENABLED: string;
 }
 
-/* eslint-disable no-unused-vars */
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+// ImportMeta is already defined by Vite, but we extend it
+declare global {
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }
