@@ -28,7 +28,7 @@ export const usePWAInstall = () => {
       }
       
       // Verifică dacă este iOS și dacă este în homescreen
-      if ((window.navigator as any).standalone === true) {
+      if ((window.navigator as { standalone?: boolean }).standalone === true) {
         setIsInstalled(true);
         return true;
       }

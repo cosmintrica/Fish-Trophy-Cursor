@@ -3,9 +3,9 @@ import { ImageResponse } from '@vercel/og';
 
 export default async function handler(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title    = searchParams.get('title')    ?? 'Fish Trophy';
-  const subtitle = searchParams.get('subtitle') ?? 'Platforma Pescarilor din România';
-  const domain   = searchParams.get('domain')   ?? 'fishtrophy.ro';
+  const species = searchParams.get('species') ?? 'Peste';
+  const scientificName = searchParams.get('scientific') ?? '';
+  const description = searchParams.get('description') ?? 'Informații despre această specie de pește';
 
   return new ImageResponse(
     (
@@ -35,7 +35,7 @@ export default async function handler(req: Request) {
             width: 200,
             height: 200,
             borderRadius: '50%',
-            background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))',
+            background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(34, 197, 94, 0.1))',
             filter: 'blur(40px)'
           }}
         />
@@ -47,7 +47,7 @@ export default async function handler(req: Request) {
             width: 300,
             height: 300,
             borderRadius: '50%',
-            background: 'linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1))',
+            background: 'linear-gradient(45deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1))',
             filter: 'blur(60px)'
           }}
         />
@@ -62,18 +62,18 @@ export default async function handler(req: Request) {
             maxWidth: 900
           }}
         >
-          {/* Icon container with fish icon */}
+          {/* Fish icon */}
           <div
             style={{
               width: 140,
               height: 140,
               borderRadius: 999,
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2))',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(34, 197, 94, 0.2))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 40,
-              border: '3px solid rgba(255,255,255,0.1)',
+              marginBottom: 30,
+              border: '3px solid rgba(59, 130, 246, 0.3)',
               backdropFilter: 'blur(10px)'
             }}
           >
@@ -88,12 +88,12 @@ export default async function handler(req: Request) {
             </svg>
           </div>
 
-          {/* Title */}
+          {/* Species name */}
           <div
             style={{
-              fontSize: 72,
+              fontSize: 64,
               fontWeight: 800,
-              marginBottom: 20,
+              marginBottom: 15,
               background: 'linear-gradient(135deg, #eef0f7, #a1a6b0)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -102,21 +102,36 @@ export default async function handler(req: Request) {
               lineHeight: 1.1
             }}
           >
-            {title}
+            {species}
           </div>
 
-          {/* Subtitle */}
+          {/* Scientific name */}
+          {scientificName && (
+            <div
+              style={{
+                fontSize: 28,
+                color: '#9ca3af',
+                marginBottom: 20,
+                fontStyle: 'italic',
+                fontWeight: 500
+              }}
+            >
+              {scientificName}
+            </div>
+          )}
+
+          {/* Description */}
           <div
             style={{
-              fontSize: 34,
+              fontSize: 24,
               color: '#a1a6b0',
-              marginBottom: 40,
-              fontWeight: 600,
-              lineHeight: 1.3,
+              marginBottom: 30,
+              fontWeight: 500,
+              lineHeight: 1.4,
               maxWidth: 800
             }}
           >
-            {subtitle}
+            {description}
           </div>
 
           {/* Domain badge */}
@@ -124,17 +139,17 @@ export default async function handler(req: Request) {
             style={{
               display: 'flex',
               alignSelf: 'center',
-              padding: '16px 32px',
-              borderRadius: 16,
+              padding: '12px 24px',
+              borderRadius: 12,
               background: 'linear-gradient(90deg, #6ee7b7, #22d3ee)',
               color: '#0b0c10',
-              fontSize: 28,
-              fontWeight: 800,
-              boxShadow: '0 8px 32px rgba(110, 231, 183, 0.3)',
+              fontSize: 20,
+              fontWeight: 700,
+              boxShadow: '0 4px 16px rgba(110, 231, 183, 0.3)',
               border: '2px solid rgba(255,255,255,0.1)'
             }}
           >
-            {domain}
+            fishtrophy.ro
           </div>
         </div>
 
@@ -142,26 +157,26 @@ export default async function handler(req: Request) {
         <div
           style={{
             position: 'absolute',
-            top: 60,
-            right: 60,
-            width: 120,
-            height: 120,
+            top: 40,
+            right: 40,
+            width: 100,
+            height: 100,
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
             backdropFilter: 'blur(10px)'
           }}
         />
         <div
           style={{
             position: 'absolute',
-            bottom: 60,
-            left: 60,
-            width: 100,
-            height: 100,
+            bottom: 40,
+            left: 40,
+            width: 80,
+            height: 80,
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.2)',
             backdropFilter: 'blur(10px)'
           }}
         />

@@ -3,9 +3,11 @@ import { ImageResponse } from '@vercel/og';
 
 export default async function handler(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title    = searchParams.get('title')    ?? 'Fish Trophy';
-  const subtitle = searchParams.get('subtitle') ?? 'Platforma Pescarilor din România';
-  const domain   = searchParams.get('domain')   ?? 'fishtrophy.ro';
+  const species = searchParams.get('species') ?? 'Peste';
+  const weight = searchParams.get('weight') ?? '0 kg';
+  const angler = searchParams.get('angler') ?? 'Pescar';
+  const location = searchParams.get('location') ?? 'România';
+  const date = searchParams.get('date') ?? new Date().toLocaleDateString('ro-RO');
 
   return new ImageResponse(
     (
@@ -35,7 +37,7 @@ export default async function handler(req: Request) {
             width: 200,
             height: 200,
             borderRadius: '50%',
-            background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))',
+            background: 'linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1))',
             filter: 'blur(40px)'
           }}
         />
@@ -47,7 +49,7 @@ export default async function handler(req: Request) {
             width: 300,
             height: 300,
             borderRadius: '50%',
-            background: 'linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1))',
+            background: 'linear-gradient(45deg, rgba(147, 51, 234, 0.1), rgba(34, 197, 94, 0.1))',
             filter: 'blur(60px)'
           }}
         />
@@ -62,38 +64,38 @@ export default async function handler(req: Request) {
             maxWidth: 900
           }}
         >
-          {/* Icon container with fish icon */}
+          {/* Trophy icon */}
           <div
             style={{
-              width: 140,
-              height: 140,
+              width: 120,
+              height: 120,
               borderRadius: 999,
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2))',
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 40,
-              border: '3px solid rgba(255,255,255,0.1)',
+              marginBottom: 30,
+              border: '3px solid rgba(251, 191, 36, 0.3)',
               backdropFilter: 'blur(10px)'
             }}
           >
-            {/* Fish SVG icon */}
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6.5 12c.94-1.06 2.44-1.5 3.5-1.5s2.56.44 3.5 1.5" />
-              <path d="M17 12c-.94-1.06-2.44-1.5-3.5-1.5s-2.56.44-3.5 1.5" />
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-              <path d="M12 6v12" />
-              <path d="M6 12h12" />
-              <circle cx="12" cy="12" r="2" />
+            {/* Trophy SVG icon */}
+            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+              <path d="M4 22h16" />
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21l-1 .5A2 2 0 0 1 5.5 17.5v-1.5" />
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21l1 .5A2 2 0 0 0 18.5 17.5v-1.5" />
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
             </svg>
           </div>
 
-          {/* Title */}
+          {/* Species name */}
           <div
             style={{
-              fontSize: 72,
+              fontSize: 56,
               fontWeight: 800,
-              marginBottom: 20,
+              marginBottom: 15,
               background: 'linear-gradient(135deg, #eef0f7, #a1a6b0)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -102,21 +104,43 @@ export default async function handler(req: Request) {
               lineHeight: 1.1
             }}
           >
-            {title}
+            {species}
           </div>
 
-          {/* Subtitle */}
+          {/* Weight */}
           <div
             style={{
-              fontSize: 34,
-              color: '#a1a6b0',
-              marginBottom: 40,
-              fontWeight: 600,
-              lineHeight: 1.3,
-              maxWidth: 800
+              fontSize: 48,
+              fontWeight: 700,
+              color: '#fbbf24',
+              marginBottom: 20,
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
             }}
           >
-            {subtitle}
+            {weight}
+          </div>
+
+          {/* Angler and location */}
+          <div
+            style={{
+              fontSize: 28,
+              color: '#a1a6b0',
+              marginBottom: 15,
+              fontWeight: 600
+            }}
+          >
+            Prins de {angler}
+          </div>
+
+          <div
+            style={{
+              fontSize: 24,
+              color: '#9ca3af',
+              marginBottom: 30,
+              fontWeight: 500
+            }}
+          >
+            {location} • {date}
           </div>
 
           {/* Domain badge */}
@@ -124,17 +148,17 @@ export default async function handler(req: Request) {
             style={{
               display: 'flex',
               alignSelf: 'center',
-              padding: '16px 32px',
-              borderRadius: 16,
+              padding: '12px 24px',
+              borderRadius: 12,
               background: 'linear-gradient(90deg, #6ee7b7, #22d3ee)',
               color: '#0b0c10',
-              fontSize: 28,
-              fontWeight: 800,
-              boxShadow: '0 8px 32px rgba(110, 231, 183, 0.3)',
+              fontSize: 20,
+              fontWeight: 700,
+              boxShadow: '0 4px 16px rgba(110, 231, 183, 0.3)',
               border: '2px solid rgba(255,255,255,0.1)'
             }}
           >
-            {domain}
+            fishtrophy.ro
           </div>
         </div>
 
@@ -142,26 +166,26 @@ export default async function handler(req: Request) {
         <div
           style={{
             position: 'absolute',
-            top: 60,
-            right: 60,
-            width: 120,
-            height: 120,
+            top: 40,
+            right: 40,
+            width: 80,
+            height: 80,
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(251, 191, 36, 0.1)',
+            border: '1px solid rgba(251, 191, 36, 0.2)',
             backdropFilter: 'blur(10px)'
           }}
         />
         <div
           style={{
             position: 'absolute',
-            bottom: 60,
-            left: 60,
-            width: 100,
-            height: 100,
+            bottom: 40,
+            left: 40,
+            width: 60,
+            height: 60,
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.2)',
             backdropFilter: 'blur(10px)'
           }}
         />

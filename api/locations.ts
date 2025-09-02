@@ -1,22 +1,13 @@
-import { db, locations, waterBodies } from '@fishtrophy/db';
+import { db, locations, waterBodies } from './db';
 import { eq } from 'drizzle-orm';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log('🔍 GET request for locations list');
     
     const locationsList = await db
-      .select({
-        id: locations.id,
-        name: locations.name,
-        description: locations.description,
-        water_body_id: locations.water_body_id,
-        water_body_name: waterBodies.name,
-        created_at: locations.created_at,
-        updated_at: locations.updated_at
-      })
+      .select()
       .from(locations)
-      .leftJoin(waterBodies, eq(locations.water_body_id, waterBodies.id))
       .orderBy(locations.name);
     
     console.log(`✅ Found ${locationsList.length} locations`);

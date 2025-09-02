@@ -2,12 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optimizări pentru performanță pe mobile */
+/* Optimizări pentru performanță pe mobile și Core Web Vitals */
 @layer base {
   * {
     /* Optimizează rendering-ul pe mobile */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Previne layout shift */
+    box-sizing: border-box;
   }
   
   html {
@@ -15,6 +17,10 @@
     -webkit-overflow-scrolling: touch;
     /* Optimizează text rendering */
     text-rendering: optimizeLegibility;
+    /* Previne zoom-ul pe iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Optimizează font loading */
+    font-display: swap;
   }
   
   body {
@@ -22,6 +28,17 @@
     overflow-x: hidden;
     /* Optimizează touch events */
     touch-action: manipulation;
+    /* Previne layout shift */
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Optimizează font loading pentru LCP */
+  @font-face {
+    font-family: 'Inter';
+    font-display: swap;
+    font-weight: 400 800;
+    src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   }
 }
 
@@ -49,6 +66,59 @@
       animation-duration: 0.2s !important;
       transition-duration: 0.2s !important;
     }
+  }
+
+  /* Previne Cumulative Layout Shift (CLS) */
+  .prevent-cls {
+    /* Rezervă spațiu pentru conținut care se încarcă */
+    min-height: 200px;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Optimizări pentru imagini */
+  img {
+    /* Previne layout shift pentru imagini */
+    height: auto;
+    max-width: 100%;
+    /* Optimizează loading */
+    loading: lazy;
+    decoding: async;
+  }
+
+  /* Skeleton loading pentru conținut */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Optimizări pentru Core Web Vitals */
+  .optimize-cls {
+    /* Previne layout shift */
+    contain: layout style paint;
+  }
+
+  .optimize-fid {
+    /* Optimizează First Input Delay */
+    will-change: transform;
+  }
+
+  .optimize-lcp {
+    /* Optimizează Largest Contentful Paint */
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
   }
 }
 

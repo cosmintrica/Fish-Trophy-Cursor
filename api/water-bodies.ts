@@ -1,6 +1,6 @@
-import { db, waterBodies } from '@fishtrophy/db';
+import { db, waterBodies } from './db';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log('🔍 GET request for water bodies list');
     

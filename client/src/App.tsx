@@ -1,10 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { HelmetProvider } from 'react-helmet-async';
+import { useEffect } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from '@/components/ScrollToTop';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { initAnalytics } from '@/lib/analytics';
+import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals';
 
 // Pages
 import Home from '@/pages/Home';
@@ -18,42 +22,61 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 
 function App() {
+  // Initialize Web Vitals tracking
+  useWebVitals();
+
+  useEffect(() => {
+    // Initialize analytics
+    initAnalytics();
+    
+    // Optimize performance
+    performanceUtils.optimizeFonts();
+    performanceUtils.registerServiceWorker();
+    
+    // Preconnect to external domains
+    performanceUtils.preconnect('https://fonts.googleapis.com');
+    performanceUtils.preconnect('https://fonts.gstatic.com');
+    performanceUtils.preconnect('https://cdnjs.cloudflare.com');
+  }, []);
+
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <Layout>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/black-sea" element={<BlackSea />} />
-              <Route path="/species" element={<Species />} />
-              <Route path="/leaderboards" element={<Leaderboards />} />
-              <Route path="/submission-guide" element={<SubmissionGuide />} />
-              <Route path="/fishing-shops" element={<FishingShops />} />
-              <Route path="/og-generator" element={<OgGenerator />} />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/*"
-                element={
-                  <ProtectedRoute>
-                    <Admin />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Layout>
-        </Router>
-        <Toaster />
-      </AuthProvider>
-    </ErrorBoundary>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <Router>
+            <Layout>
+              <ScrollToTop />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/black-sea" element={<BlackSea />} />
+                <Route path="/species" element={<Species />} />
+                <Route path="/leaderboards" element={<Leaderboards />} />
+                <Route path="/submission-guide" element={<SubmissionGuide />} />
+                <Route path="/fishing-shops" element={<FishingShops />} />
+                <Route path="/og-generator" element={<OgGenerator />} />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <ProtectedRoute>
+                      <Admin />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Layout>
+          </Router>
+          <Toaster />
+        </AuthProvider>
+      </ErrorBoundary>
+    </HelmetProvider>
   );
 }
 

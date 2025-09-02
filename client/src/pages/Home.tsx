@@ -7,6 +7,8 @@ import { fishingLocations } from '@/services/locations';
 
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/lib/auth';
+import SEOHead from '@/components/SEOHead';
+import { useStructuredData } from '@/hooks/useStructuredData';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -20,6 +22,7 @@ L.Icon.Default.mergeOptions({
 
 export default function Home() {
   const { user } = useAuth();
+  const { websiteData, organizationData } = useStructuredData();
   const mapInstanceRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const locationsLayerRef = useRef<L.LayerGroup | null>(null);
@@ -398,7 +401,17 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <>
+      <SEOHead
+        title="Fish Trophy - Platforma Pescarilor din România"
+        description="Descoperă cele mai bune locații de pescuit din România, urmărește recordurile și concurează cu alții pescari pasionați. Hărți interactive, ghiduri complete și comunitate activă."
+        keywords="pescuit, romania, locatii pescuit, recorduri pescuit, harta pescuit, marea neagra, rauri romania, lacuri romania, balti pescuit, specii pesti, tehnici pescuit, echipament pescuit, platforma pescarilor, comunitate pescuit"
+        image="https://fishtrophy.ro/api/og?title=Fish%20Trophy&subtitle=Platforma%20Pescarilor%20din%20Rom%C3%A2nia&domain=fishtrophy.ro"
+        url="https://fishtrophy.ro"
+        type="website"
+        structuredData={[websiteData, organizationData]}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden">
@@ -656,6 +669,7 @@ export default function Home() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

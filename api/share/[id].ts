@@ -22,7 +22,7 @@ export default async function handler(req: Request) {
     const record = await response.json() as RecordDTO;
 
     const title = `${record.species} – ${record.weight} • ${record.angler}`;
-    const og = `https://fishtrophy.ro/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(record.species)}&domain=FishTrophy.ro`;
+    const og = `https://fishtrophy.ro/api/og/record?species=${encodeURIComponent(record.species)}&weight=${encodeURIComponent(record.weight?.toString() || '')}&angler=${encodeURIComponent(record.angler || '')}&location=${encodeURIComponent(record.location || 'România')}&date=${encodeURIComponent(record.date || new Date().toLocaleDateString('ro-RO'))}`;
 
     const html = `<!doctype html>
 <html lang="ro"><head>

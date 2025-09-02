@@ -2,7 +2,6 @@
   "name": "@fishtrophy/api",
   "version": "1.0.0",
   "description": "Vercel Functions API for Fish Trophy",
-
   "scripts": {
     "dev": "vercel dev",
     "build": "tsc",
@@ -11,24 +10,23 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@fishtrophy/db": "file:../packages/db",
+    "@neondatabase/serverless": "^0.9.0",
     "@vercel/og": "^0.6.2",
-    "drizzle-orm": "^0.29.3",
+    "drizzle-orm": "^0.30.6",
     "firebase-admin": "^12.0.0",
+    "next": "^14.0.0",
     "postgres": "^3.4.3",
     "resend": "^2.0.0",
-    "zod": "^3.22.4",
-    "@neondatabase/serverless": "^0.9.0",
-    "next": "^14.0.0"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
     "@types/react": "^18.3.24",
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
-    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
     "typescript": "^5.3.3",
-    "vercel": "^33.5.1"
+    "vercel": "^32.0.1"
   },
   "engines": {
     "node": ">=20"

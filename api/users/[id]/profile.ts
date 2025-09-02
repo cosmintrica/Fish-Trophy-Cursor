@@ -1,4 +1,4 @@
-import { db, users } from '@fishtrophy/db';
+import { db, users } from '../../db';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {

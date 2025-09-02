@@ -35,7 +35,7 @@ export class GeocodingService {
     }
   }
 
-  private formatAddress(data: any): string {
+  private formatAddress(data: { address?: Record<string, string> }): string {
     const address = data.address;
     if (!address) return 'Adresa nu a putut fi determinată';
 

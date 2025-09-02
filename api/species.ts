@@ -1,7 +1,6 @@
-import { db, species } from '@fishtrophy/db';
-import { eq } from 'drizzle-orm';
+import { db, species } from './db';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log('🔍 GET request for species list');
     
