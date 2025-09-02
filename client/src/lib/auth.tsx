@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { auth } from './firebase';
 
@@ -57,7 +58,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Send email verification automatically after signup
+      if (userCredential.user && !userCredential.user.emailVerified) {
+        try {
+          await sendEmailVerification(userCredential.user, {
+            url: `${window.location.origin}/profile?verified=true`,
+            handleCodeInApp: false,
+          });
+          console.log('✅ Email verification sent to:', email);
+        } catch (emailError) {
+          console.error('❌ Error sending email verification:', emailError);
+          // Don't throw error - user is still created successfully
+        }
+      }
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;

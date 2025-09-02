@@ -308,21 +308,25 @@ const Profile: React.FC = () => {
 
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch('/.netlify/functions/auth-settings', {
+      const response = await fetch('/.netlify/functions/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          action: 'send-email-verification'
+          action: 'send-verification'
         })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        toast.success('Link-ul de verificare a fost trimis pe email!');
+        if (result.data.emailSent) {
+          toast.success('Email de verificare trimis cu succes! Verifică-ți inbox-ul.');
+        } else {
+          toast.success('Link de verificare generat! Verifică server logs pentru link.');
+        }
       } else {
         toast.error(result.error || 'Eroare la trimiterea email-ului de verificare');
       }
@@ -671,7 +675,7 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.currentPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                            className={passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                             placeholder="Parola actuală"
                           />
                           {passwordErrors.currentPassword && (
@@ -685,7 +689,7 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.newPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                            className={passwordErrors.newPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                             placeholder="Parola nouă (min 8 caractere, litere + cifre)"
                           />
                           {passwordErrors.newPassword && (
@@ -699,7 +703,7 @@ const Profile: React.FC = () => {
                             type="password"
                             value={passwordData.confirmPassword}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                            className={passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}
+                            className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                             placeholder="Confirmă parola nouă"
                           />
                           {passwordErrors.confirmPassword && (

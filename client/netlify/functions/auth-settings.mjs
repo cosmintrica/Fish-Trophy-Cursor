@@ -341,8 +341,9 @@ export async function handler(event) {
           };
 
           // Try to send email verification directly
+          let emailVerificationLink;
           try {
-            await auth.generateEmailVerificationLink(
+            emailVerificationLink = await auth.generateEmailVerificationLink(
               user.email,
               actionCodeSettings
             );
