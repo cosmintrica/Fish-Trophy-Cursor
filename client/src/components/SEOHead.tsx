@@ -12,7 +12,7 @@ interface SEOHeadProps {
   modifiedTime?: string;
   section?: string;
   tags?: string[];
-  structuredData?: Record<string, unknown>;
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
   canonical?: string;
   noindex?: boolean;
   nofollow?: boolean;
