@@ -5,8 +5,7 @@ interface PositionOptions {
   maximumAge?: number;
 }
 
-// GeolocationPositionError is a built-in DOM type
-type GeolocationPositionError = GeolocationPositionError;
+// GeolocationPositionError is a built-in DOM type - no need to redefine
 
 export interface UserLocation {
   latitude: number;
