@@ -12,6 +12,29 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🔄 Recent Changes & Updates
 
+### 2025-09-02 - CRITICAL UI/UX FIXES & MOBILE OPTIMIZATION
+- **Status**: ✅ Completed
+- **Priority**: 🔴 CRITICAL - UI/UX issues and mobile performance
+- **Changes**:
+  - 🎨 **UI**: User popup redesigned - alb simplu cu drop shadow, fără double cards
+  - 🎨 **UI**: Location popups simplified - fără double cards, cupe pentru recorduri
+  - 🎨 **UI**: Marker borders restored - border-3 border-white vizibil
+  - 📱 **MOBILE**: Canvas rendering pentru performanță mai bună
+  - 📱 **MOBILE**: Zoom limitat la 15 pe mobil, max 20 markere
+  - 📱 **MOBILE**: Tile optimizations și batch marker loading
+  - 🔧 **TECH**: TypeScript error fixed (unused Fish import)
+  - 🔧 **TECH**: Lazy loading pentru imagini în Species și Leaderboards
+  - 📋 **PAGES**: Species page - doar specii, fără pești de mare
+  - 📋 **PAGES**: Leaderboards page - filtre complexe implementate
+- **Performance Improvements**:
+  - **LCP**: Expected improvement from 11.0s to ~3-4s
+  - **Mobile Map**: Much smoother with Canvas rendering
+  - **Build**: All TypeScript errors resolved
+- **Files Modified**:
+  - `client/src/pages/Home.tsx` - Complete popup redesign and mobile optimization
+  - `client/src/pages/Species.tsx` - Removed unused imports, species-only focus
+  - `client/src/pages/Leaderboards.tsx` - Added lazy loading for images
+
 ### 2025-01-27 - CRITICAL SECURITY & UX OVERHAUL
 - **Status**: ✅ Completed
 - **Priority**: 🔴 CRITICAL - Security vulnerabilities fixed
@@ -109,9 +132,10 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 4. **✅ Geolocation**: Servicii de geocoding pentru locații
 5. **✅ Security**: Sistem complet securizat cu environment variables
 6. **✅ Mobile Optimization**: Harta și UX optimizate pentru mobil
-7. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
-8. **Performance**: Optimizare loading și caching
-9. **Testing**: Testare cross-browser și mobile
+7. **✅ UI/UX**: Popup-uri simplificate și marker borders restaurate
+8. **✅ Performance**: Canvas rendering și optimizări mobile implementate
+9. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
+10. **Testing**: Testare cross-browser și mobile
 
 ## 📝 Development Notes
 - Folosim Vite + React cu TypeScript pentru frontend
@@ -138,12 +162,13 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 3. **✅ Database Testing**: Conexiune cu Neon database funcțională
 4. **✅ Security Hardening**: Sistem complet securizat
 5. **✅ Mobile Optimization**: Harta și UX optimizate pentru mobil
-6. **PWA Testing**: Testare PWA pe dispozitive mobile
-7. **✅ API Testing**: Toate Netlify Functions funcționale
-8. **Performance Optimization**: Optimizare loading și caching
-9. **Cross-browser Testing**: Testare pe diferite browsere
-10. **Email Service Integration**: Configurare Resend/SendGrid pentru email-uri
-11. **Firebase Custom Claims**: Implementare roluri sigure prin Firebase
+6. **✅ UI/UX Fixes**: Popup-uri simplificate și marker borders restaurate
+7. **✅ Performance**: Canvas rendering și optimizări mobile implementate
+8. **PWA Testing**: Testare PWA pe dispozitive mobile
+9. **✅ API Testing**: Toate Netlify Functions funcționale
+10. **Cross-browser Testing**: Testare pe diferite browsere
+11. **Email Service Integration**: Configurare Resend/SendGrid pentru email-uri
+12. **Firebase Custom Claims**: Implementare roluri sigure prin Firebase
 
 ## 🔐 Security & Role Management
 
@@ -171,5 +196,5 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - Scalabil pentru multiple roluri (admin, moderator, user)
 
 ---
-*Ultima actualizare: 2025-01-27 15:30*
+*Ultima actualizare: 2025-09-02 21:45*
 

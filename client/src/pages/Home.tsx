@@ -285,7 +285,9 @@ export default function Home() {
     
     // Adaugă toți markerii în batch pentru performanță mai bună
     if (locationsLayerRef.current && markers.length > 0) {
-      locationsLayerRef.current.addLayers(markers);
+      markers.forEach(marker => {
+        locationsLayerRef.current!.addLayer(marker);
+      });
     }
   };
 
@@ -368,6 +370,7 @@ export default function Home() {
             const address = await geocodingService.reverseGeocode(latitude, longitude);
             
             // Creează marker cu fundal alb și design îmbunătățit
+            const isMobile = window.innerWidth <= 768;
             const userIcon = L.divIcon({
               className: 'user-location-marker',
               html: `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`,

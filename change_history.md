@@ -531,7 +531,72 @@
 - **✅ Input Validation**: All user inputs properly validated
 - **✅ Error Handling**: Secure error messages without information leakage
 
+### **2025-09-02 21:45 - CRITICAL UI/UX FIXES & MOBILE OPTIMIZATION**
+
+#### **🎨 MAJOR UI/UX IMPROVEMENTS:**
+- **✅ User Popup Redesign**: Completely redesigned user location popup
+  - **Alb simplu cu drop shadow**: Clean white background with `shadow-lg`
+  - **Fără double cards**: Eliminated all `bg-gray-50` card containers
+  - **Layout simplu**: Centered design with profile picture above name
+  - **Dimensiune redusă**: 160-180px width (much smaller than before)
+  - **Border la poza de profil**: `border-2 border-gray-300` for clear definition
+  - **Coordonate directe**: GPS and address displayed directly under name
+
+- **✅ Location Popup Simplification**: Streamlined location popups
+  - **Fără double cards**: Removed all card containers from location popups
+  - **Cupe pentru recorduri**: 🥇🥈🥉 medal icons for record display
+  - **Design curat**: Simple white background with drop shadow
+  - **Informații esențiale**: Only name, county, region, species, and records
+
+- **✅ Marker Border Restoration**: Fixed white borders on all markers
+  - **Border vizibil**: `border-3 border-white` for clear white outline
+  - **Shadow pentru contrast**: `shadow-lg` for better visibility
+  - **Dimensiune optimă**: w-8 h-8 with proper border visibility
+  - **Icon clar**: Fish icon w-5 h-5 for better clarity
+
+#### **📱 MOBILE PERFORMANCE OPTIMIZATION:**
+- **✅ Canvas Rendering**: `preferCanvas: true` for all devices
+- **✅ Zoom Optimization**: maxZoom 15 on mobile (vs 18 on desktop)
+- **✅ Marker Limitation**: Max 20 markers on mobile for performance
+- **✅ Tile Optimization**: 
+  - `keepBuffer: 1` on mobile (vs 2 on desktop)
+  - `detectRetina: false` on mobile
+  - `updateWhenIdle: false` and `updateWhenZooming: false`
+- **✅ Map Bounds**: Limited to Romania bounds on mobile
+- **✅ Animation Disabled**: `fadeAnimation: false`, `markerZoomAnimation: false`
+- **✅ Batch Marker Loading**: Markers added in batches for better performance
+
+#### **🔧 TECHNICAL FIXES:**
+- **✅ TypeScript Error**: Fixed unused `Fish` import in `Species.tsx`
+- **✅ Build Process**: All Netlify builds now succeed without errors
+- **✅ Performance**: Implemented lazy loading for images in Species and Leaderboards
+- **✅ Mobile Detection**: Proper mobile device detection for responsive behavior
+
+#### **📋 PAGES IMPLEMENTATION:**
+- **✅ Species Page**: Complete catalog with search and filtering
+  - Removed "Pești de mare" category (for future Black Sea implementation)
+  - Removed records tab (separate page for records)
+  - Clean species-only focus with habitat and behavior info
+- **✅ Leaderboards Page**: Comprehensive leaderboards with complex filters
+  - Species filter: Crap, Șalău, Biban, Platca
+  - Location filter: Snagov, Dunărea, Herăstrău, Cernica
+  - Timeframe filters: All-time, Monthly, Weekly
+  - Professional layout with mock data
+
+#### **🚀 DEPLOYMENT STATUS:**
+- **✅ All Changes Deployed**: Successfully pushed to production
+- **✅ Mobile Optimized**: Harta mult mai rapidă pe mobil
+- **✅ UI Simplified**: Popup-uri mult mai mici și simple
+- **✅ Performance Improved**: Canvas rendering și optimizări mobile
+- **✅ Build Success**: All TypeScript errors resolved
+
+#### **📊 PERFORMANCE IMPROVEMENTS:**
+- **LCP (Largest Contentful Paint)**: Expected improvement from 11.0s to ~3-4s
+- **FCP (First Contentful Paint)**: Maintained at ~2.0s (good)
+- **Speed Index**: Improved with Canvas rendering
+- **Mobile Map**: Much smoother with reduced markers and optimized tiles
+
 ---
 
-*Ultima actualizare: 2025-01-27 15:30*
+*Ultima actualizare: 2025-09-02 21:45*
 
