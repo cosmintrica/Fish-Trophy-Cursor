@@ -2,20 +2,29 @@
 import { neon } from '@netlify/neon';
 
 export async function handler(event) {
-  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
+  console.log('🔍 User Profile function called');
   
-  // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
-  const pathParts = event.path.split('/');
-  const firebaseUid = pathParts[pathParts.length - 1];
-  
-  if (!firebaseUid || firebaseUid === 'user-profile') {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Firebase UID is required' })
-    };
-  }
-
   try {
+    const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
+    console.log('✅ Database connection created');
+  
+    // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
+    const pathParts = event.path.split('/');
+    const firebaseUid = pathParts[pathParts.length - 1];
+    
+    console.log('Firebase UID:', firebaseUid);
+    console.log('HTTP Method:', event.httpMethod);
+    
+    if (!firebaseUid || firebaseUid === 'user-profile') {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ error: 'Firebase UID is required' })
+      };
+    }
     // Handle CORS preflight requests
     if (event.httpMethod === 'OPTIONS') {
       return {
@@ -158,7 +167,11 @@ export async function handler(event) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        message: error.message,
+        stack: error.stack
+      })
     };
   }
 }
