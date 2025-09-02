@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import { ImageResponse } from '@vercel/og';
+import { neon } from '@neondatabase/serverless';
 
 export const handler: Handler = async (event) => {
   try {

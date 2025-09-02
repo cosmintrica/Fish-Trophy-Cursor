@@ -6,11 +6,33 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# API redirects to Netlify Functions
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/species"
+  to = "/.netlify/functions/species"
   status = 200
 
+[[redirects]]
+  from = "/api/locations"
+  to = "/.netlify/functions/locations"
+  status = 200
+
+[[redirects]]
+  from = "/api/users/:firebase_uid"
+  to = "/.netlify/functions/user-profile/:firebase_uid"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/user"
+  to = "/.netlify/functions/auth-user"
+  status = 200
+
+[[redirects]]
+  from = "/api/og"
+  to = "/.netlify/functions/og"
+  status = 200
+
+# Catch-all for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -21,7 +43,14 @@
   node_bundler = "esbuild"
 
 [dev]
-  command = "npm run dev"
+  command = "npm run dev:client"
   port = 3000
   publish = "client/dist"
   functions = "netlify/functions"
+
+# Environment variables for development
+[context.development.environment]
+  NODE_ENV = "development"
+
+[context.production.environment]
+  NODE_ENV = "production"
