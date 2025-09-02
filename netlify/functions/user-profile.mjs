@@ -16,6 +16,19 @@ export async function handler(event) {
   }
 
   try {
+    // Handle CORS preflight requests
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        },
+        body: ''
+      };
+    }
+
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
       
@@ -70,7 +83,10 @@ export async function handler(event) {
     if (event.httpMethod === 'PUT') {
       console.log(`🔄 PUT request for user profile: ${firebaseUid}`);
       
-      const { display_name, bio, location, website, phone } = JSON.parse(event.body || '{}');
+      const { displayName, display_name, bio, location, website, phone } = JSON.parse(event.body || '{}');
+      
+      // Map displayName to display_name for database compatibility
+      const displayNameToSave = displayName || display_name;
 
       // Check if user exists first
       const existingUsers = await sql`
@@ -91,7 +107,7 @@ export async function handler(event) {
       // Update user profile
       const updatedUsers = await sql`
         UPDATE users 
-        SET display_name = ${display_name}, 
+        SET display_name = ${displayNameToSave}, 
             bio = ${bio}, 
             location = ${location}, 
             website = ${website}, 

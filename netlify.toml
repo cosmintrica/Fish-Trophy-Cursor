@@ -10,6 +10,12 @@
   CI = "false"
 
 [[redirects]]
+  from = "/api/users/*/profile"
+  to = "/.netlify/functions/user-profile/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
