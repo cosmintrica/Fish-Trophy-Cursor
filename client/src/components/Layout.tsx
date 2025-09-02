@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, MapPin, User, BookOpen, Plus, Trophy, FileText } from 'lucide-react';
+import { Fish, Menu, X, Home, MapPin, User, Plus, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
