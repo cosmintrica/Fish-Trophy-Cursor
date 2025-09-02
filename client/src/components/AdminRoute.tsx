@@ -13,8 +13,9 @@ const AdminRoute: React.FC<AdminRouteProps> = ({
 }) => {
   const { user } = useAuth();
   
-  // Check if user is admin
-  const isAdmin = user?.email === 'cosmin.trica@outlook.com';
+  // Check if user is admin - use environment variable for security
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'cosmin.trica@outlook.com';
+  const isAdmin = user?.email === adminEmail;
   
   if (!isAdmin) {
     return <>{fallback}</>;

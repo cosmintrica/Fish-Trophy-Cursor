@@ -135,76 +135,19 @@ export async function handler(event) {
         }
       }
 
-      // Update user profile - only update fields that are provided and not empty
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
-
-      if (displayNameToSave !== undefined && displayNameToSave !== '') {
-        updateFields.push(`display_name = $${paramIndex}`);
-        updateValues.push(displayNameToSave);
-        paramIndex++;
-      }
-
-      if (emailToSave && emailToSave !== '') {
-        updateFields.push(`email = $${paramIndex}`);
-        updateValues.push(emailToSave);
-        paramIndex++;
-      }
-
-      if (photoUrlToSave !== undefined && photoUrlToSave !== '') {
-        updateFields.push(`photo_url = $${paramIndex}`);
-        updateValues.push(photoUrlToSave);
-        paramIndex++;
-      }
-
-      if (bio !== undefined && bio !== '') {
-        updateFields.push(`bio = $${paramIndex}`);
-        updateValues.push(bio);
-        paramIndex++;
-      }
-
-      if (location !== undefined && location !== '') {
-        updateFields.push(`location = $${paramIndex}`);
-        updateValues.push(location);
-        paramIndex++;
-      }
-
-      if (website !== undefined && website !== '') {
-        updateFields.push(`website = $${paramIndex}`);
-        updateValues.push(website);
-        paramIndex++;
-      }
-
-      if (phone !== undefined && phone !== '') {
-        updateFields.push(`phone = $${paramIndex}`);
-        updateValues.push(phone);
-        paramIndex++;
-      }
-
-      // Always update the updated_at timestamp
-      updateFields.push(`updated_at = NOW()`);
-      updateValues.push(firebaseUid);
-
-      let updatedUsers;
-      if (updateFields.length <= 1) {
-        // Only updated_at, no other fields to update
-        updatedUsers = await sql`
-          UPDATE users
-          SET updated_at = NOW()
-          WHERE firebase_uid = ${firebaseUid}
-          RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
-        `;
-      } else {
-        const query = `
-          UPDATE users
-          SET ${updateFields.join(', ')}
-          WHERE firebase_uid = $${paramIndex}
-          RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
-        `;
-
-        updatedUsers = await sql.unsafe(query, updateValues);
-      }
+      // Update user profile - use simple template literals for safety
+      const updatedUsers = await sql`
+        UPDATE users
+        SET display_name = ${displayNameToSave || null},
+            photo_url = ${photoUrlToSave || null},
+            bio = ${bio || null},
+            location = ${location || null},
+            website = ${website || null},
+            phone = ${phone || null},
+            updated_at = NOW()
+        WHERE firebase_uid = ${firebaseUid}
+        RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
+      `;
 
       const updatedUser = updatedUsers[0];
       console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email}`);

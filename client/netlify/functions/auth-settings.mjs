@@ -164,12 +164,31 @@ export async function handler(event) {
         }
 
         try {
-          // Get user info to verify current password
+          // Get user info
           const user = await auth.getUser(firebaseUid);
           
-          // For now, we'll skip current password verification since Firebase Admin doesn't have a direct way
-          // In production, you'd need to implement this through Firebase Auth client-side
-          // or use a different approach
+          // IMPORTANT: Firebase Admin SDK cannot verify current password directly
+          // This should be done client-side with reauthentication
+          // For now, we'll require the user to be recently authenticated
+          
+          // Check if token is recent (within last 5 minutes)
+          const tokenTime = decodedToken.auth_time * 1000;
+          const now = Date.now();
+          const fiveMinutes = 5 * 60 * 1000;
+          
+          if (now - tokenTime > fiveMinutes) {
+            return {
+              statusCode: 401,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                error: 'Token expired. Please re-authenticate to change password.'
+              })
+            };
+          }
           
           // Update password in Firebase Auth
           await auth.updateUser(firebaseUid, {
@@ -225,7 +244,7 @@ export async function handler(event) {
 
           // Generate email verification link
           const actionCodeSettings = {
-            url: `${event.headers.origin || 'https://fishtrophy.ro'}/profile`,
+            url: `${event.headers.origin || 'https://fishtrophy.ro'}/profile?verified=true`,
             handleCodeInApp: false,
           };
 
@@ -236,6 +255,8 @@ export async function handler(event) {
 
           console.log(`✅ Email verification link generated for user ${firebaseUid}`);
 
+          // TODO: Send email via Resend/SendGrid when configured
+          // For now, return the link for manual use
           return {
             statusCode: 200,
             headers: {
@@ -244,10 +265,11 @@ export async function handler(event) {
             },
             body: JSON.stringify({
               success: true,
-              message: 'Email verification link generated',
+              message: 'Email verification link generated. Check console for link (email service not configured yet).',
               data: { 
                 emailVerificationLink,
-                email: user.email 
+                email: user.email,
+                note: 'Email service not configured - link available in server logs'
               }
             })
           };

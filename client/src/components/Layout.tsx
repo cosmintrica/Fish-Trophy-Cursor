@@ -19,8 +19,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const location = useLocation();
 
-  // Check if user is admin
-  const isAdmin = user?.email === 'cosmin.trica@outlook.com';
+  // Check if user is admin - use environment variable for security
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'cosmin.trica@outlook.com';
+  const isAdmin = user?.email === adminEmail;
+  const [showBlackSeaPopup, setShowBlackSeaPopup] = useState(false);
 
   // PWA Install Prompt Logic (mobile only)
   useEffect(() => {
@@ -161,9 +163,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   Marea Neagră
                 </Link>
               ) : (
-                <span className="text-sm font-medium text-gray-400 cursor-not-allowed">
+                <button
+                  onClick={() => setShowBlackSeaPopup(true)}
+                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                >
                   Marea Neagră
-                </span>
+                </button>
               )}
               {isAdmin && (
                 <Link
@@ -469,6 +474,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* Black Sea Coming Soon Popup */}
+      {showBlackSeaPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlackSeaPopup(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Fish className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
+              <p className="text-gray-600 mb-6">
+                Această secțiune este în construcție și va fi disponibilă în curând. 
+                Vom adăuga locații de pescuit, specii marine și recorduri din Marea Neagră.
+              </p>
+              <button
+                onClick={() => setShowBlackSeaPopup(false)}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              >
+                Înțeleg
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

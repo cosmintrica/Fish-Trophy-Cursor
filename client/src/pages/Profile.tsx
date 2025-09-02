@@ -31,8 +31,9 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Check if user is admin
-  const isAdmin = user?.email === 'cosmin.trica@outlook.com';
+  // Check if user is admin - use environment variable for security
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'cosmin.trica@outlook.com';
+  const isAdmin = user?.email === adminEmail;
   const [profileData, setProfileData] = useState({
     displayName: user?.displayName || '',
     email: user?.email || '',
@@ -61,7 +62,7 @@ const Profile: React.FC = () => {
       location: 'Lacul Snagov',
       date: '2024-01-15',
       status: 'verified',
-      image: '/placeholder-fish.jpg'
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center'
     },
     {
       id: 2,
@@ -71,7 +72,7 @@ const Profile: React.FC = () => {
       location: 'Dunărea',
       date: '2024-01-10',
       status: 'pending',
-      image: '/placeholder-fish.jpg'
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center'
     }
   ];
 
@@ -550,9 +551,11 @@ const Profile: React.FC = () => {
                         <Input
                           id="email"
                           value={profileData.email}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, email: e.target.value})}
-                          disabled={!isEditing}
+                          disabled={true}
+                          className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                          title="Email-ul poate fi schimbat doar din secțiunea Setări"
                         />
+                        <p className="text-xs text-gray-500 mt-1">Email-ul poate fi schimbat doar din secțiunea Setări</p>
                       </div>
                     </div>
 
