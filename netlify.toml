@@ -7,11 +7,13 @@
   NODE_VERSION = "20"
   DEBUG = "vite:*"
   SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*"
+  CI = "false"
 
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
