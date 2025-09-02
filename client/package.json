@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npx typescript && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
+    "build": "node node_modules/typescript/bin/tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "preview": "vite preview",
-    "type-check": "npx typescript --noEmit"
+    "type-check": "node node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
     "@netlify/neon": "^0.1.0",
