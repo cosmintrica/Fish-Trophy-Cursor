@@ -270,6 +270,15 @@
 - **Error Handling**: Added comprehensive error handling for database operations
 - **Git Sync**: All changes committed and pushed to GitHub - project ready for PC migration
 
+### 2025-01-27 - Profile Update API Fix
+
+- **API Routing Issue**: Fixed critical profile update functionality that was completely broken
+- **Netlify Redirects**: Fixed redirect configuration for /api/users/*/profile to /.netlify/functions/user-profile/*
+- **Field Mapping**: Added proper mapping from displayName (frontend) to display_name (database)
+- **CORS Support**: Added OPTIONS request handling for CORS preflight requests
+- **Database Integration**: Profile updates now work correctly with real database connection
+- **Error Resolution**: Resolved "Failed to fetch" errors in profile page
+
 ### 2025-09-01 - Project Documentation & Latest Sync
 
 - **Documentation System**: Created comprehensive project documentation system

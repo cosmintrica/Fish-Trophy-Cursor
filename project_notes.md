@@ -42,6 +42,12 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🚨 Known Issues & Solutions
 
+### Issue: Profile Update API Not Working
+- **Problem**: Profile updates completely broken - "Failed to fetch" errors, no data saving
+- **Root Cause**: API routing mismatch between frontend (/api/users/*/profile) and Netlify functions (/.netlify/functions/user-profile/*)
+- **Solution**: ✅ Resolved - Fixed Netlify redirects and field mapping
+- **Impact**: Profile updates now work correctly with real database integration
+
 ### Issue: Netlify Secrets Scanning
 - **Problem**: Firebase API keys detected in build output and env.example
 - **Solution**: ✅ Resolved - Configured SECRETS_SCAN_OMIT_PATHS and replaced real keys with placeholders
