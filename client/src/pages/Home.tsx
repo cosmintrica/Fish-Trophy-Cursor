@@ -100,39 +100,33 @@ export default function Home() {
           const userPhoto = user?.photoURL || '';
           
           userMarker.bindPopup(`
-            <div class="p-3 sm:p-6 min-w-[280px] sm:min-w-[320px] max-w-[90vw] sm:max-w-[400px] bg-gradient-to-br from-white to-blue-50 rounded-xl sm:rounded-2xl shadow-2xl border border-blue-200">
-              <div class="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 border-2 sm:border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
+            <div class="p-4 min-w-[240px] max-w-[280px] bg-white rounded-xl shadow-lg border border-gray-200">
+              <div class="text-center mb-3">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-md mx-auto mb-2">
                   ${userPhoto ? 
                     `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                    `<span class="text-white font-bold text-lg sm:text-xl">${userName.charAt(0).toUpperCase()}</span>`
+                    `<span class="text-white font-bold text-xl">${userName.charAt(0).toUpperCase()}</span>`
                   }
                 </div>
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-bold text-lg sm:text-xl text-gray-800 mb-1 truncate">${userName}</h3>
-                  <p class="text-xs sm:text-sm text-gray-600">📍 Locația ta curentă</p>
-                </div>
+                <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
+                <p class="text-sm text-gray-600">📍 Locația ta curentă</p>
               </div>
               
-              <div class="space-y-2 sm:space-y-3">
-                <div class="bg-white rounded-lg p-2 sm:p-3 shadow-sm border border-gray-100">
-                  <p class="text-xs sm:text-sm font-medium text-gray-700 mb-1">Coordonate GPS</p>
-                  <p class="text-xs sm:text-sm text-gray-600 font-mono break-all">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
+              <div class="space-y-2">
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <p class="text-xs font-medium text-gray-700 mb-1">Coordonate GPS</p>
+                  <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
                 </div>
                 
-                <div class="bg-white rounded-lg p-2 sm:p-3 shadow-sm border border-gray-100">
-                  <p class="text-xs sm:text-sm font-medium text-gray-700 mb-1">Adresă</p>
-                  <p class="text-xs sm:text-sm text-gray-600 break-words">${address}</p>
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <p class="text-xs font-medium text-gray-700 mb-1">Adresă</p>
+                  <p class="text-xs text-gray-600">${address}</p>
                 </div>
-              </div>
-              
-              <div class="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-200">
-                <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Platforma Pescarilor</p>
               </div>
             </div>
           `, {
             className: 'custom-popup',
-            maxWidth: Math.min(window.innerWidth * 0.9, 400),
+            maxWidth: 300,
             closeButton: true,
             autoClose: false,
             closeOnClick: false
@@ -174,8 +168,8 @@ export default function Home() {
       
       switch (location.type) {
         case 'river':
-          markerColor = 'bg-teal-500';
-          borderColor = 'border-teal-600';
+          markerColor = 'bg-emerald-500';
+          borderColor = 'border-emerald-600';
           break;
         case 'lake':
           markerColor = 'bg-blue-500';
@@ -195,11 +189,11 @@ export default function Home() {
           break;
       }
 
-      const iconSize = 40; // Marker mai mare
+      const iconSize = 32; // Marker mai mic
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="w-10 h-10 ${markerColor} ${borderColor} rounded-full border-4 border-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform duration-200">
-                 <Fish className="w-6 h-6 text-white" />
+        html: `<div class="w-8 h-8 ${markerColor} ${borderColor} rounded-full border-3 border-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200">
+                 <Fish className="w-5 h-5 text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
@@ -349,39 +343,33 @@ export default function Home() {
             const userPhoto = user?.photoURL || '';
             
             userMarker.bindPopup(`
-              <div class="p-3 sm:p-6 min-w-[280px] sm:min-w-[320px] max-w-[90vw] sm:max-w-[400px] bg-gradient-to-br from-white to-blue-50 rounded-xl sm:rounded-2xl shadow-2xl border border-blue-200">
-                <div class="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                  <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 border-2 sm:border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
+              <div class="p-4 min-w-[240px] max-w-[280px] bg-white rounded-xl shadow-lg border border-gray-200">
+                <div class="text-center mb-3">
+                  <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-md mx-auto mb-2">
                     ${userPhoto ? 
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                      `<span class="text-white font-bold text-lg sm:text-xl">${userName.charAt(0).toUpperCase()}</span>`
+                      `<span class="text-white font-bold text-xl">${userName.charAt(0).toUpperCase()}</span>`
                     }
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <h3 class="font-bold text-lg sm:text-xl text-gray-800 mb-1 truncate">${userName}</h3>
-                    <p class="text-xs sm:text-sm text-gray-600">📍 Locația ta curentă</p>
-                  </div>
+                  <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
+                  <p class="text-sm text-gray-600">📍 Locația ta curentă</p>
                 </div>
                 
-                <div class="space-y-2 sm:space-y-3">
-                  <div class="bg-white rounded-lg p-2 sm:p-3 shadow-sm border border-gray-100">
-                    <p class="text-xs sm:text-sm font-medium text-gray-700 mb-1">Coordonate GPS</p>
-                    <p class="text-xs sm:text-sm text-gray-600 font-mono break-all">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
+                <div class="space-y-2">
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <p class="text-xs font-medium text-gray-700 mb-1">Coordonate GPS</p>
+                    <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
                   </div>
                   
-                  <div class="bg-white rounded-lg p-2 sm:p-3 shadow-sm border border-gray-100">
-                    <p class="text-xs sm:text-sm font-medium text-gray-700 mb-1">Adresă</p>
-                    <p class="text-xs sm:text-sm text-gray-600 break-words">${address}</p>
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <p class="text-xs font-medium text-gray-700 mb-1">Adresă</p>
+                    <p class="text-xs text-gray-600">${address}</p>
                   </div>
-                </div>
-                
-                <div class="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-200">
-                  <p class="text-xs text-gray-500 text-center">🎣 Fish Trophy - Platforma Pescarilor</p>
                 </div>
               </div>
             `, {
               className: 'custom-popup',
-              maxWidth: Math.min(window.innerWidth * 0.9, 400),
+              maxWidth: 300,
               closeButton: true,
               autoClose: false,
               closeOnClick: false
@@ -492,7 +480,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
               {[
                 { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
-                { type: 'river', label: 'Râuri', icon: MapPin, color: 'bg-teal-500 hover:bg-teal-600' },
+                { type: 'river', label: 'Râuri', icon: MapPin, color: 'bg-emerald-500 hover:bg-emerald-600' },
                 { type: 'lake', label: 'Lacuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
                 { type: 'pond', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
                 { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
