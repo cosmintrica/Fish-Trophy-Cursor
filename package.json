@@ -4,12 +4,10 @@
   "description": "Comprehensive platform for anglers in Romania",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:api\"",
+    "dev": "netlify dev",
     "dev:client": "cd client && npm run dev",
-    "dev:api": "cd api && npm run dev",
-    "build": "npm run build:client && npm run build:api",
+    "build": "npm run build:client",
     "build:client": "cd client && npm run build",
-    "build:api": "cd api && npm run build",
     "lint": "eslint . --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
     "lint:client": "eslint client --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
     "lint:api": "eslint api --ext .ts --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
@@ -30,7 +28,8 @@
     "eslint": "^8.57.1",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "netlify-cli": "^17.36.4"
   },
   "engines": {
     "node": ">=20.0.0 <23.0.0"
