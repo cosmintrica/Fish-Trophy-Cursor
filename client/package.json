@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
+    "build": "npx tsc && node scripts/generate-icons.js && vite build && node scripts/copy-assets.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "npx tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",

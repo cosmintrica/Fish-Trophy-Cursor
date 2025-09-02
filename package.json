@@ -8,18 +8,11 @@
     "dev:client": "cd client && npm run dev",
     "build": "npm run build:client",
     "build:client": "cd client && npm run build",
-    "lint": "eslint . --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
-    "lint:client": "eslint client --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
-    "lint:api": "eslint api --ext .ts --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
-    "lint:fix": "npm run lint:fix:client && npm run lint:fix:api",
+    "lint": "eslint client --ext .ts,.tsx --ignore-pattern '**/dist/**' --ignore-pattern '**/build/**' --ignore-pattern '**/node_modules/**'",
+    "lint:fix": "npm run lint:fix:client",
     "lint:fix:client": "cd client && npm run lint:fix",
-    "lint:fix:api": "cd client && npm run lint:fix",
-    "type-check": "npm run type-check:client && npm run type-check:api",
-    "type-check:client": "cd client && npm run type-check",
-    "type-check:api": "cd client && npm run type-check",
-    "db:generate": "cd packages/db && npm run generate",
-    "db:push": "cd packages/db && npm run push",
-    "db:studio": "cd packages/db && npm run studio"
+    "type-check": "npm run type-check:client",
+    "type-check:client": "cd client && npm run type-check"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.21.0",
