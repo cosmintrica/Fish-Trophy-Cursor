@@ -6,14 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  User, 
-  Trophy, 
-  Settings, 
-  Camera, 
-  Mail, 
-  Lock, 
-  Save, 
+import {
+  User,
+  Trophy,
+  Settings,
+  Camera,
+  Mail,
+  Lock,
+  Save,
   Edit,
   Calendar,
   MapPin,
@@ -30,7 +30,7 @@ const Profile: React.FC = () => {
   const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  
+
   // Check if user is admin
   const isAdmin = user?.email === 'cosmin.trica@outlook.com';
   const [profileData, setProfileData] = useState({
@@ -81,7 +81,7 @@ const Profile: React.FC = () => {
       try {
         const response = await fetch(`/api/users/${user.uid}/profile`);
         const result = await response.json();
-        
+
         if (result.success && result.data) {
           setProfileData({
             displayName: result.data.displayName || user.displayName || '',
@@ -90,7 +90,7 @@ const Profile: React.FC = () => {
             location: result.data.location || '',
             bio: result.data.bio || 'Pescar pasionat din România!'
           });
-          
+
           // Afișează mesaj dacă este mock data
           if (result.message && result.message.includes('Mock')) {
             console.log('ℹ️ Using mock data - database connection pending');
@@ -113,15 +113,16 @@ const Profile: React.FC = () => {
     try {
       const profileDataToSend = {
         displayName: profileData.displayName,
-        email: profileData.email,
+        email: profileData.email || user.email,
         phone: profileData.phone,
         location: profileData.location,
-        bio: profileData.bio
+        bio: profileData.bio,
+        photo_url: user.photoURL || ''
       };
 
       // Actualizează Firebase Auth
       await updateProfile(user, { displayName: profileData.displayName });
-      
+
       // Salvează în baza de date prin API
       const response = await fetch(`/api/users/${user.uid}/profile`, {
         method: 'PUT',
@@ -132,7 +133,7 @@ const Profile: React.FC = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast.success('Profilul a fost actualizat cu succes!');
         setIsEditing(false);
@@ -146,7 +147,7 @@ const Profile: React.FC = () => {
             bio: result.data.bio || ''
           });
         }
-        
+
         // Afișează mesaj dacă este mock data
         if (result.message && result.message.includes('Mock')) {
           toast.info('Datele sunt salvate temporar (mock). Conexiunea la baza de date va fi activată în curând.');
@@ -165,7 +166,7 @@ const Profile: React.FC = () => {
       toast.error('Parolele nu se potrivesc');
       return;
     }
-    
+
     try {
       // Aici va fi logica pentru schimbarea parolei
       toast.success('Parola a fost schimbată cu succes!');
@@ -197,14 +198,14 @@ const Profile: React.FC = () => {
 
     try {
       toast.info('Se încarcă imaginea...');
-      
+
       const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       await updateProfile(user, { photoURL: url });
-      
+
       toast.success('Imaginea de profil a fost actualizată cu succes!');
-      
+
       // Actualizează UI-ul imediat
       window.location.reload();
     } catch (error) {
@@ -219,9 +220,9 @@ const Profile: React.FC = () => {
       pending: { label: 'În așteptare', className: 'bg-yellow-100 text-yellow-800' },
       rejected: { label: 'Respins', className: 'bg-red-100 text-red-800' }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
+
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
         {config.label}
@@ -286,9 +287,9 @@ const Profile: React.FC = () => {
                     <Trophy className="w-4 h-4" />
                     <span>{records.length} recorduri</span>
                   </div>
-                  <Button 
-                    onClick={logout} 
-                    variant="outline" 
+                  <Button
+                    onClick={logout}
+                    variant="outline"
                     className="w-full"
                   >
                     Ieșire din cont
@@ -354,7 +355,7 @@ const Profile: React.FC = () => {
                             <h3 className="font-semibold text-lg">{record.species}</h3>
                             <span className="text-sm text-gray-500">{record.date}</span>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-4 mb-3">
                             <div className="flex items-center space-x-2">
                               <Scale className="w-4 h-4 text-blue-600" />
@@ -369,12 +370,12 @@ const Profile: React.FC = () => {
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <MapPin className="w-4 h-4" />
                             <span>{record.location}</span>
                           </div>
-                          
+
                           <div className="mt-3 flex space-x-2">
                             <Button variant="outline" size="sm" className="flex-1">
                               Vezi detalii
@@ -430,7 +431,7 @@ const Profile: React.FC = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="phone">Telefon</Label>
@@ -453,7 +454,7 @@ const Profile: React.FC = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="bio">Despre mine</Label>
                       <textarea
@@ -466,7 +467,7 @@ const Profile: React.FC = () => {
                         placeholder="Spune-ne câteva cuvinte despre tine..."
                       />
                     </div>
-                    
+
                     <div className="flex space-x-2">
                       {isEditing ? (
                         <>

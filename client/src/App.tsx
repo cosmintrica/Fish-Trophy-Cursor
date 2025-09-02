@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AdminRoute from '@/components/AdminRoute';
 import ScrollToTop from '@/components/ScrollToTop';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { initAnalytics } from '@/lib/analytics';
@@ -13,6 +14,7 @@ import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals';
 // Pages
 import Home from '@/pages/Home';
 import BlackSea from '@/pages/BlackSea';
+import BlackSeaComingSoon from '@/pages/BlackSeaComingSoon';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Admin from '@/pages/Admin';
@@ -48,7 +50,14 @@ function App() {
               <ScrollToTop />
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/black-sea" element={<BlackSea />} />
+                <Route 
+                  path="/black-sea" 
+                  element={
+                    <AdminRoute>
+                      <BlackSea />
+                    </AdminRoute>
+                  } 
+                />
                 <Route path="/species" element={<Species />} />
                 <Route path="/leaderboards" element={<Leaderboards />} />
                 <Route path="/submission-guide" element={<SubmissionGuide />} />

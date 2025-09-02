@@ -11,8 +11,11 @@
 Build a comprehensive platform for anglers in Romania featuring:
 - Public map with **water bodies** (polygons), **locations** (points), **amenities** (parking, facilities, tackle shops).
 - **Records** (catches) with photos, moderation, and **leaderboards**.
-- **Species** catalogue (real photos, details, habitat flags).
-- **Black Sea** dedicated section (`/black-sea`) with its own palette and filters.
+- **Species** catalogue (real photos, details, habitat flags) with smart filtering (popular species first, full search available).
+- **Team Statistics** by water body with comprehensive analytics (total weight, count, species breakdown).
+- **Premium Plan** (€2/user) for competitions, prizes, and advanced features.
+- **Role-based Access Control** (user/moderator/admin) with secure Firebase custom claims.
+- **Black Sea** dedicated section (`/black-sea`) - admin only, coming soon for users.
 - **Custom Admin** (`/admin`) with moderation queue, map editing (polygons & points), users & records management.
 - Notifications by email on approve/reject and when a top record (1–3) is beaten.
 
@@ -61,24 +64,37 @@ Build a comprehensive platform for anglers in Romania featuring:
 - [x] Firebase Auth flows (register/login with Email & Google)
 - [x] Store minimal profile in DB (`users`) and set **custom role claim** (`user|moderator|admin`)
 - [x] Middleware in Vercel Functions: verify `Authorization: Bearer <id_token>`
+- [ ] **Role Management System**
+  - [ ] Firebase Admin SDK for setting custom claims (admin/moderator roles)
+  - [ ] Secure role assignment endpoint (admin only)
+  - [ ] Role-based access control middleware
+  - [ ] User role management in admin panel
 
 #### 2.2 API Endpoints (Vercel Functions)
-- [ ] **Records**
-  - `POST /api/records` – create **pending** record; auto-assign `water_body_id` with `ST_Contains`
-  - `GET /api/records` – list with filters (species, bbox, status, dates)
-  - `PUT /api/records/:id/approve` – admin/mod (email user, write audit)
-  - `PUT /api/records/:id/reject` – admin/mod (reason required, email user, audit)
-- [ ] **Leaderboards**
-  - `GET /api/leaderboard` – top by species/period/area (see "Leaderboards")
+- [x] **Records** (Basic CRUD implemented)
+  - [x] `POST /api/records` – create **pending** record; auto-assign `water_body_id` with `ST_Contains`
+  - [x] `GET /api/records` – list with filters (species, bbox, status, dates)
+  - [ ] `PUT /api/records/:id/approve` – admin/mod (email user, write audit)
+  - [ ] `PUT /api/records/:id/reject` – admin/mod (reason required, email user, audit)
+- [x] **Leaderboards** (Basic implementation)
+  - [x] `GET /api/leaderboards` – top by species/period/area
+- [ ] **Team Statistics** (NEW)
+  - [ ] `GET /api/water-bodies/:id/team-stats` – comprehensive analytics per water body
+  - [ ] `GET /api/water-bodies/:id/species-breakdown` – species count/weight per water body
+  - [ ] `GET /api/teams` – list of "teams" (users who fished at specific water bodies)
 - [ ] **Water Bodies**
   - `GET /api/water-bodies` – list + optional bbox/GeoJSON simplified
   - `PUT /api/water-bodies/:id` – update properties + polygon (admin only)
 - [ ] **Amenities**
   - `POST/GET/PUT/DELETE /api/amenities` – CRUD on parking/facilities/shops
 - [ ] **Species**
-  - `GET /api/species`, `GET /api/species/:id`
+  - `GET /api/species` – with smart filtering (popular first, full search)
+  - `GET /api/species/:id`
 - [x] **Profile**
   - `PUT /api/profile` – sync display_name, preferences (e.g., email opt-ins)
+- [ ] **Premium Features** (Future)
+  - `POST /api/subscriptions` – handle €2/month premium subscriptions
+  - `GET /api/premium-features` – check user premium status
 
 **Validation:** Zod schemas for all payloads.  
 **Security:** Rate-limit write endpoints, CORS strict, JSON only, audit everything admin-side.
@@ -109,7 +125,14 @@ Build a comprehensive platform for anglers in Romania featuring:
 #### 3.3 Navigation & Theming
 - [x] Responsive navbar, footer, layout
 - [x] Theme via CSS variables (Tailwind) — default + **Black Sea** palette
-- [x] Route: `/black-sea` with light‑blue accent + preset filters
+- [ ] **Black Sea Access Control** (NEW)
+  - [ ] Admin-only access to `/black-sea` route
+  - [ ] "Coming Soon" message for regular users
+  - [ ] Move Black Sea to last position in navigation menu
+- [ ] **Species Smart Filtering** (NEW)
+  - [ ] Popular species shown first in record forms
+  - [ ] Full search functionality for all 270+ species
+  - [ ] User-friendly dropdown with search capability
 
 ---
 
@@ -124,6 +147,11 @@ Build a comprehensive platform for anglers in Romania featuring:
 - [ ] **Live search** (debounced) — no "Enter" button
 - [ ] Pagination with TanStack Table
 - [ ] Materialized view or optimized SQL for top‑N per species/area
+- [ ] **Team Statistics Dashboard** (NEW)
+  - [ ] Beautiful charts showing total fish caught per water body
+  - [ ] Weight totals, species breakdown, team member contributions
+  - [ ] Interactive graphs for "Echipa Zaga Zaga" and other water bodies
+  - [ ] Automatic team formation based on fishing location
 
 #### 4.3 User Profiles
 - [x] Profile page with stats (total records, PBs, last catches)
@@ -145,11 +173,43 @@ Build a comprehensive platform for anglers in Romania featuring:
 
 #### 5.3 Users & Amenities
 - [ ] Users page: change role (admin/mod), soft suspend
+- [ ] **Role Management System** (NEW)
+  - [ ] Secure role assignment interface (admin only)
+  - [ ] Firebase custom claims management
+  - [ ] User role history and audit trail
 - [ ] Amenities page: parking/facilities/tackle shops CRUD on map
+- [ ] **Premium Subscription Management** (Future)
+  - [ ] User subscription status monitoring
+  - [ ] Payment processing integration (€2/month)
+  - [ ] Revenue tracking for competitions and prizes
 
 ---
 
-### Phase 6: Polish, Testing & Launch (Week 8)
+### Phase 6: Advanced Features & Analytics (Week 8-9)
+#### 6.1 Team Statistics & Analytics
+- [ ] **Water Body Team Analytics**
+  - [ ] Automatic team formation based on fishing location
+  - [ ] Comprehensive statistics per water body (total weight, count, species)
+  - [ ] Beautiful charts and graphs for team performance
+  - [ ] "Echipa Zaga Zaga" and other water body teams
+- [ ] **Species Analytics**
+  - [ ] Species popularity tracking
+  - [ ] Smart species filtering (popular first, full search)
+  - [ ] Species distribution across water bodies
+
+#### 6.2 Premium Features Foundation
+- [ ] **Subscription System Architecture**
+  - [ ] Database schema for premium subscriptions
+  - [ ] Payment processing integration (€2/month)
+  - [ ] Revenue allocation for competitions and prizes
+- [ ] **Premium User Benefits**
+  - [ ] Advanced analytics and insights
+  - [ ] Priority support
+  - [ ] Exclusive competitions and prizes
+
+---
+
+### Phase 7: Polish, Testing & Launch (Week 10)
 - [ ] Sentry FE/BE, error boundaries everywhere
 - [ ] Lighthouse, bundle splitting, TanStack Query caching
 - [ ] E2E tests for critical API endpoints

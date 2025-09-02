@@ -3,7 +3,7 @@ import { neon } from '@netlify/neon';
 
 export async function handler(event) {
   const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-  
+
   try {
     // Handle CORS preflight requests
     if (event.httpMethod === 'OPTIONS') {
@@ -20,12 +20,12 @@ export async function handler(event) {
 
     if (event.httpMethod === 'GET') {
       console.log('🏆 GET request for leaderboards');
-      
+
       // Get query parameters
       const { species_id, period = 'all', limit = 10 } = event.queryStringParameters || {};
-      
+
       let query = `
-        SELECT 
+        SELECT
           r.id as record_id,
           r.weight_kg,
           r.length_cm,
@@ -45,28 +45,28 @@ export async function handler(event) {
         LEFT JOIN water_bodies wb ON wb.id = r.water_body_id
         WHERE r.status = 'approved'
       `;
-      
+
       const params = [];
       let paramIndex = 1;
-      
+
       if (species_id) {
         query += ` AND r.species_id = $${paramIndex}`;
         params.push(species_id);
         paramIndex++;
       }
-      
+
       if (period !== 'all') {
         const days = period === 'year' ? 365 : period === 'month' ? 30 : 7;
         query += ` AND r.captured_at >= NOW() - INTERVAL '${days} days'`;
       }
-      
+
       query += ` ORDER BY r.weight_kg DESC LIMIT $${paramIndex}`;
       params.push(parseInt(limit));
-      
+
       const leaderboard = await sql.unsafe(query, params);
-      
+
       console.log(`✅ Found ${leaderboard.length} leaderboard entries`);
-      
+
       return {
         statusCode: 200,
         headers: {

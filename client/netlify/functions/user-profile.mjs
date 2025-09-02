@@ -3,11 +3,11 @@ import { neon } from '@netlify/neon';
 
 export async function handler(event) {
   const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-  
+
   // Extract firebase_uid from path: /.netlify/functions/user-profile/[firebase_uid]
   const pathParts = event.path.split('/');
   const firebaseUid = pathParts[pathParts.length - 1];
-  
+
   if (!firebaseUid || firebaseUid === 'user-profile') {
     return {
       statusCode: 400,
@@ -31,22 +31,22 @@ export async function handler(event) {
 
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
-      
+
       let users = await sql`
         SELECT id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
-        FROM users 
+        FROM users
         WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (users.length === 0) {
         // Create user if they don't exist - we'll get Firebase data from the request
         console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
-        
+
         // Try to get Firebase user data from headers or request body
         const firebaseEmail = event.headers['x-firebase-email'] || '';
         const firebaseDisplayName = event.headers['x-firebase-display-name'] || '';
         const firebasePhotoUrl = event.headers['x-firebase-photo-url'] || '';
-        
+
         const newUsers = await sql`
           INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
           VALUES (${firebaseUid}, ${firebaseEmail}, ${firebaseDisplayName}, ${firebasePhotoUrl}, 'user', NOW(), NOW())
@@ -89,9 +89,9 @@ export async function handler(event) {
 
     if (event.httpMethod === 'PUT') {
       console.log(`🔄 PUT request for user profile: ${firebaseUid}`);
-      
+
       const { displayName, display_name, bio, location, website, phone, email, photo_url } = JSON.parse(event.body || '{}');
-      
+
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
       const emailToSave = email || '';
@@ -116,14 +116,14 @@ export async function handler(event) {
 
       // Update user profile
       const updatedUsers = await sql`
-        UPDATE users 
-        SET display_name = ${displayNameToSave}, 
+        UPDATE users
+        SET display_name = ${displayNameToSave},
             email = ${emailToSave},
             photo_url = ${photoUrlToSave},
-            bio = ${bio}, 
-            location = ${location}, 
-            website = ${website}, 
-            phone = ${phone}, 
+            bio = ${bio},
+            location = ${location},
+            website = ${website},
+            phone = ${phone},
             updated_at = NOW()
         WHERE firebase_uid = ${firebaseUid}
         RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at

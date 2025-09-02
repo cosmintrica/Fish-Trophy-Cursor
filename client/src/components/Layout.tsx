@@ -132,16 +132,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 Acasă
               </Link>
               <Link
-                to="/black-sea"
-                className={`text-sm font-medium transition-colors ${
-                  location.pathname === '/black-sea' 
-                    ? 'text-blue-600' 
-                    : 'text-gray-700 hover:text-blue-600'
-                }`}
-              >
-                Marea Neagră
-              </Link>
-              <Link
                 to="/species"
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
               >
@@ -159,6 +149,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 Ghid Submisie
               </Link>
+              {isAdmin ? (
+                <Link
+                  to="/black-sea"
+                  className={`text-sm font-medium transition-colors ${
+                    location.pathname === '/black-sea' 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  Marea Neagră
+                </Link>
+              ) : (
+                <span className="text-sm font-medium text-gray-400 cursor-not-allowed">
+                  Marea Neagră
+                </span>
+              )}
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -256,19 +262,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             
             <Link
-              to="/black-sea"
-              className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                location.pathname === '/black-sea' 
-                  ? 'bg-blue-50 text-blue-600' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-              onClick={closeMobileMenu}
-            >
-              <MapPin className="w-5 h-5" />
-              <span className="font-medium">Marea Neagră</span>
-            </Link>
-            
-            <Link
               to="/species"
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={closeMobileMenu}
@@ -294,6 +287,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <BookOpen className="w-5 h-5" />
               <span className="font-medium">Ghid Submisie</span>
             </Link>
+            
+            {isAdmin ? (
+              <Link
+                to="/black-sea"
+                className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                  location.pathname === '/black-sea' 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={closeMobileMenu}
+              >
+                <MapPin className="w-5 h-5" />
+                <span className="font-medium">Marea Neagră</span>
+              </Link>
+            ) : (
+              <div className="flex items-center space-x-3 p-3 rounded-xl text-gray-400 cursor-not-allowed">
+                <MapPin className="w-5 h-5" />
+                <span className="font-medium">Marea Neagră</span>
+                <span className="text-xs text-gray-400">(În curând)</span>
+              </div>
+            )}
             
             {isAdmin && (
               <Link
