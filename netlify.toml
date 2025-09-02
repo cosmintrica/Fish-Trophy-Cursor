@@ -22,6 +22,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/users/*/profile-pg"
+  to = "/.netlify/functions/user-profile-pg/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/users/*/profile"
   to = "/.netlify/functions/user-profile/:splat"
   status = 200
