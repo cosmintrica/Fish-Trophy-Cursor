@@ -1,11 +1,12 @@
 [build]
   base = "client"
   command = "npm ci && npm run build"
-  publish = "client/dist"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
   DEBUG = "vite:*"
+  SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*"
 
 [[redirects]]
   from = "/api/*"
@@ -17,5 +18,5 @@
   to = "/index.html"
   status = 200
 
-[functions]
-  directory = "netlify/functions"
+# [functions]
+#   directory = "netlify/functions"
