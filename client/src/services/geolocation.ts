@@ -6,6 +6,7 @@ interface PositionOptions {
 }
 
 // GeolocationPositionError is a built-in DOM type
+type GeolocationPositionError = GeolocationPositionError;
 
 export interface UserLocation {
   latitude: number;
