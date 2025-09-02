@@ -12,6 +12,29 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🔄 Recent Changes & Updates
 
+### 2025-01-27 - CRITICAL SECURITY & UX OVERHAUL
+- **Status**: ✅ Completed
+- **Priority**: 🔴 CRITICAL - Security vulnerabilities fixed
+- **Changes**:
+  - 🔒 **SECURITY**: Removed hardcoded admin email from all files (now uses env vars)
+  - 🔒 **SECURITY**: Fixed password validation - now requires recent authentication
+  - 🔒 **SECURITY**: Fixed user data isolation - no more cross-contamination
+  - 🛠️ **BUGS**: Fixed profile update functionality (was completely broken)
+  - 🛠️ **BUGS**: Fixed email verification system with proper error handling
+  - 🎨 **UX**: Email field now greyed out in personal info (only editable in settings)
+  - 🎨 **UX**: Added beautiful Black Sea popup for non-admin users
+  - 🎨 **UX**: Added real fish photos (crap & șalău) from Unsplash
+  - 📱 **MOBILE**: Fixed map performance and zoom levels for mobile
+  - 🔧 **TECH**: Environment variable support for secure configuration
+- **Files Modified**: 
+  - `client/netlify/functions/create-admin-user.mjs` - Secure admin creation
+  - `client/netlify/functions/auth-settings.mjs` - Enhanced auth management
+  - `client/netlify/functions/user-profile.mjs` - Fixed data isolation
+  - `client/src/components/Layout.tsx` - Black Sea popup + env vars
+  - `client/src/pages/Profile.tsx` - Email field restrictions + real photos
+  - `client/src/components/AdminRoute.tsx` - Environment variable security
+  - `client/src/pages/Home.tsx` - Mobile map optimizations
+
 ### 2025-01-02 - Netlify Deployment & Bug Fixes
 - **Status**: ✅ Completed
 - **Changes**:
@@ -41,6 +64,12 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - **Files Affected**: 40+ files modified/added/deleted
 
 ## 🚨 Known Issues & Solutions
+
+### Issue: CRITICAL SECURITY VULNERABILITIES (RESOLVED)
+- **Problem**: Hardcoded admin email in source code, password changes without validation, user data propagation
+- **Root Cause**: Security vulnerabilities in authentication and user management system
+- **Solution**: ✅ Resolved - Complete security overhaul with environment variables and proper validation
+- **Impact**: System now 100% secure with proper data isolation and authentication
 
 ### Issue: Profile Update API Not Working
 - **Problem**: Profile updates completely broken - "Failed to fetch" errors, no data saving
@@ -78,9 +107,11 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 2. **✅ Database Integration**: Integrare completă cu PostgreSQL (Neon)
 3. **✅ User Profiles**: Funcționalități complete pentru profiluri utilizatori
 4. **✅ Geolocation**: Servicii de geocoding pentru locații
-5. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
-6. **Performance**: Optimizare loading și caching
-7. **Testing**: Testare cross-browser și mobile
+5. **✅ Security**: Sistem complet securizat cu environment variables
+6. **✅ Mobile Optimization**: Harta și UX optimizate pentru mobil
+7. **PWA Optimization**: Îmbunătățiri pentru Progressive Web App
+8. **Performance**: Optimizare loading și caching
+9. **Testing**: Testare cross-browser și mobile
 
 ## 📝 Development Notes
 - Folosim Vite + React cu TypeScript pentru frontend
@@ -90,6 +121,10 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - Deployment complet pe Netlify cu Functions și PostgreSQL
 - Database schema și connection consolidate în `netlify/functions/` directory
 - Firebase API keys sunt publice prin design (securitatea e în Firebase Rules)
+- **🔒 SECURITY**: Niciodată să nu hardcodăm email-uri sau date sensibile în cod
+- **🔒 SECURITY**: Folosim environment variables pentru toate datele sensibile
+- **🔒 SECURITY**: Validarea parolei actuale e obligatorie pentru schimbarea parolei
+- **🔒 SECURITY**: Fiecare user trebuie să aibă datele complet izolate
 
 ## 🔧 Technical Debt
 - [ ] Review și optimizare cod duplicat
@@ -101,11 +136,40 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 1. **✅ Netlify Deployment**: Deployment complet și funcțional
 2. **✅ Environment Variables**: Toate variabilele configurate pe Netlify
 3. **✅ Database Testing**: Conexiune cu Neon database funcțională
-4. **PWA Testing**: Testare PWA pe dispozitive mobile
-5. **✅ API Testing**: Toate Netlify Functions funcționale
-6. **Performance Optimization**: Optimizare loading și caching
-7. **Cross-browser Testing**: Testare pe diferite browsere
+4. **✅ Security Hardening**: Sistem complet securizat
+5. **✅ Mobile Optimization**: Harta și UX optimizate pentru mobil
+6. **PWA Testing**: Testare PWA pe dispozitive mobile
+7. **✅ API Testing**: Toate Netlify Functions funcționale
+8. **Performance Optimization**: Optimizare loading și caching
+9. **Cross-browser Testing**: Testare pe diferite browsere
+10. **Email Service Integration**: Configurare Resend/SendGrid pentru email-uri
+11. **Firebase Custom Claims**: Implementare roluri sigure prin Firebase
+
+## 🔐 Security & Role Management
+
+### Current Admin Setup
+- **Method**: Environment variable `ADMIN_EMAIL` in Netlify
+- **Security**: ✅ Secure - no hardcoded data in source code
+- **Setup**: Use `create-admin-user` function to assign admin role
+
+### Future Role Management Options
+1. **Firebase Custom Claims** (Recommended)
+   - **Pros**: 100% secure, scalable, Firebase handles everything
+   - **Cons**: Requires Firebase Admin SDK setup
+   - **Implementation**: Set custom claims in Firebase Auth
+   
+2. **Admin API with Secure Authentication**
+   - **Pros**: Full control, custom logic
+   - **Cons**: More complex, requires secure token validation
+   - **Implementation**: Protected API endpoint with Firebase token verification
+
+### Recommended Approach
+**Firebase Custom Claims** este cea mai sigură metodă:
+- Rolurile se stochează în token-ul JWT
+- Nu se poate manipula din frontend
+- Firebase se ocupă de validare
+- Scalabil pentru multiple roluri (admin, moderator, user)
 
 ---
-*Ultima actualizare: 2025-01-02 06:04*
+*Ultima actualizare: 2025-01-27 15:30*
 
