@@ -16,6 +16,7 @@ import Home from '@/pages/Home';
 import BlackSea from '@/pages/BlackSea';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
+import Records from '@/pages/Records';
 import Admin from '@/pages/Admin';
 import SubmissionGuide from '@/pages/SubmissionGuide';
 import Profile from '@/pages/Profile';
@@ -59,6 +60,7 @@ function App() {
                 />
                 <Route path="/species" element={<Species />} />
                 <Route path="/leaderboards" element={<Leaderboards />} />
+                <Route path="/records" element={<Records />} />
                 <Route path="/submission-guide" element={<SubmissionGuide />} />
                 <Route path="/fishing-shops" element={<FishingShops />} />
                 <Route path="/og-generator" element={<OgGenerator />} />

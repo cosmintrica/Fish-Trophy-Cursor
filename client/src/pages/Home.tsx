@@ -137,9 +137,9 @@ export default function Home() {
           const userPhoto = user?.photoURL || '';
           
           userMarker.bindPopup(`
-            <div class="p-3 min-w-[160px] max-w-[180px] bg-white rounded-lg shadow-lg">
+            <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
               <div class="text-center mb-2">
-                <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
+                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden mx-auto mb-1">
                   ${userPhoto ? 
                     `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                     `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
@@ -228,11 +228,11 @@ export default function Home() {
           break;
       }
 
-      const iconSize = isMobile ? 24 : 32; // Marker mai mic pe mobil
+      const iconSize = 32; // Marker normal
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="w-8 h-8 ${markerColor} ${borderColor} rounded-full border-3 border-white shadow-lg flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
-                 <Fish className="w-5 h-5 text-white" />
+        html: `<div class="w-6 h-6 ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center hover:scale-110 transition-transform duration-200">
+                 <Fish className="w-4 h-4 text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
@@ -242,7 +242,7 @@ export default function Home() {
       markers.push(marker);
       
       marker.bindPopup(`
-        <div class="p-3 min-w-[240px] max-w-[280px] bg-white rounded-lg shadow-lg">
+        <div class="p-3 min-w-[240px] max-w-[280px] bg-white">
           <div class="mb-3">
             <h3 class="font-bold text-base text-gray-800 mb-1">${location.name}</h3>
             <p class="text-sm text-gray-600">${location.county}, ${location.region}</p>
@@ -387,9 +387,9 @@ export default function Home() {
             const userPhoto = user?.photoURL || '';
             
             userMarker.bindPopup(`
-              <div class="p-3 min-w-[160px] max-w-[180px] bg-white rounded-lg shadow-lg">
+              <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
                 <div class="text-center mb-2">
-                  <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
+                  <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden mx-auto mb-1">
                     ${userPhoto ? 
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                       `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
