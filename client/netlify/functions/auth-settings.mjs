@@ -224,7 +224,7 @@ export async function handler(event) {
           // This is the ONLY way to verify the current password with Firebase Admin SDK
           try {
             // We need to use Firebase Auth REST API to verify the current password
-            const verifyPasswordResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`, {
+            const verifyPasswordResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.VITE_FIREBASE_API_KEY}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

@@ -105,7 +105,7 @@ export async function handler(event) {
 
           // Try to send email using Firebase Auth REST API
           try {
-            const sendEmailResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${process.env.FIREBASE_API_KEY}`, {
+            const sendEmailResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${process.env.VITE_FIREBASE_API_KEY}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

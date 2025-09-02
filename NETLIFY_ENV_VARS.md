@@ -26,6 +26,34 @@ Secret: ✅ (bifează "Contains secret values")
 Scope: All scopes
 ```
 
+### **2b. FIREBASE ADMIN SDK (REQUIRED for backend functions)**
+```
+Key: FIREBASE_PROJECT_ID
+Value: your-project-id
+Secret: ❌ (nu bifezi)
+Scope: All scopes
+
+Key: FIREBASE_PRIVATE_KEY_ID
+Value: [YOUR_PRIVATE_KEY_ID]
+Secret: ✅ (bifează "Contains secret values")
+Scope: All scopes
+
+Key: FIREBASE_PRIVATE_KEY
+Value: [YOUR_PRIVATE_KEY_WITH_NEWLINES]
+Secret: ✅ (bifează "Contains secret values")
+Scope: All scopes
+
+Key: FIREBASE_CLIENT_EMAIL
+Value: firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+Secret: ❌ (nu bifezi)
+Scope: All scopes
+
+Key: FIREBASE_CLIENT_ID
+Value: [YOUR_CLIENT_ID]
+Secret: ❌ (nu bifezi)
+Scope: All scopes
+```
+
 ### **3. FIREBASE AUTH DOMAIN (REQUIRED)**
 ```
 Key: VITE_FIREBASE_AUTH_DOMAIN

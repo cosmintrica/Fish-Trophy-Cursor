@@ -96,18 +96,36 @@ const Profile: React.FC = () => {
             location: result.data.location || '',
             bio: result.data.bio || 'Pescar pasionat din România!'
           });
-
-          // Afișează mesaj dacă este mock data
-          if (result.message && result.message.includes('Mock')) {
-            console.log('ℹ️ Using mock data - database connection pending');
-          }
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
       }
     };
 
+    const checkGoogleAuthStatus = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/.netlify/functions/google-auth-password', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          setIsGoogleUser(result.data.hasGoogleProvider);
+          setNeedsPassword(result.data.needsPassword);
+        }
+      } catch (error) {
+        console.error('Error checking Google Auth status:', error);
+      }
+    };
+
     loadProfileData();
+    checkGoogleAuthStatus();
   }, [user]);
 
   const handleProfileUpdate = async () => {
@@ -217,6 +235,81 @@ const Profile: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
+
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(false);
+
+  const handleSetPasswordForGoogle = async () => {
+    if (!user?.uid) {
+      toast.error('Utilizatorul nu este autentificat');
+      return;
+    }
+
+    // Clear previous errors
+    setPasswordErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+
+    if (!passwordData.newPassword) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola nouă este obligatorie' }));
+      toast.error('Parola nouă este obligatorie');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordErrors(prev => ({ ...prev, confirmPassword: 'Parolele nu se potrivesc' }));
+      toast.error('Parolele nu se potrivesc');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola trebuie să aibă cel puțin 8 caractere' }));
+      toast.error('Parola trebuie să aibă cel puțin 8 caractere');
+      return;
+    }
+
+    const hasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
+    const hasNumber = /[0-9]/.test(passwordData.newPassword);
+    
+    if (!hasLetter || !hasNumber) {
+      setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola trebuie să conțină cel puțin o literă și o cifră' }));
+      toast.error('Parola trebuie să conțină cel puțin o literă și o cifră');
+      return;
+    }
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/.netlify/functions/google-auth-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          action: 'set-password',
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(result.message || 'Parola a fost setată cu succes!');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setNeedsPassword(false);
+      } else {
+        toast.error(result.error || 'Eroare la setarea parolei');
+        if (result.field) {
+          setPasswordErrors(prev => ({ ...prev, [result.field]: result.error }));
+        }
+      }
+    } catch (error) {
+      console.error('Error setting password:', error);
+      toast.error('Eroare la setarea parolei');
+    }
+  };
 
   const handlePasswordChange = async () => {
     if (!user?.uid) {
@@ -666,21 +759,17 @@ const Profile: React.FC = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isChangingPassword ? (
+                    {isGoogleUser && needsPassword ? (
+                      // Google Auth user needs to set password first
                       <>
-                        <div>
-                          <Label htmlFor="currentPassword">Parola actuală</Label>
-                          <Input
-                            id="currentPassword"
-                            type="password"
-                            value={passwordData.currentPassword}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                            className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
-                            placeholder="Parola actuală"
-                          />
-                          {passwordErrors.currentPassword && (
-                            <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
-                          )}
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            <p className="text-yellow-800 font-medium">Cont Google Auth</p>
+                          </div>
+                          <p className="text-yellow-700 text-sm">
+                            Te-ai înregistrat cu Google. Pentru a putea schimba parola în viitor, setează o parolă acum.
+                          </p>
                         </div>
                         <div>
                           <Label htmlFor="newPassword">Parola nouă</Label>
@@ -710,21 +799,148 @@ const Profile: React.FC = () => {
                             <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
                           )}
                         </div>
-                        <div className="flex space-x-2">
-                          <Button onClick={handlePasswordChange} className="bg-blue-600 hover:bg-blue-700">
-                            <Save className="w-4 h-4 mr-2" />
+                        <Button onClick={handleSetPasswordForGoogle} className="bg-blue-600 hover:bg-blue-700">
+                          <Save className="w-4 h-4 mr-2" />
+                          Setează parola
+                        </Button>
+                      </>
+                    ) : isGoogleUser ? (
+                      // Google Auth user with password already set
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <p className="text-green-800 font-medium">Cont Google Auth</p>
+                          </div>
+                          <p className="text-green-700 text-sm">
+                            Te-ai înregistrat cu Google și ai o parolă setată. Poți schimba parola folosind formularul de mai jos.
+                          </p>
+                        </div>
+                        {isChangingPassword ? (
+                          <>
+                            <div>
+                              <Label htmlFor="currentPassword">Parola actuală</Label>
+                              <Input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordData.currentPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Parola actuală"
+                              />
+                              {passwordErrors.currentPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="newPassword">Parola nouă</Label>
+                              <Input
+                                id="newPassword"
+                                type="password"
+                                value={passwordData.newPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Parola nouă (min 8 caractere, litere + cifre)"
+                              />
+                              {passwordErrors.newPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
+                              <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={passwordData.confirmPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Confirmă parola nouă"
+                              />
+                              {passwordErrors.confirmPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+                              )}
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button onClick={handlePasswordChange} className="bg-blue-600 hover:bg-blue-700">
+                                <Save className="w-4 h-4 mr-2" />
+                                Schimbă parola
+                              </Button>
+                              <Button variant="outline" onClick={() => setIsChangingPassword(false)}>
+                                Anulează
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <Button onClick={() => setIsChangingPassword(true)} className="bg-blue-600 hover:bg-blue-700">
+                            <Lock className="w-4 h-4 mr-2" />
                             Schimbă parola
                           </Button>
-                          <Button variant="outline" onClick={() => setIsChangingPassword(false)}>
-                            Anulează
-                          </Button>
-                        </div>
+                        )}
                       </>
                     ) : (
-                      <Button onClick={() => setIsChangingPassword(true)} className="bg-blue-600 hover:bg-blue-700">
-                        <Lock className="w-4 h-4 mr-2" />
-                        Schimbă parola
-                      </Button>
+                      // Regular email/password user
+                      <>
+                        {isChangingPassword ? (
+                          <>
+                            <div>
+                              <Label htmlFor="currentPassword">Parola actuală</Label>
+                              <Input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordData.currentPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Parola actuală"
+                              />
+                              {passwordErrors.currentPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="newPassword">Parola nouă</Label>
+                              <Input
+                                id="newPassword"
+                                type="password"
+                                value={passwordData.newPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Parola nouă (min 8 caractere, litere + cifre)"
+                              />
+                              {passwordErrors.newPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
+                              <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={passwordData.confirmPassword}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                                className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                placeholder="Confirmă parola nouă"
+                              />
+                              {passwordErrors.confirmPassword && (
+                                <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+                              )}
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button onClick={handlePasswordChange} className="bg-blue-600 hover:bg-blue-700">
+                                <Save className="w-4 h-4 mr-2" />
+                                Schimbă parola
+                              </Button>
+                              <Button variant="outline" onClick={() => setIsChangingPassword(false)}>
+                                Anulează
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <Button onClick={() => setIsChangingPassword(true)} className="bg-blue-600 hover:bg-blue-700">
+                            <Lock className="w-4 h-4 mr-2" />
+                            Schimbă parola
+                          </Button>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>

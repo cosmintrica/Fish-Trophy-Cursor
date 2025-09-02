@@ -102,17 +102,48 @@ export async function handler(event) {
         // Create user if they don't exist with Firebase data
         console.log(`🆕 Creating new user: ${firebaseUid}`);
         
-        // Create user with empty email - will be updated from Firebase Auth
+        // Get current Firebase user data to sync email
+        let firebaseEmail = '';
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          firebaseEmail = firebaseUser.email || '';
+          console.log(`📧 Syncing email from Firebase: ${firebaseEmail}`);
+        } catch (firebaseError) {
+          console.error('❌ Error getting Firebase user data:', firebaseError);
+        }
+        
+        // Create user with Firebase email
         const newUsers = await sql`
           INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
-          VALUES (${firebaseUid}, '', ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
+          VALUES (${firebaseUid}, ${firebaseEmail}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
           RETURNING id
         `;
         existingUsers = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id} - email will be updated from Firebase Auth`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id} and email: ${firebaseEmail}`);
       } else {
-        // User exists, no email changes allowed through this endpoint
+        // User exists, sync email from Firebase Auth
         console.log(`✅ User exists: ${existingUsers[0].id}`);
+        
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          const firebaseEmail = firebaseUser.email || '';
+          
+          // Update email if it's different
+          if (firebaseEmail && firebaseEmail !== existingUsers[0].email) {
+            await sql`
+              UPDATE users 
+              SET email = ${firebaseEmail}, updated_at = NOW()
+              WHERE firebase_uid = ${firebaseUid}
+            `;
+            console.log(`📧 Updated email from Firebase: ${firebaseEmail}`);
+          }
+        } catch (firebaseError) {
+          console.error('❌ Error syncing Firebase email:', firebaseError);
+        }
       }
 
       // Update user profile - CRITICAL: Only update if user exists and belongs to this firebase_uid
