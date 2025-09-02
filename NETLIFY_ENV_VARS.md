@@ -11,7 +11,8 @@
 ## 🗂️ **Lista completă Environment Variables:**
 
 ### **1. DATABASE (REQUIRED)**
-```
+
+```bash
 Key: DATABASE_URL
 Value: postgresql://username:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
 Secret: ✅ (bifează "Contains secret values")
@@ -19,7 +20,8 @@ Scope: All scopes
 ```
 
 ### **2. FIREBASE API KEY (REQUIRED)**
-```
+
+```bash
 Key: VITE_FIREBASE_API_KEY
 Value: [YOUR_FIREBASE_API_KEY_HERE]
 Secret: ✅ (bifează "Contains secret values")
