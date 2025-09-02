@@ -29,8 +29,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         // PWA already installed
         if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
         // iOS Safari
-        // @ts-ignore - iOS Safari standalone property
-        if (typeof navigator !== 'undefined' && (navigator as any).standalone) return true;
+        // @ts-expect-error - iOS Safari standalone property
+        if (typeof navigator !== 'undefined' && (navigator as { standalone?: boolean }).standalone) return true;
       } catch {}
       return false;
     })();
@@ -38,11 +38,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const isMobile = ((): boolean => {
       try {
         // Prefer UA hints when available
-        // @ts-ignore - User Agent Client Hints API
-        if ((navigator as any).userAgentData?.mobile) return true;
+        // @ts-expect-error - User Agent Client Hints API
+        if ((navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile) return true;
       } catch {}
       const ua = navigator.userAgent || '';
-      const touchIpad = navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1;
+      const touchIpad = navigator.platform === 'MacIntel' && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1;
       return /Android|iPhone|iPad|iPod|Windows Phone/i.test(ua) || touchIpad;
     })();
 

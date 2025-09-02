@@ -21,7 +21,7 @@ Scope: All scopes
 ### **2. FIREBASE API KEY (REQUIRED)**
 ```
 Key: VITE_FIREBASE_API_KEY
-Value: AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Value: [YOUR_FIREBASE_API_KEY_HERE]
 Secret: ✅ (bifează "Contains secret values")
 Scope: All scopes
 ```
