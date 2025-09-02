@@ -433,6 +433,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/species" className="text-gray-300 hover:text-white transition-colors">
+                    Specii
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/records" className="text-gray-300 hover:text-white transition-colors">
+                    Recorduri
+                  </Link>
+                </li>
+                <li>
                   <Link to="/black-sea" className="text-gray-300 hover:text-white transition-colors">
                     Marea Neagră
                   </Link>

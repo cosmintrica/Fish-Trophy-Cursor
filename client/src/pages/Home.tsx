@@ -195,7 +195,7 @@ export default function Home() {
       fishingLocations.filter(loc => loc.type === filterType);
     
     // Limitează numărul de locații pe mobil pentru performanță
-    const locationsToShow = isMobile ? allLocations.slice(0, 20) : allLocations;
+    const locationsToShow = isMobile ? allLocations.slice(0, 15) : allLocations;
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: L.Marker[] = [];
@@ -228,11 +228,11 @@ export default function Home() {
           break;
       }
 
-      const iconSize = 32; // Marker normal
+      const iconSize = isMobile ? 24 : 32; // Marker mai mic pe mobil
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="w-6 h-6 ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center hover:scale-110 transition-transform duration-200">
-                 <Fish className="w-4 h-4 text-white" />
+        html: `<div class="${isMobile ? 'w-5 h-5' : 'w-6 h-6'} ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
+                 <Fish className="${isMobile ? 'w-3 h-3' : 'w-4 h-4'} text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
@@ -285,6 +285,9 @@ export default function Home() {
     
     // Adaugă toți markerii în batch pentru performanță mai bună
     if (locationsLayerRef.current && markers.length > 0) {
+      // Clear existing markers first
+      locationsLayerRef.current.clearLayers();
+      // Add all markers
       markers.forEach(marker => {
         locationsLayerRef.current!.addLayer(marker);
       });
