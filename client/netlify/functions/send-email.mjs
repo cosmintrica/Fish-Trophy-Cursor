@@ -121,6 +121,14 @@ export async function handler(event) {
             
             if (sendResult.error) {
               console.error('❌ Error sending email:', sendResult.error);
+              
+              // Handle rate limiting specifically
+              if (sendResult.error.message.includes('TOO_MANY_ATTEMPTS')) {
+                console.log(`⚠️ Rate limit hit for user ${user.email}, using fallback`);
+                // Fall through to fallback method
+                throw new Error('RATE_LIMIT');
+              }
+              
               return {
                 statusCode: 400,
                 headers: {
@@ -153,6 +161,26 @@ export async function handler(event) {
             };
           } catch (sendError) {
             console.error('❌ Error sending email via REST API:', sendError);
+            
+            // Handle rate limiting with better message
+            if (sendError.message === 'RATE_LIMIT') {
+              return {
+                statusCode: 200,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                  success: true,
+                  message: 'Prea multe încercări. Link-ul de verificare este disponibil în server logs.',
+                  data: { 
+                    email: user.email,
+                    link: emailVerificationLink,
+                    note: 'Rate limit exceeded - link available in server logs'
+                  }
+                })
+              };
+            }
             
             // Fallback: return the link for manual use
             return {

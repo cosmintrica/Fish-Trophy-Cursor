@@ -372,7 +372,7 @@ const Profile: React.FC = () => {
       const result = await response.json();
 
       if (result.success) {
-        toast.success('Parola a fost actualizată cu succes!');
+        toast.success('Parola a fost actualizată cu succes! Vei fi deconectat pentru securitate.');
         setIsChangingPassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setPasswordErrors({
@@ -380,6 +380,11 @@ const Profile: React.FC = () => {
           newPassword: '',
           confirmPassword: ''
         });
+        
+        // Logout user after password change for security
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
       } else {
         // Set field-specific error
         if (result.field) {
