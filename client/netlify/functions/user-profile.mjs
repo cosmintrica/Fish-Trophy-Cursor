@@ -135,65 +135,20 @@ export async function handler(event) {
         }
       }
 
-      // Update user profile - only update fields that are provided
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
-
-      if (displayNameToSave !== undefined) {
-        updateFields.push(`display_name = $${paramIndex}`);
-        updateValues.push(displayNameToSave);
-        paramIndex++;
-      }
-
-      if (emailToSave && emailToSave !== '') {
-        updateFields.push(`email = $${paramIndex}`);
-        updateValues.push(emailToSave);
-        paramIndex++;
-      }
-
-      if (photoUrlToSave !== undefined) {
-        updateFields.push(`photo_url = $${paramIndex}`);
-        updateValues.push(photoUrlToSave);
-        paramIndex++;
-      }
-
-      if (bio !== undefined) {
-        updateFields.push(`bio = $${paramIndex}`);
-        updateValues.push(bio);
-        paramIndex++;
-      }
-
-      if (location !== undefined) {
-        updateFields.push(`location = $${paramIndex}`);
-        updateValues.push(location);
-        paramIndex++;
-      }
-
-      if (website !== undefined) {
-        updateFields.push(`website = $${paramIndex}`);
-        updateValues.push(website);
-        paramIndex++;
-      }
-
-      if (phone !== undefined) {
-        updateFields.push(`phone = $${paramIndex}`);
-        updateValues.push(phone);
-        paramIndex++;
-      }
-
-      // Always update the updated_at timestamp
-      updateFields.push(`updated_at = NOW()`);
-      updateValues.push(firebaseUid);
-
-      const query = `
+      // Update user profile - use template literals for safety
+      const updatedUsers = await sql`
         UPDATE users
-        SET ${updateFields.join(', ')}
-        WHERE firebase_uid = $${paramIndex}
+        SET display_name = ${displayNameToSave || null},
+            email = ${emailToSave || null},
+            photo_url = ${photoUrlToSave || null},
+            bio = ${bio || null},
+            location = ${location || null},
+            website = ${website || null},
+            phone = ${phone || null},
+            updated_at = NOW()
+        WHERE firebase_uid = ${firebaseUid}
         RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
       `;
-
-      const updatedUsers = await sql.unsafe(query, updateValues);
 
       const updatedUser = updatedUsers[0];
       console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email}`);

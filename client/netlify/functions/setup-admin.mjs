@@ -33,7 +33,7 @@ export async function handler(event) {
       };
     }
 
-    if (event.httpMethod === 'POST') {
+    if (event.httpMethod === 'POST' || event.httpMethod === 'GET') {
       console.log('🔧 Setting up admin role for cosmin.trica@outlook.com');
       
       // Find user by email

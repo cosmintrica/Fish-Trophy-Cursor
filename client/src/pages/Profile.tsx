@@ -45,6 +45,11 @@ const Profile: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [emailData, setEmailData] = useState({
+    newEmail: '',
+    confirmEmail: ''
+  });
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
 
   // Mock data pentru recorduri - în viitor va veni din API
   const mockRecords = [
@@ -161,21 +166,129 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleEmailChange = async () => {
+    if (!user?.uid) {
+      toast.error('Utilizatorul nu este autentificat');
+      return;
+    }
+
+    if (emailData.newEmail !== emailData.confirmEmail) {
+      toast.error('Email-urile nu se potrivesc');
+      return;
+    }
+
+    if (emailData.newEmail === user.email) {
+      toast.error('Noul email trebuie să fie diferit de cel actual');
+      return;
+    }
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/.netlify/functions/auth-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          action: 'change-email',
+          newEmail: emailData.newEmail
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Email-ul a fost actualizat! Verifică-ți noul email pentru confirmare.');
+        setIsChangingEmail(false);
+        setEmailData({ newEmail: '', confirmEmail: '' });
+      } else {
+        toast.error(result.error || 'Eroare la schimbarea email-ului');
+      }
+    } catch (error) {
+      console.error('Error changing email:', error);
+      toast.error('Eroare la schimbarea email-ului');
+    }
+  };
+
   const handlePasswordChange = async () => {
+    if (!user?.uid) {
+      toast.error('Utilizatorul nu este autentificat');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Parolele nu se potrivesc');
       return;
     }
 
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Parola trebuie să aibă cel puțin 6 caractere');
+      return;
+    }
+
     try {
-      // Aici va fi logica pentru schimbarea parolei
-      toast.success('Parola a fost schimbată cu succes!');
-      setIsChangingPassword(false);
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      const idToken = await user.getIdToken();
+      const response = await fetch('/.netlify/functions/auth-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          action: 'change-password',
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Parola a fost actualizată cu succes!');
+        setIsChangingPassword(false);
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        toast.error(result.error || 'Eroare la schimbarea parolei');
+      }
     } catch (error) {
+      console.error('Error changing password:', error);
       toast.error('Eroare la schimbarea parolei');
     }
   };
+
+  const handleSendEmailVerification = async () => {
+    if (!user?.uid) {
+      toast.error('Utilizatorul nu este autentificat');
+      return;
+    }
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/.netlify/functions/auth-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          action: 'send-email-verification'
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Link-ul de verificare a fost trimis pe email!');
+      } else {
+        toast.error(result.error || 'Eroare la trimiterea email-ului de verificare');
+      }
+    } catch (error) {
+      console.error('Error sending email verification:', error);
+      toast.error('Eroare la trimiterea email-ului de verificare');
+    }
+  };
+
+
 
   const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -546,6 +659,86 @@ const Profile: React.FC = () => {
                       <Button onClick={() => setIsChangingPassword(true)} className="bg-blue-600 hover:bg-blue-700">
                         <Lock className="w-4 h-4 mr-2" />
                         Schimbă parola
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Mail className="w-5 h-5" />
+                      <span>Schimbă email-ul</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Actualizează-ți adresa de email și verifică-ți contul
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-blue-900">Email actual</p>
+                          <p className="text-sm text-blue-700">{user?.email}</p>
+                          {user?.emailVerified ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                              ✓ Verificat
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                              ⚠ Ne verificat
+                            </span>
+                          )}
+                        </div>
+                        {!user?.emailVerified && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={handleSendEmailVerification}
+                            className="text-blue-600 border-blue-300"
+                          >
+                            Trimite verificare
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {isChangingEmail ? (
+                      <>
+                        <div>
+                          <Label htmlFor="newEmail">Email nou</Label>
+                          <Input
+                            id="newEmail"
+                            type="email"
+                            value={emailData.newEmail}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, newEmail: e.target.value})}
+                            placeholder="noul@email.com"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmEmail">Confirmă email-ul nou</Label>
+                          <Input
+                            id="confirmEmail"
+                            type="email"
+                            value={emailData.confirmEmail}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, confirmEmail: e.target.value})}
+                            placeholder="noul@email.com"
+                          />
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button onClick={handleEmailChange} className="bg-blue-600 hover:bg-blue-700">
+                            <Save className="w-4 h-4 mr-2" />
+                            Schimbă email-ul
+                          </Button>
+                          <Button variant="outline" onClick={() => setIsChangingEmail(false)}>
+                            Anulează
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <Button onClick={() => setIsChangingEmail(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Mail className="w-4 h-4 mr-2" />
+                        Schimbă email-ul
                       </Button>
                     )}
                   </CardContent>
