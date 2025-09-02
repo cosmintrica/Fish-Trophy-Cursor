@@ -16,6 +16,12 @@
 
 # API redirects - must come BEFORE catch-all redirect
 [[redirects]]
+  from = "/api/users/*/profile-debug"
+  to = "/.netlify/functions/user-profile-debug/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/users/*/profile"
   to = "/.netlify/functions/user-profile/:splat"
   status = 200
