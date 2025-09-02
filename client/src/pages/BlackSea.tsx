@@ -41,9 +41,7 @@ export default function BlackSea() {
       zoomSnap: isMobile ? 0.5 : 1, // Zoom mai fluid pe mobile
       zoomDelta: isMobile ? 0.5 : 1,
       wheelPxPerZoomLevel: isMobile ? 60 : 120, // Zoom mai sensibil pe mobile
-      // Configurări pentru touch
-      tap: true,
-      tapTolerance: 15,
+      // Configurări pentru touch (Leaflet le suportă implicit)
       // Configurări pentru performanță
       renderer: isMobile ? L.canvas() : undefined
     });
