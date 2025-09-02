@@ -35,19 +35,22 @@ export default function Home() {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Inițializează harta cu setări optimizate pentru mobil
+    // Detect if mobile device
+    const isMobile = window.innerWidth <= 768;
+    
+    // Inițializează harta cu setări diferite pentru desktop vs mobil
     const map = L.map(mapContainerRef.current, {
       center: [45.9432, 25.0094], // Centrul României
-      zoom: 6, // Zoom mai mic pentru a vedea toată România
-      minZoom: 5, // Zoom minim pentru a vedea toată România
+      zoom: isMobile ? 6 : 7, // Zoom diferit pentru desktop vs mobil
+      minZoom: isMobile ? 5 : 6, // Zoom minim diferit
       maxZoom: 18,
       zoomControl: true,
       attributionControl: true,
       // Optimizări pentru performanță pe mobil
-      preferCanvas: true,
-      zoomSnap: 0.5,
-      zoomDelta: 0.5,
-      wheelPxPerZoomLevel: 120
+      preferCanvas: isMobile,
+      zoomSnap: isMobile ? 0.5 : 1,
+      zoomDelta: isMobile ? 0.5 : 1,
+      wheelPxPerZoomLevel: isMobile ? 120 : 60
     });
 
     // Adaugă layer-ul OpenStreetMap

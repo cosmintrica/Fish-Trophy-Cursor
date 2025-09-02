@@ -167,16 +167,16 @@ export async function handler(event) {
           // Get user info
           const user = await auth.getUser(firebaseUid);
           
-          // IMPORTANT: Firebase Admin SDK cannot verify current password directly
-          // This should be done client-side with reauthentication
-          // For now, we'll require the user to be recently authenticated
+          // CRITICAL: We need to verify the current password
+          // Since Firebase Admin SDK cannot verify passwords directly,
+          // we'll use a different approach - require reauthentication
           
-          // Check if token is recent (within last 5 minutes)
+          // Check if token is very recent (within last 2 minutes)
           const tokenTime = decodedToken.auth_time * 1000;
           const now = Date.now();
-          const fiveMinutes = 5 * 60 * 1000;
+          const twoMinutes = 2 * 60 * 1000;
           
-          if (now - tokenTime > fiveMinutes) {
+          if (now - tokenTime > twoMinutes) {
             return {
               statusCode: 401,
               headers: {
@@ -185,9 +185,30 @@ export async function handler(event) {
               },
               body: JSON.stringify({
                 success: false,
-                error: 'Token expired. Please re-authenticate to change password.'
+                error: 'Security: Please re-authenticate to change password. Your session is too old.'
               })
             };
+          }
+          
+          // Additional security: Check if user has been active recently
+          const lastSignIn = user.metadata.lastSignInTime;
+          if (lastSignIn) {
+            const lastSignInTime = new Date(lastSignIn).getTime();
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            if (now - lastSignInTime > fiveMinutes) {
+              return {
+                statusCode: 401,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                  success: false,
+                  error: 'Security: Please sign in again to change password.'
+                })
+              };
+            }
           }
           
           // Update password in Firebase Auth
@@ -255,8 +276,10 @@ export async function handler(event) {
 
           console.log(`✅ Email verification link generated for user ${firebaseUid}`);
 
-          // TODO: Send email via Resend/SendGrid when configured
-          // For now, return the link for manual use
+          // Log the verification link for manual use
+          console.log(`📧 Email verification link for ${user.email}:`);
+          console.log(emailVerificationLink);
+          
           return {
             statusCode: 200,
             headers: {
@@ -265,11 +288,11 @@ export async function handler(event) {
             },
             body: JSON.stringify({
               success: true,
-              message: 'Email verification link generated. Check console for link (email service not configured yet).',
+              message: 'Email verification link generated. Check server logs for the link.',
               data: { 
-                emailVerificationLink,
                 email: user.email,
-                note: 'Email service not configured - link available in server logs'
+                note: 'Email service not configured yet - link available in server logs',
+                linkGenerated: true
               }
             })
           };

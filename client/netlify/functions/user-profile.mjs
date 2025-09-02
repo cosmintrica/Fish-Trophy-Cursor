@@ -87,11 +87,10 @@ export async function handler(event) {
     if (event.httpMethod === 'PUT') {
       console.log(`🔄 PUT request for user profile: ${firebaseUid}`);
 
-      const { displayName, display_name, bio, location, website, phone, email, photo_url } = JSON.parse(event.body || '{}');
+      const { displayName, display_name, bio, location, website, phone, photo_url } = JSON.parse(event.body || '{}');
 
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
-      const emailToSave = email || '';
       const photoUrlToSave = photo_url || '';
 
       // Check if user exists first, if not create them
@@ -103,36 +102,17 @@ export async function handler(event) {
         // Create user if they don't exist with Firebase data
         console.log(`🆕 Creating new user: ${firebaseUid}`);
         
-        // Validate email is provided
-        if (!emailToSave) {
-          return {
-            statusCode: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            },
-            body: JSON.stringify({
-              success: false,
-              error: 'Email is required for new user creation'
-            })
-          };
-        }
-
+        // Create user with empty email - will be updated from Firebase Auth
         const newUsers = await sql`
           INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
-          VALUES (${firebaseUid}, ${emailToSave}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
+          VALUES (${firebaseUid}, '', ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
           RETURNING id
         `;
         existingUsers = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}, email: ${emailToSave}, name: ${displayNameToSave}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id} - email will be updated from Firebase Auth`);
       } else {
-        // User exists, check if email is being updated
-        const existingUser = existingUsers[0];
-        if (emailToSave && emailToSave !== existingUser.email) {
-          console.log(`⚠️ Email change detected: ${existingUser.email} -> ${emailToSave}`);
-          // For security, we don't allow email changes through this endpoint
-          // Email changes should go through Firebase Auth
-        }
+        // User exists, no email changes allowed through this endpoint
+        console.log(`✅ User exists: ${existingUsers[0].id}`);
       }
 
       // Update user profile - use simple template literals for safety
