@@ -14,7 +14,6 @@ import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals';
 // Pages
 import Home from '@/pages/Home';
 import BlackSea from '@/pages/BlackSea';
-import BlackSeaComingSoon from '@/pages/BlackSeaComingSoon';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Admin from '@/pages/Admin';

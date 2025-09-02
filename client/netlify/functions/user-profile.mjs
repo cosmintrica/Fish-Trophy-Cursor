@@ -42,18 +42,15 @@ export async function handler(event) {
         // Create user if they don't exist - we'll get Firebase data from the request
         console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
 
-        // Try to get Firebase user data from headers or request body
-        const firebaseEmail = event.headers['x-firebase-email'] || '';
-        const firebaseDisplayName = event.headers['x-firebase-display-name'] || '';
-        const firebasePhotoUrl = event.headers['x-firebase-photo-url'] || '';
-
+        // For GET requests, we can't get Firebase data from body, so create with minimal data
+        // The user will be updated when they make a PUT request with their Firebase data
         const newUsers = await sql`
           INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
-          VALUES (${firebaseUid}, ${firebaseEmail}, ${firebaseDisplayName}, ${firebasePhotoUrl}, 'user', NOW(), NOW())
+          VALUES (${firebaseUid}, '', '', '', 'user', NOW(), NOW())
           RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         `;
         users = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}, email: ${firebaseEmail}, name: ${firebaseDisplayName}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id} (minimal data - will be updated on first PUT)`);
       }
 
       const userData = users[0];
@@ -99,12 +96,28 @@ export async function handler(event) {
 
       // Check if user exists first, if not create them
       let existingUsers = await sql`
-        SELECT id FROM users WHERE firebase_uid = ${firebaseUid}
+        SELECT id, email FROM users WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (existingUsers.length === 0) {
         // Create user if they don't exist with Firebase data
         console.log(`🆕 Creating new user: ${firebaseUid}`);
+        
+        // Validate email is provided
+        if (!emailToSave) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'Email is required for new user creation'
+            })
+          };
+        }
+
         const newUsers = await sql`
           INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
           VALUES (${firebaseUid}, ${emailToSave}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
@@ -112,22 +125,75 @@ export async function handler(event) {
         `;
         existingUsers = newUsers;
         console.log(`✅ Created new user with ID: ${newUsers[0].id}, email: ${emailToSave}, name: ${displayNameToSave}`);
+      } else {
+        // User exists, check if email is being updated
+        const existingUser = existingUsers[0];
+        if (emailToSave && emailToSave !== existingUser.email) {
+          console.log(`⚠️ Email change detected: ${existingUser.email} -> ${emailToSave}`);
+          // For security, we don't allow email changes through this endpoint
+          // Email changes should go through Firebase Auth
+        }
       }
 
-      // Update user profile
-      const updatedUsers = await sql`
+      // Update user profile - only update fields that are provided
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
+
+      if (displayNameToSave !== undefined) {
+        updateFields.push(`display_name = $${paramIndex}`);
+        updateValues.push(displayNameToSave);
+        paramIndex++;
+      }
+
+      if (emailToSave && emailToSave !== '') {
+        updateFields.push(`email = $${paramIndex}`);
+        updateValues.push(emailToSave);
+        paramIndex++;
+      }
+
+      if (photoUrlToSave !== undefined) {
+        updateFields.push(`photo_url = $${paramIndex}`);
+        updateValues.push(photoUrlToSave);
+        paramIndex++;
+      }
+
+      if (bio !== undefined) {
+        updateFields.push(`bio = $${paramIndex}`);
+        updateValues.push(bio);
+        paramIndex++;
+      }
+
+      if (location !== undefined) {
+        updateFields.push(`location = $${paramIndex}`);
+        updateValues.push(location);
+        paramIndex++;
+      }
+
+      if (website !== undefined) {
+        updateFields.push(`website = $${paramIndex}`);
+        updateValues.push(website);
+        paramIndex++;
+      }
+
+      if (phone !== undefined) {
+        updateFields.push(`phone = $${paramIndex}`);
+        updateValues.push(phone);
+        paramIndex++;
+      }
+
+      // Always update the updated_at timestamp
+      updateFields.push(`updated_at = NOW()`);
+      updateValues.push(firebaseUid);
+
+      const query = `
         UPDATE users
-        SET display_name = ${displayNameToSave},
-            email = ${emailToSave},
-            photo_url = ${photoUrlToSave},
-            bio = ${bio},
-            location = ${location},
-            website = ${website},
-            phone = ${phone},
-            updated_at = NOW()
-        WHERE firebase_uid = ${firebaseUid}
+        SET ${updateFields.join(', ')}
+        WHERE firebase_uid = $${paramIndex}
         RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
       `;
+
+      const updatedUsers = await sql.unsafe(query, updateValues);
 
       const updatedUser = updatedUsers[0];
       console.log(`✅ Updated user: ${updatedUser.display_name || updatedUser.email}`);
