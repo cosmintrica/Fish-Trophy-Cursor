@@ -217,6 +217,11 @@ const Profile: React.FC = () => {
       return;
     }
 
+    if (!passwordData.currentPassword) {
+      toast.error('Parola actuală este obligatorie');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Parolele nu se potrivesc');
       return;
@@ -224,6 +229,11 @@ const Profile: React.FC = () => {
 
     if (passwordData.newPassword.length < 6) {
       toast.error('Parola trebuie să aibă cel puțin 6 caractere');
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      toast.error('Parola nouă trebuie să fie diferită de cea actuală');
       return;
     }
 
@@ -237,6 +247,7 @@ const Profile: React.FC = () => {
         },
         body: JSON.stringify({
           action: 'change-password',
+          currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
         })
       });
@@ -686,7 +697,7 @@ const Profile: React.FC = () => {
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
-                              ⚠ Ne verificat
+                              ⚠ Neverificat
                             </span>
                           )}
                         </div>
