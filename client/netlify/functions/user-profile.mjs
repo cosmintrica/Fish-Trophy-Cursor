@@ -39,15 +39,21 @@ export async function handler(event) {
       `;
 
       if (users.length === 0) {
-        // Create user if they don't exist
+        // Create user if they don't exist - we'll get Firebase data from the request
         console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
+        
+        // Try to get Firebase user data from headers or request body
+        const firebaseEmail = event.headers['x-firebase-email'] || '';
+        const firebaseDisplayName = event.headers['x-firebase-display-name'] || '';
+        const firebasePhotoUrl = event.headers['x-firebase-photo-url'] || '';
+        
         const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-          VALUES (${firebaseUid}, '', '', 'user', NOW(), NOW())
+          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
+          VALUES (${firebaseUid}, ${firebaseEmail}, ${firebaseDisplayName}, ${firebasePhotoUrl}, 'user', NOW(), NOW())
           RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         `;
         users = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}, email: ${firebaseEmail}, name: ${firebaseDisplayName}`);
       }
 
       const userData = users[0];
@@ -84,10 +90,12 @@ export async function handler(event) {
     if (event.httpMethod === 'PUT') {
       console.log(`🔄 PUT request for user profile: ${firebaseUid}`);
       
-      const { displayName, display_name, bio, location, website, phone } = JSON.parse(event.body || '{}');
+      const { displayName, display_name, bio, location, website, phone, email, photo_url } = JSON.parse(event.body || '{}');
       
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
+      const emailToSave = email || '';
+      const photoUrlToSave = photo_url || '';
 
       // Check if user exists first, if not create them
       let existingUsers = await sql`
@@ -95,21 +103,23 @@ export async function handler(event) {
       `;
 
       if (existingUsers.length === 0) {
-        // Create user if they don't exist
+        // Create user if they don't exist with Firebase data
         console.log(`🆕 Creating new user: ${firebaseUid}`);
         const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-          VALUES (${firebaseUid}, ${displayNameToSave || ''}, ${displayNameToSave || ''}, 'user', NOW(), NOW())
+          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
+          VALUES (${firebaseUid}, ${emailToSave}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
           RETURNING id
         `;
         existingUsers = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}, email: ${emailToSave}, name: ${displayNameToSave}`);
       }
 
       // Update user profile
       const updatedUsers = await sql`
         UPDATE users 
         SET display_name = ${displayNameToSave}, 
+            email = ${emailToSave},
+            photo_url = ${photoUrlToSave},
             bio = ${bio}, 
             location = ${location}, 
             website = ${website}, 
