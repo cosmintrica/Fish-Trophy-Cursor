@@ -1,6 +1,4 @@
-import { Handler } from '@netlify/functions';
-
-export const handler: Handler = async (event) => {
+export const handler = async (event) => {
   try {
     const { title = 'Fish Trophy', subtitle = 'Platforma Pescarilor din România', domain = 'fishtrophy.ro' } = event.queryStringParameters || {};
 
