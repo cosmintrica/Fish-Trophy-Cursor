@@ -34,4 +34,4 @@
   status = 200
 
 [functions]
-  directory = "netlify/functions"
+  directory = "client/netlify/functions"
