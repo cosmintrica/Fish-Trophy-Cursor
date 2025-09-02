@@ -32,21 +32,22 @@ export async function handler(event) {
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
       
-      const users = await sql`
+      let users = await sql`
         SELECT id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         FROM users 
         WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (users.length === 0) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({ error: 'User not found' })
-        };
+        // Create user if they don't exist
+        console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
+        const newUsers = await sql`
+          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+          VALUES (${firebaseUid}, '', '', 'user', NOW(), NOW())
+          RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
+        `;
+        users = newUsers;
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
       }
 
       const userData = users[0];
@@ -88,20 +89,21 @@ export async function handler(event) {
       // Map displayName to display_name for database compatibility
       const displayNameToSave = displayName || display_name;
 
-      // Check if user exists first
-      const existingUsers = await sql`
+      // Check if user exists first, if not create them
+      let existingUsers = await sql`
         SELECT id FROM users WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (existingUsers.length === 0) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({ error: 'User not found' })
-        };
+        // Create user if they don't exist
+        console.log(`🆕 Creating new user: ${firebaseUid}`);
+        const newUsers = await sql`
+          INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+          VALUES (${firebaseUid}, ${displayNameToSave || ''}, ${displayNameToSave || ''}, 'user', NOW(), NOW())
+          RETURNING id
+        `;
+        existingUsers = newUsers;
+        console.log(`✅ Created new user with ID: ${newUsers[0].id}`);
       }
 
       // Update user profile
