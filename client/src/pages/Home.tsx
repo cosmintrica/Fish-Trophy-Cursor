@@ -55,9 +55,16 @@ export default function Home() {
       renderer: L.canvas(),
       fadeAnimation: false,
       markerZoomAnimation: false,
+      // Optimizări suplimentare pentru mobil
+      bounceAtZoomLimits: false,
+      inertia: !isMobile,
+      inertiaDeceleration: isMobile ? 0 : 3000,
+      inertiaMaxSpeed: isMobile ? 1000 : 1500,
+      easeLinearity: isMobile ? 0.2 : 0.25,
+      tapTolerance: isMobile ? 15 : 10,
+      touchZoom: isMobile ? L.Browser.touch : true,
       // Optimizări specifice pentru mobil
       dragging: true,
-      touchZoom: true,
       doubleClickZoom: !isMobile, // Dezactivează double-click zoom pe mobil
       scrollWheelZoom: !isMobile, // Dezactivează scroll wheel pe mobil
       boxZoom: !isMobile, // Dezactivează box zoom pe mobil
@@ -139,7 +146,7 @@ export default function Home() {
           userMarker.bindPopup(`
             <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
               <div class="text-center mb-2">
-                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden mx-auto mb-1">
+                <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
                   ${userPhoto ? 
                     `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                     `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
@@ -194,8 +201,8 @@ export default function Home() {
     const allLocations = filterType === 'all' ? fishingLocations : 
       fishingLocations.filter(loc => loc.type === filterType);
     
-    // Limitează numărul de locații pe mobil pentru performanță
-    const locationsToShow = isMobile ? allLocations.slice(0, 15) : allLocations;
+    // Afișează toate locațiile
+    const locationsToShow = allLocations;
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: L.Marker[] = [];
@@ -392,7 +399,7 @@ export default function Home() {
             userMarker.bindPopup(`
               <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
                 <div class="text-center mb-2">
-                  <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden mx-auto mb-1">
+                  <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
                     ${userPhoto ? 
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                       `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`

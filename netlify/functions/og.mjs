@@ -7,15 +7,15 @@ export const handler = async (event) => {
       <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
           </linearGradient>
           <linearGradient id="bubble" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
           </linearGradient>
           <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.1"/>
+            <feDropShadow dx="0" dy="12" stdDeviation="24" flood-color="#000000" flood-opacity="0.15"/>
           </filter>
         </defs>
         
@@ -23,37 +23,43 @@ export const handler = async (event) => {
         <rect width="1200" height="630" fill="url(#bg)"/>
         
         <!-- Decorative elements -->
-        <circle cx="100" cy="100" r="60" fill="#3b82f6" opacity="0.1"/>
-        <circle cx="1100" cy="530" r="80" fill="#10b981" opacity="0.1"/>
-        <circle cx="200" cy="500" r="40" fill="#f59e0b" opacity="0.1"/>
+        <circle cx="80" cy="80" r="50" fill="#3b82f6" opacity="0.08"/>
+        <circle cx="1120" cy="550" r="70" fill="#10b981" opacity="0.08"/>
+        <circle cx="150" cy="450" r="35" fill="#f59e0b" opacity="0.08"/>
         
-        <!-- Main content bubble -->
-        <rect x="200" y="140" width="800" height="350" rx="24" fill="url(#bubble)" filter="url(#shadow)" stroke="#e2e8f0" stroke-width="1"/>
+        <!-- Main content bubble with rounded corners and shadow -->
+        <rect x="150" y="120" width="900" height="390" rx="32" fill="url(#bubble)" filter="url(#shadow)" stroke="#e2e8f0" stroke-width="2"/>
         
-        <!-- Fish Icon (using icon_free style) -->
-        <g transform="translate(500, 200)">
-          <circle cx="0" cy="0" r="50" fill="#3b82f6" opacity="0.1"/>
-          <g transform="translate(-25, -25)">
-            <path d="M10 20C10 20 15 10 30 10C45 10 50 20 50 20C50 20 45 30 30 30C15 30 10 20 10 20Z" fill="#3b82f6"/>
-            <circle cx="37" cy="17" r="2" fill="white"/>
-            <path d="M7 20L12 17L12 23L7 20Z" fill="#1e40af"/>
-            <path d="M42 15L52 12L47 20L52 28L42 25" fill="#1e40af" stroke="#1e40af" stroke-width="1"/>
+        <!-- Fish Icon (stylized like icon_free.png) -->
+        <g transform="translate(600, 250)">
+          <circle cx="0" cy="0" r="60" fill="#3b82f6" opacity="0.1"/>
+          <g transform="translate(-30, -30)">
+            <!-- Fish body -->
+            <ellipse cx="30" cy="30" rx="35" ry="20" fill="#3b82f6"/>
+            <!-- Fish tail -->
+            <path d="M5 30L15 20L15 40L5 30Z" fill="#1e40af"/>
+            <!-- Fish eye -->
+            <circle cx="45" cy="25" r="4" fill="white"/>
+            <circle cx="46" cy="24" r="2" fill="#1e40af"/>
+            <!-- Fish fins -->
+            <path d="M25 15L35 10L30 20L25 15Z" fill="#1e40af"/>
+            <path d="M25 45L35 50L30 40L25 45Z" fill="#1e40af"/>
           </g>
         </g>
         
         <!-- Title with homepage-style design -->
-        <text x="600" y="320" text-anchor="middle" fill="#1e293b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="700" letter-spacing="-0.02em">
+        <text x="600" y="380" text-anchor="middle" fill="#1e293b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="800" letter-spacing="-0.03em">
           ${title}
         </text>
         
         <!-- Subtitle -->
-        <text x="600" y="360" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="500">
+        <text x="600" y="420" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="500">
           ${subtitle}
         </text>
         
-        <!-- Domain in small bubble -->
-        <rect x="500" y="400" width="200" height="40" rx="20" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
-        <text x="600" y="425" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="500">
+        <!-- Domain in small rectangular bubble with rounded corners -->
+        <rect x="450" y="450" width="300" height="50" rx="25" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2"/>
+        <text x="600" y="480" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600">
           ${domain}
         </text>
       </svg>
