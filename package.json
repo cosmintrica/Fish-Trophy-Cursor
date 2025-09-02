@@ -12,7 +12,11 @@
     "lint:fix": "npm run lint:fix:client",
     "lint:fix:client": "cd client && npm run lint:fix",
     "type-check": "npm run type-check:client",
-    "type-check:client": "cd client && npm run type-check"
+    "type-check:client": "cd client && npm run type-check",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate"
   },
   "devDependencies": {
     "@neondatabase/serverless": "^0.9.0",
@@ -20,6 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "concurrently": "^8.2.2",
+    "drizzle-kit": "^0.20.6",
     "eslint": "^8.57.1",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
