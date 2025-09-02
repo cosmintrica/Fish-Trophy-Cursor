@@ -5,7 +5,7 @@ interface PositionOptions {
   maximumAge?: number;
 }
 
-// GeolocationPositionError is a built-in DOM type - no need to redefine
+// Use built-in GeolocationPositionError type directly
 
 export interface UserLocation {
   latitude: number;
@@ -101,7 +101,7 @@ class GeolocationService {
   // Watch rapid pentru actualizări; returnează watchId
   startWatch(
     onUpdate: (loc: UserLocation) => void,
-    onError?: (err: GeolocationPositionError) => void,
+    onError?: (err: any) => void,
     highAccuracy = false
   ): number | null {
     if (!this.isSupported()) return null;

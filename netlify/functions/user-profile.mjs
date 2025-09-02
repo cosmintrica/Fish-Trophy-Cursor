@@ -48,18 +48,21 @@ export async function handler(event) {
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         },
         body: JSON.stringify({
-          id: userData.id,
-          firebase_uid: userData.firebase_uid,
-          email: userData.email,
-          display_name: userData.display_name || '',
-          photo_url: userData.photo_url || '',
-          phone: userData.phone || '',
-          role: userData.role,
-          bio: userData.bio || '',
-          location: userData.location || '',
-          website: userData.website || '',
-          created_at: userData.created_at,
-          updated_at: userData.updated_at
+          success: true,
+          data: {
+            id: userData.id,
+            firebase_uid: userData.firebase_uid,
+            email: userData.email,
+            displayName: userData.display_name || '',
+            photo_url: userData.photo_url || '',
+            phone: userData.phone || '',
+            role: userData.role,
+            bio: userData.bio || '',
+            location: userData.location || '',
+            website: userData.website || '',
+            created_at: userData.created_at,
+            updated_at: userData.updated_at
+          }
         })
       };
     }
@@ -108,18 +111,21 @@ export async function handler(event) {
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
-          id: updatedUser.id,
-          firebase_uid: updatedUser.firebase_uid,
-          email: updatedUser.email,
-          display_name: updatedUser.display_name || '',
-          photo_url: updatedUser.photo_url || '',
-          phone: updatedUser.phone || '',
-          role: updatedUser.role,
-          bio: updatedUser.bio || '',
-          location: updatedUser.location || '',
-          website: updatedUser.website || '',
-          created_at: updatedUser.created_at,
-          updated_at: updatedUser.updated_at
+          success: true,
+          data: {
+            id: updatedUser.id,
+            firebase_uid: updatedUser.firebase_uid,
+            email: updatedUser.email,
+            displayName: updatedUser.display_name || '',
+            photo_url: updatedUser.photo_url || '',
+            phone: updatedUser.phone || '',
+            role: updatedUser.role,
+            bio: updatedUser.bio || '',
+            location: updatedUser.location || '',
+            website: updatedUser.website || '',
+            created_at: updatedUser.created_at,
+            updated_at: updatedUser.updated_at
+          }
         })
       };
     }
