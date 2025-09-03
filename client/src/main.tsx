@@ -1,16 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
+// import { Toaster } from '@/components/ui/toaster'; // Temporarily disabled
 import App from './App';
 import './styles/index.css';
 
-// Create a client
+// Create a client with minimal configuration to prevent reload issues
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
+      retry: 0, // Disable retries to prevent reload loops
+      refetchOnWindowFocus: false, // Disable refetch on focus
+      refetchOnReconnect: false, // Disable refetch on reconnect
     },
   },
 });
@@ -54,11 +56,12 @@ if (!rootElement) {
   document.body.innerHTML = '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;"><h1>Eroare de încărcare</h1><p>Elementul root nu a fost găsit. Te rugăm să reîmprospătezi pagina.</p></div>';
 } else {
   ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
+    // React.StrictMode temporarily disabled to fix mobile reload issue
+    // <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <App />
-        <Toaster />
+        {/* <Toaster /> temporarily disabled */}
       </QueryClientProvider>
-    </React.StrictMode>,
+    // </React.StrictMode>
   );
 }

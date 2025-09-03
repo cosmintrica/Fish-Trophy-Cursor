@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'sonner';
+// import { Toaster } from 'sonner'; // Temporarily disabled
 import { HelmetProvider } from 'react-helmet-async';
 import { useEffect } from 'react';
 import { AuthProvider } from '@/lib/auth-supabase';
@@ -7,10 +7,10 @@ import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import ScrollToTop from '@/components/ScrollToTop';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { initAnalytics } from '@/lib/analytics';
-import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
+// import ErrorBoundary from '@/components/ErrorBoundary'; // Temporarily disabled
+// import { initAnalytics } from '@/lib/analytics'; // Temporarily disabled
+// import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals'; // Temporarily disabled
+// import { useErrorHandler } from '@/hooks/useErrorHandler'; // Temporarily disabled
 
 // Pages
 import Home from '@/pages/Home';
@@ -26,29 +26,26 @@ import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 
 function App() {
-  // Initialize Web Vitals tracking
-  useWebVitals();
+  // Initialize Web Vitals tracking - temporarily disabled
+  // useWebVitals();
   
-  // Initialize error handling
-  useErrorHandler();
+  // Initialize error handling - temporarily disabled
+  // useErrorHandler();
 
   useEffect(() => {
-    // Initialize analytics
-    initAnalytics();
-    
-    // Optimize performance
-    performanceUtils.optimizeFonts();
-    // performanceUtils.registerServiceWorker(); // Disabled to fix mobile reload issue
-    
-    // Preconnect to external domains
-    performanceUtils.preconnect('https://fonts.googleapis.com');
-    performanceUtils.preconnect('https://fonts.gstatic.com');
-    performanceUtils.preconnect('https://cdnjs.cloudflare.com');
+    // All performance optimizations temporarily disabled to fix mobile reload issue
+    // initAnalytics();
+    // performanceUtils.optimizeFonts();
+    // performanceUtils.registerServiceWorker();
+    // performanceUtils.preconnect('https://fonts.googleapis.com');
+    // performanceUtils.preconnect('https://fonts.gstatic.com');
+    // performanceUtils.preconnect('https://cdnjs.cloudflare.com');
   }, []);
 
   return (
     <HelmetProvider>
-      <ErrorBoundary>
+      {/* ErrorBoundary temporarily disabled to fix mobile reload issue */}
+      {/* <ErrorBoundary> */}
         <AuthProvider>
           <Router>
             <Layout>
@@ -89,9 +86,9 @@ function App() {
               </Routes>
             </Layout>
           </Router>
-          <Toaster />
+          {/* <Toaster /> temporarily disabled */}
         </AuthProvider>
-      </ErrorBoundary>
+      {/* </ErrorBoundary> */}
     </HelmetProvider>
   );
 }
