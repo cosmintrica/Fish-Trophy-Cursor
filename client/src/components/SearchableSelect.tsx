@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
+import { matchesAtStart } from '@/data/romania-locations';
 
 interface SearchableSelectProps {
   options: Array<{ value: string; label: string }>;
@@ -32,7 +33,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       setFilteredOptions(options);
     } else {
       const filtered = options.filter(option =>
-        option.label.toLowerCase().includes(searchQuery.toLowerCase())
+        matchesAtStart(option.label, searchQuery)
       );
       setFilteredOptions(filtered);
     }

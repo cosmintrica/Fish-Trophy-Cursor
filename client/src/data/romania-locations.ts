@@ -558,18 +558,7 @@ export const ROMANIA_COUNTIES: County[] = [
       "Râmnicu Vâlcea"
     ]
   },
-  {
-    "id": "vrancea",
-    "name": "Vrancea",
-    "cities": [
-      "Adjud",
-      "Focșani",
-      "Mărășești",
-      "Odobești",
-      "Panciu"
-    ]
-  },
-  {
+    {
     "id": "bucuresti",
     "name": "București",
     "cities": [
@@ -579,6 +568,17 @@ export const ROMANIA_COUNTIES: County[] = [
       "Sector 4",
       "Sector 5",
       "Sector 6"
+    ]
+  },
+  {
+    "id": "vrancea",
+    "name": "Vrancea",
+    "cities": [
+      "Adjud",
+      "Focșani",
+      "Mărășești",
+      "Odobești",
+      "Panciu"
     ]
   }
 ] as const;
@@ -628,3 +628,6 @@ export const searchCities = (countyId: string, query: string): string[] => {
 export const getCountyById = (countyId: string): County | undefined => {
   return ROMANIA_COUNTIES.find(c => c.id === countyId);
 };
+
+// Export the search functions for use in components
+export { normalizeText, matchesAtStart };
