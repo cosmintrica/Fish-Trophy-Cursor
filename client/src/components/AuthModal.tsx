@@ -69,10 +69,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         
         await signUp(email, password, displayName, location);
         
-        setSuccess('Contul a fost creat cu succes! Verifică email-ul pentru a confirma contul.');
+        setSuccess('Contul a fost creat cu succes!');
         setShowSuccess(true);
         
-        // Don't auto-reset form, let user manually switch to login
+        // Auto-switch to login after 2 seconds
+        setTimeout(() => {
+          setShowSuccess(false);
+          resetForm();
+          setIsLogin(true);
+        }, 2000);
       }
     } catch (err: unknown) {
       // Supabase error handling
@@ -291,9 +296,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Success Message - at bottom */}
         {showSuccess && (
           <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-              <p className="text-green-800 text-sm font-medium">{success}</p>
+            <div className="flex items-start">
+              <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+              <div>
+                <p className="text-green-800 text-sm font-medium">{success}</p>
+                <p className="text-green-700 text-xs mt-1">Verifică email-ul pentru a confirma contul.</p>
+              </div>
             </div>
           </div>
         )}
