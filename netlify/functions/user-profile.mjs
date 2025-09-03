@@ -8,13 +8,13 @@ export async function handler(event) {
   const pathParts = event.path.split('/');
   const firebaseUid = pathParts[pathParts.length - 1];
 
-  // CRITICAL: Strict validation for Firebase UID
+  // CRITICAL: More permissive validation for Firebase UID
   if (!firebaseUid || 
       firebaseUid === 'user-profile' || 
       firebaseUid === 'undefined' || 
       firebaseUid === 'null' ||
       firebaseUid.trim() === '' ||
-      firebaseUid.length < 10) {
+      firebaseUid.length < 5) { // Reduced from 10 to 5
     console.error('❌ Invalid Firebase UID:', firebaseUid);
     return {
       statusCode: 400,

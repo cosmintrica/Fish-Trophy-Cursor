@@ -79,39 +79,33 @@ export default function Home() {
     
     console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
-    // CRITICAL: Completely different config for mobile vs desktop
+    // CRITICAL: High-performance mobile config based on iPhone 15 Pro optimization
     const mapConfig: L.MapOptions = isMobile ? {
-      // MOBILE CONFIG - Optimized for touch and performance
+      // MOBILE CONFIG - Optimized for 60fps on iPhone 15 Pro
       center: [45.9432, 25.0094] as [number, number],
-      zoom: 6,
+      zoom: 7,
       minZoom: 5,
-      maxZoom: 12, // Much lower max zoom for mobile
-      zoomControl: false, // No zoom controls on mobile
-      attributionControl: false, // No attribution on mobile
-      // Performance optimizations
+      maxZoom: 16,
+      zoomControl: true,
+      attributionControl: true,
+      // CRITICAL: Canvas rendering for performance
       preferCanvas: true,
-      renderer: L.canvas(),
-      // Disable all animations
-      fadeAnimation: false,
+      // Disable expensive animations on mobile
+      zoomAnimation: false,       // Stops expensive animations on iOS
       markerZoomAnimation: false,
-      zoomAnimation: false,
+      fadeAnimation: false,
       // Touch optimizations
       tapTolerance: 20,
       touchZoom: true,
-      // Disable unnecessary features
-      doubleClickZoom: false,
-      scrollWheelZoom: false,
+      // Essential features only
+      doubleClickZoom: true,
+      scrollWheelZoom: true,
       boxZoom: false,
       keyboard: false,
       dragging: true,
       // Performance settings
       worldCopyJump: false,
-      bounceAtZoomLimits: false,
-      // Limit bounds to Romania
-      maxBounds: L.latLngBounds(
-        L.latLng(43.5, 20.0),
-        L.latLng(48.5, 30.0)
-      )
+      bounceAtZoomLimits: false
     } : {
       // DESKTOP CONFIG - Full features
       center: [45.9432, 25.0094] as [number, number],
@@ -134,32 +128,26 @@ export default function Home() {
 
     const map = L.map(mapContainerRef.current, mapConfig);
 
-    // CRITICAL: Different tile layer config for mobile vs desktop
+    // CRITICAL: High-performance tile config for mobile
     const tileConfig = isMobile ? {
-      // MOBILE TILE CONFIG - Maximum performance
-      attribution: '',
-      maxZoom: 12, // Match map maxZoom
+      // MOBILE TILE CONFIG - Optimized for iPhone 15 Pro
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 16, // Match map maxZoom
       subdomains: ['a', 'b', 'c'],
-      // Performance optimizations
-      keepBuffer: 1, // Minimal buffer
-      updateWhenIdle: false,
-      updateWhenZooming: false,
-      updateWhenMoving: false,
-      // Cache settings
-      maxNativeZoom: 12,
-      tileSize: 256,
-      zoomOffset: 0,
-      // Disable retina for mobile
-      detectRetina: false,
+      // CRITICAL: Performance optimizations
+      tileSize: 256,               // Standard tile size
+      detectRetina: false,         // Avoid heavy @2x images on mobile
+      updateWhenIdle: true,        // Don't update during movement
+      updateWhenZooming: false,    // Don't re-render during zoom
+      keepBuffer: 1,               // Keep fewer tiles in memory
+      maxNativeZoom: 18,           // Prevent over-zoom
+      // Performance settings
+      crossOrigin: true,
       // Limit to Romania bounds
       bounds: L.latLngBounds(
         L.latLng(43.5, 20.0),
         L.latLng(48.5, 30.0)
-      ),
-      // Performance settings
-      crossOrigin: true,
-      // Reduce tile loading
-      minZoom: 5
+      )
     } : {
       // DESKTOP TILE CONFIG - Full quality
       attribution: '© OpenStreetMap contributors',
@@ -200,11 +188,20 @@ export default function Home() {
       }, 100);
     }
 
-    // Adaugă event listener pentru click pe hartă să închidă popup-urile
-    map.on('click', () => {
-      setShowShopPopup(false);
-      setShowLocationRequest(false);
-    });
+    // CRITICAL: Optimized event listeners for mobile performance
+    if (isMobile) {
+      // Mobile: Use moveend instead of move for better performance
+      map.on('moveend', () => {
+        setShowShopPopup(false);
+        setShowLocationRequest(false);
+      });
+    } else {
+      // Desktop: Use click for better UX
+      map.on('click', () => {
+        setShowShopPopup(false);
+        setShowLocationRequest(false);
+      });
+    }
 
     // Verifică dacă utilizatorul a acceptat deja locația și o afișează
     const locationAccepted = localStorage.getItem('locationAccepted');
@@ -296,7 +293,7 @@ export default function Home() {
     console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 
     // Adaugă markerii în batch pentru performanță mai bună
-    const markers: L.Marker[] = [];
+    const markers: (L.Marker | L.CircleMarker)[] = [];
     
     locationsToShow.forEach(location => {
       // Determină culoarea în funcție de tipul locației
@@ -326,43 +323,49 @@ export default function Home() {
           break;
       }
 
-      // CRITICAL: Much smaller markers on mobile for performance
-      const iconSize = isMobile ? 20 : 32; // Even smaller on mobile
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="${isMobile ? 'w-4 h-4' : 'w-6 h-6'} ${markerColor} ${borderColor} rounded-full border-2 border-white ${isMobile ? 'shadow-sm' : 'shadow-md'} flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
-                 <Fish className="${isMobile ? 'w-2 h-2' : 'w-4 h-4'} text-white" />
-               </div>`,
-        iconSize: [iconSize, iconSize],
-        iconAnchor: [iconSize / 2, iconSize / 2]
-      });
-
-      const marker = L.marker(location.coords, { icon });
+      // CRITICAL: Optimized markers for mobile performance
+      let marker;
+      if (isMobile) {
+        // Use circleMarker for mobile - much better performance (Canvas rendering)
+        const markerColorMap = {
+          'lake': '#3B82F6',      // blue-500
+          'river': '#10B981',     // emerald-500
+          'pond': '#EF4444',      // red-500
+          'private_pond': '#8B5CF6', // purple-500
+          'maritime': '#6366F1'   // indigo-500
+        };
+        
+        marker = L.circleMarker(location.coords, {
+          radius: 8, // Small radius for performance
+          fillColor: markerColorMap[location.type] || '#3B82F6',
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
+          // Use canvas renderer for better performance
+          renderer: L.canvas()
+        });
+      } else {
+        // Desktop: Use divIcon for better visual appeal
+        const iconSize = 32;
+        const icon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div class="w-6 h-6 ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center hover:scale-110 transition-transform duration-200">
+                   <Fish className="w-4 h-4 text-white" />
+                 </div>`,
+          iconSize: [iconSize, iconSize],
+          iconAnchor: [iconSize / 2, iconSize / 2]
+        });
+        marker = L.marker(location.coords, { icon });
+      }
       markers.push(marker);
       
-      // CRITICAL: Simplified popup for mobile performance
+      // CRITICAL: Ultra-simplified popup for mobile performance
       const popupContent = isMobile ? `
-        <div class="p-2 min-w-[200px] max-w-[240px] bg-white">
-          <div class="mb-2">
-            <h3 class="font-bold text-sm text-gray-800 mb-1">${location.name}</h3>
-            <p class="text-xs text-gray-600">${location.county}</p>
-          </div>
-          
-          <div class="mb-2">
-            <div class="flex items-center gap-1 mb-1">
-              <span class="text-xs font-medium text-gray-700">Recorduri:</span>
-              <span class="text-xs text-gray-600">${location.recordCount}</span>
-            </div>
-          </div>
-          
-          <div class="flex gap-1">
-            <button class="flex-1 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-              Vezi
-            </button>
-            <button class="flex-1 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-              Adaugă
-            </button>
-          </div>
+        <div class="p-1 min-w-[120px] max-w-[160px] bg-white text-center">
+          <h3 class="font-bold text-xs text-gray-800 mb-1">${location.name}</h3>
+          <p class="text-xs text-gray-600 mb-1">${location.county}</p>
+          <p class="text-xs text-blue-600">${location.recordCount} recorduri</p>
         </div>
       ` : `
         <div class="p-3 min-w-[240px] max-w-[280px] bg-white">
@@ -409,18 +412,22 @@ export default function Home() {
       });
     });
     
-    // CRITICAL: Optimized batch adding for mobile performance
+    // CRITICAL: High-performance marker adding
     if (locationsLayerRef.current && markers.length > 0) {
       try {
         if (isMobile) {
-          // Mobile: Add markers with delay to prevent blocking
-          markers.forEach((marker, index) => {
+          // Mobile: Add markers in batches to prevent blocking
+          const batchSize = 50;
+          for (let i = 0; i < markers.length; i += batchSize) {
+            const batch = markers.slice(i, i + batchSize);
             setTimeout(() => {
-              if (locationsLayerRef.current && marker) {
-                locationsLayerRef.current.addLayer(marker);
-              }
-            }, index * 10); // 10ms delay between each marker
-          });
+              batch.forEach(marker => {
+                if (locationsLayerRef.current && marker) {
+                  locationsLayerRef.current.addLayer(marker);
+                }
+              });
+            }, (i / batchSize) * 50); // 50ms delay between batches
+          }
         } else {
           // Desktop: Add all markers immediately
           markers.forEach(marker => {

@@ -31,8 +31,8 @@ export async function handler(event) {
   try {
     const { firebase_uid, email, display_name, photo_url } = JSON.parse(event.body || '{}');
 
-    // CRITICAL: Strict validation
-    if (!firebase_uid || firebase_uid.length < 10) {
+    // CRITICAL: More permissive validation
+    if (!firebase_uid || firebase_uid.length < 5) {
       return {
         statusCode: 400,
         headers: {
