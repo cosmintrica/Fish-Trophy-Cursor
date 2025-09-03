@@ -25,6 +25,8 @@ import {
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
+import SearchableSelect from '@/components/SearchableSelect';
+import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations';
 
 const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -41,6 +43,8 @@ const Profile: React.FC = () => {
     location: '',
     bio: 'Pescar pasionat din România!'
   });
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -89,33 +93,48 @@ const Profile: React.FC = () => {
         const result = await supabaseApi.getProfile(user.id);
 
         if (result.success && result.data) {
+          const location = result.data.location || user.user_metadata?.location || '';
+          const { county, city } = parseLocation(location);
+          
           setProfileData({
             displayName: result.data.displayName || user.user_metadata?.display_name || '',
             email: result.data.email || user.email || '',
             phone: result.data.phone || '',
-            location: result.data.location || user.user_metadata?.location || '',
+            location: location,
             bio: result.data.bio || 'Pescar pasionat din România!'
           });
+          setSelectedCounty(county);
+          setSelectedCity(city);
         } else {
           // Dacă nu există în baza de date, folosește datele din user_metadata
+          const location = user.user_metadata?.location || '';
+          const { county, city } = parseLocation(location);
+          
           setProfileData({
             displayName: user.user_metadata?.display_name || '',
             email: user.email || '',
             phone: '',
-            location: user.user_metadata?.location || '',
+            location: location,
             bio: 'Pescar pasionat din România!'
           });
+          setSelectedCounty(county);
+          setSelectedCity(city);
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
         // Fallback la user_metadata dacă există o eroare
+        const location = user.user_metadata?.location || '';
+        const { county, city } = parseLocation(location);
+        
         setProfileData({
           displayName: user.user_metadata?.display_name || '',
           email: user.email || '',
           phone: '',
-          location: user.user_metadata?.location || '',
+          location: location,
           bio: 'Pescar pasionat din România!'
         });
+        setSelectedCounty(county);
+        setSelectedCity(city);
       }
     };
 
@@ -143,12 +162,15 @@ const Profile: React.FC = () => {
     }
 
     try {
+      // Build location from selected county and city
+      const location = buildLocation(selectedCounty, selectedCity);
+      
       // Actualizează Supabase Auth cu toate datele
       const { error: authError } = await supabase.auth.updateUser({
         data: { 
           display_name: profileData.displayName,
           phone: profileData.phone,
-          location: profileData.location,
+          location: location,
           bio: profileData.bio
         }
       });
@@ -166,7 +188,7 @@ const Profile: React.FC = () => {
           email: user.email, // Asigură-te că email-ul este inclus
           display_name: profileData.displayName,
           phone: profileData.phone,
-          location: profileData.location,
+          location: location,
           bio: profileData.bio,
           updated_at: new Date().toISOString()
         });
@@ -181,7 +203,7 @@ const Profile: React.FC = () => {
             email: user.email,
             display_name: profileData.displayName,
             phone: profileData.phone,
-            location: profileData.location,
+            location: location,
             bio: profileData.bio,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -197,6 +219,8 @@ const Profile: React.FC = () => {
         toast.success('Profilul a fost actualizat cu succes!');
       }
       
+      // Update local state
+      setProfileData(prev => ({ ...prev, location }));
       setIsEditing(false);
       
     } catch (error) {
@@ -260,6 +284,33 @@ const Profile: React.FC = () => {
 
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
+
+  // Helper function to parse location string into county and city
+  const parseLocation = (location: string) => {
+    if (!location) return { county: '', city: '' };
+    
+    const parts = location.split(', ');
+    if (parts.length >= 2) {
+      const city = parts[0].trim();
+      const countyName = parts[1].trim();
+      
+      // Find county by name
+      const county = ROMANIA_COUNTIES.find(c => c.name === countyName);
+      return {
+        county: county?.id || '',
+        city: city
+      };
+    }
+    
+    return { county: '', city: '' };
+  };
+
+  // Helper function to build location string from county and city
+  const buildLocation = (countyId: string, city: string) => {
+    if (!countyId || !city) return '';
+    const county = getCountyById(countyId);
+    return county ? `${city}, ${county.name}` : '';
+  };
 
   const handleSetPasswordForGoogle = async () => {
     if (!user?.id) {
@@ -433,14 +484,10 @@ const Profile: React.FC = () => {
 
   const handleLinkGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.linkIdentity({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/profile`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
         },
       });
       
@@ -839,14 +886,55 @@ const Profile: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="location">Locație</Label>
-                        <Input
-                          id="location"
-                          value={profileData.location}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, location: e.target.value})}
-                          disabled={!isEditing}
-                          placeholder="Oraș, Județ"
-                        />
+                        <Label>Locație</Label>
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="county" className="text-sm font-medium text-gray-700">
+                                Județ
+                              </Label>
+                              <SearchableSelect
+                                options={ROMANIA_COUNTIES.map(county => ({
+                                  value: county.id,
+                                  label: county.name
+                                }))}
+                                value={selectedCounty}
+                                onChange={(countyId) => {
+                                  setSelectedCounty(countyId);
+                                  setSelectedCity(''); // Reset city when county changes
+                                }}
+                                placeholder="Selectează județul"
+                                searchPlaceholder="Caută județ..."
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="city" className="text-sm font-medium text-gray-700">
+                                Oraș
+                              </Label>
+                              <SearchableSelect
+                                options={selectedCounty 
+                                  ? searchCities(selectedCounty, '').map(city => ({
+                                      value: city,
+                                      label: city
+                                    }))
+                                  : []
+                                }
+                                value={selectedCity}
+                                onChange={setSelectedCity}
+                                placeholder={selectedCounty ? "Selectează orașul" : "Selectează mai întâi județul"}
+                                searchPlaceholder="Caută oraș..."
+                                disabled={!selectedCounty}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <Input
+                            value={profileData.location}
+                            disabled={true}
+                            className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                            placeholder="Oraș, Județ"
+                          />
+                        )}
                       </div>
                     </div>
 
