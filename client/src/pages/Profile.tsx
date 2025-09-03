@@ -23,9 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { updateProfile } from 'firebase/auth';
-import { storage } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 
 const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -36,7 +34,7 @@ const Profile: React.FC = () => {
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
   const isAdmin = user?.email === adminEmail;
   const [profileData, setProfileData] = useState({
-    displayName: user?.displayName || '',
+    displayName: user?.user_metadata?.display_name || '',
     email: user?.email || '',
     phone: '',
     location: '',
@@ -103,22 +101,13 @@ const Profile: React.FC = () => {
     };
 
     const checkGoogleAuthStatus = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
       
       try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/.netlify/functions/google-auth-password', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-          setIsGoogleUser(result.data.hasGoogleProvider);
-          setNeedsPassword(result.data.needsPassword);
-        }
+        // Check if user has Google provider
+        const isGoogleUser = user.app_metadata?.provider === 'google';
+        setIsGoogleUser(isGoogleUser);
+        setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
       } catch (error) {
         console.error('Error checking Google Auth status:', error);
       }
@@ -137,14 +126,17 @@ const Profile: React.FC = () => {
     try {
       const profileDataToSend = {
         displayName: profileData.displayName,
-        email: profileData.email || user.email,
+        email: profileData.email || user.email || '',
         phone: profileData.phone,
         location: profileData.location,
         bio: profileData.bio,
       };
 
       // Actualizează Supabase Auth
-      await updateProfile({ display_name: profileData.displayName });
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { display_name: profileData.displayName }
+      });
+      if (authError) throw authError;
 
       // Salvează în baza de date prin Supabase API
       const result = await supabaseApi.updateProfile(user.id, profileDataToSend);
@@ -172,7 +164,7 @@ const Profile: React.FC = () => {
   };
 
   const handleEmailChange = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
@@ -188,27 +180,16 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const idToken = await user.getIdToken();
-      const response = await fetch('/.netlify/functions/auth-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          action: 'change-email',
-          newEmail: emailData.newEmail
-        })
+      const { error } = await supabase.auth.updateUser({
+        email: emailData.newEmail
       });
 
-      const result = await response.json();
-
-      if (result.success) {
+      if (error) {
+        toast.error(error.message || 'Eroare la schimbarea email-ului');
+      } else {
         toast.success('Email-ul a fost actualizat! Verifică-ți noul email pentru confirmare.');
         setIsChangingEmail(false);
         setEmailData({ newEmail: '', confirmEmail: '' });
-      } else {
-        toast.error(result.error || 'Eroare la schimbarea email-ului');
       }
     } catch (error) {
       console.error('Error changing email:', error);
@@ -226,7 +207,7 @@ const Profile: React.FC = () => {
   const [needsPassword, setNeedsPassword] = useState(false);
 
   const handleSetPasswordForGoogle = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
@@ -266,30 +247,16 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const idToken = await user.getIdToken();
-      const response = await fetch('/.netlify/functions/google-auth-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          action: 'set-password',
-          newPassword: passwordData.newPassword
-        })
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(result.message || 'Parola a fost setată cu succes!');
+      if (error) {
+        toast.error(error.message || 'Eroare la setarea parolei');
+      } else {
+        toast.success('Parola a fost setată cu succes!');
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setNeedsPassword(false);
-      } else {
-        toast.error(result.error || 'Eroare la setarea parolei');
-        if (result.field) {
-          setPasswordErrors(prev => ({ ...prev, [result.field]: result.error }));
-        }
       }
     } catch (error) {
       console.error('Error setting password:', error);
@@ -298,7 +265,7 @@ const Profile: React.FC = () => {
   };
 
   const handlePasswordChange = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
@@ -341,23 +308,13 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const idToken = await user.getIdToken();
-      const response = await fetch('/.netlify/functions/auth-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          action: 'change-password',
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
       });
 
-      const result = await response.json();
-
-      if (result.success) {
+      if (error) {
+        toast.error(error.message || 'Eroare la schimbarea parolei');
+      } else {
         toast.success('Parola a fost actualizată cu succes! Vei fi deconectat pentru securitate.');
         setIsChangingPassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -371,12 +328,6 @@ const Profile: React.FC = () => {
         setTimeout(() => {
           window.location.href = '/';
         }, 2000);
-      } else {
-        // Set field-specific error
-        if (result.field) {
-          setPasswordErrors(prev => ({ ...prev, [result.field]: result.error }));
-        }
-        toast.error(result.error || 'Eroare la schimbarea parolei');
       }
     } catch (error) {
       console.error('Error changing password:', error);
@@ -385,34 +336,21 @@ const Profile: React.FC = () => {
   };
 
   const handleSendEmailVerification = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
 
     try {
-      const idToken = await user.getIdToken();
-      const response = await fetch('/.netlify/functions/send-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          action: 'send-verification'
-        })
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email!
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        if (result.data.emailSent) {
-          toast.success('Email de verificare trimis cu succes! Verifică-ți inbox-ul.');
-        } else {
-          toast.success('Link de verificare generat! Verifică server logs pentru link.');
-        }
+      if (error) {
+        toast.error(error.message || 'Eroare la trimiterea email-ului de verificare');
       } else {
-        toast.error(result.error || 'Eroare la trimiterea email-ului de verificare');
+        toast.success('Email de verificare trimis cu succes! Verifică-ți inbox-ul.');
       }
     } catch (error) {
       console.error('Error sending email verification:', error);
@@ -424,7 +362,7 @@ const Profile: React.FC = () => {
 
   const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user?.uid) {
+    if (!file || !user?.id) {
       toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
       return;
     }
@@ -444,10 +382,31 @@ const Profile: React.FC = () => {
     try {
       toast.info('Se încarcă imaginea...');
 
-      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await updateProfile(user, { photoURL: url });
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (error) {
+        throw error;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update user profile with new photo URL
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
 
       toast.success('Imaginea de profil a fost actualizată cu succes!');
 
@@ -502,9 +461,9 @@ const Profile: React.FC = () => {
               <CardHeader className="text-center">
                 <div className="relative mx-auto mb-4">
                   <Avatar className="w-24 h-24 mx-auto">
-                    <AvatarImage src={user.photoURL || undefined} />
+                    <AvatarImage src={user.user_metadata?.avatar_url || undefined} />
                     <AvatarFallback className="text-2xl">
-                      {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      {user.user_metadata?.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
@@ -518,7 +477,7 @@ const Profile: React.FC = () => {
                   </label>
                 </div>
                 <CardTitle className="text-xl">
-                  {user.displayName || 'Utilizator'}
+                  {user.user_metadata?.display_name || 'Utilizator'}
                 </CardTitle>
                 <CardDescription>{user.email}</CardDescription>
               </CardHeader>
@@ -526,7 +485,7 @@ const Profile: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
-                    <span>Membru din {new Date(user.metadata?.creationTime || Date.now()).toLocaleDateString('ro-RO')}</span>
+                    <span>Membru din {new Date(user.created_at || Date.now()).toLocaleDateString('ro-RO')}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Trophy className="w-4 h-4" />
@@ -952,7 +911,7 @@ const Profile: React.FC = () => {
                         <div>
                           <p className="font-medium text-blue-900">Email actual</p>
                           <p className="text-sm text-blue-700">{user?.email}</p>
-                          {user?.emailVerified ? (
+                          {user?.email_confirmed_at ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
                               ✓ Verificat
                             </span>
@@ -962,7 +921,7 @@ const Profile: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        {!user?.emailVerified && (
+                        {!user?.email_confirmed_at && (
                           <Button 
                             variant="outline" 
                             size="sm"

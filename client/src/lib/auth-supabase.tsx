@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -71,7 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       },
     });
     if (error) throw error;
-    return data;
   };
 
   const signInWithGoogle = async () => {

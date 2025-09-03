@@ -6,7 +6,7 @@ import L from 'leaflet';
 import { fishingLocations } from '@/services/locations';
 
 import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth-supabase';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 
@@ -226,8 +226,8 @@ export default function Home() {
           userMarker.addTo(map);
 
           // Adaugă popup cu design îmbunătățit
-          const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
-          const userPhoto = user?.photoURL || '';
+          const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+          const userPhoto = user?.user_metadata?.avatar_url || '';
           
           userMarker.bindPopup(`
             <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
@@ -535,8 +535,8 @@ export default function Home() {
             userMarker.addTo(mapInstanceRef.current);
 
             // Adaugă popup cu design îmbunătățit
-            const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
-            const userPhoto = user?.photoURL || '';
+            const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+            const userPhoto = user?.user_metadata?.avatar_url || '';
             
             userMarker.bindPopup(`
               <div class="p-3 min-w-[160px] max-w-[180px] bg-white">

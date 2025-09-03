@@ -1,4 +1,4 @@
-import { supabase, User, Profile } from '@/lib/supabase';
+import { supabase, Profile } from '@/lib/supabase';
 
 export interface ApiResponse<T> {
   success: boolean;

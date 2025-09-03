@@ -19,48 +19,6 @@
 # Order is CRITICAL - most specific routes first!
 
 [[redirects]]
-  from = "/api/users/register"
-  to = "/.netlify/functions/user-register"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/users/cleanup"
-  to = "/.netlify/functions/cleanup-users"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/users/*/profile-debug"
-  to = "/.netlify/functions/user-profile-debug/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/users/*/profile-pg"
-  to = "/.netlify/functions/user-profile-pg/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/users/*/profile"
-  to = "/.netlify/functions/user-profile/*"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/auth/*"
-  to = "/.netlify/functions/auth-settings"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/debug-user"
-  to = "/.netlify/functions/debug-user"
-  status = 200
-  force = true
-
-[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200

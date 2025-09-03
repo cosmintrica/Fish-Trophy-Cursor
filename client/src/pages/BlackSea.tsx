@@ -4,7 +4,7 @@ import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
 import L from 'leaflet';
 import { fishingLocations } from '@/services/locations';
 import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth-supabase';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -83,8 +83,8 @@ export default function BlackSea() {
           userMarker.addTo(map);
 
           // Adaugă popup cu design îmbunătățit
-          const userName = user?.displayName || user?.email?.split('@')[0] || 'Utilizator';
-          const userPhoto = user?.photoURL || '';
+          const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+          const userPhoto = user?.user_metadata?.avatar_url || '';
           
           userMarker.bindPopup(`
             <div class="p-6 min-w-[320px] bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow-2xl border border-cyan-200">
