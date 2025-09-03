@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Register user in database
       if (userCredential.user) {
         try {
-          const response = await fetch('/api/users/register', {
+          const response = await fetch('/.netlify/functions/user-register', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Register user in database if they don't exist
       if (userCredential.user) {
         try {
-          const response = await fetch('/api/users/register', {
+          const response = await fetch('/.netlify/functions/user-register', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

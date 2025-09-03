@@ -44,7 +44,13 @@
 
 [[redirects]]
   from = "/api/users/*/profile"
-  to = "/.netlify/functions/user-profile/:splat"
+  to = "/.netlify/functions/user-profile/*"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/.netlify/functions/auth-settings"
   status = 200
   force = true
 

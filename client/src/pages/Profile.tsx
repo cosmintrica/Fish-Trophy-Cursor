@@ -85,7 +85,7 @@ const Profile: React.FC = () => {
       if (!user?.uid) return;
 
       try {
-        const response = await fetch(`/api/users/${user.uid}/profile`);
+        const response = await fetch(`/.netlify/functions/user-profile/${user.uid}`);
         const result = await response.json();
 
         if (result.success && result.data) {
@@ -148,7 +148,7 @@ const Profile: React.FC = () => {
       await updateProfile(user, { displayName: profileData.displayName });
 
       // Salvează în baza de date prin API
-      const response = await fetch(`/api/users/${user.uid}/profile`, {
+      const response = await fetch(`/.netlify/functions/user-profile/${user.uid}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
