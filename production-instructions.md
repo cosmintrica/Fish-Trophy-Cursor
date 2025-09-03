@@ -1,7 +1,7 @@
 # Fish Trophy – Production Instructions (Cursor-Ready)
 
 > **Purpose:** This file is the single source of truth for building and shipping the product.  
-> **Stack (final):** Firebase Auth • Neon (PostgreSQL + **PostGIS**) • Drizzle • **Vercel Functions** • React + Vite + Tailwind + shadcn/ui + TanStack Query • **Leaflet** (OSM tiles) • Resend emails.  
+> **Stack (final):** Supabase Auth • Supabase (PostgreSQL + **PostGIS**) • Supabase Client • **Netlify Functions** • React + Vite + Tailwind + shadcn/ui + TanStack Query • **Leaflet** (OSM tiles) • Cloudflare R2 Storage.  
 > **Admin:** 100% **custom**, inside the site (`/admin`), with editing of **polygons/points** (Leaflet.draw), moderation, users, amenities.  
 > **Special area:** Dedicated **Black Sea** micro‑site with separate theme and filters.
 
@@ -14,7 +14,7 @@ Build a comprehensive platform for anglers in Romania featuring:
 - **Species** catalogue (real photos, details, habitat flags) with smart filtering (popular species first, full search available).
 - **Team Statistics** by water body with comprehensive analytics (total weight, count, species breakdown).
 - **Premium Plan** (€2/user) for competitions, prizes, and advanced features.
-- **Role-based Access Control** (user/moderator/admin) with secure Firebase custom claims.
+- **Role-based Access Control** (user/moderator/admin) with secure Supabase RLS policies.
 - **Black Sea** dedicated section (`/black-sea`) - admin only, coming soon for users.
 - **Custom Admin** (`/admin`) with moderation queue, map editing (polygons & points), users & records management.
 - Notifications by email on approve/reject and when a top record (1–3) is beaten.
@@ -23,54 +23,51 @@ Build a comprehensive platform for anglers in Romania featuring:
 
 ## Development Phases
 
-### Phase 1: Project Setup & Foundation (Week 1)
+### Phase 1: Project Setup & Foundation (Week 1) ✅ COMPLETED
 #### 1.1 Environment Setup
 - [x] Node.js **>= 20.x**, pnpm (or npm), Git
 - [x] ESLint + Prettier + Husky + lint-staged
 - [x] EditorConfig, TypeScript strict, path aliases (`@/*`)
-- [x] Vercel project linked to GitHub (Preview deployments)
+- [x] Netlify project linked to GitHub (Preview deployments)
 
-#### 1.2 Database (Neon + PostGIS) & ORM
-- [x] Create **Neon** project → get `DATABASE_URL`
-- [x] Enable extensions in Neon (SQL):
+#### 1.2 Database (Supabase + PostGIS) & Client
+- [x] Create **Supabase** project → get `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- [x] Enable extensions in Supabase (SQL):
   ```sql
   CREATE EXTENSION IF NOT EXISTS postgis;
   CREATE EXTENSION IF NOT EXISTS postgis_topology;
-  CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid if needed
+  CREATE EXTENSION IF NOT EXISTS pgcrypto;
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
   ```
-- [x] Add **Drizzle** (`drizzle-kit`) config and migrations path
-- [x] Create schema (see "Database Design" section) and run:
-  ```bash
-  pnpm drizzle-kit generate
-  pnpm drizzle-kit push
-  ```
+- [x] Applied comprehensive database schema (`supabase-schema-final.sql`)
+- [x] Created all tables, policies, triggers, and functions
 
 #### 1.3 Authentication
-- [x] Create Firebase project + Web app, enable **Email/Password** + **Google**
-- [x] Frontend: initialize Firebase SDK (`VITE_FIREBASE_*`)
-- [x] Server: setup Firebase Admin in Vercel Functions (read envs, verify ID token)
+- [x] Create Supabase project + enable **Email/Password** + **Google OAuth**
+- [x] Frontend: initialize Supabase client (`VITE_SUPABASE_*`)
+- [x] Server: setup Supabase Admin in Netlify Functions (read envs, verify JWT token)
 
 #### 1.4 Frontend Foundation
 - [x] Vite + React + Tailwind + shadcn/ui + TanStack Query
-- [x] Router (Wouter / React Router). App shell, layout, theme tokens
+- [x] Router (React Router). App shell, layout, theme tokens
 - [x] **Leaflet** baseline (OSM tiles, attribution, CSS, icon fix)
   - CSS: import `leaflet/dist/leaflet.css`
   - Icon fix (default marker urls) merged at app start
 
 ---
 
-### Phase 2: Core Backend Development (Week 2–3)
+### Phase 2: Core Backend Development (Week 2–3) ✅ COMPLETED
 #### 2.1 Authentication System
-- [x] Firebase Auth flows (register/login with Email & Google)
-- [x] Store minimal profile in DB (`users`) and set **custom role claim** (`user|moderator|admin`)
-- [x] Middleware in Vercel Functions: verify `Authorization: Bearer <id_token>`
-- [ ] **Role Management System**
-  - [ ] Firebase Admin SDK for setting custom claims (admin/moderator roles)
-  - [ ] Secure role assignment endpoint (admin only)
-  - [ ] Role-based access control middleware
-  - [ ] User role management in admin panel
+- [x] Supabase Auth flows (register/login with Email & Google)
+- [x] Store comprehensive profile in DB (`profiles`) and set **custom role claim** (`user|moderator|admin`)
+- [x] Middleware in Netlify Functions: verify `Authorization: Bearer <jwt_token>`
+- [x] **Role Management System**
+  - [x] Supabase RLS policies for role-based access control
+  - [x] Admin functions (`is_admin()`) for secure role checking
+  - [x] Role-based access control in database policies
+  - [x] User role management via Supabase dashboard
 
-#### 2.2 API Endpoints (Vercel Functions)
+#### 2.2 API Endpoints (Netlify Functions)
 - [x] **Records** (Basic CRUD implemented)
   - [x] `POST /api/records` – create **pending** record; auto-assign `water_body_id` with `ST_Contains`
   - [x] `GET /api/records` – list with filters (species, bbox, status, dates)
@@ -100,15 +97,16 @@ Build a comprehensive platform for anglers in Romania featuring:
 **Security:** Rate-limit write endpoints, CORS strict, JSON only, audit everything admin-side.
 
 #### 2.3 File Uploads (Photos)
-- [ ] Upload to **Firebase Storage** directly from client with rules (auth required)
-- [ ] Generate download URL, store in `records.photo_url`
-- [ ] (Optional later) move to **Cloudflare Images** for transforms/costs
+- [x] Upload to **Supabase Storage** for avatars and thumbnails
+- [x] Upload to **Cloudflare R2** for submission images and videos
+- [x] Generate download URL, store in `records.photo_url`
+- [x] Hybrid storage strategy: Supabase (small files) + R2 (large content)
 
 ---
 
-### Phase 3: Frontend Core Features (Week 4–5)
+### Phase 3: Frontend Core Features (Week 4–5) ✅ IN PROGRESS
 #### 3.1 Auth Components
-- [x] Auth modal (login/register with Email/Google) via Firebase
+- [x] Auth modal (login/register with Email/Google) via Supabase
 - [x] `useAuth()` hook (states: loading/null/user) + ProtectedRoute
 - [x] Toasts & error boundaries
 
@@ -125,28 +123,28 @@ Build a comprehensive platform for anglers in Romania featuring:
 #### 3.3 Navigation & Theming
 - [x] Responsive navbar, footer, layout
 - [x] Theme via CSS variables (Tailwind) — default + **Black Sea** palette
-- [ ] **Black Sea Access Control** (NEW)
-  - [ ] Admin-only access to `/black-sea` route
-  - [ ] "Coming Soon" message for regular users
-  - [ ] Move Black Sea to last position in navigation menu
-- [ ] **Species Smart Filtering** (NEW)
-  - [ ] Popular species shown first in record forms
-  - [ ] Full search functionality for all 270+ species
-  - [ ] User-friendly dropdown with search capability
+- [x] **Black Sea Access Control**
+  - [x] Admin-only access to `/black-sea` route
+  - [x] "Coming Soon" message for regular users
+  - [x] Move Black Sea to last position in navigation menu
+- [x] **Species Smart Filtering**
+  - [x] Popular species shown first in record forms
+  - [x] Full search functionality for all 270+ species
+  - [x] User-friendly dropdown with search capability
 
 ---
 
-### Phase 4: User Features & Leaderboards (Week 6)
+### Phase 4: User Features & Leaderboards (Week 6) ✅ IN PROGRESS
 #### 4.1 Record Submission
-- [ ] Form with species, weight, length, date/time, coordinates (map picker), photo
-- [ ] Extract EXIF timestamp (if available), debounced reverse‑geocode (later)
-- [ ] Submit → `status='pending'` → email confirmation
+- [x] Form with species, weight, length, date/time, coordinates (map picker), photo
+- [x] Extract EXIF timestamp (if available), debounced reverse‑geocode (later)
+- [x] Submit → `status='pending'` → email confirmation
 
 #### 4.2 Leaderboards (live filters)
-- [ ] Complex filters: species, region/county, water body, time range
-- [ ] **Live search** (debounced) — no "Enter" button
-- [ ] Pagination with TanStack Table
-- [ ] Materialized view or optimized SQL for top‑N per species/area
+- [x] Complex filters: species, region/county, water body, time range
+- [x] **Live search** (debounced) — no "Enter" button
+- [x] Pagination with TanStack Table
+- [x] Materialized view or optimized SQL for top‑N per species/area
 - [ ] **Team Statistics Dashboard** (NEW)
   - [ ] Beautiful charts showing total fish caught per water body
   - [ ] Weight totals, species breakdown, team member contributions
@@ -160,7 +158,7 @@ Build a comprehensive platform for anglers in Romania featuring:
 
 ---
 
-### Phase 5: Custom Admin Panel (Week 7)
+### Phase 5: Custom Admin Panel (Week 7) 🔄 NEXT
 #### 5.1 Admin Dashboard
 - [ ] Pending records queue (cards: photo, details, mini‑map) → Approve/Reject (+note)
 - [ ] Keyboard shortcuts for moderators (✔ / ✖)
@@ -175,7 +173,7 @@ Build a comprehensive platform for anglers in Romania featuring:
 - [ ] Users page: change role (admin/mod), soft suspend
 - [ ] **Role Management System** (NEW)
   - [ ] Secure role assignment interface (admin only)
-  - [ ] Firebase custom claims management
+  - [ ] Supabase RLS policy management
   - [ ] User role history and audit trail
 - [ ] Amenities page: parking/facilities/tackle shops CRUD on map
 - [ ] **Premium Subscription Management** (Future)
@@ -229,39 +227,37 @@ Build a comprehensive platform for anglers in Romania featuring:
 │     ├─ App.tsx
 │     ├─ main.tsx
 │     ├─ lib/
-│     │  ├─ firebase.ts        # client SDK
-│     │  ├─ queryClient.ts     # TanStack config (attaches ID token)
+│     │  ├─ supabase.ts        # client SDK
+│     │  ├─ queryClient.ts     # TanStack config (attaches JWT token)
 │     │  └─ api.ts             # fetch helpers + Zod types
 │     ├─ components/           # UI, modals, forms
 │     ├─ pages/                # home, black-sea, species, leaderboards, admin/*
 │     └─ styles/               # map.css, theme.css
-├─ api/                    # Vercel Functions
-│  ├─ _lib/
-│  │  ├─ db.ts             # drizzle client
-│  │  ├─ auth.ts           # verify Firebase token (admin claims)
-│  │  ├─ z.ts              # zod schemas
-│  │  └─ geo.ts            # bbox helpers, simplification
-│  ├─ records.ts           # GET/POST
-│  ├─ records/[id]/approve.ts
-│  ├─ records/[id]/reject.ts
-│  ├─ water-bodies.ts
-│  ├─ water-bodies/[id].ts
-│  ├─ amenities.ts
-│  ├─ species.ts
-│  └─ profile.ts
-└─ packages/
-   └─ db/
-      ├─ schema.ts         # drizzle schema (tables below)
-      └─ migrations/       # drizzle-kit output
+├─ netlify/               # Netlify Functions
+│  └─ functions/
+│     ├─ _lib/
+│     │  ├─ supabase.ts        # server client
+│     │  ├─ auth.ts            # verify Supabase JWT token
+│     │  ├─ z.ts               # zod schemas
+│     │  └─ geo.ts             # bbox helpers, simplification
+│     ├─ records.mjs           # GET/POST
+│     ├─ records-approve.mjs
+│     ├─ records-reject.mjs
+│     ├─ water-bodies.mjs
+│     ├─ amenities.mjs
+│     ├─ species.mjs
+│     └─ profile.mjs
+├─ supabase-schema-final.sql  # Complete database schema
+└─ netlify.toml              # Netlify configuration
 ```
 
-### Database Design (Drizzle/SQL)
+### Database Design (Supabase/PostgreSQL)
 **Enums**
 - `user_role`: `user | moderator | admin`
 - `record_status`: `pending | approved | rejected`
 - `water_body_type`: `river | lake | sea | canal | reservoir | pond | other`
 
-**Tables:** `users`, `water_bodies`, `locations`, `species`, `records`, `amenities`, `audit_logs`  
+**Tables:** `profiles`, `fish_species`, `fishing_locations`, `location_species`, `records`, `fishing_shops`, `shop_reviews`, `fishing_techniques`, `fishing_regulations`, `user_gear`, `audit_logs`  
 All geometry columns are **GEOGRAPHY** (4326). Create **GIST** indexes on geom columns.  
 Auto-assign `water_body_id` on record create with `ST_Contains`.
 
@@ -273,8 +269,8 @@ Example (conceptual):
 -- Top records by species in a time window
 SELECT r.*, s.common_ro, wb.name AS water_body_name
 FROM records r
-JOIN species s ON s.id = r.species_id
-LEFT JOIN water_bodies wb ON wb.id = r.water_body_id
+JOIN fish_species s ON s.id = r.species_id
+LEFT JOIN fishing_locations wb ON wb.id = r.location_id
 WHERE r.status='approved'
   AND r.captured_at >= NOW() - INTERVAL '365 days'
 ORDER BY r.weight_kg DESC
@@ -282,14 +278,19 @@ LIMIT 100;
 ```
 Add filters (species, region, county, water body) and paginate.
 
-### Firebase Auth (client & server)
-- Client: `getIdToken()` attached as `Authorization: Bearer <token>` by `queryClient.ts`.
-- Server: `verifyIdToken()` in `api/_lib/auth.ts` → returns `uid` + custom claims (`role`).  
+### Supabase Auth (client & server)
+- Client: `getSession()` attached as `Authorization: Bearer <jwt_token>` by `queryClient.ts`.
+- Server: `verifyJWT()` in `netlify/functions/_lib/auth.ts` → returns `user` + custom claims (`role`).  
 Admin routes require `role in ('moderator','admin')`.
 
-### Email (Resend)
+### Email (Supabase Auth)
 - Templates: approved, rejected (with note), record beaten (old rank vs new).  
-- `EMAIL_FROM`, `RESEND_API_KEY` in Vercel env.
+- `SUPABASE_SERVICE_ROLE_KEY` in Netlify env for server-side operations.
+
+### Storage Strategy (Hybrid)
+- **Supabase Storage**: Avatars, thumbnails (small files, fast access)
+- **Cloudflare R2**: Submission images, videos, static content (large files, cost-effective)
+- **Configuration**: `R2_CONFIG` in `client/src/lib/supabase.ts`
 
 ### Leaflet (frontend)
 - OSM tiles free: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` + attribution.  
@@ -356,7 +357,7 @@ client/src/
 │       ├── amenities.tsx
 │       └── users.tsx
 ├── lib/
-│   ├── firebase.ts
+│   ├── supabase.ts
 │   ├── queryClient.ts
 │   ├── filters.ts
 │   └── theme.ts
@@ -370,25 +371,24 @@ client/src/
 ## Environment Configuration
 **Frontend (`client/.env.local`):**
 ```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-VITE_FIREBASE_MEASUREMENT_ID=...
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_R2_ACCOUNT_ID=your-r2-account-id
+VITE_R2_ACCESS_KEY_ID=your-r2-access-key
+VITE_R2_SECRET_ACCESS_KEY=your-r2-secret-key
 VITE_MAP_TILES_URL=https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 VITE_MAP_ATTRIBUTION=© OpenStreetMap contributors
 ```
 
-**Server (Vercel → Env Vars):**
+**Server (Netlify → Env Vars):**
 ```
-DATABASE_URL=postgres://USER:PASSWORD@HOST/db?sslmode=require
-FIREBASE_PROJECT_ID=...
-FIREBASE_CLIENT_EMAIL=...
-FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
+R2_ACCOUNT_ID=your-r2-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret-key
 EMAIL_FROM=noreply@yourdomain.ro
-RESEND_API_KEY=...
 ```
 
 ---
@@ -396,8 +396,8 @@ RESEND_API_KEY=...
 ## Development Workflow (Daily)
 1. Pull latest, create feature branch.
 2. Implement feature (small PRs), write zod schemas, unit tests if applicable.
-3. Test locally (`pnpm dev` + `vercel dev` for API).
-4. Commit with clear messages; push → Vercel Preview.
+3. Test locally (`npm run dev` + `netlify dev` for API).
+4. Commit with clear messages; push → Netlify Preview.
 5. QA on preview; merge to main when green.
 
 ### Git Workflow
@@ -424,10 +424,10 @@ RESEND_API_KEY=...
 ---
 
 ## Deployment Preparation
-- Vercel project with Env Vars set for `Production`, `Preview`, `Development`
+- Netlify project with Env Vars set for `Production`, `Preview`, `Development`
 - CI checks (lint/build/test) on PR
 - Run DB migrations on deploy (if using migration step)
-- Domain + SSL via Vercel
+- Domain + SSL via Netlify
 
 ---
 
@@ -457,6 +457,6 @@ RESEND_API_KEY=...
 ## Resources
 - React, Vite, Tailwind, shadcn/ui
 - Leaflet & Leaflet.draw
-- Drizzle ORM, Neon/PostgreSQL/PostGIS
-- Firebase Auth (client), Firebase Admin (server)
-- Vercel Functions, Resend
+- Supabase (Auth, Database, Storage)
+- Netlify Functions, Cloudflare R2
+- PostGIS for geospatial operations

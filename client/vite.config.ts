@@ -22,7 +22,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-helmet-async'],
           'ui-vendor': ['lucide-react', 'sonner'],
           'map-vendor': ['leaflet'],
-          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'supabase-vendor': ['@supabase/supabase-js'],
           'analytics-vendor': ['web-vitals'],
         },
         // Optimize chunk names for better caching
@@ -61,10 +61,7 @@ export default defineConfig({
       'react-helmet-async',
       'lucide-react',
       'leaflet',
-      'firebase/app',
-      'firebase/auth',
-      'firebase/firestore',
-      'firebase/storage',
+      '@supabase/supabase-js',
       'web-vitals'
     ],
   },
