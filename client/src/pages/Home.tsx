@@ -80,9 +80,9 @@ export default function Home() {
     console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
     // CRITICAL: Completely different config for mobile vs desktop
-    const mapConfig = isMobile ? {
+    const mapConfig: L.MapOptions = isMobile ? {
       // MOBILE CONFIG - Optimized for touch and performance
-      center: [45.9432, 25.0094],
+      center: [45.9432, 25.0094] as [number, number],
       zoom: 6,
       minZoom: 5,
       maxZoom: 12, // Much lower max zoom for mobile
@@ -114,7 +114,7 @@ export default function Home() {
       )
     } : {
       // DESKTOP CONFIG - Full features
-      center: [45.9432, 25.0094],
+      center: [45.9432, 25.0094] as [number, number],
       zoom: 7,
       minZoom: 6,
       maxZoom: 18,
