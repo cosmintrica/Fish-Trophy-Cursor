@@ -1,15 +1,17 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, MapPin, User, Plus, Trophy, FileText } from 'lucide-react';
+import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-supabase';
 import AuthModal from './AuthModal';
 // import PWAInstallPrompt from './PWAInstallPrompt'; // Temporarily disabled
 
-// PWA Install Prompt Event interface
+// PWA Install Prompt Event interface - temporarily disabled
+/*
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
+*/
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
