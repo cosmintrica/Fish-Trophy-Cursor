@@ -1,222 +1,587 @@
-// România - Județe și orașe
-export interface County {
-  id: string;
-  name: string;
-  cities: string[];
-}
-
+// GENERATED FILE — do not edit manually
+// Source: https://github.com/andreitripon/lista-oraselor (README listing)
+// License: Apache-2.0 (see source repo)
+// Types
+export interface County { id: string; name: string; cities: string[]; }
 export const ROMANIA_COUNTIES: County[] = [
   {
-    id: "alba",
-    name: "Alba",
-    cities: ["Alba Iulia", "Aiud", "Blaj", "Câmpeni", "Cugir", "Ocna Mureș", "Sebeș", "Teiuș"]
+    "id": "alba",
+    "name": "Alba",
+    "cities": [
+      "Abrud",
+      "Aiud",
+      "Alba Iulia",
+      "Baia de Arieș",
+      "Blaj",
+      "Câmpeni",
+      "Cugir",
+      "Ocna Mureș",
+      "Sebeș",
+      "Teiuș",
+      "Zlatna"
+    ]
   },
   {
-    id: "arad",
-    name: "Arad",
-    cities: ["Arad", "Chișineu-Criș", "Curtici", "Ineu", "Lipova", "Nădlac", "Pecica", "Sântana"]
+    "id": "arad",
+    "name": "Arad",
+    "cities": [
+      "Arad",
+      "Chișineu-Criș",
+      "Curtici",
+      "Ineu",
+      "Lipova",
+      "Nădlac",
+      "Pâncota",
+      "Pecica",
+      "Sântana",
+      "Sebiș"
+    ]
   },
   {
-    id: "arges",
-    name: "Argeș",
-    cities: ["Pitești", "Câmpulung", "Curtea de Argeș", "Mioveni", "Ștefănești", "Topoloveni"]
+    "id": "arges",
+    "name": "Argeș",
+    "cities": [
+      "Câmpulung",
+      "Coștești",
+      "Curtea de Argeș",
+      "Mioveni",
+      "Pitești",
+      "Ștefănești",
+      "Topoloveni"
+    ]
   },
   {
-    id: "bacau",
-    name: "Bacău",
-    cities: ["Bacău", "Comănești", "Dărmănești", "Moinești", "Onești", "Slănic-Moldova", "Târgu Ocna"]
+    "id": "bacau",
+    "name": "Bacău",
+    "cities": [
+      "Bacău",
+      "Buhuși",
+      "Comănești",
+      "Dărmănești",
+      "Moinești",
+      "Onești",
+      "Slănic-Moldova",
+      "Târgu Ocna"
+    ]
   },
   {
-    id: "bihor",
-    name: "Bihor",
-    cities: ["Oradea", "Aleșd", "Beiuș", "Marghita", "Salonta", "Valea lui Mihai"]
+    "id": "bihor",
+    "name": "Bihor",
+    "cities": [
+      "Aleșd",
+      "Beiuș",
+      "Marghita",
+      "Nucet",
+      "Oradea",
+      "Săcueni",
+      "Salonta",
+      "Ștei",
+      "Valea lui Mihai",
+      "Vașcău"
+    ]
   },
   {
-    id: "bistrita-nasaud",
-    name: "Bistrița-Năsăud",
-    cities: ["Bistrița", "Beclean", "Năsăud", "Sângeorz-Băi"]
+    "id": "bistrita-nasaud",
+    "name": "Bistrița-Năsăud",
+    "cities": [
+      "Beclean",
+      "Bistrița",
+      "Năsăud",
+      "Sângeorz-Băi"
+    ]
   },
   {
-    id: "botosani",
-    name: "Botoșani",
-    cities: ["Botoșani", "Bucecea", "Darabani", "Dorohoi", "Flămânzi", "Săveni", "Ștefănești"]
+    "id": "botosani",
+    "name": "Botoșani",
+    "cities": [
+      "Botoșani",
+      "Bucecea",
+      "Darabani",
+      "Dorohoi",
+      "Flămânzi",
+      "Săveni",
+      "Ștefănești"
+    ]
   },
   {
-    id: "brasov",
-    name: "Brașov",
-    cities: ["Brașov", "Codlea", "Făgăraș", "Ghimbav", "Predeal", "Râșnov", "Rupea", "Săcele", "Victoria", "Zărnești"]
+    "id": "brasov",
+    "name": "Brașov",
+    "cities": [
+      "Brașov",
+      "Codlea",
+      "Făgăraș",
+      "Ghimbav",
+      "Predeal",
+      "Râșnov",
+      "Rupea",
+      "Săcele",
+      "Victoria",
+      "Zărnești"
+    ]
   },
   {
-    id: "braila",
-    name: "Brăila",
-    cities: ["Brăila", "Faurei", "Ianca", "Însurăței"]
+    "id": "braila",
+    "name": "Brăila",
+    "cities": [
+      "Brăila",
+      "Faurei",
+      "Ianca",
+      "Însurăței"
+    ]
   },
   {
-    id: "buzau",
-    name: "Buzău",
-    cities: ["Buzău", "Nehoiu", "Pogoanele", "Râmnicu Sărat"]
+    "id": "buzau",
+    "name": "Buzău",
+    "cities": [
+      "Buzău",
+      "Nehoiu",
+      "Pătârlagele",
+      "Pogoanele",
+      "Râmnicu Sărat"
+    ]
   },
   {
-    id: "calarasi",
-    name: "Călărași",
-    cities: ["Călărași", "Budești", "Fundulea", "Lehliu Gară", "Oltenița"]
+    "id": "calarasi",
+    "name": "Călărași",
+    "cities": [
+      "Budești",
+      "Călărași",
+      "Fundulea",
+      "Lehliu Gară",
+      "Oltenița"
+    ]
   },
   {
-    id: "caras-severin",
-    name: "Caraș-Severin",
-    cities: ["Reșița", "Anina", "Băile Herculane", "Bocșa", "Caransebeș", "Moldova Nouă", "Oravița", "Oțelu Roșu"]
+    "id": "caras-severin",
+    "name": "Caraș-Severin",
+    "cities": [
+      "Anina",
+      "Băile Herculane",
+      "Bocșa",
+      "Caransebeș",
+      "Moldova Nouă",
+      "Oravița",
+      "Oțelu Roșu",
+      "Reșița"
+    ]
   },
   {
-    id: "cluj",
-    name: "Cluj",
-    cities: ["Cluj-Napoca", "Câmpia Turzii", "Dej", "Gherla", "Huedin", "Turda"]
+    "id": "cluj",
+    "name": "Cluj",
+    "cities": [
+      "Câmpia Turzii",
+      "Cluj-Napoca",
+      "Dej",
+      "Gherla",
+      "Huedin",
+      "Turda"
+    ]
   },
   {
-    id: "constanta",
-    name: "Constanța",
-    cities: ["Constanța", "Cernavodă", "Eforie", "Hârșova", "Mangalia", "Medgidia", "Murfatlar", "Năvodari", "Ovidiu", "Techirghiol"]
+    "id": "constanta",
+    "name": "Constanța",
+    "cities": [
+      "Băneasa",
+      "Cernavodă",
+      "Constanța",
+      "Eforie",
+      "Hârșova",
+      "Mangalia",
+      "Medgidia",
+      "Murfatlar",
+      "Năvodari",
+      "Negru Vodă",
+      "Ovidiu",
+      "Techirghiol"
+    ]
   },
   {
-    id: "covasna",
-    name: "Covasna",
-    cities: ["Sfântu Gheorghe", "Baraolt", "Covasna", "Întorsura Buzăului", "Târgu Secuiesc"]
+    "id": "covasna",
+    "name": "Covasna",
+    "cities": [
+      "Baraolt",
+      "Covasna",
+      "Întorsura Buzăului",
+      "Sfântu Gheorghe",
+      "Târgu Secuiesc"
+    ]
   },
   {
-    id: "dambovita",
-    name: "Dâmbovița",
-    cities: ["Târgoviște", "Fieni", "Găești", "Moreni", "Pucioasa", "Titu"]
+    "id": "dambovita",
+    "name": "Dâmbovița",
+    "cities": [
+      "Fieni",
+      "Găești",
+      "Moreni",
+      "Pucioasa",
+      "Răcari",
+      "Târgoviște",
+      "Titu"
+    ]
   },
   {
-    id: "dolj",
-    name: "Dolj",
-    cities: ["Craiova", "Băilești", "Bechet", "Calafat", "Dăbuleni", "Filiași", "Segarcea"]
+    "id": "dolj",
+    "name": "Dolj",
+    "cities": [
+      "Băilești",
+      "Bechet",
+      "Calafat",
+      "Craiova",
+      "Dăbuleni",
+      "Filiași",
+      "Segarcea"
+    ]
   },
   {
-    id: "galati",
-    name: "Galați",
-    cities: ["Galați", "Berești", "Tecuci"]
+    "id": "galati",
+    "name": "Galați",
+    "cities": [
+      "Berești",
+      "Galați",
+      "Târgu Bujor",
+      "Tecuci"
+    ]
   },
   {
-    id: "giurgiu",
-    name: "Giurgiu",
-    cities: ["Giurgiu", "Bolintin-Vale", "Mihăilești"]
+    "id": "giurgiu",
+    "name": "Giurgiu",
+    "cities": [
+      "Bolintin-Vale",
+      "Giurgiu",
+      "Mihăilești"
+    ]
   },
   {
-    id: "gorj",
-    name: "Gorj",
-    cities: ["Târgu Jiu", "Bumbești-Jiu", "Motru", "Novaci", "Rovinari", "Târgu Cărbunești", "Turceni"]
+    "id": "gorj",
+    "name": "Gorj",
+    "cities": [
+      "Bumbești-Jiu",
+      "Motru",
+      "Novaci",
+      "Rovinari",
+      "Târgu Cărbunești",
+      "Târgu Jiu",
+      "Ticleni",
+      "Tismana",
+      "Turceni"
+    ]
   },
   {
-    id: "harghita",
-    name: "Harghita",
-    cities: ["Miercurea Ciuc", "Băile Tușnad", "Bălan", "Borsec", "Cristuru Secuiesc", "Odorheiu Secuiesc", "Toplița", "Vlăhița"]
+    "id": "harghita",
+    "name": "Harghita",
+    "cities": [
+      "Băile Tușnad",
+      "Bălan",
+      "Borsec",
+      "Cristuru Secuiesc",
+      "Gheorgheni",
+      "Miercurea Ciuc",
+      "Odorheiu Secuiesc",
+      "Toplița",
+      "Vlăhița"
+    ]
   },
   {
-    id: "hunedoara",
-    name: "Hunedoara",
-    cities: ["Deva", "Brad", "Călan", "Hațeg", "Hunedoara", "Lupeni", "Orăștie", "Petrila", "Petroșani", "Simeria", "Uricani", "Vulcan"]
+    "id": "hunedoara",
+    "name": "Hunedoara",
+    "cities": [
+      "Aninoasa",
+      "Brad",
+      "Călan",
+      "Deva",
+      "Geoagiu",
+      "Hațeg",
+      "Hunedoara",
+      "Lupeni",
+      "Orăștie",
+      "Petrila",
+      "Petroșani",
+      "Simeria",
+      "Uricani",
+      "Vulcan"
+    ]
   },
   {
-    id: "ialomita",
-    name: "Ialomița",
-    cities: ["Slobozia", "Amara", "Călărași", "Fetești", "Fierbinți-Târg", "Țăndărei", "Urziceni"]
+    "id": "ialomita",
+    "name": "Ialomița",
+    "cities": [
+      "Amara",
+      "Căzănești",
+      "Fetești",
+      "Fierbinți-Târg",
+      "Slobozia",
+      "Țăndărei",
+      "Urziceni"
+    ]
   },
   {
-    id: "iasi",
-    name: "Iași",
-    cities: ["Iași", "Hârlău", "Pașcani", "Târgu Frumos"]
+    "id": "iasi",
+    "name": "Iași",
+    "cities": [
+      "Hârlău",
+      "Iași",
+      "Pașcani",
+      "Podu Iloaiei",
+      "Târgu Frumos"
+    ]
   },
   {
-    id: "ilfov",
-    name: "Ilfov",
-    cities: ["Buftea", "Bragadiru", "Chitila", "Măgurele", "Otopeni", "Pantelimon", "Popești-Leordeni", "Voluntari"]
+    "id": "ilfov",
+    "name": "Ilfov",
+    "cities": [
+      "Bragadiru",
+      "Buftea",
+      "Chitila",
+      "Măgurele",
+      "Otopeni",
+      "Pantelimon",
+      "Popești-Leordeni",
+      "Voluntari"
+    ]
   },
   {
-    id: "maramures",
-    name: "Maramureș",
-    cities: ["Baia Mare", "Baia Sprie", "Borșa", "Cavnic", "Sighetu Marmației", "Somcuta Mare", "Târgu Lăpuș", "Tăuții-Măgherăuș", "Ulmeni", "Vișeu de Sus"]
+    "id": "maramures",
+    "name": "Maramureș",
+    "cities": [
+      "Baia Mare",
+      "Baia Sprie",
+      "Borșa",
+      "Cavnic",
+      "Dragomirești",
+      "Săliștea de Sus",
+      "Seini",
+      "Sighetu Marmației",
+      "Somcuta Mare",
+      "Târgu Lăpuș",
+      "Tăuții-Măgherăuș",
+      "Ulmeni",
+      "Vișeu de Sus"
+    ]
   },
   {
-    id: "mehedinti",
-    name: "Mehedinți",
-    cities: ["Drobeta-Turnu Severin", "Baia de Aramă", "Orșova", "Strehaia", "Vânju Mare"]
+    "id": "mehedinti",
+    "name": "Mehedinți",
+    "cities": [
+      "Baia de Aramă",
+      "Drobeta-Turnu Severin",
+      "Orșova",
+      "Strehaia",
+      "Vânju Mare"
+    ]
   },
   {
-    id: "mures",
-    name: "Mureș",
-    cities: ["Târgu Mureș", "Iernut", "Luduș", "Miercurea Nirajului", "Reghin", "Sighișoara", "Sovata", "Târnăveni", "Ungheni"]
+    "id": "mures",
+    "name": "Mureș",
+    "cities": [
+      "Iernut",
+      "Luduș",
+      "Miercurea Nirajului",
+      "Reghin",
+      "Sângeorgiu de Pădure",
+      "Sărmașu",
+      "Sighișoara",
+      "Sovata",
+      "Târgu Mureș",
+      "Târnăveni",
+      "Ungheni"
+    ]
   },
   {
-    id: "neamt",
-    name: "Neamț",
-    cities: ["Piatra Neamț", "Bicaz", "Roznov", "Târgu Neamț"]
+    "id": "neamt",
+    "name": "Neamț",
+    "cities": [
+      "Bicaz",
+      "Piatra Neamț",
+      "Roman",
+      "Roznov",
+      "Târgu Neamț"
+    ]
   },
   {
-    id: "olt",
-    name: "Olt",
-    cities: ["Slatina", "Balș", "Caracal", "Corabia", "Drăgănești-Olt", "Piatra-Olt", "Potcoava", "Scornicești"]
+    "id": "olt",
+    "name": "Olt",
+    "cities": [
+      "Balș",
+      "Caracal",
+      "Corabia",
+      "Drăgănești-Olt",
+      "Piatra-Olt",
+      "Potcoava",
+      "Scornicești",
+      "Slatina"
+    ]
   },
   {
-    id: "prahova",
-    name: "Prahova",
-    cities: ["Ploiești", "Azuga", "Băicoi", "Boldești-Scăeni", "Breaza", "Bușteni", "Câmpina", "Comarnic", "Mizil", "Plopeni", "Sinaia", "Slănic", "Urlați", "Vălenii de Munte"]
+    "id": "prahova",
+    "name": "Prahova",
+    "cities": [
+      "Azuga",
+      "Băicoi",
+      "Boldești-Scăeni",
+      "Breaza",
+      "Bușteni",
+      "Câmpina",
+      "Comarnic",
+      "Mizil",
+      "Ploiești",
+      "Plopeni",
+      "Sinaia",
+      "Slănic",
+      "Urlați",
+      "Vălenii de Munte"
+    ]
   },
   {
-    id: "salaj",
-    name: "Sălaj",
-    cities: ["Zalău", "Cehu Silvaniei", "Jibou", "Șimleu Silvaniei"]
+    "id": "salaj",
+    "name": "Sălaj",
+    "cities": [
+      "Cehu Silvaniei",
+      "Jibou",
+      "Șimleu Silvaniei",
+      "Zalău"
+    ]
   },
   {
-    id: "satu-mare",
-    name: "Satu Mare",
-    cities: ["Satu Mare", "Carei", "Livada", "Negrești-Oaș", "Tășnad"]
+    "id": "satu-mare",
+    "name": "Satu Mare",
+    "cities": [
+      "Ardud",
+      "Carei",
+      "Livada",
+      "Negrești-Oaș",
+      "Satu Mare",
+      "Tășnad"
+    ]
   },
   {
-    id: "sibiu",
-    name: "Sibiu",
-    cities: ["Sibiu", "Agnita", "Avrig", "Cisnădie", "Copșa Mică", "Dumbrăveni", "Mediaș", "Miercurea Sibiului", "Ocna Sibiului", "Săliște", "Tălmaciu"]
+    "id": "sibiu",
+    "name": "Sibiu",
+    "cities": [
+      "Agnita",
+      "Avrig",
+      "Cisnădie",
+      "Copșa Mică",
+      "Dumbrăveni",
+      "Mediaș",
+      "Miercurea Sibiului",
+      "Ocna Sibiului",
+      "Săliște",
+      "Sibiu",
+      "Tălmaciu"
+    ]
   },
   {
-    id: "suceava",
-    name: "Suceava",
-    cities: ["Suceava", "Broșteni", "Câmpulung Moldovenesc", "Fălticeni", "Gura Humorului", "Liteni", "Milișăuți", "Rădăuți", "Salcea", "Siret", "Solca", "Vicovu de Sus", "Vatra Dornei"]
+    "id": "suceava",
+    "name": "Suceava",
+    "cities": [
+      "Broșteni",
+      "Cajvana",
+      "Câmpulung Moldovenesc",
+      "Dolhasca",
+      "Fălticeni",
+      "Frasin",
+      "Gura Humorului",
+      "Liteni",
+      "Milișăuți",
+      "Rădăuți",
+      "Salcea",
+      "Siret",
+      "Solca",
+      "Suceava",
+      "Vatra Dornei",
+      "Vicovu de Sus"
+    ]
   },
   {
-    id: "teleorman",
-    name: "Teleorman",
-    cities: ["Alexandria", "Roșiori de Vede", "Turnu Măgurele", "Videle", "Zimnicea"]
+    "id": "teleorman",
+    "name": "Teleorman",
+    "cities": [
+      "Alexandria",
+      "Roșiorii de Vede",
+      "Turnu Măgurele",
+      "Videle",
+      "Zimnicea"
+    ]
   },
   {
-    id: "timis",
-    name: "Timiș",
-    cities: ["Timișoara", "Buziaș", "Ciacova", "Deta", "Făget", "Gătaia", "Jimbolia", "Lugoj", "Recaș", "Sânnicolau Mare"]
+    "id": "timis",
+    "name": "Timiș",
+    "cities": [
+      "Buziaș",
+      "Ciacova",
+      "Deta",
+      "Făget",
+      "Gătaia",
+      "Jimbolia",
+      "Lugoj",
+      "Recaș",
+      "Sânnicolau Mare",
+      "Timișoara"
+    ]
   },
   {
-    id: "tulcea",
-    name: "Tulcea",
-    cities: ["Tulcea", "Babadag", "Isaccea", "Măcin", "Sulina"]
+    "id": "tulcea",
+    "name": "Tulcea",
+    "cities": [
+      "Babadag",
+      "Isaccea",
+      "Măcin",
+      "Sulina",
+      "Tulcea"
+    ]
   },
   {
-    id: "vaslui",
-    name: "Vaslui",
-    cities: ["Vaslui", "Bârlad", "Huși", "Murgeni", "Negrești"]
+    "id": "vaslui",
+    "name": "Vaslui",
+    "cities": [
+      "Bârlad",
+      "Huși",
+      "Murgeni",
+      "Negrești",
+      "Vaslui"
+    ]
   },
   {
-    id: "valcea",
-    name: "Vâlcea",
-    cities: ["Râmnicu Vâlcea", "Băbeni", "Băile Govora", "Băile Olănești", "Brezoi", "Călimănești", "Drăgășani", "Horezu", "Ocnele Mari", "Râmnicu Vâlcea"]
+    "id": "valcea",
+    "name": "Vâlcea",
+    "cities": [
+      "Băbeni",
+      "Băile Govora",
+      "Băile Olănești",
+      "Bălcești",
+      "Berbești",
+      "Brezoi",
+      "Călimănești",
+      "Drăgășani",
+      "Horezu",
+      "Ocnele Mari",
+      "Râmnicu Vâlcea"
+    ]
   },
   {
-    id: "vrancea",
-    name: "Vrancea",
-    cities: ["Focșani", "Adjud", "Mărășești", "Odobești", "Panciu"]
+    "id": "vrancea",
+    "name": "Vrancea",
+    "cities": [
+      "Adjud",
+      "Focșani",
+      "Mărășești",
+      "Odobești",
+      "Panciu"
+    ]
   },
   {
-    id: "bucuresti",
-    name: "București",
-    cities: ["Sector 1", "Sector 2", "Sector 3", "Sector 4", "Sector 5", "Sector 6"]
+    "id": "bucuresti",
+    "name": "București",
+    "cities": [
+      "Sector 1",
+      "Sector 2",
+      "Sector 3",
+      "Sector 4",
+      "Sector 5",
+      "Sector 6"
+    ]
   }
-];
+] as const;
 
 // Helper functions for search
 export const searchCounties = (query: string): County[] => {

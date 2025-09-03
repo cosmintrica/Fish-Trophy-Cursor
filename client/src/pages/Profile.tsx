@@ -19,7 +19,8 @@ import {
   Calendar,
   MapPin,
   Scale,
-  Ruler
+  Ruler,
+  Wrench
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -124,42 +125,46 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const profileDataToSend = {
-        displayName: profileData.displayName,
-        email: profileData.email || user.email || '',
-        phone: profileData.phone,
-        location: profileData.location,
-        bio: profileData.bio,
-      };
-
-      // Actualizează Supabase Auth
+      // Actualizează Supabase Auth cu toate datele
       const { error: authError } = await supabase.auth.updateUser({
-        data: { display_name: profileData.displayName }
-      });
-      if (authError) throw authError;
-
-      // Salvează în baza de date prin Supabase API
-      const result = await supabaseApi.updateProfile(user.id, profileDataToSend);
-
-      if (result.success) {
-        toast.success('Profilul a fost actualizat cu succes!');
-        setIsEditing(false);
-        // Actualizează datele locale
-        if (result.data) {
-          setProfileData({
-            displayName: result.data.displayName,
-            email: result.data.email,
-            phone: result.data.phone || '',
-            location: result.data.location || '',
-            bio: result.data.bio || ''
-          });
+        data: { 
+          display_name: profileData.displayName,
+          phone: profileData.phone,
+          location: profileData.location,
+          bio: profileData.bio
         }
-      } else {
-        toast.error(result.error || 'Eroare la actualizarea profilului');
+      });
+      
+      if (authError) {
+        toast.error('Eroare la actualizarea profilului: ' + authError.message);
+        return;
       }
+
+      // Actualizează și în tabela profiles din baza de date
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          display_name: profileData.displayName,
+          phone: profileData.phone,
+          location: profileData.location,
+          bio: profileData.bio,
+          updated_at: new Date().toISOString()
+        });
+
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        // Nu aruncăm eroarea aici pentru că auth update-ul a reușit
+        toast.warning('Profilul a fost actualizat, dar unele date nu au fost salvate în baza de date.');
+      } else {
+        toast.success('Profilul a fost actualizat cu succes!');
+      }
+      
+      setIsEditing(false);
+      
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Eroare la actualizarea profilului');
+      toast.error('A apărut o eroare la actualizarea profilului');
     }
   };
 
@@ -179,13 +184,26 @@ const Profile: React.FC = () => {
       return;
     }
 
+    // Validare format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailData.newEmail)) {
+      toast.error('Formatul email-ului nu este valid');
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.updateUser({
         email: emailData.newEmail
       });
 
       if (error) {
-        toast.error(error.message || 'Eroare la schimbarea email-ului');
+        if (error.message.includes('already registered')) {
+          toast.error('Acest email este deja folosit de alt cont');
+        } else if (error.message.includes('Invalid email')) {
+          toast.error('Formatul email-ului nu este valid');
+        } else {
+          toast.error('Eroare la schimbarea email-ului: ' + error.message);
+        }
       } else {
         toast.success('Email-ul a fost actualizat! Verifică-ți noul email pentru confirmare.');
         setIsChangingEmail(false);
@@ -193,7 +211,7 @@ const Profile: React.FC = () => {
       }
     } catch (error) {
       console.error('Error changing email:', error);
-      toast.error('Eroare la schimbarea email-ului');
+      toast.error('A apărut o eroare la schimbarea email-ului');
     }
   };
 
@@ -308,14 +326,32 @@ const Profile: React.FC = () => {
     }
 
     try {
+      // First, verify the current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: passwordData.currentPassword
+      });
+
+      if (signInError) {
+        setPasswordErrors(prev => ({ ...prev, currentPassword: 'Parola actuală este incorectă' }));
+        toast.error('Parola actuală este incorectă');
+        return;
+      }
+
+      // If current password is correct, update to new password
       const { error } = await supabase.auth.updateUser({
         password: passwordData.newPassword
       });
 
       if (error) {
-        toast.error(error.message || 'Eroare la schimbarea parolei');
+        if (error.message.includes('Password should be at least')) {
+          setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola trebuie să aibă cel puțin 6 caractere' }));
+          toast.error('Parola trebuie să aibă cel puțin 6 caractere');
+        } else {
+          toast.error('Eroare la schimbarea parolei: ' + error.message);
+        }
       } else {
-        toast.success('Parola a fost actualizată cu succes! Vei fi deconectat pentru securitate.');
+        toast.success('Parola a fost actualizată cu succes!');
         setIsChangingPassword(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setPasswordErrors({
@@ -324,14 +360,12 @@ const Profile: React.FC = () => {
           confirmPassword: ''
         });
         
-        // Logout user after password change for security
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        // Note: Supabase automatically signs out the user after password change
+        // No need to manually redirect
       }
     } catch (error) {
       console.error('Error changing password:', error);
-      toast.error('Eroare la schimbarea parolei');
+      toast.error('A apărut o eroare la schimbarea parolei');
     }
   };
 
@@ -529,10 +563,14 @@ const Profile: React.FC = () => {
           {/* Conținut principal */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="records" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="records" className="flex items-center space-x-2">
                   <Trophy className="w-4 h-4" />
-                  <span>Recordurile mele</span>
+                  <span>Recorduri</span>
+                </TabsTrigger>
+                <TabsTrigger value="gear" className="flex items-center space-x-2">
+                  <Wrench className="w-4 h-4" />
+                  <span>Echipamente</span>
                 </TabsTrigger>
                 <TabsTrigger value="profile" className="flex items-center space-x-2">
                   <User className="w-4 h-4" />
@@ -623,6 +661,97 @@ const Profile: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </TabsContent>
+
+              {/* Tab Echipamente */}
+              <TabsContent value="gear" className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">Echipamentele mele</h2>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Wrench className="w-4 h-4 mr-2" />
+                    Adaugă Echipament
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Mock gear data - în viitor va veni din API */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Undiță Shimano</CardTitle>
+                      <CardDescription>Undiță pentru pescuit la mare</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Tip:</span> Undiță
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Marca:</span> Shimano
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Model:</span> Exage 4000
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Preț:</span> 250 RON
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Momeală Berkley</CardTitle>
+                      <CardDescription>Momeală artificială pentru crap</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Tip:</span> Momeală
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Marca:</span> Berkley
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Model:</span> PowerBait
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Preț:</span> 45 RON
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Scaun de pescuit</CardTitle>
+                      <CardDescription>Scaun confortabil pentru sesiuni lungi</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Tip:</span> Accesoriu
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Marca:</span> Fox
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Model:</span> R-Series
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Preț:</span> 180 RON
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">Nu ai adăugat încă echipamente?</p>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Wrench className="w-4 h-4 mr-2" />
+                    Adaugă primul echipament
+                  </Button>
+                </div>
               </TabsContent>
 
               {/* Tab Profil */}

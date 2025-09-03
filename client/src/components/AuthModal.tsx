@@ -83,16 +83,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       // Supabase error handling
       if (err && typeof err === 'object' && 'message' in err) {
         const message = (err as any).message;
-        if (message.includes('already registered')) {
+        if (message.includes('already registered') || message.includes('User already registered')) {
           setError('Acest email este deja folosit. Încearcă să te autentifici.');
-        } else if (message.includes('Invalid email')) {
+        } else if (message.includes('Invalid email') || message.includes('invalid email')) {
           setError('Email-ul nu este valid. Verifică formatul.');
-        } else if (message.includes('Password should be at least')) {
+        } else if (message.includes('Password should be at least') || message.includes('password too short')) {
           setError('Parola trebuie să aibă cel puțin 6 caractere.');
-        } else if (message.includes('Invalid login credentials')) {
+        } else if (message.includes('Invalid login credentials') || message.includes('invalid credentials')) {
           setError('Email sau parolă incorectă.');
+        } else if (message.includes('Email not confirmed')) {
+          setError('Email-ul nu a fost confirmat. Verifică-ți inbox-ul și apasă pe link-ul de confirmare.');
+        } else if (message.includes('Too many requests')) {
+          setError('Prea multe încercări. Așteaptă câteva minute și încearcă din nou.');
         } else {
-          setError(message);
+          setError('A apărut o eroare. Încearcă din nou.');
         }
       } else {
         setError('A apărut o eroare. Încearcă din nou.');
@@ -125,8 +129,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           setError('Popup-ul a fost blocat de browser. Permite popup-urile pentru acest site.');
         } else if (message.includes('access_denied')) {
           setError('Accesul a fost refuzat. Încearcă din nou.');
+        } else if (message.includes('network')) {
+          setError('Eroare de rețea. Verifică conexiunea la internet.');
         } else {
-          setError(message);
+          setError('A apărut o eroare la autentificarea cu Google.');
         }
       } else {
         setError('A apărut o eroare la autentificarea cu Google.');
