@@ -290,8 +290,8 @@ export default function Home() {
     const allLocations = filterType === 'all' ? fishingLocations : 
       fishingLocations.filter(loc => loc.type === filterType);
     
-    // CRITICAL: Limit locations on mobile for performance
-    const locationsToShow = isMobile ? allLocations.slice(0, 20) : allLocations; // Max 20 locations on mobile
+    // Show all locations - performance is handled by smaller markers and simplified popups
+    const locationsToShow = allLocations;
     
     console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 

@@ -14,7 +14,7 @@ export async function handler(event) {
       firebaseUid === 'undefined' || 
       firebaseUid === 'null' ||
       firebaseUid.trim() === '' ||
-      firebaseUid.length < 15) {
+      firebaseUid.length < 10) {
     console.error('❌ Invalid Firebase UID:', firebaseUid);
     return {
       statusCode: 400,
