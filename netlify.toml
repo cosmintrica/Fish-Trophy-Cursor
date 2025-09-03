@@ -55,6 +55,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/debug-user"
+  to = "/.netlify/functions/debug-user"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
