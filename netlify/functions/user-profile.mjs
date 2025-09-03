@@ -56,18 +56,87 @@ export async function handler(event) {
       `;
 
       if (users.length === 0) {
-        console.log(`❌ User not found: ${firebaseUid}`);
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            error: 'User not found. Please register first.'
-          })
-        };
+        console.log(`❌ User not found: ${firebaseUid} - Creating user automatically`);
+        
+        // Auto-create user if not found
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          
+          const isAdmin = firebaseUser.email === 'cosmin.trica@outlook.com';
+          const standardBio = isAdmin ? 'Administrator Fish Trophy' : 'Pescar pasionat din România!';
+          const userRole = isAdmin ? 'admin' : 'user';
+
+          const newUsers = await sql`
+            INSERT INTO users (
+              firebase_uid, 
+              email, 
+              display_name, 
+              photo_url, 
+              role, 
+              bio,
+              created_at, 
+              updated_at
+            )
+            VALUES (
+              ${firebaseUid}, 
+              ${firebaseUser.email || ''}, 
+              ${firebaseUser.displayName || ''}, 
+              ${firebaseUser.photoURL || ''}, 
+              ${userRole},
+              ${standardBio},
+              NOW(), 
+              NOW()
+            )
+            RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
+          `;
+
+          if (newUsers.length === 0) {
+            throw new Error('Failed to create user');
+          }
+
+          const newUser = newUsers[0];
+          console.log(`✅ Auto-created user: ${newUser.id}, role: ${newUser.role}`);
+
+          return {
+            statusCode: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: true,
+              data: {
+                id: newUser.id,
+                firebase_uid: newUser.firebase_uid,
+                email: newUser.email,
+                displayName: newUser.display_name || '',
+                photo_url: newUser.photo_url || '',
+                phone: newUser.phone || '',
+                role: newUser.role,
+                bio: newUser.bio || '',
+                location: newUser.location || '',
+                website: newUser.website || '',
+                created_at: newUser.created_at,
+                updated_at: newUser.updated_at
+              }
+            })
+          };
+        } catch (createError) {
+          console.error('❌ Error auto-creating user:', createError);
+          return {
+            statusCode: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'User not found and could not be created automatically.'
+            })
+          };
+        }
       }
 
       if (users.length > 1) {
@@ -132,18 +201,65 @@ export async function handler(event) {
       `;
 
       if (existingUsers.length === 0) {
-        console.log(`❌ User not found for update: ${firebaseUid}`);
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            error: 'User not found. Please register first.'
-          })
-        };
+        console.log(`❌ User not found for update: ${firebaseUid} - Creating user automatically`);
+        
+        // Auto-create user if not found
+        try {
+          const { getAuth } = await import('firebase-admin/auth');
+          const auth = getAuth();
+          const firebaseUser = await auth.getUser(firebaseUid);
+          
+          const isAdmin = firebaseUser.email === 'cosmin.trica@outlook.com';
+          const standardBio = isAdmin ? 'Administrator Fish Trophy' : 'Pescar pasionat din România!';
+          const userRole = isAdmin ? 'admin' : 'user';
+
+          const newUsers = await sql`
+            INSERT INTO users (
+              firebase_uid, 
+              email, 
+              display_name, 
+              photo_url, 
+              role, 
+              bio,
+              created_at, 
+              updated_at
+            )
+            VALUES (
+              ${firebaseUid}, 
+              ${firebaseUser.email || ''}, 
+              ${firebaseUser.displayName || ''}, 
+              ${firebaseUser.photoURL || ''}, 
+              ${userRole},
+              ${standardBio},
+              NOW(), 
+              NOW()
+            )
+            RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
+          `;
+
+          if (newUsers.length === 0) {
+            throw new Error('Failed to create user');
+          }
+
+          const newUser = newUsers[0];
+          console.log(`✅ Auto-created user for update: ${newUser.id}, role: ${newUser.role}`);
+          
+          // Continue with the update using the newly created user
+          existingUsers.push(newUser);
+        } catch (createError) {
+          console.error('❌ Error auto-creating user for update:', createError);
+          return {
+            statusCode: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'User not found and could not be created automatically.'
+            })
+          };
+        }
       }
 
       if (existingUsers.length > 1) {
