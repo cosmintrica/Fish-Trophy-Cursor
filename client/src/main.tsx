@@ -15,7 +15,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Register service worker for PWA
+// Register service worker for PWA - with mobile-friendly approach
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', {
@@ -24,15 +24,14 @@ if ('serviceWorker' in navigator) {
       .then((registration) => {
         console.log('SW registered successfully: ', registration);
         
-        // Check for updates
+        // Check for updates but don't auto-reload
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content is available, but don't auto-reload on mobile
-                // Let the user decide when to refresh
-                console.log('New service worker installed. Please refresh to get the latest version.');
+                // New content is available - just log it, don't auto-reload
+                console.log('New service worker installed. User can refresh manually.');
               }
             });
           }
@@ -40,6 +39,7 @@ if ('serviceWorker' in navigator) {
       })
       .catch((registrationError) => {
         console.error('SW registration failed: ', registrationError);
+        // Don't let SW registration errors break the app
       });
   });
 }

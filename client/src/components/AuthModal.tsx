@@ -35,8 +35,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setSelectedCounty('');
     setSelectedCity('');
     setError('');
-    setSuccess('');
-    setShowSuccess(false);
+    // Don't reset success message - let it persist
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,12 +72,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setSuccess('Contul a fost creat cu succes! Verifică email-ul pentru a confirma contul.');
         setShowSuccess(true);
         
-        // Reset form after successful registration but keep success message visible longer
-        setTimeout(() => {
-          setShowSuccess(false);
-          resetForm();
-          setIsLogin(true);
-        }, 5000); // Show success message for 5 seconds
+        // Don't auto-reset form, let user manually switch to login
       }
     } catch (err: unknown) {
       // Supabase error handling
@@ -177,15 +171,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Success Message */}
-        {showSuccess && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-              <p className="text-green-800 text-sm font-medium">{success}</p>
-            </div>
-          </div>
-        )}
+
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Display Name - only for registration */}
@@ -302,6 +288,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </Button>
         </form>
 
+        {/* Success Message - at bottom */}
+        {showSuccess && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+              <p className="text-green-800 text-sm font-medium">{success}</p>
+            </div>
+          </div>
+        )}
+
         {/* Google Sign In */}
         <div className="mt-4">
           <div className="relative">
@@ -333,6 +329,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={() => {
               resetForm();
+              setShowSuccess(false); // Reset success message when manually switching
               setIsLogin(!isLogin);
             }}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"

@@ -141,6 +141,18 @@ export const ROMANIA_COUNTIES: County[] = [
     ]
   },
   {
+    "id": "bucuresti",
+    "name": "București",
+    "cities": [
+      "Sector 1",
+      "Sector 2",
+      "Sector 3",
+      "Sector 4",
+      "Sector 5",
+      "Sector 6"
+    ]
+  },
+  {
     "id": "calarasi",
     "name": "Călărași",
     "cities": [
@@ -556,18 +568,6 @@ export const ROMANIA_COUNTIES: County[] = [
       "Horezu",
       "Ocnele Mari",
       "Râmnicu Vâlcea"
-    ]
-  },
-    {
-    "id": "bucuresti",
-    "name": "București",
-    "cities": [
-      "Sector 1",
-      "Sector 2",
-      "Sector 3",
-      "Sector 4",
-      "Sector 5",
-      "Sector 6"
     ]
   },
   {

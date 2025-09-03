@@ -1,6 +1,6 @@
 // Service Worker pentru Fish Trophy
-const CACHE_NAME = 'fish-trophy-v4';
-const STATIC_CACHE = 'fish-trophy-static-v4';
+const CACHE_NAME = 'fish-trophy-v5';
+const STATIC_CACHE = 'fish-trophy-static-v5';
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
@@ -16,8 +16,8 @@ self.addEventListener('install', (event) => {
         ]);
       })
   );
-  // Force activation of new service worker
-  self.skipWaiting();
+  // Don't force activation on mobile to prevent infinite reloads
+  // self.skipWaiting();
 });
 
 // Fetch event - network first strategy for better mobile experience
@@ -102,8 +102,8 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      // Take control of all clients immediately
-      return self.clients.claim();
+      // Don't take control immediately to prevent conflicts
+      // return self.clients.claim();
     })
   );
 });

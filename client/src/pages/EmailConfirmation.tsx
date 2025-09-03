@@ -13,36 +13,68 @@ const EmailConfirmation: React.FC = () => {
 
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      const token = searchParams.get('token');
-      const type = searchParams.get('type');
-
-      if (!token || type !== 'signup') {
-        setStatus('error');
-        setMessage('Link-ul de confirmare nu este valid.');
+      // Supabase redirects with access_token and refresh_token in URL fragments
+      // Check if user is already authenticated (email was confirmed)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user?.email_confirmed_at) {
+        setStatus('success');
+        setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
         return;
       }
 
-      try {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: token,
-          type: 'signup'
-        });
+      // Check URL parameters for confirmation tokens
+      const token = searchParams.get('token');
+      const type = searchParams.get('type');
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
 
-        if (error) {
-          if (error.message.includes('expired')) {
-            setStatus('expired');
-            setMessage('Link-ul de confirmare a expirat. Te rugăm să ceri un link nou.');
-          } else {
+      if (accessToken && refreshToken) {
+        // Handle OAuth confirmation
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
             setStatus('error');
             setMessage('A apărut o eroare la confirmarea email-ului. Te rugăm să încerci din nou.');
+          } else {
+            setStatus('success');
+            setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
           }
-        } else {
-          setStatus('success');
-          setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
+        } catch (error) {
+          setStatus('error');
+          setMessage('A apărut o eroare neașteptată. Te rugăm să încerci din nou.');
         }
-      } catch (error) {
+      } else if (token && type === 'signup') {
+        // Handle email confirmation token
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'signup'
+          });
+
+          if (error) {
+            if (error.message.includes('expired')) {
+              setStatus('expired');
+              setMessage('Link-ul de confirmare a expirat. Te rugăm să ceri un link nou.');
+            } else {
+              setStatus('error');
+              setMessage('A apărut o eroare la confirmarea email-ului. Te rugăm să încerci din nou.');
+            }
+          } else {
+            setStatus('success');
+            setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
+          }
+        } catch (error) {
+          setStatus('error');
+          setMessage('A apărut o eroare neașteptată. Te rugăm să încerci din nou.');
+        }
+      } else {
         setStatus('error');
-        setMessage('A apărut o eroare neașteptată. Te rugăm să încerci din nou.');
+        setMessage('Link-ul de confirmare nu este valid.');
       }
     };
 
