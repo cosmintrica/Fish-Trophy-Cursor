@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Plus, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-supabase';
 import AuthModal from './AuthModal';
-import PWAInstallPrompt from './PWAInstallPrompt';
+// import PWAInstallPrompt from './PWAInstallPrompt'; // Temporarily disabled
 
 // PWA Install Prompt Event interface
 interface BeforeInstallPromptEvent extends Event {
@@ -15,8 +15,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  // PWA Install Prompt temporarily disabled
+  // const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
+  // const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const location = useLocation();
 
   // Check if user is admin - use environment variable for security
@@ -24,7 +25,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.email === adminEmail;
   const [showBlackSeaPopup, setShowBlackSeaPopup] = useState(false);
 
-  // PWA Install Prompt Logic (mobile only)
+  // PWA Install Prompt Logic temporarily disabled
+  /*
   useEffect(() => {
     const isStandalone = ((): boolean => {
       try {
@@ -93,6 +95,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }
     }
   };
+  */
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
@@ -382,8 +385,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* PWA Install Button in Mobile Menu */}
-          {showPWAInstallPrompt && (
+          {/* PWA Install Button in Mobile Menu - temporarily disabled */}
+          {/* {showPWAInstallPrompt && (
             <div className="p-6 border-t border-gray-200">
               <button
                 onClick={() => {
@@ -396,7 +399,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 Adaugă pe ecranul principal
               </button>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -405,8 +408,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* PWA Install Prompt */}
-      <PWAInstallPrompt />
+      {/* PWA Install Prompt - temporarily disabled */}
+      {/* <PWAInstallPrompt /> */}
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white">
