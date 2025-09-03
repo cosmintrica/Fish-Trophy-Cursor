@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth-supabase';
+import { supabaseApi } from '@/services/supabase-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -79,18 +80,17 @@ const Profile: React.FC = () => {
   // Show mock records only for admin
   const records = isAdmin ? mockRecords : [];
 
-  // Încarcă datele profilului din API
+  // Încarcă datele profilului din Supabase
   useEffect(() => {
     const loadProfileData = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
 
       try {
-        const response = await fetch(`/.netlify/functions/user-profile/${user.uid}`);
-        const result = await response.json();
+        const result = await supabaseApi.getProfile(user.id);
 
         if (result.success && result.data) {
           setProfileData({
-            displayName: result.data.displayName || user.displayName || '',
+            displayName: result.data.displayName || user.user_metadata?.display_name || '',
             email: result.data.email || user.email || '',
             phone: result.data.phone || '',
             location: result.data.location || '',
@@ -129,7 +129,7 @@ const Profile: React.FC = () => {
   }, [user]);
 
   const handleProfileUpdate = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
@@ -141,22 +141,13 @@ const Profile: React.FC = () => {
         phone: profileData.phone,
         location: profileData.location,
         bio: profileData.bio,
-        photo_url: user.photoURL || ''
       };
 
-      // Actualizează Firebase Auth
-      await updateProfile(user, { displayName: profileData.displayName });
+      // Actualizează Supabase Auth
+      await updateProfile({ display_name: profileData.displayName });
 
-      // Salvează în baza de date prin API
-      const response = await fetch(`/.netlify/functions/user-profile/${user.uid}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profileDataToSend)
-      });
-
-      const result = await response.json();
+      // Salvează în baza de date prin Supabase API
+      const result = await supabaseApi.updateProfile(user.id, profileDataToSend);
 
       if (result.success) {
         toast.success('Profilul a fost actualizat cu succes!');
@@ -170,11 +161,6 @@ const Profile: React.FC = () => {
             location: result.data.location || '',
             bio: result.data.bio || ''
           });
-        }
-
-        // Afișează mesaj dacă este mock data
-        if (result.message && result.message.includes('Mock')) {
-          toast.info('Datele sunt salvate temporar (mock). Conexiunea la baza de date va fi activată în curând.');
         }
       } else {
         toast.error(result.error || 'Eroare la actualizarea profilului');
