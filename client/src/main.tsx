@@ -30,8 +30,9 @@ if ('serviceWorker' in navigator) {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content is available, reload the page
-                window.location.reload();
+                // New content is available, but don't auto-reload on mobile
+                // Let the user decide when to refresh
+                console.log('New service worker installed. Please refresh to get the latest version.');
               }
             });
           }

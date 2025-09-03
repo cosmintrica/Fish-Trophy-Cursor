@@ -73,11 +73,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setSuccess('Contul a fost creat cu succes! Verifică email-ul pentru a confirma contul.');
         setShowSuccess(true);
         
-        // Reset form after successful registration
+        // Reset form after successful registration but keep success message visible longer
         setTimeout(() => {
+          setShowSuccess(false);
           resetForm();
           setIsLogin(true);
-        }, 3000);
+        }, 5000); // Show success message for 5 seconds
       }
     } catch (err: unknown) {
       // Supabase error handling

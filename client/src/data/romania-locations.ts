@@ -600,7 +600,7 @@ const normalizeText = (text: string): string => {
 const matchesAtStart = (text: string, query: string): boolean => {
   const normalizedText = normalizeText(text);
   const normalizedQuery = normalizeText(query);
-  
+
   // Check if the normalized text starts with the normalized query
   return normalizedText.startsWith(normalizedQuery);
 };
@@ -608,7 +608,7 @@ const matchesAtStart = (text: string, query: string): boolean => {
 // Helper functions for search
 export const searchCounties = (query: string): County[] => {
   if (!query.trim()) return ROMANIA_COUNTIES;
- 
+
   return ROMANIA_COUNTIES.filter(county =>
     matchesAtStart(county.name, query)
   );
@@ -617,9 +617,9 @@ export const searchCounties = (query: string): County[] => {
 export const searchCities = (countyId: string, query: string): string[] => {
   const county = ROMANIA_COUNTIES.find(c => c.id === countyId);
   if (!county) return [];
- 
+
   if (!query.trim()) return county.cities;
- 
+
   return county.cities.filter(city =>
     matchesAtStart(city, query)
   );

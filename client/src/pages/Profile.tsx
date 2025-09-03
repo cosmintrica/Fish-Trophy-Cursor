@@ -85,6 +85,7 @@ const Profile: React.FC = () => {
       if (!user?.id) return;
 
       try {
+        // Încearcă să încarce din tabela profiles
         const result = await supabaseApi.getProfile(user.id);
 
         if (result.success && result.data) {
@@ -92,12 +93,29 @@ const Profile: React.FC = () => {
             displayName: result.data.displayName || user.user_metadata?.display_name || '',
             email: result.data.email || user.email || '',
             phone: result.data.phone || '',
-            location: result.data.location || '',
+            location: result.data.location || user.user_metadata?.location || '',
             bio: result.data.bio || 'Pescar pasionat din România!'
+          });
+        } else {
+          // Dacă nu există în baza de date, folosește datele din user_metadata
+          setProfileData({
+            displayName: user.user_metadata?.display_name || '',
+            email: user.email || '',
+            phone: '',
+            location: user.user_metadata?.location || '',
+            bio: 'Pescar pasionat din România!'
           });
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
+        // Fallback la user_metadata dacă există o eroare
+        setProfileData({
+          displayName: user.user_metadata?.display_name || '',
+          email: user.email || '',
+          phone: '',
+          location: user.user_metadata?.location || '',
+          bio: 'Pescar pasionat din România!'
+        });
       }
     };
 
@@ -145,6 +163,7 @@ const Profile: React.FC = () => {
         .from('profiles')
         .upsert({
           id: user.id,
+          email: user.email, // Asigură-te că email-ul este inclus
           display_name: profileData.displayName,
           phone: profileData.phone,
           location: profileData.location,
@@ -154,8 +173,26 @@ const Profile: React.FC = () => {
 
       if (dbError) {
         console.error('Database update error:', dbError);
-        // Nu aruncăm eroarea aici pentru că auth update-ul a reușit
-        toast.warning('Profilul a fost actualizat, dar unele date nu au fost salvate în baza de date.');
+        // Încearcă să creeze profilul dacă nu există
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            display_name: profileData.displayName,
+            phone: profileData.phone,
+            location: profileData.location,
+            bio: profileData.bio,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.');
+        } else {
+          toast.success('Profilul a fost actualizat cu succes!');
+        }
       } else {
         toast.success('Profilul a fost actualizat cu succes!');
       }

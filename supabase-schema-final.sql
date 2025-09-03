@@ -523,12 +523,13 @@ create index if not exists idx_user_gear_user on public.user_gear(user_id);
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, display_name, photo_url, role)
+  insert into public.profiles (id, email, display_name, photo_url, location, role)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'display_name',''),
     coalesce(new.raw_user_meta_data->>'avatar_url',''),
+    coalesce(new.raw_user_meta_data->>'location',''),
     case when lower(new.email) = 'cosmin.trica@outlook.com' then 'admin' else 'user' end
   )
   on conflict (id) do nothing;

@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           display_name: displayName || '',
           location: location || '',
         },
+        emailRedirectTo: `${window.location.origin}/email-confirmation`,
       },
     });
     if (error) throw error;

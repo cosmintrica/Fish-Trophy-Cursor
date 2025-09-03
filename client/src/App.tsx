@@ -22,6 +22,7 @@ import SubmissionGuide from '@/pages/SubmissionGuide';
 import Profile from '@/pages/Profile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
+import EmailConfirmation from '@/pages/EmailConfirmation';
 
 function App() {
   // Initialize Web Vitals tracking
@@ -50,6 +51,7 @@ function App() {
               <ScrollToTop />
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/email-confirmation" element={<EmailConfirmation />} />
                 <Route 
                   path="/black-sea" 
                   element={
