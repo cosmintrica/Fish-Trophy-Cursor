@@ -1,11 +1,11 @@
 [build]
   base = "."
-  command = "cd client && npm ci && npm run build"
+  command = "npm ci && cd client && npm ci && npm run build"
   publish = "client/dist"
 
 [dev]
   command = "npm run dev:client"
-  port = 8888
+  port = 8889
   targetPort = 5173
 
 [build.environment]
@@ -16,6 +16,20 @@
   CI = "false"
 
 # API redirects - must come BEFORE catch-all redirect
+# Order is CRITICAL - most specific routes first!
+
+[[redirects]]
+  from = "/api/users/register"
+  to = "/.netlify/functions/user-register"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/users/cleanup"
+  to = "/.netlify/functions/cleanup-users"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/users/*/profile-debug"
   to = "/.netlify/functions/user-profile-debug/:splat"

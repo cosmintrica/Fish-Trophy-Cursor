@@ -60,6 +60,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
+      // Register user in database
+      if (userCredential.user) {
+        try {
+          const response = await fetch('/api/users/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: userCredential.user.uid,
+              email: userCredential.user.email,
+              display_name: userCredential.user.displayName || '',
+              photo_url: userCredential.user.photoURL || ''
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ User registered in database:', result.data);
+          } else {
+            console.error('❌ Failed to register user in database:', result.error);
+          }
+        } catch (dbError) {
+          console.error('❌ Error registering user in database:', dbError);
+          // Don't throw error - user is still created in Firebase
+        }
+      }
+      
       // Send email verification automatically after signup
       if (userCredential.user && !userCredential.user.emailVerified) {
         try {
@@ -82,7 +110,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      
+      // Register user in database if they don't exist
+      if (userCredential.user) {
+        try {
+          const response = await fetch('/api/users/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: userCredential.user.uid,
+              email: userCredential.user.email,
+              display_name: userCredential.user.displayName || '',
+              photo_url: userCredential.user.photoURL || ''
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ User registered in database:', result.data);
+          } else if (result.error === 'User already exists') {
+            console.log('✅ User already exists in database');
+          } else {
+            console.error('❌ Failed to register user in database:', result.error);
+          }
+        } catch (dbError) {
+          console.error('❌ Error registering user in database:', dbError);
+          // Don't throw error - user is still signed in
+        }
+      }
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;

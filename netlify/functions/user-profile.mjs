@@ -8,12 +8,28 @@ export async function handler(event) {
   const pathParts = event.path.split('/');
   const firebaseUid = pathParts[pathParts.length - 1];
 
-  if (!firebaseUid || firebaseUid === 'user-profile') {
+  // CRITICAL: Strict validation for Firebase UID
+  if (!firebaseUid || 
+      firebaseUid === 'user-profile' || 
+      firebaseUid === 'undefined' || 
+      firebaseUid === 'null' ||
+      firebaseUid.trim() === '' ||
+      firebaseUid.length < 20) {
+    console.error('❌ Invalid Firebase UID:', firebaseUid);
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Firebase UID is required' })
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({ 
+        success: false,
+        error: 'Invalid or missing Firebase UID' 
+      })
     };
   }
+
+  console.log(`🔍 Processing request for Firebase UID: ${firebaseUid}`);
 
   try {
     // Handle CORS preflight requests
@@ -32,25 +48,42 @@ export async function handler(event) {
     if (event.httpMethod === 'GET') {
       console.log(`🔍 GET request for user profile: ${firebaseUid}`);
 
-      let users = await sql`
+      // CRITICAL: Use parameterized query to prevent SQL injection
+      const users = await sql`
         SELECT id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
         FROM users
         WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (users.length === 0) {
-        // Create user if they don't exist - we'll get Firebase data from the request
-        console.log(`🆕 Creating new user on GET: ${firebaseUid}`);
+        console.log(`❌ User not found: ${firebaseUid}`);
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'User not found. Please register first.'
+          })
+        };
+      }
 
-        // For GET requests, we can't get Firebase data from body, so create with minimal data
-        // The user will be updated when they make a PUT request with their Firebase data
-        const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
-          VALUES (${firebaseUid}, '', '', '', 'user', NOW(), NOW())
-          RETURNING id, firebase_uid, email, display_name, photo_url, phone, role, bio, location, website, created_at, updated_at
-        `;
-        users = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id} (minimal data - will be updated on first PUT)`);
+      if (users.length > 1) {
+        console.error(`❌ CRITICAL: Multiple users found with same Firebase UID: ${firebaseUid}`);
+        // This should NEVER happen - log for investigation
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Database integrity error: Multiple users with same UID'
+          })
+        };
       }
 
       const userData = users[0];
@@ -93,60 +126,66 @@ export async function handler(event) {
       const displayNameToSave = displayName || display_name;
       const photoUrlToSave = photo_url || '';
 
-      // Check if user exists first, if not create them
-      let existingUsers = await sql`
-        SELECT id, email FROM users WHERE firebase_uid = ${firebaseUid}
+      // CRITICAL: Check if user exists first - NO AUTO-CREATION
+      const existingUsers = await sql`
+        SELECT id, email, role FROM users WHERE firebase_uid = ${firebaseUid}
       `;
 
       if (existingUsers.length === 0) {
-        // Create user if they don't exist with Firebase data
-        console.log(`🆕 Creating new user: ${firebaseUid}`);
-        
-        // Get current Firebase user data to sync email
-        let firebaseEmail = '';
-        try {
-          const { getAuth } = await import('firebase-admin/auth');
-          const auth = getAuth();
-          const firebaseUser = await auth.getUser(firebaseUid);
-          firebaseEmail = firebaseUser.email || '';
-          console.log(`📧 Syncing email from Firebase: ${firebaseEmail}`);
-        } catch (firebaseError) {
-          console.error('❌ Error getting Firebase user data:', firebaseError);
-        }
-        
-        // Create user with Firebase email
-        const newUsers = await sql`
-          INSERT INTO users (firebase_uid, email, display_name, photo_url, role, created_at, updated_at)
-          VALUES (${firebaseUid}, ${firebaseEmail}, ${displayNameToSave || ''}, ${photoUrlToSave}, 'user', NOW(), NOW())
-          RETURNING id
-        `;
-        existingUsers = newUsers;
-        console.log(`✅ Created new user with ID: ${newUsers[0].id} and email: ${firebaseEmail}`);
-      } else {
-        // User exists, sync email from Firebase Auth
-        console.log(`✅ User exists: ${existingUsers[0].id}`);
-        
-        try {
-          const { getAuth } = await import('firebase-admin/auth');
-          const auth = getAuth();
-          const firebaseUser = await auth.getUser(firebaseUid);
-          const firebaseEmail = firebaseUser.email || '';
-          
-          // Update email if it's different
-          if (firebaseEmail && firebaseEmail !== existingUsers[0].email) {
-            await sql`
-              UPDATE users 
-              SET email = ${firebaseEmail}, updated_at = NOW()
-              WHERE firebase_uid = ${firebaseUid}
-            `;
-            console.log(`📧 Updated email from Firebase: ${firebaseEmail}`);
-          }
-        } catch (firebaseError) {
-          console.error('❌ Error syncing Firebase email:', firebaseError);
-        }
+        console.log(`❌ User not found for update: ${firebaseUid}`);
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'User not found. Please register first.'
+          })
+        };
       }
 
-      // Update user profile - CRITICAL: Only update if user exists and belongs to this firebase_uid
+      if (existingUsers.length > 1) {
+        console.error(`❌ CRITICAL: Multiple users found with same Firebase UID: ${firebaseUid}`);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Database integrity error: Multiple users with same UID'
+          })
+        };
+      }
+
+      // CRITICAL: Validate that we're updating the correct user
+      const existingUser = existingUsers[0];
+      console.log(`✅ User exists: ${existingUser.id}, role: ${existingUser.role}`);
+
+      // Sync email from Firebase Auth if needed
+      try {
+        const { getAuth } = await import('firebase-admin/auth');
+        const auth = getAuth();
+        const firebaseUser = await auth.getUser(firebaseUid);
+        const firebaseEmail = firebaseUser.email || '';
+        
+        // Update email if it's different
+        if (firebaseEmail && firebaseEmail !== existingUser.email) {
+          await sql`
+            UPDATE users 
+            SET email = ${firebaseEmail}, updated_at = NOW()
+            WHERE firebase_uid = ${firebaseUid}
+          `;
+          console.log(`📧 Updated email from Firebase: ${firebaseEmail}`);
+        }
+      } catch (firebaseError) {
+        console.error('❌ Error syncing Firebase email:', firebaseError);
+      }
+
+      // CRITICAL: Update user profile with strict validation
       const updatedUsers = await sql`
         UPDATE users
         SET display_name = ${displayNameToSave || null},
@@ -161,15 +200,31 @@ export async function handler(event) {
       `;
 
       if (updatedUsers.length === 0) {
+        console.error(`❌ Update failed for user: ${firebaseUid}`);
         return {
-          statusCode: 404,
+          statusCode: 500,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
           },
           body: JSON.stringify({
             success: false,
-            error: 'User not found or unauthorized'
+            error: 'Update failed'
+          })
+        };
+      }
+
+      if (updatedUsers.length > 1) {
+        console.error(`❌ CRITICAL: Update affected multiple users: ${firebaseUid}`);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Update affected multiple users - database integrity error'
           })
         };
       }

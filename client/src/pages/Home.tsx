@@ -13,6 +13,45 @@ import { useStructuredData } from '@/hooks/useStructuredData';
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
 
+// CRITICAL: Mobile-specific CSS optimizations
+const mobileCSS = `
+  .leaflet-container {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  .leaflet-tile {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  .custom-marker {
+    pointer-events: auto !important;
+  }
+  
+  @media (max-width: 768px) {
+    .leaflet-popup-content {
+      margin: 8px !important;
+    }
+    
+    .leaflet-popup-tip {
+      width: 12px !important;
+      height: 12px !important;
+    }
+  }
+`;
+
+// Inject mobile CSS
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = mobileCSS;
+  document.head.appendChild(style);
+}
+
 // Fix Leaflet icon issues
 L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -35,70 +74,110 @@ export default function Home() {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Detect if mobile device
-    const isMobile = window.innerWidth <= 768;
+    // Detect if mobile device - more accurate detection
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Inițializează harta cu setări optimizate pentru performanță pe mobil
-    const map = L.map(mapContainerRef.current, {
-      center: [45.9432, 25.0094], // Centrul României
-      zoom: isMobile ? 6 : 7, // Zoom diferit pentru desktop vs mobil
-      minZoom: isMobile ? 5 : 6, // Zoom minim diferit
-      maxZoom: isMobile ? 15 : 18, // Zoom maxim redus pe mobil
-      zoomControl: !isMobile, // Ascunde zoom control pe mobil
-      attributionControl: !isMobile, // Ascunde attribution pe mobil
-      // Optimizări extreme pentru mobil
+    console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
+    
+    // CRITICAL: Completely different config for mobile vs desktop
+    const mapConfig = isMobile ? {
+      // MOBILE CONFIG - Optimized for touch and performance
+      center: [45.9432, 25.0094],
+      zoom: 6,
+      minZoom: 5,
+      maxZoom: 12, // Much lower max zoom for mobile
+      zoomControl: false, // No zoom controls on mobile
+      attributionControl: false, // No attribution on mobile
+      // Performance optimizations
       preferCanvas: true,
-      zoomSnap: isMobile ? 1 : 1,
-      zoomDelta: isMobile ? 1 : 1,
-      wheelPxPerZoomLevel: isMobile ? 200 : 60,
-      // Optimizări suplimentare pentru performanță
       renderer: L.canvas(),
+      // Disable all animations
       fadeAnimation: false,
       markerZoomAnimation: false,
-      // Optimizări suplimentare pentru mobil
-      bounceAtZoomLimits: false,
-      inertia: !isMobile,
-      inertiaDeceleration: isMobile ? 0 : 3000,
-      inertiaMaxSpeed: isMobile ? 1000 : 1500,
-      easeLinearity: isMobile ? 0.2 : 0.25,
-      tapTolerance: isMobile ? 15 : 10,
-      touchZoom: isMobile ? L.Browser.touch : true,
-      // Optimizări specifice pentru mobil
+      zoomAnimation: false,
+      // Touch optimizations
+      tapTolerance: 20,
+      touchZoom: true,
+      // Disable unnecessary features
+      doubleClickZoom: false,
+      scrollWheelZoom: false,
+      boxZoom: false,
+      keyboard: false,
       dragging: true,
-      doubleClickZoom: !isMobile, // Dezactivează double-click zoom pe mobil
-      scrollWheelZoom: !isMobile, // Dezactivează scroll wheel pe mobil
-      boxZoom: !isMobile, // Dezactivează box zoom pe mobil
-      keyboard: !isMobile, // Dezactivează keyboard pe mobil
-      // Optimizări pentru performanță
+      // Performance settings
       worldCopyJump: false,
-      maxBounds: isMobile ? L.latLngBounds(
-        L.latLng(43.5, 20.0), // Sud-vest
-        L.latLng(48.5, 30.0)  // Nord-est
-      ) : undefined // Limitează harta la România pe mobil
-    });
+      bounceAtZoomLimits: false,
+      // Limit bounds to Romania
+      maxBounds: L.latLngBounds(
+        L.latLng(43.5, 20.0),
+        L.latLng(48.5, 30.0)
+      )
+    } : {
+      // DESKTOP CONFIG - Full features
+      center: [45.9432, 25.0094],
+      zoom: 7,
+      minZoom: 6,
+      maxZoom: 18,
+      zoomControl: true,
+      attributionControl: true,
+      preferCanvas: false,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      zoomAnimation: true,
+      doubleClickZoom: true,
+      scrollWheelZoom: true,
+      boxZoom: true,
+      keyboard: true,
+      dragging: true,
+      worldCopyJump: false
+    };
 
-    // Adaugă layer-ul OpenStreetMap cu optimizări extreme pentru mobil
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: isMobile ? '' : '© OpenStreetMap contributors', // Ascunde attribution pe mobil
-      maxZoom: isMobile ? 15 : 18, // Zoom maxim redus pe mobil
+    const map = L.map(mapContainerRef.current, mapConfig);
+
+    // CRITICAL: Different tile layer config for mobile vs desktop
+    const tileConfig = isMobile ? {
+      // MOBILE TILE CONFIG - Maximum performance
+      attribution: '',
+      maxZoom: 12, // Match map maxZoom
       subdomains: ['a', 'b', 'c'],
-      // Optimizări extreme pentru mobil
-      keepBuffer: isMobile ? 1 : 2, // Buffer mai mic pe mobil
+      // Performance optimizations
+      keepBuffer: 1, // Minimal buffer
       updateWhenIdle: false,
       updateWhenZooming: false,
-      // Cache optimizat pentru mobil
-      maxNativeZoom: isMobile ? 15 : 18,
+      updateWhenMoving: false,
+      // Cache settings
+      maxNativeZoom: 12,
       tileSize: 256,
       zoomOffset: 0,
-      // Optimizări suplimentare pentru mobil
-      bounds: isMobile ? L.latLngBounds(
-        L.latLng(43.5, 20.0), // Sud-vest
-        L.latLng(48.5, 30.0)  // Nord-est
-      ) : undefined, // Limitează tile-urile la România pe mobil
-      // Optimizări pentru performanță
+      // Disable retina for mobile
+      detectRetina: false,
+      // Limit to Romania bounds
+      bounds: L.latLngBounds(
+        L.latLng(43.5, 20.0),
+        L.latLng(48.5, 30.0)
+      ),
+      // Performance settings
       crossOrigin: true,
-      detectRetina: !isMobile // Dezactivează retina pe mobil
-    }).addTo(map);
+      // Reduce tile loading
+      minZoom: 5
+    } : {
+      // DESKTOP TILE CONFIG - Full quality
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18,
+      subdomains: ['a', 'b', 'c'],
+      keepBuffer: 2,
+      updateWhenIdle: true,
+      updateWhenZooming: true,
+      updateWhenMoving: true,
+      maxNativeZoom: 18,
+      tileSize: 256,
+      zoomOffset: 0,
+      detectRetina: true,
+      crossOrigin: true,
+      minZoom: 6
+    };
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileConfig).addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -106,10 +185,20 @@ export default function Home() {
     const locationsLayer = L.layerGroup().addTo(map);
     locationsLayerRef.current = locationsLayer;
 
-    // Adaugă locațiile inițiale cu delay pentru performanță (mai mare pe mobil)
-    setTimeout(() => {
-      addLocationsToMap(map, 'all');
-    }, isMobile ? 300 : 100);
+    // CRITICAL: Different loading strategy for mobile vs desktop
+    if (isMobile) {
+      // Mobile: Load locations after map is fully rendered
+      setTimeout(() => {
+        console.log('📱 Loading locations for mobile...');
+        addLocationsToMap(map, 'all');
+      }, 500); // Longer delay for mobile
+    } else {
+      // Desktop: Load immediately
+      setTimeout(() => {
+        console.log('🖥️ Loading locations for desktop...');
+        addLocationsToMap(map, 'all');
+      }, 100);
+    }
 
     // Adaugă event listener pentru click pe hartă să închidă popup-urile
     map.on('click', () => {
@@ -187,22 +276,24 @@ export default function Home() {
     };
   }, [user]);
 
-  // Funcție pentru adăugarea locațiilor pe hartă
+  // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
   const addLocationsToMap = (_map: L.Map, filterType: string) => {
     // Șterge doar markerii din layer-ul de locații
     if (locationsLayerRef.current) {
       locationsLayerRef.current.clearLayers();
     }
 
-    // Detect if mobile device
-    const isMobile = window.innerWidth <= 768;
+    // Detect if mobile device - more accurate detection
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Adaugă locațiile filtrate (limitează numărul pe mobil)
+    // Adaugă locațiile filtrate
     const allLocations = filterType === 'all' ? fishingLocations : 
       fishingLocations.filter(loc => loc.type === filterType);
     
-    // Afișează toate locațiile
-    const locationsToShow = allLocations;
+    // CRITICAL: Limit locations on mobile for performance
+    const locationsToShow = isMobile ? allLocations.slice(0, 20) : allLocations; // Max 20 locations on mobile
+    
+    console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: L.Marker[] = [];
@@ -235,11 +326,12 @@ export default function Home() {
           break;
       }
 
-      const iconSize = isMobile ? 24 : 32; // Marker mai mic pe mobil
+      // CRITICAL: Much smaller markers on mobile for performance
+      const iconSize = isMobile ? 20 : 32; // Even smaller on mobile
       const icon = L.divIcon({
         className: 'custom-marker',
-        html: `<div class="${isMobile ? 'w-5 h-5' : 'w-6 h-6'} ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
-                 <Fish className="${isMobile ? 'w-3 h-3' : 'w-4 h-4'} text-white" />
+        html: `<div class="${isMobile ? 'w-4 h-4' : 'w-6 h-6'} ${markerColor} ${borderColor} rounded-full border-2 border-white ${isMobile ? 'shadow-sm' : 'shadow-md'} flex items-center justify-center ${!isMobile ? 'hover:scale-110 transition-transform duration-200' : ''}">
+                 <Fish className="${isMobile ? 'w-2 h-2' : 'w-4 h-4'} text-white" />
                </div>`,
         iconSize: [iconSize, iconSize],
         iconAnchor: [iconSize / 2, iconSize / 2]
@@ -248,7 +340,31 @@ export default function Home() {
       const marker = L.marker(location.coords, { icon });
       markers.push(marker);
       
-      marker.bindPopup(`
+      // CRITICAL: Simplified popup for mobile performance
+      const popupContent = isMobile ? `
+        <div class="p-2 min-w-[200px] max-w-[240px] bg-white">
+          <div class="mb-2">
+            <h3 class="font-bold text-sm text-gray-800 mb-1">${location.name}</h3>
+            <p class="text-xs text-gray-600">${location.county}</p>
+          </div>
+          
+          <div class="mb-2">
+            <div class="flex items-center gap-1 mb-1">
+              <span class="text-xs font-medium text-gray-700">Recorduri:</span>
+              <span class="text-xs text-gray-600">${location.recordCount}</span>
+            </div>
+          </div>
+          
+          <div class="flex gap-1">
+            <button class="flex-1 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+              Vezi
+            </button>
+            <button class="flex-1 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
+              Adaugă
+            </button>
+          </div>
+        </div>
+      ` : `
         <div class="p-3 min-w-[240px] max-w-[280px] bg-white">
           <div class="mb-3">
             <h3 class="font-bold text-base text-gray-800 mb-1">${location.name}</h3>
@@ -285,22 +401,35 @@ export default function Home() {
             </button>
           </div>
         </div>
-      `, {
-        maxWidth: 300
+      `;
+
+      marker.bindPopup(popupContent, {
+        maxWidth: isMobile ? 240 : 300,
+        closeButton: !isMobile // No close button on mobile for simplicity
       });
     });
     
-    // Adaugă toți markerii în batch pentru performanță mai bună
+    // CRITICAL: Optimized batch adding for mobile performance
     if (locationsLayerRef.current && markers.length > 0) {
       try {
-        // Clear existing markers first
-        locationsLayerRef.current.clearLayers();
-        // Add all markers
-        markers.forEach(marker => {
-          if (locationsLayerRef.current && marker) {
-            locationsLayerRef.current.addLayer(marker);
-          }
-        });
+        if (isMobile) {
+          // Mobile: Add markers with delay to prevent blocking
+          markers.forEach((marker, index) => {
+            setTimeout(() => {
+              if (locationsLayerRef.current && marker) {
+                locationsLayerRef.current.addLayer(marker);
+              }
+            }, index * 10); // 10ms delay between each marker
+          });
+        } else {
+          // Desktop: Add all markers immediately
+          markers.forEach(marker => {
+            if (locationsLayerRef.current && marker) {
+              locationsLayerRef.current.addLayer(marker);
+            }
+          });
+        }
+        console.log(`✅ Added ${markers.length} markers (Mobile: ${isMobile})`);
       } catch (error) {
         console.error('Error adding markers to map:', error);
       }
