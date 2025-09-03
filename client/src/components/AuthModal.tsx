@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-supabase';
 import { Button } from '@/components/ui/button';
-import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, User, CheckCircle } from 'lucide-react';
+import SearchableSelect from './SearchableSelect';
+import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,42 +14,88 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
   if (!isOpen) return null;
 
+  // Reset form when switching between login/register
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setDisplayName('');
+    setSelectedCounty('');
+    setSelectedCity('');
+    setError('');
+    setSuccess('');
+    setShowSuccess(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
+    setShowSuccess(false);
 
     try {
       if (isLogin) {
         await signIn(email, password);
+        onClose();
       } else {
-        await signUp(email, password);
+        // Validation for registration
+        if (!displayName.trim()) {
+          setError('Numele este obligatoriu.');
+          return;
+        }
+        if (!selectedCounty) {
+          setError('Județul este obligatoriu.');
+          return;
+        }
+        if (!selectedCity) {
+          setError('Orașul este obligatoriu.');
+          return;
+        }
+
+        const county = getCountyById(selectedCounty);
+        const location = `${selectedCity}, ${county?.name}`;
+        
+        await signUp(email, password, displayName, location);
+        
+        setSuccess('Contul a fost creat cu succes! Verifică email-ul pentru a confirma contul.');
+        setShowSuccess(true);
+        
+        // Reset form after successful registration
+        setTimeout(() => {
+          resetForm();
+          setIsLogin(true);
+        }, 3000);
       }
-      onClose();
     } catch (err: unknown) {
-      // Corectez eroarea cu Firebase
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/unauthorized-domain') {
-        setError('Domeniul nu este autorizat pentru autentificare. Încearcă din nou.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/user-not-found') {
-        setError('Utilizatorul nu a fost găsit. Verifică email-ul sau înregistrează-te.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/wrong-password') {
-        setError('Parola este incorectă. Încearcă din nou.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/email-already-in-use') {
-        setError('Acest email este deja folosit. Încearcă să te autentifici.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/weak-password') {
-        setError('Parola este prea slabă. Folosește cel puțin 6 caractere.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/invalid-email') {
-        setError('Email-ul nu este valid. Verifică formatul.');
+      // Supabase error handling
+      if (err && typeof err === 'object' && 'message' in err) {
+        const message = (err as any).message;
+        if (message.includes('already registered')) {
+          setError('Acest email este deja folosit. Încearcă să te autentifici.');
+        } else if (message.includes('Invalid email')) {
+          setError('Email-ul nu este valid. Verifică formatul.');
+        } else if (message.includes('Password should be at least')) {
+          setError('Parola trebuie să aibă cel puțin 6 caractere.');
+        } else if (message.includes('Invalid login credentials')) {
+          setError('Email sau parolă incorectă.');
+        } else {
+          setError(message);
+        }
       } else {
-        setError((err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') ? err.message : 'A apărut o eroare');
+        setError('A apărut o eroare. Încearcă din nou.');
       }
     } finally {
       setLoading(false);
@@ -57,33 +105,59 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
+    setSuccess('');
+    setShowSuccess(false);
     
     try {
       await signInWithGoogle();
-      onClose();
+      setSuccess('Autentificare cu Google reușită!');
+      setShowSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err: unknown) {
-      // Corectez eroarea cu Firebase
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/unauthorized-domain') {
-        setError('Domeniul nu este autorizat pentru autentificare. Încearcă din nou.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/popup-closed-by-user') {
-        setError('Fereastra de autentificare a fost închisă. Încearcă din nou.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/popup-blocked') {
-        setError('Popup-ul a fost blocat de browser. Permite popup-urile pentru acest site.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/cancelled-popup-request') {
-        setError('Cererea de autentificare a fost anulată. Încearcă din nou.');
-      } else if (err && typeof err === 'object' && 'code' in err && err.code === 'auth/network-request-failed') {
-        setError('Eroare de rețea. Verifică conexiunea la internet.');
+      // Supabase error handling
+      if (err && typeof err === 'object' && 'message' in err) {
+        const message = (err as any).message;
+        if (message.includes('popup_closed_by_user')) {
+          setError('Fereastra de autentificare a fost închisă. Încearcă din nou.');
+        } else if (message.includes('popup_blocked')) {
+          setError('Popup-ul a fost blocat de browser. Permite popup-urile pentru acest site.');
+        } else if (message.includes('access_denied')) {
+          setError('Accesul a fost refuzat. Încearcă din nou.');
+        } else {
+          setError(message);
+        }
       } else {
-        setError((err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') ? err.message : 'A apărut o eroare la autentificarea cu Google');
+        setError('A apărut o eroare la autentificarea cu Google.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // Handle county change - reset city when county changes
+  const handleCountyChange = (countyId: string) => {
+    setSelectedCounty(countyId);
+    setSelectedCity(''); // Reset city when county changes
+  };
+
+  // Prepare options for dropdowns
+  const countyOptions = ROMANIA_COUNTIES.map(county => ({
+    value: county.id,
+    label: county.name
+  }));
+
+  const cityOptions = selectedCounty 
+    ? searchCities(selectedCounty, '').map(city => ({
+        value: city,
+        label: city
+      }))
+    : [];
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-md sm:max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             {isLogin ? 'Autentificare' : 'Înregistrare'}
@@ -96,35 +170,67 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        {/* Success Message */}
+        {showSuccess && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+              <p className="text-green-800 text-sm font-medium">{success}</p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Display Name - only for registration */}
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nume complet *
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Numele tău complet"
+                  required={!isLogin}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Email
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email *
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 sm:pl-10 pr-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="email@example.com"
                 required
               />
             </div>
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Parolă
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Parolă *
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="••••••••"
                 required
               />
@@ -133,33 +239,79 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
               >
-                {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
+          {/* Location fields - only for registration */}
+          {!isLogin && (
+            <>
+              {/* County */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Județ *
+                </label>
+                <SearchableSelect
+                  options={countyOptions}
+                  value={selectedCounty}
+                  onChange={handleCountyChange}
+                  placeholder="Selectează județul"
+                  searchPlaceholder="Caută județ..."
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Oraș *
+                </label>
+                <SearchableSelect
+                  options={cityOptions}
+                  value={selectedCity}
+                  onChange={setSelectedCity}
+                  placeholder={selectedCounty ? "Selectează orașul" : "Selectează mai întâi județul"}
+                  searchPlaceholder="Caută oraș..."
+                  disabled={!selectedCounty}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Error Message */}
           {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">
               {error}
             </div>
           )}
 
+          {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-2.5 px-4 rounded-md transition-colors text-sm sm:text-base"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-md transition-colors font-medium"
             disabled={loading}
           >
             {loading ? 'Se procesează...' : (isLogin ? 'Autentificare' : 'Înregistrare')}
           </Button>
         </form>
 
-        <div className="mt-3 sm:mt-4">
+        {/* Google Sign In */}
+        <div className="mt-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">sau</span>
+            </div>
+          </div>
+
           <Button
             onClick={handleGoogleSignIn}
-            className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 sm:py-2.5 px-4 rounded-md transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
+            className="w-full mt-4 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 px-4 rounded-md transition-colors flex items-center justify-center space-x-2 font-medium"
             disabled={loading}
           >
-            <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -169,10 +321,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </Button>
         </div>
 
-        <div className="mt-4 sm:mt-6 text-center">
+        {/* Toggle between login/register */}
+        <div className="mt-6 text-center">
           <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm"
+            onClick={() => {
+              resetForm();
+              setIsLogin(!isLogin);
+            }}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             {isLogin ? 'Nu ai cont? Înregistrează-te' : 'Ai deja cont? Autentifică-te'}
           </button>
