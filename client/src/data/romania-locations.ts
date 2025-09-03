@@ -583,25 +583,45 @@ export const ROMANIA_COUNTIES: County[] = [
   }
 ] as const;
 
+// Helper function to normalize text for search (remove diacritics)
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/ș/g, 's')
+    .replace(/ț/g, 't')
+    .replace(/ă/g, 'a')
+    .replace(/â/g, 'a')
+    .replace(/î/g, 'i');
+};
+
+// Helper function to check if query matches at the beginning of the text
+const matchesAtStart = (text: string, query: string): boolean => {
+  const normalizedText = normalizeText(text);
+  const normalizedQuery = normalizeText(query);
+  
+  // Check if the normalized text starts with the normalized query
+  return normalizedText.startsWith(normalizedQuery);
+};
+
 // Helper functions for search
 export const searchCounties = (query: string): County[] => {
   if (!query.trim()) return ROMANIA_COUNTIES;
-
-  const lowercaseQuery = query.toLowerCase();
+ 
   return ROMANIA_COUNTIES.filter(county =>
-    county.name.toLowerCase().includes(lowercaseQuery)
+    matchesAtStart(county.name, query)
   );
 };
 
 export const searchCities = (countyId: string, query: string): string[] => {
   const county = ROMANIA_COUNTIES.find(c => c.id === countyId);
   if (!county) return [];
-
+ 
   if (!query.trim()) return county.cities;
-
-  const lowercaseQuery = query.toLowerCase();
+ 
   return county.cities.filter(city =>
-    city.toLowerCase().includes(lowercaseQuery)
+    matchesAtStart(city, query)
   );
 };
 
