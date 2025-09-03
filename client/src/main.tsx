@@ -15,7 +15,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Register service worker for PWA - with mobile-friendly approach
+// Service Worker temporarily disabled to fix mobile infinite reload issue
+// TODO: Re-enable with proper mobile optimization
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', {
@@ -43,6 +45,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+*/
 
 // Check if root element exists
 const rootElement = document.getElementById('root');

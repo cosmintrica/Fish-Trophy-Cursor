@@ -10,6 +10,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { initAnalytics } from '@/lib/analytics';
 import { useWebVitals, performanceUtils } from '@/hooks/useWebVitals';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // Pages
 import Home from '@/pages/Home';
@@ -27,6 +28,9 @@ import EmailConfirmation from '@/pages/EmailConfirmation';
 function App() {
   // Initialize Web Vitals tracking
   useWebVitals();
+  
+  // Initialize error handling
+  useErrorHandler();
 
   useEffect(() => {
     // Initialize analytics
@@ -34,7 +38,7 @@ function App() {
     
     // Optimize performance
     performanceUtils.optimizeFonts();
-    performanceUtils.registerServiceWorker();
+    // performanceUtils.registerServiceWorker(); // Disabled to fix mobile reload issue
     
     // Preconnect to external domains
     performanceUtils.preconnect('https://fonts.googleapis.com');
