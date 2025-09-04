@@ -1,9 +1,8 @@
-import React from 'react';
 import { MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const FishingShops: React.FC = () => {
+const FishingShops = () => {
   const stats = [
     { icon: Users, value: '2,500+', label: 'Pescari înregistrați' },
     { icon: Trophy, value: '150+', label: 'Recorduri aprobate' },

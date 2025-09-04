@@ -1,4 +1,4 @@
-import React from 'react';
+import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
@@ -11,9 +11,9 @@ if (!rootElement) {
 } else {
   try {
     ReactDOM.createRoot(rootElement).render(
-      <React.StrictMode>
+      <StrictMode>
         <App />
-      </React.StrictMode>
+      </StrictMode>
     );
   } catch (error) {
     console.error('Error rendering React app:', error);

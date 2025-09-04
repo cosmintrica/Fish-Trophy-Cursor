@@ -5,7 +5,7 @@ import { CheckCircle, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const EmailConfirmation: React.FC = () => {
+const EmailConfirmation = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading');

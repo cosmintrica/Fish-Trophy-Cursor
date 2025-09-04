@@ -12,7 +12,7 @@ interface SearchableSelectProps {
   className?: string;
 }
 
-const SearchableSelect: React.FC<SearchableSelectProps> = ({
+const SearchableSelect = ({
   options,
   value,
   onChange,
@@ -20,7 +20,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   searchPlaceholder = "Caută...",
   disabled = false,
   className = ""
-}) => {
+}: SearchableSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredOptions, setFilteredOptions] = useState(options);

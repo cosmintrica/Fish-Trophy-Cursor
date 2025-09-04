@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabaseApi } from '@/services/supabase-api';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 import SearchableSelect from '@/components/SearchableSelect';
 import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations';
 
-const Profile: React.FC = () => {
+const Profile = () => {
   const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -41,7 +41,7 @@ const Profile: React.FC = () => {
     email: user?.email || '',
     phone: '',
     location: '',
-    bio: 'Pescar pasionat din România!'
+    bio: 'Pescar pasionat din Romï¿½nia!'
   });
   const [selectedCounty, setSelectedCounty] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -59,7 +59,7 @@ const Profile: React.FC = () => {
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
 
-  // Mock data pentru recorduri - în viitor va veni din API
+  // Mock data pentru recorduri - ï¿½n viitor va veni din API
   const mockRecords = [
     {
       id: 1,
@@ -86,13 +86,13 @@ const Profile: React.FC = () => {
   // Show mock records only for admin
   const records = isAdmin ? mockRecords : [];
 
-  // Încarca datele profilului din Supabase
+  // ï¿½ncarca datele profilului din Supabase
   useEffect(() => {
     const loadProfileData = async () => {
       if (!user?.id) return;
 
       try {
-        // Încearca sa încarce din tabela profiles
+        // ï¿½ncearca sa ï¿½ncarce din tabela profiles
         const result = await supabaseApi.getProfile(user.id);
 
         if (result.success && result.data) {
@@ -104,12 +104,12 @@ const Profile: React.FC = () => {
             email: result.data.email || user.email || '',
             phone: result.data.phone || '',
             location: location,
-            bio: result.data.bio || 'Pescar pasionat din România!'
+            bio: result.data.bio || 'Pescar pasionat din Romï¿½nia!'
           });
           setSelectedCounty(county);
           setSelectedCity(city);
         } else {
-          // Daca nu exista în baza de date, folose?te datele din user_metadata
+          // Daca nu exista ï¿½n baza de date, folose?te datele din user_metadata
           const location = user.user_metadata?.location || '';
           const { county, city } = parseLocation(location);
           
@@ -118,7 +118,7 @@ const Profile: React.FC = () => {
             email: user.email || '',
             phone: '',
             location: location,
-            bio: 'Pescar pasionat din România!'
+            bio: 'Pescar pasionat din Romï¿½nia!'
           });
           setSelectedCounty(county);
           setSelectedCity(city);
@@ -134,7 +134,7 @@ const Profile: React.FC = () => {
           email: user.email || '',
           phone: '',
           location: location,
-          bio: 'Pescar pasionat din România!'
+          bio: 'Pescar pasionat din Romï¿½nia!'
         });
         setSelectedCounty(county);
         setSelectedCity(city);
@@ -198,7 +198,7 @@ const Profile: React.FC = () => {
         return;
       }
 
-      // Actualizeaza ?i în tabela profiles din baza de date
+      // Actualizeaza ?i ï¿½n tabela profiles din baza de date
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -213,7 +213,7 @@ const Profile: React.FC = () => {
 
       if (dbError) {
         console.error('Database update error:', dbError);
-        // Încearca sa creeze profilul daca nu exista
+        // ï¿½ncearca sa creeze profilul daca nu exista
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -229,7 +229,7 @@ const Profile: React.FC = () => {
 
         if (insertError) {
           console.error('Insert error:', insertError);
-          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.', { id: 'profile-update' });
+          toast.warning('Profilul a fost actualizat ï¿½n autentificare, dar nu s-a putut salva ï¿½n baza de date.', { id: 'profile-update' });
         } else {
           toast.success('? Profilul a fost actualizat cu succes!', { id: 'profile-update' });
         }
@@ -526,7 +526,7 @@ const Profile: React.FC = () => {
         if (error.message.includes('already linked')) {
           toast.error('Contul Google este deja conectat la acest cont', { id: 'google-link' });
         } else if (error.message.includes('popup_closed_by_user')) {
-          toast.error('Fereastra de autentificare a fost închisa', { id: 'google-link' });
+          toast.error('Fereastra de autentificare a fost ï¿½nchisa', { id: 'google-link' });
         } else if (error.message.includes('popup_blocked')) {
           toast.error('Popup-ul a fost blocat. Permite popup-urile pentru acest site', { id: 'google-link' });
         } else {
@@ -543,7 +543,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) {
       toast.error('Fi?ierul nu a fost selectat sau utilizatorul nu este autentificat');
@@ -563,7 +563,7 @@ const Profile: React.FC = () => {
     }
 
     try {
-      toast.info('Se încarca imaginea...');
+      toast.info('Se ï¿½ncarca imaginea...');
 
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
@@ -597,14 +597,14 @@ const Profile: React.FC = () => {
       window.location.reload();
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Eroare la upload-ul imaginii. Te rog încearca din nou.');
+      toast.error('Eroare la upload-ul imaginii. Te rog ï¿½ncearca din nou.');
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       verified: { label: 'Verificat', className: 'bg-green-100 text-green-800' },
-      pending: { label: 'În a?teptare', className: 'bg-yellow-100 text-yellow-800' },
+      pending: { label: 'ï¿½n a?teptare', className: 'bg-yellow-100 text-yellow-800' },
       rejected: { label: 'Respins', className: 'bg-red-100 text-red-800' }
     };
 
@@ -722,8 +722,8 @@ const Profile: React.FC = () => {
                   <Card>
                     <CardContent className="text-center py-12">
                       <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai înca recorduri</h3>
-                      <p className="text-gray-600 mb-4">Începe sa adaugi recordurile tale de pescuit!</p>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai ï¿½nca recorduri</h3>
+                      <p className="text-gray-600 mb-4">ï¿½ncepe sa adaugi recordurile tale de pescuit!</p>
                       <Button>Adauga primul record</Button>
                     </CardContent>
                   </Card>
@@ -800,7 +800,7 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Mock gear data - în viitor va veni din API */}
+                  {/* Mock gear data - ï¿½n viitor va veni din API */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Undi?a Shimano</CardTitle>
@@ -872,7 +872,7 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Nu ai adaugat înca echipamente?</p>
+                  <p className="text-gray-500 mb-4">Nu ai adaugat ï¿½nca echipamente?</p>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Wrench className="w-4 h-4 mr-2" />
                     Adauga primul echipament
@@ -899,7 +899,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="displayName"
                           value={profileData.displayName}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, displayName: e.target.value})}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, displayName: e.target.value})}
                           disabled={!isEditing}
                         />
                       </div>
@@ -922,7 +922,7 @@ const Profile: React.FC = () => {
                         <Input
                           id="phone"
                           value={profileData.phone}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, phone: e.target.value})}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({...profileData, phone: e.target.value})}
                           disabled={!isEditing}
                           placeholder="+40 7XX XXX XXX"
                         />
@@ -963,7 +963,7 @@ const Profile: React.FC = () => {
                                 }
                                 value={selectedCity}
                                 onChange={setSelectedCity}
-                                placeholder={selectedCounty ? "Selecteaza ora?ul" : "Selecteaza mai întâi jude?ul"}
+                                placeholder={selectedCounty ? "Selecteaza ora?ul" : "Selecteaza mai ï¿½ntï¿½i jude?ul"}
                                 searchPlaceholder="Cauta ora?..."
                                 disabled={!selectedCounty}
                               />
@@ -985,11 +985,11 @@ const Profile: React.FC = () => {
                       <textarea
                         id="bio"
                         value={profileData.bio}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setProfileData({...profileData, bio: e.target.value})}
+                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setProfileData({...profileData, bio: e.target.value})}
                         disabled={!isEditing}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         rows={3}
-                        placeholder="Spune-ne câteva cuvinte despre tine..."
+                        placeholder="Spune-ne cï¿½teva cuvinte despre tine..."
                       />
                     </div>
 
@@ -1028,7 +1028,7 @@ const Profile: React.FC = () => {
                       <span>Schimba parola</span>
                     </CardTitle>
                     <CardDescription>
-                      Actualizeaza-?i parola pentru a-?i pastra contul în siguran?a
+                      Actualizeaza-?i parola pentru a-?i pastra contul ï¿½n siguran?a
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1041,7 +1041,7 @@ const Profile: React.FC = () => {
                             <p className="text-yellow-800 font-medium">Cont Google Auth</p>
                           </div>
                           <p className="text-yellow-700 text-sm">
-                            Te-ai înregistrat cu Google. Pentru a putea schimba parola în viitor, seteaza o parola acum.
+                            Te-ai ï¿½nregistrat cu Google. Pentru a putea schimba parola ï¿½n viitor, seteaza o parola acum.
                           </p>
                         </div>
                         <div>
@@ -1050,7 +1050,7 @@ const Profile: React.FC = () => {
                             id="newPassword"
                             type="password"
                             value={passwordData.newPassword}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
                             className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                             placeholder="Parola noua (min 8 caractere, litere + cifre)"
                           />
@@ -1064,7 +1064,7 @@ const Profile: React.FC = () => {
                             id="confirmPassword"
                             type="password"
                             value={passwordData.confirmPassword}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                             className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                             placeholder="Confirma parola noua"
                           />
@@ -1086,7 +1086,7 @@ const Profile: React.FC = () => {
                             <p className="text-green-800 font-medium">Cont Google Auth</p>
                           </div>
                           <p className="text-green-700 text-sm">
-                            Te-ai înregistrat cu Google ?i ai o parola setata. Po?i schimba parola folosind formularul de mai jos.
+                            Te-ai ï¿½nregistrat cu Google ?i ai o parola setata. Po?i schimba parola folosind formularul de mai jos.
                           </p>
                         </div>
                         {isChangingPassword ? (
@@ -1097,7 +1097,7 @@ const Profile: React.FC = () => {
                                 id="currentPassword"
                                 type="password"
                                 value={passwordData.currentPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Parola actuala"
                               />
@@ -1111,7 +1111,7 @@ const Profile: React.FC = () => {
                                 id="newPassword"
                                 type="password"
                                 value={passwordData.newPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Parola noua (min 8 caractere, litere + cifre)"
                               />
@@ -1125,7 +1125,7 @@ const Profile: React.FC = () => {
                                 id="confirmPassword"
                                 type="password"
                                 value={passwordData.confirmPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Confirma parola noua"
                               />
@@ -1161,7 +1161,7 @@ const Profile: React.FC = () => {
                                 id="currentPassword"
                                 type="password"
                                 value={passwordData.currentPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Parola actuala"
                               />
@@ -1175,7 +1175,7 @@ const Profile: React.FC = () => {
                                 id="newPassword"
                                 type="password"
                                 value={passwordData.newPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, newPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Parola noua (min 8 caractere, litere + cifre)"
                               />
@@ -1189,7 +1189,7 @@ const Profile: React.FC = () => {
                                 id="confirmPassword"
                                 type="password"
                                 value={passwordData.confirmPassword}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                                 className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
                                 placeholder="Confirma parola noua"
                               />
@@ -1265,7 +1265,7 @@ const Profile: React.FC = () => {
                             id="newEmail"
                             type="email"
                             value={emailData.newEmail}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, newEmail: e.target.value})}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, newEmail: e.target.value})}
                             placeholder="noul@email.com"
                           />
                         </div>
@@ -1275,7 +1275,7 @@ const Profile: React.FC = () => {
                             id="confirmEmail"
                             type="email"
                             value={emailData.confirmEmail}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, confirmEmail: e.target.value})}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmailData({...emailData, confirmEmail: e.target.value})}
                             placeholder="noul@email.com"
                           />
                         </div>
@@ -1374,7 +1374,7 @@ const Profile: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="font-medium">Notificari recorduri</Label>
-                          <p className="text-sm text-gray-600">Prime?ti email când recordul tau este verificat</p>
+                          <p className="text-sm text-gray-600">Prime?ti email cï¿½nd recordul tau este verificat</p>
                         </div>
                         <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                       </div>

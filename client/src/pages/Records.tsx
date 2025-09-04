@@ -29,7 +29,7 @@ const mockTeams = [
   { name: 'Lacul Snagov', members: 15, totalWeight: 98.4, rank: 3, color: 'bg-purple-500' }
 ];
 
-const Records: React.FC = () => {
+const Records = () => {
   const [activeTab, setActiveTab] = useState('overall');
   const [timeframe, setTimeframe] = useState('all-time');
   const [selectedSpecies, setSelectedSpecies] = useState('all');

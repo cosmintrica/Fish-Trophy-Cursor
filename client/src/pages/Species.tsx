@@ -24,7 +24,7 @@ interface FishSpecies {
 
 
 
-const Species: React.FC = () => {
+const Species = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Toate');
   const [species, setSpecies] = useState<FishSpecies[]>([]);

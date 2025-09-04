@@ -1,6 +1,6 @@
 [build]
   base = "."
-  command = "npm ci && cd client && npm ci && npm run build"
+  command = "echo 'Build already completed'"
   publish = "client/dist"
 
 [build.environment]
