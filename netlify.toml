@@ -34,10 +34,4 @@
 [functions]
   directory = "netlify/functions"
 
-# Disable Neon extension - we use Supabase
-[[plugins]]
-  package = "neon-buildhooks"
-  [plugins.inputs]
-    enabled = false
-
 # Supabase extension configured via Netlify App UI - no plugin configuration needed
