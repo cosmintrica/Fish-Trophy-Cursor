@@ -4,95 +4,15 @@ import { fileURLToPath } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react({
-    jsxImportSource: 'react',
-    jsxRuntime: 'automatic'
-  })],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    dedupe: ['react', 'react-dom'],
   },
-
   build: {
-    rollupOptions: {
-      input: {
-        main: fileURLToPath(new URL('./index.html', import.meta.url)),
-      },
-      output: {
-        manualChunks: {
-          // Split vendor libraries for better caching
-          'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-helmet-async'],
-          'ui-vendor': ['lucide-react', 'sonner'],
-          'map-vendor': ['leaflet'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'analytics-vendor': ['web-vitals'],
-        },
-        // Optimize chunk names for better caching
-        chunkFileNames: () => {
-          return `assets/[name]-[hash].js`;
-        },
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
-      },
-    },
-    // Ensure public assets are copied
+    outDir: 'dist',
     assetsDir: 'assets',
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000,
-    // Enable source maps for production debugging
-    sourcemap: false,
-    // Minify for production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-    },
   },
   publicDir: 'public',
-  // Ensure proper asset handling
-  assetsInclude: ['**/*.ico', '**/*.png', '**/*.svg', '**/*.json', '**/*.html'],
-  
-  // Optimize dependencies
-  optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      'react-helmet-async',
-      'lucide-react',
-      'leaflet',
-      '@supabase/supabase-js',
-      'web-vitals'
-    ],
-    force: true, // Force re-optimization
-  },
-
-  // Server configuration for development
-  server: {
-    port: 5173,
-    host: true,
-    // Enable HMR
-    hmr: {
-      overlay: true,
-      host: 'localhost',
-      protocol: 'ws',
-      clientPort: 5173,
-    },
-    // Prevent caching issues
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    }
-  },
-
-  // Preview configuration
-  preview: {
-    port: 4173,
-    host: true,
-  },
 });

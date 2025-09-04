@@ -53,22 +53,26 @@ export const fishingZones: FishingZone[] = [
 ];
 
 // Funcții pentru filtrare și căutare (acum folosesc baza de date)
-export const filterLocationsByType = (_type: FishingLocation['type']) => {
+export const filterLocationsByType = (type: FishingLocation['type']) => {
   // Această funcție va fi înlocuită cu apeluri la baza de date
+  console.log('Filtering by type:', type);
   return [];
 };
 
-export const filterLocationsByCounty = (_county: string) => {
+export const filterLocationsByCounty = (county: string) => {
   // Această funcție va fi înlocuită cu apeluri la baza de date
+  console.log('Filtering by county:', county);
   return [];
 };
 
-export const searchLocations = (_query: string) => {
+export const searchLocations = (query: string) => {
   // Această funcție va fi înlocuită cu apeluri la baza de date
+  console.log('Searching for:', query);
   return [];
 };
 
-export const getLocationById = (_id: string) => {
+export const getLocationById = (id: string) => {
   // Această funcție va fi înlocuită cu apeluri la baza de date
+  console.log('Getting location by id:', id);
   return undefined;
 };

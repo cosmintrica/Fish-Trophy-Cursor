@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, MapPin, Navigation, X } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';

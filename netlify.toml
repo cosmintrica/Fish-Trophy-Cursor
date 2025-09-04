@@ -3,6 +3,24 @@
   command = "npm ci && cd client && npm ci && npm run build"
   publish = "client/dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+  DEBUG = "vite:*"
+  SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*,node_modules/**/*,client/node_modules/**/*,netlify/functions/**/*,.env*"
+  SECRETS_SCAN_ENABLED = "false"
+  CI = "false"
+  # Supabase configuration will be handled by Netlify Supabase extension
+
+# Cache optimization
+[[plugins]]
+  package = "@netlify/plugin-cache"
+  [plugins.inputs]
+    paths = [
+      "node_modules",
+      "client/node_modules",
+      ".netlify/cache"
+    ]
+
 [dev]
   command = "npm run dev:client"
   port = 8889
