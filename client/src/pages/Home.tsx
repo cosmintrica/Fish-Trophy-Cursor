@@ -388,7 +388,7 @@ export default function Home() {
       antialias: !isMobile,
       renderWorldCopies: false,
       // Optimizări pentru stabilitate și sincronizare
-      preferCanvas: isMobile,
+      // preferCanvas: isMobile, // Not supported in Mapbox GL
       zoomAnimation: true, // Activat pentru sincronizare cu markerele
       detectRetina: false, // Dezactivat pentru stabilitate
       updateWhenZooming: true, // Activat pentru sincronizare

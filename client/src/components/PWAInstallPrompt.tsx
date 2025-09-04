@@ -11,12 +11,12 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
   const { isInstallable, isInstalled, showTutorial, installApp, closeTutorial, dismissNotification } = usePWAInstall();
   
   // Use the props instead of destructured values
-  const handleInstall = () => {
+  const handleInstallClick = () => {
     installApp();
     onInstall();
   };
   
-  const handleDismiss = () => {
+  const handleDismissClick = () => {
     dismissNotification();
     onDismiss();
   };
@@ -40,7 +40,7 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
     }
   }, [isInstallable, isInstalled]);
 
-  const handleInstall = async () => {
+  const handleInstallAsync = async () => {
     await installApp();
     setShowNotification(false);
   };
@@ -123,7 +123,7 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
             
             <div className="flex gap-2">
               <button
-                onClick={handleInstall}
+                onClick={handleInstallAsync}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <Smartphone className="w-4 h-4" />
