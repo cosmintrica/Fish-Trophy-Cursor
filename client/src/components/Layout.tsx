@@ -1,9 +1,10 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText } from 'lucide-react';
+import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
+import { Toaster } from '@/components/ui/toaster';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -106,13 +107,13 @@ export default function Layout({ children }: { children: ReactNode }) {
     closeMobileMenu();
   }, [location.pathname]);
 
-  // Fallback pentru cazurile c�nd aplica?ia nu se �ncarca - DUPA toate hook-urile
+  // Fallback pentru cazurile când aplicația nu se încarcă - DUPĂ toate hook-urile
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Se �ncarca...</p>
+          <p className="text-gray-600">Se încarcă...</p>
         </div>
       </div>
     );
@@ -321,7 +322,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 onClick={closeMobileMenu}
               >
                 <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagra</span>
+                <span className="font-medium">Marea Neagră</span>
               </Link>
             ) : (
               <button
@@ -332,7 +333,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors w-full text-left"
               >
                 <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagra</span>
+                <span className="font-medium">Marea Neagră</span>
               </button>
             )}
             
@@ -424,79 +425,129 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* <PWAInstallPrompt /> */}
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Logo Section */}
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-3 mb-4">
-                <img src="/icon_free.png" alt="Fish Trophy" className="w-12 h-12 rounded-2xl" />
-                <span className="text-2xl md:text-3xl font-bold">Fish Trophy</span>
+      <footer className="bg-white border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Logo & Mission */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center space-x-3 mb-6">
+                <img src="/icon_free.png" alt="Fish Trophy" className="w-14 h-14 rounded-2xl shadow-lg" />
+                <div>
+                  <span className="text-2xl md:text-3xl font-bold text-gray-900">Fish Trophy</span>
+                  <p className="text-sm text-blue-600 font-medium">Platforma pentru recorduri de pescuit</p>
+                </div>
               </div>
-              <p className="text-gray-300 max-w-md">
-                Descopera cele mai bune loca?ii de pescuit din Rom�nia, urmare?te recordurile ?i concureaza cu al?ii pescari pasiona?i.
+              <p className="text-gray-600 max-w-lg leading-relaxed mb-6">
+                Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
               </p>
+              <div className="flex space-x-4">
+                <a href="mailto:contact@fishtrophy.ro" className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                  <Mail className="w-4 h-4 mr-2" />
+                  Contact
+                </a>
+                <a href="https://fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                  <span className="w-4 h-4 mr-2">🌐</span>
+                  Website
+                </a>
+              </div>
             </div>
 
-            {/* Quick Links */}
+            {/* Navigation */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Link-uri Rapide</h3>
-              <ul className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Navigare</h3>
+              <ul className="space-y-3">
                 <li>
-                  <Link to="/" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-600 transition-colors"></span>
                     Acasă
                   </Link>
                 </li>
                 <li>
-                  <Link to="/species" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/species" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-600 transition-colors"></span>
                     Specii
                   </Link>
                 </li>
                 <li>
-                  <Link to="/records" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/records" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-600 transition-colors"></span>
                     Recorduri
                   </Link>
                 </li>
                 <li>
-                  <Link to="/black-sea" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/black-sea" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-600 transition-colors"></span>
                     Marea Neagră
                   </Link>
                 </li>
                 <li>
-                  <Link to="/submission-guide" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/submission-guide" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-600 transition-colors"></span>
                     Ghid Submisie
                   </Link>
                 </li>
+              </ul>
+            </div>
+
+            {/* Community & Support */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Comunitate</h3>
+              <ul className="space-y-3">
                 <li>
-                  <Link to="/profile" className="text-gray-300 hover:text-white transition-colors">
+                  <Link to="/profile" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-3 group-hover:bg-green-600 transition-colors"></span>
                     Profilul meu
                   </Link>
                 </li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Contact</h3>
-              <ul className="space-y-2">
-                <li className="text-gray-300">
-                  <a href="mailto:contact@fishtrophy.ro" className="hover:text-white transition-colors">
-                    Email: contact@fishtrophy.ro
-                  </a>
+                <li>
+                  <Link to="/leaderboards" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full mr-3 group-hover:bg-yellow-600 transition-colors"></span>
+                    Clasamente
+                  </Link>
                 </li>
-                <li className="text-gray-300">
-                  <a href="https://fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-                    Website: fishtrophy.ro
-                  </a>
+                <li>
+                  <Link to="/fishing-shops" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center group">
+                    <span className="w-1.5 h-1.5 bg-purple-400 rounded-full mr-3 group-hover:bg-purple-600 transition-colors"></span>
+                    Magazine
+                  </Link>
                 </li>
               </ul>
+              
+              <div className="mt-8">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">Urmărește-ne</h4>
+                <div className="flex space-x-3">
+                  <a href="#" className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors">
+                    <span className="text-sm">📘</span>
+                  </a>
+                  <a href="#" className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-200 transition-colors">
+                    <span className="text-sm">📷</span>
+                  </a>
+                  <a href="#" className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600 hover:bg-red-200 transition-colors">
+                    <span className="text-sm">📺</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-            <p className="text-gray-400">
-              � 2025 Fish Trophy. Toate drepturile rezervate.
-            </p>
+          {/* Bottom Section */}
+          <div className="border-t border-gray-200 mt-12 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-6 text-sm text-gray-500">
+                <span>© 2025 Fish Trophy</span>
+                <span>•</span>
+                <span>Toate drepturile rezervate</span>
+                <span>•</span>
+                <a href="#" className="hover:text-gray-700 transition-colors">Politica de confidențialitate</a>
+                <span>•</span>
+                <a href="#" className="hover:text-gray-700 transition-colors">Termeni și condiții</a>
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                <span>Făcut cu</span>
+                <span className="text-red-500">❤️</span>
+                <span>în România</span>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
@@ -516,16 +567,16 @@ export default function Layout({ children }: { children: ReactNode }) {
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
                 <Fish className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagra</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
               <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                Aceasta sec?iune este �n construc?ie ?i va fi disponibila �n cur�nd. 
-                Vom adauga loca?ii de pescuit, specii marine ?i recorduri din Marea Neagra.
+                Această secțiune este în construcție și va fi disponibilă în curând. 
+                Vom adăuga locații de pescuit, specii marine și recorduri din Marea Neagră.
               </p>
               <button
                 onClick={() => setShowBlackSeaPopup(false)}
                 className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg sm:rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
-                �n?eleg
+                Înțeleg
               </button>
             </div>
           </div>
@@ -539,6 +590,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           onDismiss={() => setShowPWAInstallPrompt(false)}
         />
       )}
+      {/* Global toast renderer (bottom-right, default styling) */}
+      <Toaster position="bottom-right" />
     </div>
   );
 }

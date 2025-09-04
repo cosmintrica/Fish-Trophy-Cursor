@@ -1,0 +1,43 @@
+    // CRITICAL: Optimized event listeners to prevent reload issues
+      map.on('click', () => {
+        setShowShopPopup(false);
+        setShowLocationRequest(false);
+      setShowSearchResults(false);
+    });
+    
+    // Previne reîncărcarea la focus change
+    map.on('blur', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
+    
+    map.on('focus', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
+
+    // Nu mai cerem geolocația automat - doar când userul apasă pe săgeată
+    // const locationAccepted = localStorage.getItem('locationAccepted');
+    // if (locationAccepted === 'true' && navigator.geolocation) {
+    // navigator.geolocation.getCurrentPosition(...) - comentat pentru a nu cere automat
+    // }
+
+    return () => {
+      // Cleanup event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange, { capture: true });
+      window.removeEventListener('focus', handleFocus, { capture: true });
+      window.removeEventListener('blur', handleBlur, { capture: true });
+      window.removeEventListener('resize', handleResize, { capture: true });
+      
+      // Cleanup doar dacă componenta se unmount complet
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      // Cleanup markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
+    };
+  }, [user, addLocationsToMap, databaseLocations.length]);

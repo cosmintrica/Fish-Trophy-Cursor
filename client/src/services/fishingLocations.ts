@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 export interface DatabaseFishingLocation {
   id: string;
   name: string;
-  type: 'lac' | 'rau' | 'balti_private' | 'balti_salbatic' | 'mare' | 'delta';
+  type: 'lac' | 'rau' | 'fluviu' | 'balti_private' | 'balti_salbatic' | 'mare' | 'delta';
   county: string;
   region: string;
   latitude: number;
@@ -41,6 +41,7 @@ const convertType = (dbType: string): FishingLocation['type'] => {
   switch (dbType) {
     case 'lac': return 'lake';           // Lacuri mari
     case 'rau': return 'river';          // Râuri
+    case 'fluviu': return 'river';       // Fluviuri (Dunărea) = râuri
     case 'balti_private': return 'private_pond'; // Bălți private (administrate privat)
     case 'balti_salbatic': return 'balti_salbatic'; // Bălți sălbatice (ANPA, ape necontractate)
     case 'mare': return 'lake';          // Marea Neagră = lacuri

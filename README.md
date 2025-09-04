@@ -1,140 +1,63 @@
-# 🎣 Fish Trophy
+# Fish Trophy
 
-Platformă completă pentru pescarii din România cu hărți interactive, recorduri, specii și comunitate.
+Platformă pentru pescarii din România: hartă interactivă, recorduri, specii și comunitate.
 
-## 🚀 Caracteristici
+## Caracteristici
 
-- **Hărți Interactive** cu ape (polygons) și locații (points)
-- **Sistem de Recorduri** cu moderare și leaderboards
-- **Catalog de Specii** cu detalii și habitat
-- **Secțiunea Mării Negre** cu temă dedicată
-- **Admin Panel** custom cu editare geo și moderare
-- **Notificări Email** pentru aprobări/respingeri
+- Hărți interactive cu locații (puncte) și ape (poligoane)
+- Sistem de recorduri cu moderare și leaderboard
+- Catalog de specii (detalii, habitat, filtrare)
+- Secțiunea Marea Neagră (temă dedicată și preseturi)
+- Admin (moderare și management conținut)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend**: React + Vite + Tailwind + shadcn/ui + TanStack Query
-- **Backend**: Vercel Functions + Firebase Admin
-- **Database**: Neon (PostgreSQL + PostGIS)
-- **ORM**: Drizzle
-- **Auth**: Firebase Auth
-- **Maps**: Leaflet + OSM tiles
-- **Email**: Resend
+- Frontend: React + Vite + TypeScript + Tailwind + shadcn/ui
+- API: Netlify Functions (catch‑all „/api”) pentru dev/local
+- Date: Supabase (Auth/Storage) + Cloudflare R2 (media grea)
+- Hărți: MapLibre GL + OSM tiles
 
-## 📋 Cerințe
+## Cerințe
 
-- Node.js >= 20.x
-- pnpm >= 8.0
-- Cont Neon (PostgreSQL)
-- Proiect Firebase
-- Cont Vercel
+- Node.js 20.x
+- Netlify CLI (opțional pentru `netlify dev`)
 
-## 🚀 Setup Rapid
+## Setup Rapid
 
-### 1. Clone și Install
-```bash
-git clone <your-repo>
-cd fishtrophy
-pnpm install
-```
+1. Copiază variabilele de mediu
 
-### 2. Configurare Environment
-```bash
-# Copiază .env.example în fiecare director
-cp client/.env.example client/.env.local
-cp api/.env.example api/.env.local
-```
+   - `cp client/env.example client/.env.local`
+   - Completează `VITE_SUPABASE_URL` și `VITE_SUPABASE_ANON_KEY` pentru autentificare reală.
+   - În lipsa lor, aplicația pornește cu un „stub” sigur (fără Auth/DB), util pentru UI dev.
 
-### 3. Configurare Database
-```bash
-# Generează migrări
-pnpm db:generate
+2. Rulează în dev
 
-# Push la database
-pnpm db:push
-```
+   - Doar frontend: `npm run dev:client` (Vite)
+   - Frontend + API local: `npm run dev` (Netlify dev, redirecționează „/api/*” la funcția catch‑all).
 
-### 4. Run Development
-```bash
-# Client + API în paralel
-pnpm dev
+3. Build
 
-# Sau separat
-pnpm dev:client    # Port 3000
-pnpm dev:api       # Port 3001
-```
+   - `npm run build` (build client în `client/dist`)
 
-## 📁 Structura Proiectului
+## API Dev (Netlify Functions)
 
-```
-.
-├── client/                 # React app (Vite)
-├── api/                    # Vercel Functions
-├── packages/
-│   └── db/                # Database schema + migrations
-├── production-instructions.md  # Instrucțiuni complete
-└── README.md
-```
+- Redirect `"/api/*" -> "/.netlify/functions/:splat"` definit în `netlify.toml`.
+- Funcția `netlify/functions/api.mjs` acoperă minimul pentru:
+  - `GET/PUT /users/:id/profile`
+  - `GET /users/:id/records`
+  - `POST /records`, `PUT /records/:id`, `DELETE /records/:id`
+  - Returnează date în memorie (doar pentru local/dev).
 
-## 🔧 Scripts Disponibile
+## Notițe Securitate
 
-- `pnpm dev` - Client + API în paralel
-- `pnpm build` - Build pentru producție
-- `pnpm lint` - Verificare cod
-- `pnpm db:generate` - Generează migrări
-- `pnpm db:push` - Push la database
-- `pnpm db:studio` - Drizzle Studio
+- Cheile reale Supabase NU mai sunt în cod. Folosește doar env (`client/.env.local`).
+- Configul Cloudflare R2 este doar din env (vezi cheile `VITE_R2_*`).
 
-## 🌊 Secțiunea Mării Negre
+## Probleme cunoscute / lucru în curs
 
-Accesibilă la `/black-sea` cu:
-- Temă personalizată (albastru deschis)
-- Filtre preset pentru zona Mării Negre
-- Specii specifice marine
-
-## 👑 Admin Panel
-
-Accesibil la `/admin` pentru utilizatorii cu rol `moderator` sau `admin`:
-- Moderare recorduri
-- Editare ape (polygons) cu Leaflet.draw
-- Management utilizatori și amenități
-
-## 📧 Notificări Email
-
-- Confirmare record aprobat/respins
-- Notificare când un record top 3 este depășit
-- Template-uri personalizate cu Resend
-
-## 🗺️ Hărți și Geo
-
-- **OSM tiles** gratuite
-- **PostGIS** pentru operații geo
-- **BBox queries** pentru performanță
-- **Leaflet.draw** pentru editare admin
-
-## 🚀 Deployment
-
-1. **Vercel**: Link la GitHub cu Preview deployments
-2. **Database**: Migrări automate la deploy
-3. **Environment**: Variabile setate în Vercel
-
-## 📚 Documentație
-
-- [Instrucțiuni Complete](./production-instructions.md)
-- [API Endpoints](./api/README.md)
-- [Database Schema](./packages/db/README.md)
-
-## 🤝 Contribuție
-
-1. Fork repository
-2. Creează feature branch
-3. Commit cu mesaje clare
-4. Push și Pull Request
-
-## 📄 Licență
-
-MIT License - vezi [LICENSE](LICENSE) pentru detalii.
+- Optimizări performanță hărți și marcaje pe mobil.
+- Ajustări UX la căutare și popup‑uri.
 
 ---
 
-**Construit cu ❤️ pentru comunitatea pescarilor din România**
+Construit pentru comunitatea pescarilor din România.

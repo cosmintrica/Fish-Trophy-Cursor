@@ -41,7 +41,7 @@ const Profile = () => {
     email: user?.email || '',
     phone: '',
     location: '',
-    bio: 'Pescar pasionat din Rom�nia!'
+    bio: 'Pescar pasionat din România!'
   });
   const [selectedCounty, setSelectedCounty] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -59,7 +59,7 @@ const Profile = () => {
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
 
-  // Mock data pentru recorduri - �n viitor va veni din API
+  // Mock data pentru recorduri - în viitor va veni din API
   const mockRecords = [
     {
       id: 1,
@@ -73,10 +73,10 @@ const Profile = () => {
     },
     {
       id: 2,
-      species: '?alau',
+      species: 'Șalău',
       weight: 2.3,
       length: 45,
-      location: 'Dunarea',
+      location: 'Dunărea',
       date: '2024-01-10',
       status: 'pending',
       image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center'
@@ -86,13 +86,13 @@ const Profile = () => {
   // Show mock records only for admin
   const records = isAdmin ? mockRecords : [];
 
-  // �ncarca datele profilului din Supabase
+  // Încarcă datele profilului din Supabase
   useEffect(() => {
     const loadProfileData = async () => {
       if (!user?.id) return;
 
       try {
-        // �ncearca sa �ncarce din tabela profiles
+        // Încearcă să încarce din tabela profiles
         const result = await supabaseApi.getProfile(user.id);
 
         if (result.success && result.data) {
@@ -104,12 +104,12 @@ const Profile = () => {
             email: result.data.email || user.email || '',
             phone: result.data.phone || '',
             location: location,
-            bio: result.data.bio || 'Pescar pasionat din Rom�nia!'
+            bio: result.data.bio || 'Pescar pasionat din România!'
           });
           setSelectedCounty(county);
           setSelectedCity(city);
         } else {
-          // Daca nu exista �n baza de date, folose?te datele din user_metadata
+          // Dacă nu există în baza de date, folosește datele din user_metadata
           const location = user.user_metadata?.location || '';
           const { county, city } = parseLocation(location);
           
@@ -118,7 +118,7 @@ const Profile = () => {
             email: user.email || '',
             phone: '',
             location: location,
-            bio: 'Pescar pasionat din Rom�nia!'
+            bio: 'Pescar pasionat din România!'
           });
           setSelectedCounty(county);
           setSelectedCity(city);
@@ -134,7 +134,7 @@ const Profile = () => {
           email: user.email || '',
           phone: '',
           location: location,
-          bio: 'Pescar pasionat din Rom�nia!'
+          bio: 'Pescar pasionat din România!'
         });
         setSelectedCounty(county);
         setSelectedCity(city);
@@ -198,7 +198,7 @@ const Profile = () => {
         return;
       }
 
-      // Actualizeaza ?i �n tabela profiles din baza de date
+      // Actualizează și în tabela profiles din baza de date
       const { error: dbError } = await supabase
         .from('profiles')
         .upsert({
@@ -213,7 +213,7 @@ const Profile = () => {
 
       if (dbError) {
         console.error('Database update error:', dbError);
-        // �ncearca sa creeze profilul daca nu exista
+        // Încearcă să creeze profilul dacă nu există
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -229,21 +229,27 @@ const Profile = () => {
 
         if (insertError) {
           console.error('Insert error:', insertError);
-          toast.warning('Profilul a fost actualizat �n autentificare, dar nu s-a putut salva �n baza de date.', { id: 'profile-update' });
+          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.', { id: 'profile-update' });
         } else {
-          toast.success('? Profilul a fost actualizat cu succes!', { id: 'profile-update' });
+          toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
         }
       } else {
-        toast.success('? Profilul a fost actualizat cu succes!', { id: 'profile-update' });
+        toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
       }
       
-      // Update local state
-      setProfileData(prev => ({ ...prev, location }));
+      // Update local state with all edited fields so UI reflects immediately
+      setProfileData(prev => ({
+        ...prev,
+        displayName: profileData.displayName,
+        phone: profileData.phone,
+        location,
+        bio: profileData.bio
+      }));
       setIsEditing(false);
       
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('? A aparut o eroare la actualizarea profilului', { id: 'profile-update' });
+      toast.error('A apărut o eroare la actualizarea profilului', { id: 'profile-update' });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -273,7 +279,7 @@ const Profile = () => {
     }
 
     setIsChangingEmailLoading(true);
-    toast.loading('Se schimba email-ul...', { id: 'email-change' });
+    toast.loading('Se schimbă email-ul...', { id: 'email-change' });
 
     try {
       const { error } = await supabase.auth.updateUser({
@@ -292,13 +298,13 @@ const Profile = () => {
         // Actualizeaza state-ul local cu noul email
         setProfileData(prev => ({ ...prev, email: emailData.newEmail }));
         
-        toast.success('? Email-ul a fost schimbat! Verifica-?i noul email pentru confirmare.', { id: 'email-change' });
+        toast.success('Email-ul a fost schimbat! Verifică-ți noul email pentru confirmare.', { id: 'email-change' });
         setIsChangingEmail(false);
         setEmailData({ newEmail: '', confirmEmail: '' });
       }
     } catch (error) {
       console.error('Error changing email:', error);
-      toast.error('? A aparut o eroare la schimbarea email-ului', { id: 'email-change' });
+      toast.error('A apărut o eroare la schimbarea email-ului', { id: 'email-change' });
     } finally {
       setIsChangingEmailLoading(false);
     }
@@ -481,7 +487,7 @@ const Profile = () => {
       }
     } catch (error) {
       console.error('Error changing password:', error);
-      toast.error('A aparut o eroare la schimbarea parolei');
+      toast.error('A apărut o eroare la schimbarea parolei');
     }
   };
 
@@ -500,7 +506,7 @@ const Profile = () => {
       if (error) {
         toast.error(error.message || 'Eroare la trimiterea email-ului de verificare');
       } else {
-        toast.success('Email de verificare trimis cu succes! Verifica-?i inbox-ul.');
+        toast.success('Email de verificare trimis cu succes! Verifică-ți inbox-ul.');
       }
     } catch (error) {
       console.error('Error sending email verification:', error);
@@ -512,7 +518,7 @@ const Profile = () => {
 
   const handleLinkGoogle = async () => {
     setIsLinkingGoogle(true);
-    toast.loading('Se conecteaza cu Google...', { id: 'google-link' });
+    toast.loading('Se conectează cu Google...', { id: 'google-link' });
 
     try {
       const { error } = await supabase.auth.linkIdentity({
@@ -526,18 +532,18 @@ const Profile = () => {
         if (error.message.includes('already linked')) {
           toast.error('Contul Google este deja conectat la acest cont', { id: 'google-link' });
         } else if (error.message.includes('popup_closed_by_user')) {
-          toast.error('Fereastra de autentificare a fost �nchisa', { id: 'google-link' });
+          toast.error('Fereastra de autentificare a fost închisă', { id: 'google-link' });
         } else if (error.message.includes('popup_blocked')) {
           toast.error('Popup-ul a fost blocat. Permite popup-urile pentru acest site', { id: 'google-link' });
         } else {
           toast.error('Eroare la conectarea cu Google: ' + error.message, { id: 'google-link' });
         }
       } else {
-        toast.success('? Redirec?ionare catre Google...', { id: 'google-link' });
+        toast.success('🔄 Redirecționare către Google...', { id: 'google-link' });
       }
     } catch (error) {
       console.error('Error linking Google:', error);
-      toast.error('? A aparut o eroare la conectarea cu Google', { id: 'google-link' });
+      toast.error('❌ A apărut o eroare la conectarea cu Google', { id: 'google-link' });
     } finally {
       setIsLinkingGoogle(false);
     }
@@ -546,24 +552,24 @@ const Profile = () => {
   const handleProfileImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) {
-      toast.error('Fi?ierul nu a fost selectat sau utilizatorul nu este autentificat');
+      toast.error('Fișierul nu a fost selectat sau utilizatorul nu este autentificat');
       return;
     }
 
-    // Validare tip fi?ier
+    // Validare tip fișier
     if (!file.type.startsWith('image/')) {
-      toast.error('Te rog selecteaza doar fi?iere imagine (JPG, PNG, etc.)');
+      toast.error('Te rog selectează doar fișiere imagine (JPG, PNG, etc.)');
       return;
     }
 
     // Validare dimensiune (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Imaginea este prea mare. Te rog selecteaza o imagine mai mica de 5MB');
+      toast.error('Imaginea este prea mare. Te rog selectează o imagine mai mică de 5MB');
       return;
     }
 
     try {
-      toast.info('Se �ncarca imaginea...');
+      toast.info('Se încarcă imaginea...');
 
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
@@ -597,14 +603,14 @@ const Profile = () => {
       window.location.reload();
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Eroare la upload-ul imaginii. Te rog �ncearca din nou.');
+      toast.error('Eroare la upload-ul imaginii. Te rog încearcă din nou.');
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       verified: { label: 'Verificat', className: 'bg-green-100 text-green-800' },
-      pending: { label: '�n a?teptare', className: 'bg-yellow-100 text-yellow-800' },
+      pending: { label: 'În așteptare', className: 'bg-yellow-100 text-yellow-800' },
       rejected: { label: 'Respins', className: 'bg-red-100 text-red-800' }
     };
 
@@ -622,7 +628,7 @@ const Profile = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Trebuie sa fii autentificat</h1>
-          <p className="text-gray-600">Conecteaza-te pentru a-?i vedea profilul</p>
+          <p className="text-gray-600">Conectează-te pentru a-ți vedea profilul</p>
         </div>
       </div>
     );
@@ -634,11 +640,11 @@ const Profile = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Profilul meu</h1>
-          <p className="text-gray-600">Gestioneaza-?i contul ?i recordurile</p>
+          <p className="text-gray-600">Gestionează-ți contul și recordurile</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sidebar cu informa?ii de baza */}
+          {/* Sidebar cu informații de bază */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader className="text-center">
@@ -679,7 +685,7 @@ const Profile = () => {
                     variant="outline"
                     className="w-full"
                   >
-                    Ie?ire din cont
+                    Ieșire din cont
                   </Button>
                 </div>
               </CardContent>
@@ -704,7 +710,7 @@ const Profile = () => {
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="flex items-center space-x-2">
                   <Settings className="w-4 h-4" />
-                  <span>Setari</span>
+                  <span>Setări</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -714,7 +720,7 @@ const Profile = () => {
                   <h2 className="text-2xl font-bold">Recordurile mele</h2>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Trophy className="w-4 h-4 mr-2" />
-                    Adauga Record
+                    Adaugă Record
                   </Button>
                 </div>
 
@@ -722,9 +728,9 @@ const Profile = () => {
                   <Card>
                     <CardContent className="text-center py-12">
                       <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai �nca recorduri</h3>
-                      <p className="text-gray-600 mb-4">�ncepe sa adaugi recordurile tale de pescuit!</p>
-                      <Button>Adauga primul record</Button>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă recorduri</h3>
+                      <p className="text-gray-600 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
+                      <Button>Adaugă primul record</Button>
                     </CardContent>
                   </Card>
                 ) : (
@@ -773,12 +779,12 @@ const Profile = () => {
                             </Button>
                             {record.status === 'pending' && (
                               <Button variant="outline" size="sm" className="flex-1">
-                                Editeaza
+                                Editează
                               </Button>
                             )}
                             {isAdmin && record.status === 'verified' && (
                               <Button variant="outline" size="sm" className="flex-1 text-orange-600 border-orange-300">
-                                Editeaza (Admin)
+                                Editează (Admin)
                               </Button>
                             )}
                           </div>
@@ -795,30 +801,30 @@ const Profile = () => {
                   <h2 className="text-2xl font-bold">Echipamentele mele</h2>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Wrench className="w-4 h-4 mr-2" />
-                    Adauga Echipament
+                    Adaugă echipament
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Mock gear data - �n viitor va veni din API */}
+                  {/* Mock gear data - în viitor va veni din API */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Undi?a Shimano</CardTitle>
-                      <CardDescription>Undi?a pentru pescuit la mare</CardDescription>
+                      <CardTitle className="text-lg">Undiță Shimano</CardTitle>
+                      <CardDescription>Undiță pentru pescuit la mare</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Tip:</span> Undi?a
+                          <span className="font-medium">Tip:</span> Undiță
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marca:</span> Shimano
+                          <span className="font-medium">Marcă:</span> Shimano
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Model:</span> Exage 4000
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Pre?:</span> 250 RON
+                          <span className="font-medium">Preț:</span> 250 RON
                         </p>
                       </div>
                     </CardContent>
@@ -826,22 +832,22 @@ const Profile = () => {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Momeala Berkley</CardTitle>
-                      <CardDescription>Momeala artificiala pentru crap</CardDescription>
+                      <CardTitle className="text-lg">Momeală Berkley</CardTitle>
+                      <CardDescription>Momeală artificială pentru crap</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Tip:</span> Momeala
+                          <span className="font-medium">Tip:</span> Momeală
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marca:</span> Berkley
+                          <span className="font-medium">Marcă:</span> Berkley
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Model:</span> PowerBait
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Pre?:</span> 45 RON
+                          <span className="font-medium">Preț:</span> 45 RON
                         </p>
                       </div>
                     </CardContent>
@@ -858,13 +864,13 @@ const Profile = () => {
                           <span className="font-medium">Tip:</span> Accesoriu
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marca:</span> Fox
+                          <span className="font-medium">Marcă:</span> Fox
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Model:</span> R-Series
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Pre?:</span> 180 RON
+                          <span className="font-medium">Preț:</span> 180 RON
                         </p>
                       </div>
                     </CardContent>
@@ -872,10 +878,10 @@ const Profile = () => {
                 </div>
 
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Nu ai adaugat �nca echipamente?</p>
+                  <p className="text-gray-500 mb-4">Nu ai adăugat încă echipamente?</p>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Wrench className="w-4 h-4 mr-2" />
-                    Adauga primul echipament
+                    Adaugă primul echipament
                   </Button>
                 </div>
               </TabsContent>
@@ -886,16 +892,16 @@ const Profile = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <User className="w-5 h-5" />
-                      <span>Informa?ii personale</span>
+                      <span>Informații personale</span>
                     </CardTitle>
                     <CardDescription>
-                      Actualizeaza-?i informa?iile personale ?i preferin?ele
+                      Actualizează-ți informațiile personale și preferințele
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="displayName">Nume afi?at</Label>
+                        <Label htmlFor="displayName">Nume afișat</Label>
                         <Input
                           id="displayName"
                           value={profileData.displayName}
@@ -910,9 +916,9 @@ const Profile = () => {
                           value={profileData.email}
                           disabled={true}
                           className="bg-gray-100 text-gray-500 cursor-not-allowed"
-                          title="Email-ul poate fi schimbat doar din sec?iunea Setari"
+                          title="Email-ul poate fi schimbat doar din secțiunea Setări"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Email-ul poate fi schimbat doar din sec?iunea Setari</p>
+                        <p className="text-xs text-gray-500 mt-1">Email-ul poate fi schimbat doar din secțiunea Setări</p>
                       </div>
                     </div>
 
@@ -928,12 +934,12 @@ const Profile = () => {
                         />
                       </div>
                       <div>
-                        <Label>Loca?ie</Label>
+                        <Label>Locație</Label>
                         {isEditing ? (
                           <div className="space-y-3">
                             <div>
                               <Label htmlFor="county" className="text-sm font-medium text-gray-700">
-                                Jude?
+                                Județ
                               </Label>
                               <SearchableSelect
                                 options={ROMANIA_COUNTIES.map(county => ({
@@ -945,13 +951,13 @@ const Profile = () => {
                                   setSelectedCounty(countyId);
                                   setSelectedCity(''); // Reset city when county changes
                                 }}
-                                placeholder="Selecteaza jude?ul"
-                                searchPlaceholder="Cauta jude?..."
+                                placeholder="Selectează județul"
+                                searchPlaceholder="Caută județ..."
                               />
                             </div>
                             <div>
                               <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-                                Ora?
+                                Oraș
                               </Label>
                               <SearchableSelect
                                 options={selectedCounty 
@@ -963,8 +969,8 @@ const Profile = () => {
                                 }
                                 value={selectedCity}
                                 onChange={setSelectedCity}
-                                placeholder={selectedCounty ? "Selecteaza ora?ul" : "Selecteaza mai �nt�i jude?ul"}
-                                searchPlaceholder="Cauta ora?..."
+                                placeholder={selectedCounty ? "Selectează orașul" : "Selectează mai întâi județul"}
+                                searchPlaceholder="Caută oraș..."
                                 disabled={!selectedCounty}
                               />
                             </div>
@@ -974,7 +980,7 @@ const Profile = () => {
                             value={profileData.location}
                             disabled={true}
                             className="bg-gray-100 text-gray-500 cursor-not-allowed"
-                            placeholder="Ora?, Jude?"
+                            placeholder="Oraș, Județ"
                           />
                         )}
                       </div>
@@ -989,7 +995,7 @@ const Profile = () => {
                         disabled={!isEditing}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         rows={3}
-                        placeholder="Spune-ne c�teva cuvinte despre tine..."
+                        placeholder="Spune-ne câteva cuvinte despre tine..."
                       />
                     </div>
 
@@ -1002,16 +1008,16 @@ const Profile = () => {
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Save className="w-4 h-4 mr-2" />
-                            {isUpdatingProfile ? 'Se salveaza...' : 'Salveaza'}
+                            {isUpdatingProfile ? 'Se salvează...' : 'Salvează'}
                           </Button>
                           <Button variant="outline" onClick={() => setIsEditing(false)}>
-                            Anuleaza
+                            Anulează
                           </Button>
                         </>
                       ) : (
                         <Button onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-700">
                           <Edit className="w-4 h-4 mr-2" />
-                          Editeaza profilul
+                          Editează profilul
                         </Button>
                       )}
                     </div>
@@ -1025,10 +1031,10 @@ const Profile = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Lock className="w-5 h-5" />
-                      <span>Schimba parola</span>
+                      <span>Schimbă parola</span>
                     </CardTitle>
                     <CardDescription>
-                      Actualizeaza-?i parola pentru a-?i pastra contul �n siguran?a
+                      Actualizează-ți parola pentru a-ți păstra contul în siguranță
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1041,7 +1047,7 @@ const Profile = () => {
                             <p className="text-yellow-800 font-medium">Cont Google Auth</p>
                           </div>
                           <p className="text-yellow-700 text-sm">
-                            Te-ai �nregistrat cu Google. Pentru a putea schimba parola �n viitor, seteaza o parola acum.
+                            Te-ai înregistrat cu Google. Pentru a putea schimba parola în viitor, setează o parolă acum.
                           </p>
                         </div>
                         <div>
@@ -1074,7 +1080,7 @@ const Profile = () => {
                         </div>
                         <Button onClick={handleSetPasswordForGoogle} className="bg-blue-600 hover:bg-blue-700">
                           <Save className="w-4 h-4 mr-2" />
-                          Seteaza parola
+                          Setează parola
                         </Button>
                       </>
                     ) : isGoogleUser ? (
@@ -1086,7 +1092,7 @@ const Profile = () => {
                             <p className="text-green-800 font-medium">Cont Google Auth</p>
                           </div>
                           <p className="text-green-700 text-sm">
-                            Te-ai �nregistrat cu Google ?i ai o parola setata. Po?i schimba parola folosind formularul de mai jos.
+                            Te-ai înregistrat cu Google și ai o parolă setată. Poți schimba parola folosind formularul de mai jos.
                           </p>
                         </div>
                         {isChangingPassword ? (
@@ -1136,17 +1142,17 @@ const Profile = () => {
                             <div className="flex space-x-2">
                               <Button onClick={handlePasswordChange} className="bg-blue-600 hover:bg-blue-700">
                                 <Save className="w-4 h-4 mr-2" />
-                                Schimba parola
+                                Schimbă parola
                               </Button>
                               <Button variant="outline" onClick={() => setIsChangingPassword(false)}>
-                                Anuleaza
+                                Anulează
                               </Button>
                             </div>
                           </>
                         ) : (
                           <Button onClick={() => setIsChangingPassword(true)} className="bg-blue-600 hover:bg-blue-700">
                             <Lock className="w-4 h-4 mr-2" />
-                            Schimba parola
+                            Schimbă parola
                           </Button>
                         )}
                       </>
@@ -1222,10 +1228,10 @@ const Profile = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Mail className="w-5 h-5" />
-                      <span>Schimba email-ul</span>
+                      <span>Schimbă email-ul</span>
                     </CardTitle>
                     <CardDescription>
-                      Actualizeaza-?i adresa de email ?i verifica-?i contul
+                      Actualizează-ți adresa de email și verifică-ți contul
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1236,11 +1242,11 @@ const Profile = () => {
                           <p className="text-sm text-blue-700">{profileData.email}</p>
                           {user?.email_confirmed_at ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
-                              ? Verificat
+                              ✔ Verificat
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
-                              ? Neverificat
+                              ✖ Neverificat
                             </span>
                           )}
                         </div>
@@ -1286,17 +1292,17 @@ const Profile = () => {
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Save className="w-4 h-4 mr-2" />
-                            {isChangingEmailLoading ? 'Se schimba...' : 'Schimba email-ul'}
+                            {isChangingEmailLoading ? 'Se schimbă...' : 'Schimbă email-ul'}
                           </Button>
                           <Button variant="outline" onClick={() => setIsChangingEmail(false)}>
-                            Anuleaza
+                            Anulează
                           </Button>
                         </div>
                       </>
                     ) : (
                       <Button onClick={() => setIsChangingEmail(true)} className="bg-blue-600 hover:bg-blue-700">
                         <Mail className="w-4 h-4 mr-2" />
-                        Schimba email-ul
+                        Schimbă email-ul
                       </Button>
                     )}
                   </CardContent>
@@ -1350,7 +1356,7 @@ const Profile = () => {
                               disabled={isLinkingGoogle}
                               className="text-blue-600 border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {isLinkingGoogle ? 'Se conecteaza...' : 'Conecteaza'}
+                              {isLinkingGoogle ? 'Se conectează...' : 'Conectează'}
                             </Button>
                           )}
                         </div>
@@ -1363,32 +1369,32 @@ const Profile = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Mail className="w-5 h-5" />
-                      <span>Preferin?e email</span>
+                      <span>Preferințe email</span>
                     </CardTitle>
                     <CardDescription>
-                      Gestioneaza-?i notificarile ?i preferin?ele de email
+                      Gestionează-ți notificările și preferințele de email
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label className="font-medium">Notificari recorduri</Label>
-                          <p className="text-sm text-gray-600">Prime?ti email c�nd recordul tau este verificat</p>
+                          <Label className="font-medium">Notificări recorduri</Label>
+                          <p className="text-sm text-gray-600">Primești email când recordul tău este verificat</p>
                         </div>
                         <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="font-medium">Newsletter</Label>
-                          <p className="text-sm text-gray-600">Prime?ti nouta?i despre competi?ii ?i evenimente</p>
+                          <p className="text-sm text-gray-600">Primești noutăți despre competiții și evenimente</p>
                         </div>
                         <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label className="font-medium">Notificari comunitate</Label>
-                          <p className="text-sm text-gray-600">Prime?ti actualizari despre activitatea comunita?ii</p>
+                          <Label className="font-medium">Notificări comunitate</Label>
+                          <p className="text-sm text-gray-600">Primești actualizări despre activitatea comunității</p>
                         </div>
                         <input type="checkbox" className="w-4 h-4 text-blue-600" />
                       </div>

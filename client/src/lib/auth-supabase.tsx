@@ -17,7 +17,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Get initial session with error handling
     supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
+      .then(({ data, error }: { data: { session: Session | null } | null; error: unknown }) => {
+        const session = data?.session ?? null;
         if (error) {
           console.error('Error getting session:', error);
         }
@@ -27,7 +28,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setLoading(false);
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('Error in getSession:', error);
         if (mounted) {
           setLoading(false);
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Listen for auth changes with error handling
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);

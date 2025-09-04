@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { loadFishingLocations } from '@/services/fishingLocations';
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/hooks/useAuth';
 
-// Mapbox token - from environment variables
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+// MapLibre doesn't need access token
 
 export default function BlackSea() {
   const { user } = useAuth();
-  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [fishingLocations, setFishingLocations] = useState<Array<{
     id: string;
@@ -32,7 +31,7 @@ export default function BlackSea() {
   }>>([]);
 
   // Funcție pentru adăugarea locațiilor maritime pe hartă
-  const addMaritimeLocationsToMap = useCallback((_map: mapboxgl.Map, filterType: string) => {
+  const addMaritimeLocationsToMap = useCallback((_map: maplibregl.Map, filterType: string) => {
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
@@ -72,7 +71,7 @@ export default function BlackSea() {
         markerEl.style.transform = 'scale(1)';
       });
 
-      const marker = new mapboxgl.Marker(markerEl)
+      const marker = new maplibregl.Marker(markerEl)
         .setLngLat(location.coords)
         .addTo(_map);
       
@@ -80,7 +79,7 @@ export default function BlackSea() {
       
       // Mapbox GL doesn't have bindPopup - using popup on click instead
       marker.getElement().addEventListener('click', () => {
-        const popup = new mapboxgl.Popup({
+        const popup = new maplibregl.Popup({
           maxWidth: '350px',
           closeButton: true,
           closeOnClick: false
@@ -157,17 +156,43 @@ export default function BlackSea() {
     const isMobile = window.innerWidth < 768;
     
     // Inițializează harta cu configurații optimizate pentru România
-    const mapConfig: mapboxgl.MapboxOptions = {
+    const mapConfig: maplibregl.MapOptions = {
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/outdoors-v12',
+      style: {
+        version: 8,
+        sources: {
+          'osm': {
+            type: 'raster',
+            tiles: [
+              'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            ],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
+          }
+        },
+        layers: [
+          {
+            id: 'osm',
+            type: 'raster',
+            source: 'osm'
+          }
+        ]
+      },
       center: [25.0, 45.5], // Centru România
       zoom: isMobile ? 6 : 7, // Zoom optimizat
       minZoom: 5,
       maxZoom: isMobile ? 14 : 16, // Limitat pentru performanță
       pitch: 0,
       bearing: 0,
-      antialias: !isMobile,
+      antialias: true,
       renderWorldCopies: false,
+      // GPU Acceleration optimizations
+      preserveDrawingBuffer: false,
+      failIfMajorPerformanceCaveat: false,
+      refreshExpiredTiles: true,
+      fadeDuration: 80,
       // Bounds strict pentru România
       maxBounds: [
         [20.0, 43.5], // Southwest
@@ -181,18 +206,18 @@ export default function BlackSea() {
       // keepBuffer: 1 // Not supported in Mapbox GL
     };
 
-    const map = new mapboxgl.Map(mapConfig);
+    const map = new maplibregl.Map(mapConfig);
     mapInstanceRef.current = map;
 
     // Add navigation controls
-    map.addControl(new mapboxgl.NavigationControl({
+    map.addControl(new maplibregl.NavigationControl({
       showCompass: !isMobile,
       showZoom: true,
       visualizePitch: false
     }), 'top-right');
 
     // Add geolocation control
-    map.addControl(new mapboxgl.GeolocateControl({
+    map.addControl(new maplibregl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true
       },
@@ -221,7 +246,7 @@ export default function BlackSea() {
           userMarkerEl.className = 'user-location-marker';
           userMarkerEl.innerHTML = `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`;
 
-          const userMarker = new mapboxgl.Marker(userMarkerEl)
+          const userMarker = new maplibregl.Marker(userMarkerEl)
             .setLngLat([longitude, latitude])
             .addTo(map);
           userLocationMarkerRef.current = userMarker;
@@ -230,7 +255,7 @@ export default function BlackSea() {
           const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
           const userPhoto = user?.user_metadata?.avatar_url || '';
           
-          const popup = new mapboxgl.Popup({
+          const popup = new maplibregl.Popup({
             maxWidth: '400px',
             closeButton: true,
             closeOnClick: false,

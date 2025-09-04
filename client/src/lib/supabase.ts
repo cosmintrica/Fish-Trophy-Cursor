@@ -1,13 +1,43 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+// Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
+function createSafeSupabase(): SupabaseClient | any {
+  const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val)
+  if (!looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
+    return createClient(supabaseUrl, supabaseAnonKey)
+  }
+  // Lightweight stub for local development without real credentials
+  console.warn('[Supabase] Missing or placeholder VITE_SUPABASE_URL/ANON_KEY. Using no-op stub client.')
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+      signInWithPassword: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      signUp: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      signInWithOAuth: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      signOut: async () => ({ error: null }),
+      updateUser: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+    },
+    storage: {
+      from: () => ({
+        upload: async () => ({ data: null, error: new Error('Storage disabled in dev (no credentials)') }),
+        getPublicUrl: () => ({ data: { publicUrl: '' } })
+      })
+    },
+    from: () => ({
+      select: async () => ({ data: [], error: new Error('DB disabled in dev (no credentials)') }),
+      insert: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
+      update: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
+      delete: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
+      order: () => ({ select: async () => ({ data: [], error: new Error('DB disabled in dev (no credentials)') }) })
+    })
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createSafeSupabase()
 
 // Storage bucket names (Supabase - only avatars and thumbnails)
 export const STORAGE_BUCKETS = {
@@ -15,14 +45,14 @@ export const STORAGE_BUCKETS = {
   THUMBNAILS: 'thumbnails'
 } as const
 
-// Cloudflare R2 configuration for all heavy content
+// Cloudflare R2 configuration (env-only)
 export const R2_CONFIG = {
-  BUCKET_NAME: 'fishtrophy-content',
+  BUCKET_NAME: import.meta.env.VITE_R2_BUCKET_NAME || '',
   ACCOUNT_ID: import.meta.env.VITE_R2_ACCOUNT_ID || '',
   ACCESS_KEY_ID: import.meta.env.VITE_R2_ACCESS_KEY_ID || '',
   SECRET_ACCESS_KEY: import.meta.env.VITE_R2_SECRET_ACCESS_KEY || '',
-  S3_ENDPOINT: 'https://5aec1dfc4ea8ddfa00e59861f94b7ffd.r2.cloudflarestorage.com',
-  PUBLIC_URL: 'https://5aec1dfc4ea8ddfa00e59861f94b7ffd.r2.cloudflarestorage.com/fishtrophy-content'
+  S3_ENDPOINT: import.meta.env.VITE_R2_S3_ENDPOINT || '',
+  PUBLIC_URL: import.meta.env.VITE_R2_PUBLIC_URL || ''
 } as const
 
 // R2 content categories
@@ -157,3 +187,4 @@ export interface Profile {
   location?: string
   bio?: string
 }
+

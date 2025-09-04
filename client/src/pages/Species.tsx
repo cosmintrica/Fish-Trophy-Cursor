@@ -87,9 +87,10 @@ const Species = () => {
     }
   };
 
+  const safeLower = (v?: string | null) => (v || '').toLowerCase()
   const filteredSpecies = species.filter(speciesItem => {
-    const matchesSearch = speciesItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         speciesItem.scientific_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = safeLower(speciesItem.name).includes(safeLower(searchTerm)) ||
+                         safeLower(speciesItem.scientific_name).includes(safeLower(searchTerm));
     
     let matchesCategory = true;
     if (selectedCategory !== 'Toate') {
@@ -98,7 +99,8 @@ const Species = () => {
         'Pești de apă sărată': 'sarat',
         'Pești migratori': 'amestec'
       };
-      matchesCategory = speciesItem.category === categoryMap[selectedCategory];
+      const mapped = categoryMap[selectedCategory]
+      matchesCategory = speciesItem.category === (mapped as any);
     }
     
     return matchesSearch && matchesCategory;

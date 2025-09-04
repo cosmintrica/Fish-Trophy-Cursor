@@ -339,5 +339,51 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
   - `client/src/pages/Profile.tsx` - Fixed identity parameter type
 - **Result**: ✅ Build successful, all TypeScript errors resolved, ready for deployment
 
-*Ultima actualizare: 2025-01-27 21:45*
+## [2025-09-04] - 23:30 - MapLibre Migration & Performance Optimization
+
+### 🗺️ MAJOR TECHNICAL OVERHAUL
+- **Status**: ✅ Completed
+- **Priority**: 🔴 CRITICAL - Map performance and mobile optimization
+- **Changes**:
+  - 🗺️ **MAPLIBRE MIGRATION**: Complete replacement of Mapbox with MapLibre GL JS
+  - 🎨 **UI/UX**: FAQ section, marker styling, popup centering improvements
+  - 🔧 **TECHNICAL**: Fluviu category support, type conversion fixes
+  - 🚀 **PERFORMANCE**: GPU acceleration, smooth animations, mobile optimization
+  - 📱 **MOBILE**: Enhanced touch interactions and rendering performance
+
+### 🎯 KEY ACHIEVEMENTS
+- **Map Performance**: Significantly improved on both desktop and mobile
+- **Flickering Fixed**: Eliminated map flickering on first load
+- **GPU Acceleration**: Hardware-accelerated animations throughout
+- **Category Support**: Full support for "fluviu" type locations
+- **Mobile Ready**: Optimized for mobile devices with smooth performance
+
+### 🔧 TECHNICAL IMPLEMENTATION
+- **MapLibre GL JS**: Replaced Mapbox for better mobile performance
+- **Type Conversion**: Fixed `fishingLocations.ts` to convert 'fluviu' → 'river'
+- **GPU Acceleration**: Added `will-change: transform` and `translateZ(0)` to all elements
+- **Marker Optimization**: Fixed anchor positioning and smooth fade-in animations
+- **CSS Enhancements**: Mobile-specific optimizations and touch interactions
+
+### 📱 MOBILE OPTIMIZATIONS
+- **Touch Interactions**: Enhanced touch handling for mobile devices
+- **Performance**: Reduced map flickering and improved rendering speed
+- **Responsive Design**: Better mobile layout and interaction patterns
+- **GPU Acceleration**: Hardware-accelerated animations for smooth performance
+
+### 🎨 UI/UX IMPROVEMENTS
+- **FAQ Section**: Beautiful animated FAQ section replacing homepage content
+- **Marker Styling**: Circular markers with white borders as requested
+- **Popup Centering**: Fixed popup positioning to center relative to map
+- **Search Functionality**: Improved search behavior and result display
+- **Geolocation**: Fixed user location marker with fishing pole emoji (🎣)
+
+### 🚀 PERFORMANCE OPTIMIZATIONS
+- **GPU Acceleration**: Comprehensive hardware acceleration for all interactive elements
+- **Map Initialization**: Optimized loading sequence with `requestAnimationFrame`
+- **Marker Animations**: Smooth fade-in with proper cleanup
+- **CSS Optimizations**: Enhanced mobile-specific CSS for better touch interactions
+- **Memory Management**: Improved marker cleanup and memory usage
+
+*Ultima actualizare: 2025-09-04 23:30*
 

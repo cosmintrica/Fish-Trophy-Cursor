@@ -9,7 +9,22 @@
   SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*,node_modules/**/*,client/node_modules/**/*,netlify/functions/**/*,.env*"
   SECRETS_SCAN_ENABLED = "false"
   CI = "false"
-  # Supabase configuration will be handled by Netlify Supabase extension
+  
+  # Supabase Configuration
+  VITE_SUPABASE_URL = "https://your-project.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "your-anon-key-here"
+  VITE_ADMIN_EMAIL = "cosmin.trica@outlook.com"
+  
+  # Map Configuration (MapLibre doesn't need token)
+  VITE_MAP_TILES_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  VITE_MAP_ATTRIBUTION = "© OpenStreetMap contributors"
+  
+  # API Configuration
+  VITE_API_BASE_URL = "http://localhost:3001/api"
+  
+  # Subscription Configuration
+  VITE_SUBSCRIPTION_ENABLED = "true"
+  VITE_PREMIUM_FEATURES_ENABLED = "true"
 
 # Cache optimization - using built-in Netlify cache
 

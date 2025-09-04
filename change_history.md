@@ -880,5 +880,48 @@
 - **Auth system**: All authentication components working correctly
 - **Ready for deployment**: Clean build ready for production deployment
 
-*Ultima actualizare: 2025-01-27 21:45*
+## [2025-09-04] - 23:30 - MapLibre Migration & Performance Optimization
+
+### 🗺️ COMPLETE MAPLIBRE MIGRATION
+- **Replaced Mapbox with MapLibre GL JS**: Complete migration for better mobile performance
+- **Fixed map flickering**: Eliminated flickering on first load with proper initialization sequence
+- **Optimized marker loading**: Implemented smooth fade-in animations and proper timing
+- **GPU acceleration**: Added comprehensive GPU acceleration for all interactive elements
+- **Mobile performance**: Significantly improved map performance on mobile devices
+
+### 🎨 UI/UX IMPROVEMENTS
+- **FAQ Section**: Replaced homepage content with beautiful animated FAQ section
+- **Marker styling**: Restored circular markers with white borders as requested
+- **Popup centering**: Fixed popup positioning to center relative to map, not just marker
+- **Search functionality**: Improved search behavior and result display
+- **Geolocation**: Fixed user location marker with fishing pole emoji (🎣)
+
+### 🔧 TECHNICAL FIXES
+- **Fluviu category**: Added support for "fluviu" type in database conversion
+- **Type conversion**: Fixed `fishingLocations.ts` to properly convert 'fluviu' → 'river'
+- **Label updates**: Changed "Râuri" to "Ape curgătoare" throughout the application
+- **Emoji fixes**: Fixed emoji display in popups and search results
+- **Anchor correction**: Fixed marker anchor from 'bottom' to 'center' for circular markers
+
+### 🚀 PERFORMANCE OPTIMIZATIONS
+- **GPU acceleration**: Added `will-change: transform` and `translateZ(0)` to all interactive elements
+- **Map initialization**: Optimized map loading sequence with `requestAnimationFrame`
+- **Marker animations**: Implemented smooth fade-in with proper cleanup
+- **CSS optimizations**: Enhanced mobile-specific CSS for better touch interactions
+- **Memory management**: Improved marker cleanup and memory usage
+
+### 📱 MOBILE OPTIMIZATIONS
+- **Touch interactions**: Enhanced touch handling for mobile devices
+- **Performance**: Reduced map flickering and improved rendering speed
+- **Responsive design**: Better mobile layout and interaction patterns
+- **GPU acceleration**: Hardware-accelerated animations for smooth performance
+
+### 🎯 RESULT
+- **Map performance**: Significantly improved on both desktop and mobile
+- **User experience**: Smooth animations and interactions throughout
+- **Visual consistency**: Proper marker styling and popup positioning
+- **Category support**: Full support for "fluviu" type locations
+- **Mobile ready**: Optimized for mobile devices with GPU acceleration
+
+*Ultima actualizare: 2025-09-04 23:30*
 
