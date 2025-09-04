@@ -61,7 +61,7 @@ export default function BlackSea() {
       // preferCanvas: isMobile, // Not supported in Mapbox GL
       // zoomAnimation: !isMobile, // Not supported in Mapbox GL
       // detectRetina: !isMobile, // Not supported in Mapbox GL
-      updateWhenZooming: false,
+      // updateWhenZooming: false, // Not supported in Mapbox GL
       keepBuffer: 1
     };
 

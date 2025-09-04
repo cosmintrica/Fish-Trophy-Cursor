@@ -389,7 +389,7 @@ export default function Home() {
       renderWorldCopies: false,
       // Optimizări pentru stabilitate și sincronizare
       // preferCanvas: isMobile, // Not supported in Mapbox GL
-      zoomAnimation: true, // Activat pentru sincronizare cu markerele
+      // zoomAnimation: true, // Not supported in Mapbox GL
       detectRetina: false, // Dezactivat pentru stabilitate
       updateWhenZooming: true, // Activat pentru sincronizare
       keepBuffer: 2, // Mărit pentru sincronizare
