@@ -148,7 +148,7 @@ const Profile: React.FC = () => {
         // Check if user has Google provider - verifică mai multe surse
         const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
                                  user.app_metadata?.providers?.includes('google') ||
-                                 user.identities?.some((identity: any) => identity.provider === 'google');
+                                 user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
         
         setIsGoogleUser(hasGoogleProvider);
         setNeedsPassword(!user.app_metadata?.providers?.includes('email'));

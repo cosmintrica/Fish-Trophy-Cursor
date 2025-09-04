@@ -118,5 +118,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Export useAuth hook for convenience
-export { useAuth } from '../hooks/useAuth';
+// Note: useAuth is exported from hooks/useAuth.ts to avoid react-refresh warning
