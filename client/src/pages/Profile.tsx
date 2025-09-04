@@ -55,6 +55,9 @@ const Profile: React.FC = () => {
     confirmEmail: ''
   });
   const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
 
   // Mock data pentru recorduri - în viitor va veni din API
   const mockRecords = [
@@ -142,10 +145,22 @@ const Profile: React.FC = () => {
       if (!user?.id) return;
       
       try {
-        // Check if user has Google provider
-        const isGoogleUser = user.app_metadata?.provider === 'google';
-        setIsGoogleUser(isGoogleUser);
+        // Check if user has Google provider - verifică mai multe surse
+        const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
+                                 user.app_metadata?.providers?.includes('google') ||
+                                 user.identities?.some(identity => identity.provider === 'google');
+        
+        setIsGoogleUser(hasGoogleProvider);
         setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
+        
+        console.log('Google Auth Status:', {
+          provider: user.app_metadata?.provider,
+          providers: user.app_metadata?.providers,
+          identities: user.identities,
+          hasGoogleProvider,
+          emailConfirmed: user.email_confirmed_at,
+          userEmail: user.email
+        });
       } catch (error) {
         console.error('Error checking Google Auth status:', error);
       }
@@ -160,6 +175,9 @@ const Profile: React.FC = () => {
       toast.error('Utilizatorul nu este autentificat');
       return;
     }
+
+    setIsUpdatingProfile(true);
+    toast.loading('Se actualizează profilul...', { id: 'profile-update' });
 
     try {
       // Build location from selected county and city
@@ -176,7 +194,7 @@ const Profile: React.FC = () => {
       });
       
       if (authError) {
-        toast.error('Eroare la actualizarea profilului: ' + authError.message);
+        toast.error('Eroare la actualizarea profilului: ' + authError.message, { id: 'profile-update' });
         return;
       }
 
@@ -185,7 +203,7 @@ const Profile: React.FC = () => {
         .from('profiles')
         .upsert({
           id: user.id,
-          email: user.email, // Asigură-te că email-ul este inclus
+          email: user.email,
           display_name: profileData.displayName,
           phone: profileData.phone,
           location: location,
@@ -211,12 +229,12 @@ const Profile: React.FC = () => {
 
         if (insertError) {
           console.error('Insert error:', insertError);
-          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.');
+          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.', { id: 'profile-update' });
         } else {
-          toast.success('Profilul a fost actualizat cu succes!');
+          toast.success('✅ Profilul a fost actualizat cu succes!', { id: 'profile-update' });
         }
       } else {
-        toast.success('Profilul a fost actualizat cu succes!');
+        toast.success('✅ Profilul a fost actualizat cu succes!', { id: 'profile-update' });
       }
       
       // Update local state
@@ -225,7 +243,9 @@ const Profile: React.FC = () => {
       
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('A apărut o eroare la actualizarea profilului');
+      toast.error('❌ A apărut o eroare la actualizarea profilului', { id: 'profile-update' });
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -252,6 +272,9 @@ const Profile: React.FC = () => {
       return;
     }
 
+    setIsChangingEmailLoading(true);
+    toast.loading('Se schimbă email-ul...', { id: 'email-change' });
+
     try {
       const { error } = await supabase.auth.updateUser({
         email: emailData.newEmail
@@ -259,20 +282,25 @@ const Profile: React.FC = () => {
 
       if (error) {
         if (error.message.includes('already registered')) {
-          toast.error('Acest email este deja folosit de alt cont');
+          toast.error('Acest email este deja folosit de alt cont', { id: 'email-change' });
         } else if (error.message.includes('Invalid email')) {
-          toast.error('Formatul email-ului nu este valid');
+          toast.error('Formatul email-ului nu este valid', { id: 'email-change' });
         } else {
-          toast.error('Eroare la schimbarea email-ului: ' + error.message);
+          toast.error('Eroare la schimbarea email-ului: ' + error.message, { id: 'email-change' });
         }
       } else {
-        toast.success('Email-ul a fost actualizat! Verifică-ți noul email pentru confirmare.');
+        // Actualizează state-ul local cu noul email
+        setProfileData(prev => ({ ...prev, email: emailData.newEmail }));
+        
+        toast.success('✅ Email-ul a fost schimbat! Verifică-ți noul email pentru confirmare.', { id: 'email-change' });
         setIsChangingEmail(false);
         setEmailData({ newEmail: '', confirmEmail: '' });
       }
     } catch (error) {
       console.error('Error changing email:', error);
-      toast.error('A apărut o eroare la schimbarea email-ului');
+      toast.error('❌ A apărut o eroare la schimbarea email-ului', { id: 'email-change' });
+    } finally {
+      setIsChangingEmailLoading(false);
     }
   };
 
@@ -483,6 +511,9 @@ const Profile: React.FC = () => {
 
 
   const handleLinkGoogle = async () => {
+    setIsLinkingGoogle(true);
+    toast.loading('Se conectează cu Google...', { id: 'google-link' });
+
     try {
       const { error } = await supabase.auth.linkIdentity({
         provider: 'google',
@@ -492,12 +523,23 @@ const Profile: React.FC = () => {
       });
       
       if (error) {
-        toast.error('Eroare la conectarea cu Google: ' + error.message);
+        if (error.message.includes('already linked')) {
+          toast.error('Contul Google este deja conectat la acest cont', { id: 'google-link' });
+        } else if (error.message.includes('popup_closed_by_user')) {
+          toast.error('Fereastra de autentificare a fost închisă', { id: 'google-link' });
+        } else if (error.message.includes('popup_blocked')) {
+          toast.error('Popup-ul a fost blocat. Permite popup-urile pentru acest site', { id: 'google-link' });
+        } else {
+          toast.error('Eroare la conectarea cu Google: ' + error.message, { id: 'google-link' });
+        }
       } else {
-        toast.success('Redirecționare către Google...');
+        toast.success('✅ Redirecționare către Google...', { id: 'google-link' });
       }
     } catch (error) {
-      toast.error('A apărut o eroare la conectarea cu Google');
+      console.error('Error linking Google:', error);
+      toast.error('❌ A apărut o eroare la conectarea cu Google', { id: 'google-link' });
+    } finally {
+      setIsLinkingGoogle(false);
     }
   };
 
@@ -954,9 +996,13 @@ const Profile: React.FC = () => {
                     <div className="flex space-x-2">
                       {isEditing ? (
                         <>
-                          <Button onClick={handleProfileUpdate} className="bg-blue-600 hover:bg-blue-700">
+                          <Button 
+                            onClick={handleProfileUpdate} 
+                            disabled={isUpdatingProfile}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
                             <Save className="w-4 h-4 mr-2" />
-                            Salvează
+                            {isUpdatingProfile ? 'Se salvează...' : 'Salvează'}
                           </Button>
                           <Button variant="outline" onClick={() => setIsEditing(false)}>
                             Anulează
@@ -1187,7 +1233,7 @@ const Profile: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-blue-900">Email actual</p>
-                          <p className="text-sm text-blue-700">{user?.email}</p>
+                          <p className="text-sm text-blue-700">{profileData.email}</p>
                           {user?.email_confirmed_at ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
                               ✓ Verificat
@@ -1234,9 +1280,13 @@ const Profile: React.FC = () => {
                           />
                         </div>
                         <div className="flex space-x-2">
-                          <Button onClick={handleEmailChange} className="bg-blue-600 hover:bg-blue-700">
+                          <Button 
+                            onClick={handleEmailChange} 
+                            disabled={isChangingEmailLoading}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
                             <Save className="w-4 h-4 mr-2" />
-                            Schimbă email-ul
+                            {isChangingEmailLoading ? 'Se schimbă...' : 'Schimbă email-ul'}
                           </Button>
                           <Button variant="outline" onClick={() => setIsChangingEmail(false)}>
                             Anulează
@@ -1280,7 +1330,7 @@ const Profile: React.FC = () => {
                           <div>
                             <p className="font-medium text-gray-900">Google</p>
                             <p className="text-sm text-gray-600">
-                              {user?.app_metadata?.providers?.includes('google') 
+                              {isGoogleUser 
                                 ? 'Cont conectat' 
                                 : 'Nu este conectat'
                               }
@@ -1288,7 +1338,7 @@ const Profile: React.FC = () => {
                           </div>
                         </div>
                         <div>
-                          {user?.app_metadata?.providers?.includes('google') ? (
+                          {isGoogleUser ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               ✓ Conectat
                             </span>
@@ -1297,9 +1347,10 @@ const Profile: React.FC = () => {
                               variant="outline" 
                               size="sm"
                               onClick={handleLinkGoogle}
-                              className="text-blue-600 border-blue-300"
+                              disabled={isLinkingGoogle}
+                              className="text-blue-600 border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Conectează
+                              {isLinkingGoogle ? 'Se conectează...' : 'Conectează'}
                             </Button>
                           )}
                         </div>

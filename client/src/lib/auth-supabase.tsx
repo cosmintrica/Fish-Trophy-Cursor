@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -54,11 +54,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       });
 
+    // CRITICAL: Set loading to false after a timeout to prevent white screen
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        console.log('⚠️ Auth loading timeout - forcing loading to false');
+        setLoading(false);
+      }
+    }, 3000); // 3 second timeout
+
     // Listen for auth changes with error handling
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state change:', event, session?.user?.email);
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
@@ -68,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout); // Cleanup timeout
       subscription.unsubscribe();
     };
   }, []);
@@ -86,10 +94,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       password,
       options: {
         data: {
-          display_name: displayName || '',
-          location: location || '',
+          display_name: displayName,
+          location: location,
         },
-        emailRedirectTo: `${window.location.origin}/email-confirmation`,
       },
     });
     if (error) throw error;
@@ -99,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/profile`,
+        redirectTo: `${window.location.origin}/email-confirmation`,
       },
     });
     if (error) throw error;
@@ -117,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (error) throw error;
   };
 
-  const value: AuthContextType = {
+  const value = {
     user,
     session,
     loading,
@@ -128,9 +135,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

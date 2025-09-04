@@ -4,11 +4,15 @@ import { fileURLToPath } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({
+    jsxImportSource: 'react',
+    jsxRuntime: 'automatic'
+  })],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+    dedupe: ['react', 'react-dom'],
   },
 
   build: {
@@ -50,7 +54,7 @@ export default defineConfig({
   },
   publicDir: 'public',
   // Ensure proper asset handling
-  assetsInclude: ['**/*.ico', '**/*.png', '**/*.svg', '**/*.json'],
+  assetsInclude: ['**/*.ico', '**/*.png', '**/*.svg', '**/*.json', '**/*.html'],
   
   // Optimize dependencies
   optimizeDeps: {
@@ -64,6 +68,7 @@ export default defineConfig({
       '@supabase/supabase-js',
       'web-vitals'
     ],
+    force: true, // Force re-optimization
   },
 
   // Server configuration for development
@@ -73,7 +78,16 @@ export default defineConfig({
     // Enable HMR
     hmr: {
       overlay: true,
+      host: 'localhost',
+      protocol: 'ws',
+      clientPort: 5173,
     },
+    // Prevent caching issues
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
   },
 
   // Preview configuration

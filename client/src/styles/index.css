@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom popup styles */
+.custom-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(229, 231, 235, 0.8) !important;
+}
+
+.custom-popup .mapboxgl-popup-tip {
+  border-top-color: white !important;
+  border-bottom-color: white !important;
+}
+
+/* Previne chenarele albe pe hartă */
+.mapboxgl-canvas-container {
+  background: transparent !important;
+}
+
+.mapboxgl-canvas {
+  background: transparent !important;
+}
+
+.mapboxgl-map {
+  background: transparent !important;
+}
+
+/* Previne chenarele albe la focus change */
+.mapboxgl-canvas:focus {
+  outline: none !important;
+}
+
+/* Previne chenarele albe la hover */
+.mapboxgl-canvas:hover {
+  background: transparent !important;
+}
+
 /* Optimizări pentru performanță pe mobile și Core Web Vitals */
 @layer base {
   * {

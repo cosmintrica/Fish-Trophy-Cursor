@@ -1,7 +1,7 @@
-// import React from 'react'; // Not needed in React 17+ with new JSX transform
+import React from 'react'; // Explicitly import React for better compatibility
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-// import { Toaster } from '@/components/ui/toaster'; // Temporarily disabled
+import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './styles/index.css';
 
@@ -17,37 +17,28 @@ const queryClient = new QueryClient({
   },
 });
 
-// Service Worker temporarily disabled to fix mobile infinite reload issue
-// TODO: Re-enable with proper mobile optimization
-/*
+// Service Worker disabled in development to prevent cache conflicts
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', {
-      scope: '/'
-    })
-      .then((registration) => {
-        console.log('SW registered successfully: ', registration);
-        
-        // Check for updates but don't auto-reload
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content is available - just log it, don't auto-reload
-                console.log('New service worker installed. User can refresh manually.');
-              }
-            });
-          }
-        });
+  if (import.meta.env.PROD) {
+    // Only register SW in production
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
       })
-      .catch((registrationError) => {
-        console.error('SW registration failed: ', registrationError);
-        // Don't let SW registration errors break the app
-      });
-  });
+        .then((registration) => {
+          console.log('SW registered successfully: ', registration);
+        })
+        .catch((registrationError) => {
+          console.error('SW registration failed: ', registrationError);
+        });
+    });
+  } else {
+    // In development, unregister any existing SW to prevent conflicts
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+  }
 }
-*/
 
 // Check if root element exists
 const rootElement = document.getElementById('root');
@@ -55,13 +46,18 @@ if (!rootElement) {
   console.error('Root element not found!');
   document.body.innerHTML = '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;"><h1>Eroare de încărcare</h1><p>Elementul root nu a fost găsit. Te rugăm să reîmprospătezi pagina.</p></div>';
 } else {
-  ReactDOM.createRoot(rootElement).render(
-    // React.StrictMode temporarily disabled to fix mobile reload issue
-    // <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <App />
-        {/* <Toaster /> temporarily disabled */}
-      </QueryClientProvider>
-    // </React.StrictMode>
-  );
+  try {
+    ReactDOM.createRoot(rootElement).render(
+      // React.StrictMode temporarily disabled to fix mobile reload issue
+      // <React.StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <App />
+          <Toaster />
+        </QueryClientProvider>
+      // </React.StrictMode>
+    );
+  } catch (error) {
+    console.error('Error rendering React app:', error);
+    rootElement.innerHTML = '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;"><h1>Eroare de încărcare</h1><p>Aplicația nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p></div>';
+  }
 }

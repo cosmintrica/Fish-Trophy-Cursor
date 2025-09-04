@@ -22,20 +22,24 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
   if (!isOpen) return null;
 
   // Reset form when switching between login/register
-  const resetForm = () => {
+  const resetForm = (keepSuccess = false) => {
     setEmail('');
     setPassword('');
     setDisplayName('');
     setSelectedCounty('');
     setSelectedCity('');
     setError('');
-    // Don't reset success message - let it persist
+    if (!keepSuccess) {
+      setSuccess('');
+      setShowSuccess(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,11 +76,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setSuccess('Contul a fost creat cu succes!');
         setShowSuccess(true);
         
-        // Auto-switch to login after 2 seconds
+        // Elegant transition - keep success message and transform form
         setTimeout(() => {
-          setShowSuccess(false);
-          resetForm();
-          setIsLogin(true);
+          setIsTransitioning(true);
+          setTimeout(() => {
+            // Don't reset success message - keep it visible
+            // Don't reset form - keep email for login
+            setIsLogin(true);
+            setIsTransitioning(false);
+          }, 500); // Animation duration
         }, 2000);
       }
     } catch (err: unknown) {
@@ -163,7 +171,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-md sm:max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+      <div className={`bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-md sm:max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto transition-all duration-300 ${
+        isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
+      }`}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             {isLogin ? 'Autentificare' : 'Înregistrare'}
@@ -295,12 +305,28 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         {/* Success Message - at bottom */}
         {showSuccess && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <div className={`mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm transition-all duration-500 ${
+            isTransitioning ? 'opacity-0 scale-95 transform -translate-y-2' : 'opacity-100 scale-100 transform translate-y-0'
+          }`}>
             <div className="flex items-start">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-              <div>
-                <p className="text-green-800 text-sm font-medium">{success}</p>
-                <p className="text-green-700 text-xs mt-1">Verifică email-ul pentru a confirma contul.</p>
+              <div className={`flex-shrink-0 transition-all duration-300 ${
+                isTransitioning ? 'scale-75' : 'scale-100'
+              }`}>
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-green-800 text-sm font-semibold mb-1">{success}</p>
+                <p className="text-green-700 text-xs leading-relaxed">
+                  Verifică email-ul pentru a confirma contul. După confirmare, te poți autentifica cu email-ul și parola de mai sus.
+                </p>
+                <div className="mt-2 flex items-center">
+                  <div className="flex space-x-1">
+                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
+                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                  </div>
+                  <span className="ml-2 text-xs text-green-600 font-medium">Pregătire autentificare...</span>
+                </div>
               </div>
             </div>
           </div>
@@ -336,8 +362,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <div className="mt-6 text-center">
           <button
             onClick={() => {
-              resetForm();
-              setShowSuccess(false); // Reset success message when manually switching
+              resetForm(true); // Keep success message
               setIsLogin(!isLogin);
             }}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"

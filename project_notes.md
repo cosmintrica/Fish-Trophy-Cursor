@@ -12,6 +12,7 @@
 - **Console Errors**: Added error handling for map marker operations
 - **Footer Links**: Restored missing /species and /records links
 - **Mobile Performance**: Additional optimizations for smoother map interaction
+- **CRITICAL FIX - Infinite Reload Issue**: Fixed ReferenceError: marker is not defined and appendChild errors that caused infinite refresh on both mobile and desktop
 
 ### Current Focus
 - Supabase database configuration and setup

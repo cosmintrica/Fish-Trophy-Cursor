@@ -3,23 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-supabase';
 import AuthModal from './AuthModal';
-// import PWAInstallPrompt from './PWAInstallPrompt'; // Temporarily disabled
-
-// PWA Install Prompt Event interface - temporarily disabled
-/*
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
-*/
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // PWA Install Prompt temporarily disabled
-  // const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  // const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
 
   // Check if user is admin - use environment variable for security
@@ -27,8 +17,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.email === adminEmail;
   const [showBlackSeaPopup, setShowBlackSeaPopup] = useState(false);
 
-  // PWA Install Prompt Logic temporarily disabled
-  /*
+  // PWA Install Prompt Logic
+  const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
   useEffect(() => {
     const isStandalone = ((): boolean => {
       try {
@@ -97,16 +89,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }
     }
   };
-  */
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
   };
 
+  // PWA Install Prompt logic - folosim hook-ul din PWAInstallPrompt
+
   // Close mobile menu when route changes
   useEffect(() => {
     closeMobileMenu();
   }, [location.pathname]);
+
+  // Fallback pentru cazurile când aplicația nu se încarcă - DUPĂ toate hook-urile
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Se încarcă...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -406,11 +411,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 -mt-4">
         {children}
       </main>
 
-      {/* PWA Install Prompt - temporarily disabled */}
+      {/* PWA Install Prompt - temporarily disabled for mobile stability */}
       {/* <PWAInstallPrompt /> */}
 
       {/* Footer */}
@@ -520,6 +525,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PWA Install Prompt */}
+      {showPWAInstallPrompt && (
+        <PWAInstallPrompt
+          onInstall={handleInstallPWA}
+          onDismiss={() => setShowPWAInstallPrompt(false)}
+        />
       )}
     </div>
   );

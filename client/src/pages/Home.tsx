@@ -1,21 +1,21 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, MapPin, Navigation, X } from 'lucide-react';
-import L from 'leaflet';
-import { fishingLocations } from '@/services/locations';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { loadFishingLocations } from '@/services/fishingLocations';
 
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/lib/auth-supabase';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 
-// Import Leaflet CSS
-import 'leaflet/dist/leaflet.css';
+// Mapbox token - token personal
+mapboxgl.accessToken = 'pk.eyJ1IjoiY29zbWludHJpY2EiLCJhIjoiY21mNGtpZnA4MDUwazJtc2tvdDdhc2dwYSJ9.f7S4wKF1IskQCSBn9_7zIQ';
 
 // CRITICAL: Mobile-specific CSS optimizations
 const mobileCSS = `
-  .leaflet-container {
+  .mapboxgl-container {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -24,7 +24,7 @@ const mobileCSS = `
     user-select: none;
   }
   
-  .leaflet-tile {
+  .mapboxgl-canvas {
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
   }
@@ -34,11 +34,11 @@ const mobileCSS = `
   }
   
   @media (max-width: 768px) {
-    .leaflet-popup-content {
+    .mapboxgl-popup-content {
       margin: 8px !important;
     }
     
-    .leaflet-popup-tip {
+    .mapboxgl-popup-tip {
       width: 12px !important;
       height: 12px !important;
     }
@@ -52,240 +52,455 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(style);
 }
 
-// Fix Leaflet icon issues
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
 export default function Home() {
   const { user } = useAuth();
   const { websiteData, organizationData } = useStructuredData();
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const locationsLayerRef = useRef<L.LayerGroup | null>(null);
-  const userLocationMarkerRef = useRef<L.Marker | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [databaseLocations, setDatabaseLocations] = useState<any[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [mapError, setMapError] = useState(false);
+
+  // Încarcă locațiile din baza de date
+  useEffect(() => {
+    const loadLocations = async () => {
+      setIsLoadingLocations(true);
+      try {
+        const locations = await loadFishingLocations();
+        setDatabaseLocations(locations);
+        console.log(`✅ Loaded ${locations.length} locations from database`);
+      } catch (error) {
+        console.error('❌ Error loading locations:', error);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    };
+
+    loadLocations();
+  }, []);
+
+  // Reîncarcă markerele când se actualizează locațiile din baza de date
+  useEffect(() => {
+    if (mapInstanceRef.current && databaseLocations.length > 0) {
+      console.log('🔄 Reloading markers with database locations...');
+      addLocationsToMap(mapInstanceRef.current, activeFilter);
+    }
+  }, [databaseLocations, activeFilter]);
+
+  // Funcția pentru normalizarea textului (elimină diacriticele)
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Elimină diacriticele
+      .replace(/ă/g, 'a')
+      .replace(/â/g, 'a')
+      .replace(/î/g, 'i')
+      .replace(/ș/g, 's')
+      .replace(/ț/g, 't');
+  };
+
+  // Funcția pentru emoji-ul tipului de apă
+  const getWaterTypeEmoji = (type: string) => {
+    switch (type) {
+      case 'river':
+        return '🌊';
+      case 'lake':
+        return '🏞️';
+      case 'balti_salbatic':
+        return '🌿';
+      case 'private_pond':
+        return '🏡';
+      default:
+        return '💧';
+    }
+  };
+
+  // Funcția de căutare
+  const handleSearch = (query: string) => {
+    console.log('🔍 Searching for:', query);
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const normalizedQuery = normalizeText(query);
+    
+    // Creează rezultate cu scor de prioritate
+    const resultsWithScore = databaseLocations.map(location => {
+      let score = 0;
+      
+      // Prioritate maximă pentru nume (exact match)
+      if (normalizeText(location.name).toLowerCase() === normalizedQuery.toLowerCase()) {
+        score += 1000;
+      }
+      // Prioritate foarte mare pentru nume (starts with) - pentru râuri
+      else if (normalizeText(location.name).toLowerCase().startsWith(normalizedQuery.toLowerCase())) {
+        score += 800;
+      }
+      // Prioritate mare pentru nume (contains) - pentru râuri
+      else if (normalizeText(location.name).toLowerCase().includes(normalizedQuery.toLowerCase())) {
+        score += 600;
+      }
+      // Prioritate medie pentru nume (partial match)
+      else if (normalizeText(location.name).includes(normalizedQuery)) {
+        score += 300;
+      }
+      
+      // Prioritate pentru subtitle
+      if (location.subtitle && normalizeText(location.subtitle).includes(normalizedQuery)) {
+        score += 200;
+      }
+      
+      // Prioritate pentru județ
+      if (normalizeText(location.county).includes(normalizedQuery)) {
+        score += 150;
+      }
+      
+      // Prioritate pentru administrare
+      if (location.administrare && normalizeText(location.administrare).includes(normalizedQuery)) {
+        score += 100;
+      }
+      
+      // Prioritate pentru regiune
+      if (normalizeText(location.region).includes(normalizedQuery)) {
+        score += 50;
+      }
+      
+      // Prioritate pentru tip
+      if (normalizeText(location.type).includes(normalizedQuery)) {
+        score += 25;
+      }
+      
+      return { ...location, score };
+    }).filter(location => location.score > 0)
+      .sort((a, b) => b.score - a.score); // Sortează după scor descrescător
+
+    console.log('🔍 Found results:', resultsWithScore.length);
+    console.log('🔍 Top 5 results:', resultsWithScore.slice(0, 5).map(loc => ({ name: loc.name, score: loc.score })));
+    setSearchResults(resultsWithScore.slice(0, 10)); // Limitează la 10 rezultate
+    setShowSearchResults(true);
+
+    // Dacă se caută un județ, fac zoom pe județ
+    if (normalizedQuery.length >= 3) {
+      console.log('🔍 Searching for county:', normalizedQuery);
+      console.log('🔍 Sample locations county:', resultsWithScore.slice(0, 3).map(loc => ({ name: loc.name, county: loc.county })));
+      
+      const countyResults = resultsWithScore.filter(loc => 
+        normalizeText(loc.county).includes(normalizedQuery)
+      );
+      
+      console.log('🏛️ County results:', countyResults.length);
+      console.log('🏛️ Map instance for county zoom:', mapInstanceRef.current);
+      
+      if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+        // Calculează centrul județului
+        const validResults = countyResults.filter(loc => {
+          const lat = loc.coords ? loc.coords[1] : loc.latitude;
+          const lng = loc.coords ? loc.coords[0] : loc.longitude;
+          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        });
+        
+        if (validResults.length === 0) {
+          console.error('❌ No valid coordinates found for county');
+          return;
+        }
+        
+        const avgLat = validResults.reduce((sum, loc) => {
+          const lat = loc.coords ? loc.coords[1] : loc.latitude;
+          return sum + lat;
+        }, 0) / validResults.length;
+        const avgLng = validResults.reduce((sum, loc) => {
+          const lng = loc.coords ? loc.coords[0] : loc.longitude;
+          return sum + lng;
+        }, 0) / validResults.length;
+        
+        console.log('🎯 Flying to county center:', avgLat, avgLng);
+        
+        // Verifică dacă coordonatele sunt valide
+        if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
+          mapInstanceRef.current.flyTo({
+            center: [avgLng, avgLat],
+            zoom: 10,
+            duration: 1000
+          });
+          console.log('✅ County zoom completed');
+        } else {
+          console.error('❌ Invalid county coordinates:', avgLat, avgLng);
+        }
+      } else {
+        console.log('❌ County zoom failed - no results or map not ready');
+      }
+    }
+  };
+
+  // Funcția pentru Enter în căutare
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      console.log('⌨️ Enter pressed, searching for:', searchQuery);
+      handleSearch(searchQuery);
+    }
+  };
+
+  // Funcția pentru a selecta o locație din căutare
+  const selectLocation = (location: any) => {
+    console.log('🎯 Selecting location:', location);
+    console.log('🎯 Map instance:', mapInstanceRef.current);
+    
+    // Verifică dacă coordonatele sunt valide
+    const lng = location.coords ? location.coords[0] : location.longitude;
+    const lat = location.coords ? location.coords[1] : location.latitude;
+    
+    if (!lng || !lat || isNaN(lng) || isNaN(lat)) {
+      console.error('❌ Invalid coordinates:', lng, lat);
+      return;
+    }
+    
+    if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+      // Centrează harta pe locația selectată
+      mapInstanceRef.current.flyTo({
+        center: [lng, lat],
+        zoom: 14,
+        duration: 1000
+      });
+      
+      // Găsește markerul corespunzător și deschide popup-ul
+      setTimeout(() => {
+        const markers = markersRef.current;
+        console.log('🔍 Looking for marker among', markers.length, 'markers');
+        
+        const targetMarker = markers.find(marker => {
+          const markerLngLat = marker.getLngLat();
+          const distance = Math.sqrt(
+            Math.pow(markerLngLat.lng - lng, 2) + 
+            Math.pow(markerLngLat.lat - lat, 2)
+          );
+          return distance < 0.01; // Toleranță mai mare
+        });
+        
+        console.log('🎯 Found target marker:', targetMarker);
+        
+        if (targetMarker) {
+          const popup = targetMarker.getPopup();
+          if (popup && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+            popup.addTo(mapInstanceRef.current);
+            console.log('✅ Popup opened');
+          }
+        } else {
+          console.log('❌ No marker found for location, creating temp popup');
+          // Creează un popup temporar dacă nu găsește markerul
+          const tempPopup = new mapboxgl.Popup({
+            maxWidth: 300,
+            closeButton: true,
+            className: 'custom-popup'
+          }).setHTML(`
+            <div class="p-4 bg-white rounded-xl shadow-lg border border-gray-100">
+              <h3 class="font-bold text-lg text-gray-800 mb-2">${location.name}</h3>
+              <p class="text-sm text-gray-600">${location.subtitle || ''}</p>
+              <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
+              <div class="mt-3 flex gap-2">
+                <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
+                  Vezi recorduri
+                </button>
+                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600">
+                  Adaugă record
+                </button>
+                </div>
+              </div>
+          `);
+          
+          if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+            tempPopup.setLngLat([lng, lat])
+              .addTo(mapInstanceRef.current);
+            console.log('✅ Temp popup created');
+          }
+        }
+      }, 1200); // După ce se termină animația
+    } else {
+      console.error('❌ Map not ready for location selection');
+    }
+    setShowSearchResults(false);
+    setSearchQuery('');
+  };
 
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || mapInstanceRef.current) return; // Previne reîncărcarea
+
+    // Previne reîncărcarea la focus change - COMPLET DEZACTIVAT
+    const handleVisibilityChange = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    const handleFocus = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    // Previne reîncărcarea la resize
+    const handleResize = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    const handleBlur = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    // Adaugă event listeners cu capture: true pentru a preveni propagarea
+    document.addEventListener('visibilitychange', handleVisibilityChange, { capture: true, passive: false });
+    window.addEventListener('focus', handleFocus, { capture: true, passive: false });
+    window.addEventListener('blur', handleBlur, { capture: true, passive: false });
+    window.addEventListener('resize', handleResize, { capture: true, passive: false });
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
-    // CRITICAL: High-performance mobile config based on iPhone 15 Pro optimization
-    const mapConfig: L.MapOptions = isMobile ? {
-      // MOBILE CONFIG - Optimized for 60fps on iPhone 15 Pro
-      center: [45.9432, 25.0094] as [number, number],
-      zoom: 7,
-      minZoom: 5,
-      maxZoom: 16,
-      zoomControl: true,
-      attributionControl: true,
-      // CRITICAL: Canvas rendering for performance
-      preferCanvas: true,
-      // Disable expensive animations on mobile
-      zoomAnimation: false,       // Stops expensive animations on iOS
-      markerZoomAnimation: false,
-      fadeAnimation: false,
-      // Touch optimizations
-      tapTolerance: 20,
-      touchZoom: true,
-      // Essential features only
-      doubleClickZoom: true,
-      scrollWheelZoom: true,
-      boxZoom: false,
-      keyboard: false,
-      dragging: true,
-      // Performance settings
-      worldCopyJump: false,
-      bounceAtZoomLimits: false
-    } : {
-      // DESKTOP CONFIG - Full features
-      center: [45.9432, 25.0094] as [number, number],
-      zoom: 7,
-      minZoom: 6,
+    // CRITICAL: Simplified config to prevent reload issues and white boxes
+    const mapConfig: mapboxgl.MapboxOptions = {
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [25.0094, 45.9432] as [number, number], // Centru România
+      zoom: 6,
+      minZoom: 3,
       maxZoom: 18,
-      zoomControl: true,
-      attributionControl: true,
-      preferCanvas: false,
-      fadeAnimation: true,
-      markerZoomAnimation: true,
-      zoomAnimation: true,
-      doubleClickZoom: true,
-      scrollWheelZoom: true,
-      boxZoom: true,
-      keyboard: true,
-      dragging: true,
-      worldCopyJump: false
+      pitch: 0,
+      bearing: 0,
+      antialias: !isMobile,
+      renderWorldCopies: false,
+      // Optimizări pentru stabilitate și sincronizare
+      preferCanvas: isMobile,
+      zoomAnimation: true, // Activat pentru sincronizare cu markerele
+      detectRetina: false, // Dezactivat pentru stabilitate
+      updateWhenZooming: true, // Activat pentru sincronizare
+      keepBuffer: 2, // Mărit pentru sincronizare
+      // Previne chenarele albe și reîncărcarea
+      preserveDrawingBuffer: false,
+      refreshExpiredTiles: false,
+      fadeDuration: 200, // Animație smooth pentru sincronizare
+      crossSourceCollisions: false,
+      // Optimizări pentru stabilitate
+      maxTileCacheSize: 50, // Mărit pentru sincronizare
+      localIdeographFontFamily: false,
+      // Previne reîncărcarea
+      attributionControl: false,
+      logoPosition: 'bottom-right'
     };
 
-    const map = L.map(mapContainerRef.current, mapConfig);
-
-    // CRITICAL: High-performance tile config for mobile
-    const tileConfig = isMobile ? {
-      // MOBILE TILE CONFIG - Optimized for iPhone 15 Pro
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 16, // Match map maxZoom
-      subdomains: ['a', 'b', 'c'],
-      // CRITICAL: Performance optimizations
-      tileSize: 256,               // Standard tile size
-      detectRetina: false,         // Avoid heavy @2x images on mobile
-      updateWhenIdle: true,        // Don't update during movement
-      updateWhenZooming: false,    // Don't re-render during zoom
-      keepBuffer: 1,               // Keep fewer tiles in memory
-      maxNativeZoom: 18,           // Prevent over-zoom
-      // Performance settings
-      crossOrigin: true,
-      // Limit to Romania bounds
-      bounds: L.latLngBounds(
-        L.latLng(43.5, 20.0),
-        L.latLng(48.5, 30.0)
-      )
-    } : {
-      // DESKTOP TILE CONFIG - Full quality
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18,
-      subdomains: ['a', 'b', 'c'],
-      keepBuffer: 2,
-      updateWhenIdle: true,
-      updateWhenZooming: true,
-      updateWhenMoving: true,
-      maxNativeZoom: 18,
-      tileSize: 256,
-      zoomOffset: 0,
-      detectRetina: true,
-      crossOrigin: true,
-      minZoom: 6
-    };
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileConfig).addTo(map);
-
+    const map = new mapboxgl.Map(mapConfig);
     mapInstanceRef.current = map;
 
-    // Creează layer separat pentru locații
-    const locationsLayer = L.layerGroup().addTo(map);
-    locationsLayerRef.current = locationsLayer;
+    // Adaugă error handling pentru harta
+    map.on('error', (e) => {
+      console.error('Map error:', e);
+      setMapError(true);
+    });
 
-    // CRITICAL: Different loading strategy for mobile vs desktop
-    if (isMobile) {
-      // Mobile: Load locations after map is fully rendered
-      setTimeout(() => {
-        console.log('📱 Loading locations for mobile...');
-        addLocationsToMap(map, 'all');
-      }, 500); // Longer delay for mobile
-    } else {
-      // Desktop: Load immediately
-      setTimeout(() => {
-        console.log('🖥️ Loading locations for desktop...');
-        addLocationsToMap(map, 'all');
-      }, 100);
-    }
+    // Custom navigation controls (no native controls)
+    // map.addControl(new mapboxgl.NavigationControl({
+    //   showCompass: !isMobile,
+    //   showZoom: true,
+    //   visualizePitch: false
+    // }), 'top-right');
 
-    // CRITICAL: Optimized event listeners for mobile performance
-    if (isMobile) {
-      // Mobile: Use moveend instead of move for better performance
-      map.on('moveend', () => {
-        setShowShopPopup(false);
-        setShowLocationRequest(false);
-      });
-    } else {
-      // Desktop: Use click for better UX
+    // Custom geolocation control (no native controls)
+    // map.addControl(new mapboxgl.GeolocateControl({
+    //   positionOptions: {
+    //     enableHighAccuracy: true
+    //   },
+    //   trackUserLocation: true,
+    //   showUserHeading: true,
+    //   showUserLocation: true
+    // }), 'top-right');
+
+    // Load locations after map is ready - UNIFIED STRATEGY
+    setTimeout(() => {
+      console.log('🔄 Loading locations after map ready...');
+      if (databaseLocations.length > 0) {
+        addLocationsToMap(map, 'all');
+      }
+    }, 200); // Single delay for stability
+
+    // CRITICAL: Optimized event listeners to prevent reload issues
       map.on('click', () => {
         setShowShopPopup(false);
         setShowLocationRequest(false);
-      });
-    }
+      setShowSearchResults(false);
+    });
+    
+    // Previne reîncărcarea la focus change
+    map.on('blur', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
+    
+    map.on('focus', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
 
-    // Verifică dacă utilizatorul a acceptat deja locația și o afișează
-    const locationAccepted = localStorage.getItem('locationAccepted');
-    if (locationAccepted === 'true' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          // Obține adresa prin reverse geocoding
-          const address = await geocodingService.reverseGeocode(latitude, longitude);
-          
-          // Creează marker cu fundal alb și design îmbunătățit
-          const userIcon = L.divIcon({
-            className: 'user-location-marker',
-            html: `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`,
-            iconSize: [48, 48],
-            iconAnchor: [24, 24]
-          });
-
-          const userMarker = L.marker([latitude, longitude], { icon: userIcon });
-          userLocationMarkerRef.current = userMarker;
-          userMarker.addTo(map);
-
-          // Adaugă popup cu design îmbunătățit
-          const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
-          const userPhoto = user?.user_metadata?.avatar_url || '';
-          
-          userMarker.bindPopup(`
-            <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
-              <div class="text-center mb-2">
-                <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
-                  ${userPhoto ? 
-                    `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                    `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
-                  }
-                </div>
-                <h3 class="font-bold text-sm text-gray-800 mb-1">${userName}</h3>
-                <p class="text-xs text-gray-600">📍 Locația ta curentă</p>
-              </div>
-              
-              <div class="text-center space-y-1">
-                <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-                <p class="text-xs text-gray-600">${address}</p>
-              </div>
-            </div>
-          `, {
-            className: 'custom-popup',
-            maxWidth: 200,
-            closeButton: true,
-            autoClose: false,
-            closeOnClick: false
-          });
-        },
-        (error) => {
-          console.error('Eroare la obținerea locației:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minute cache
-        }
-      );
-    }
+    // Nu mai cerem geolocația automat - doar când userul apasă pe săgeată
+    // const locationAccepted = localStorage.getItem('locationAccepted');
+    // if (locationAccepted === 'true' && navigator.geolocation) {
+    // navigator.geolocation.getCurrentPosition(...) - comentat pentru a nu cere automat
+    // }
 
     return () => {
+      // Cleanup event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange, { capture: true });
+      window.removeEventListener('focus', handleFocus, { capture: true });
+      window.removeEventListener('blur', handleBlur, { capture: true });
+      window.removeEventListener('resize', handleResize, { capture: true });
+      
+      // Cleanup doar dacă componenta se unmount complet
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      // Cleanup markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
       }
     };
   }, [user]);
 
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
-  const addLocationsToMap = (_map: L.Map, filterType: string) => {
-    // Șterge doar markerii din layer-ul de locații
-    if (locationsLayerRef.current) {
-      locationsLayerRef.current.clearLayers();
+  const addLocationsToMap = (_map: mapboxgl.Map, filterType: string) => {
+    if (!_map || !_map.getContainer()) {
+      console.error('❌ Map instance is null or not ready');
+      return;
     }
+    
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Adaugă locațiile filtrate
-    const allLocations = filterType === 'all' ? fishingLocations : 
-      fishingLocations.filter(loc => loc.type === filterType);
+    // Adaugă locațiile filtrate din baza de date
+    const allLocations = filterType === 'all' ? databaseLocations : 
+      databaseLocations.filter(loc => loc.type === filterType);
     
     // Show all locations - performance is handled by smaller markers and simplified popups
     const locationsToShow = allLocations;
@@ -293,127 +508,186 @@ export default function Home() {
     console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 
     // Adaugă markerii în batch pentru performanță mai bună
-    const markers: (L.Marker | L.CircleMarker)[] = [];
+    const markers: mapboxgl.Marker[] = [];
     
     locationsToShow.forEach(location => {
       // Determină culoarea în funcție de tipul locației
-      let markerColor = 'bg-gray-500'; // default pentru 'all'
-      let borderColor = 'border-gray-600';
+      let markerColor = '#6B7280'; // default pentru 'all'
       
       switch (location.type) {
         case 'river':
-          markerColor = 'bg-emerald-500';
-          borderColor = 'border-emerald-600';
+          markerColor = '#10B981';
           break;
         case 'lake':
-          markerColor = 'bg-blue-500';
-          borderColor = 'border-blue-600';
+          markerColor = '#3B82F6';
           break;
         case 'pond':
-          markerColor = 'bg-red-500';
-          borderColor = 'border-red-600';
+          markerColor = '#EF4444';
           break;
         case 'private_pond':
-          markerColor = 'bg-purple-500';
-          borderColor = 'border-purple-600';
+          markerColor = '#8B5CF6';
+          break;
+        case 'balti_salbatic':
+          markerColor = '#EF4444';
           break;
         case 'maritime':
-          markerColor = 'bg-indigo-500';
-          borderColor = 'border-indigo-600';
+          markerColor = '#6366F1';
           break;
       }
 
       // CRITICAL: Optimized markers for mobile performance
-      let marker;
+      const markerEl = document.createElement('div');
+      markerEl.className = 'custom-marker';
+      
       if (isMobile) {
-        // Use circleMarker for mobile - much better performance (Canvas rendering)
-        const markerColorMap = {
-          'lake': '#3B82F6',      // blue-500
-          'river': '#10B981',     // emerald-500
-          'pond': '#EF4444',      // red-500
-          'private_pond': '#8B5CF6', // purple-500
-          'maritime': '#6366F1'   // indigo-500
-        };
-        
-        marker = L.circleMarker(location.coords, {
-          radius: 8, // Small radius for performance
-          fillColor: markerColorMap[location.type] || '#3B82F6',
-          color: '#ffffff',
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.8,
-          // Use canvas renderer for better performance
-          renderer: L.canvas()
-        });
+        // Mobile: Simple circle marker
+        markerEl.style.cssText = `
+          width: 16px;
+          height: 16px;
+          background-color: ${markerColor};
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          cursor: pointer;
+        `;
       } else {
         // Desktop: Use divIcon for better visual appeal
-        const iconSize = 32;
-        const icon = L.divIcon({
-          className: 'custom-marker',
-          html: `<div class="w-6 h-6 ${markerColor} ${borderColor} rounded-full border-2 border-white shadow-md flex items-center justify-center hover:scale-110 transition-transform duration-200">
-                   <Fish className="w-4 h-4 text-white" />
-                 </div>`,
-          iconSize: [iconSize, iconSize],
-          iconAnchor: [iconSize / 2, iconSize / 2]
-        });
-        marker = L.marker(location.coords, { icon });
+        markerEl.style.cssText = `
+          width: 24px;
+          height: 24px;
+          background-color: ${markerColor};
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          color: white;
+          font-weight: bold;
+          transition: transform 0.2s ease;
+          transform-origin: center center;
+        `;
+        // markerEl.innerHTML = '🎣'; // Removed emoji as requested
+        
+        // Hover effects for desktop - disabled to prevent position shift
+        // markerEl.addEventListener('mouseenter', () => {
+        //   markerEl.style.transform = 'scale(1.2)';
+        //   markerEl.style.transformOrigin = 'center center';
+        // });
+        
+        // markerEl.addEventListener('mouseleave', () => {
+        //   markerEl.style.transform = 'scale(1)';
+        //   markerEl.style.transformOrigin = 'center center';
+        // });
       }
+
+      let marker: mapboxgl.Marker | null = null;
+      
+      if (_map && _map.getContainer()) {
+        marker = new mapboxgl.Marker(markerEl)
+          .setLngLat(location.coords)
+          .addTo(_map);
+        
       markers.push(marker);
       
       // CRITICAL: Ultra-simplified popup for mobile performance
       const popupContent = isMobile ? `
-        <div class="p-1 min-w-[120px] max-w-[160px] bg-white text-center">
-          <h3 class="font-bold text-xs text-gray-800 mb-1">${location.name}</h3>
-          <p class="text-xs text-gray-600 mb-1">${location.county}</p>
-          <p class="text-xs text-blue-600">${location.recordCount} recorduri</p>
-        </div>
-      ` : `
-        <div class="p-3 min-w-[240px] max-w-[280px] bg-white">
-          <div class="mb-3">
-            <h3 class="font-bold text-base text-gray-800 mb-1">${location.name}</h3>
-            <p class="text-sm text-gray-600">${location.county}, ${location.region}</p>
-          </div>
+        <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
+          <button class="absolute top-2 right-2 w-5 h-5 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
           
           <div class="mb-3">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-sm font-medium text-gray-700">Recorduri:</span>
+            <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
+              <span class="text-lg">${getWaterTypeEmoji(location.type)}</span>
+              ${location.name}
+            </h3>
+            ${location.subtitle ? `<p class="text-xs text-gray-600 mb-1">${location.subtitle}</p>` : ''}
+            <p class="text-xs text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
+          </div>
+          
+          ${location.administrare ? `
+          <div class="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+            <p class="text-xs text-blue-700 leading-relaxed">${location.administrare}</p>
+          </div>
+          ` : ''}
+          
+          <div class="mb-3">
+            <p class="text-xs font-semibold text-gray-700">Recorduri: <span class="text-blue-600 font-bold">${location.recordCount}</span></p>
+          </div>
+          
+          <div class="flex gap-2">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+              Vezi recorduri
+            </button>
+            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+              Adaugă record
+            </button>
+          </div>
+        </div>
+      ` : `
+        <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+          <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+          <div class="mb-4">
+            <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-center gap-2">
+              <span class="text-2xl">${getWaterTypeEmoji(location.type)}</span>
+              ${location.name}
+            </h3>
+            ${location.subtitle ? `<p class="text-sm text-gray-600 mb-1">${location.subtitle}</p>` : ''}
+            <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
+          </div>
+          
+          ${location.administrare ? `
+          <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <p class="text-sm text-blue-700 leading-relaxed">${location.administrare}</p>
+          </div>
+          ` : ''}
+          
+          <div class="mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-700">Recorduri:</span>
               <div class="flex items-center gap-1">
                 ${location.recordCount >= 1 ? '<span class="text-yellow-500">🥇</span>' : ''}
                 ${location.recordCount >= 2 ? '<span class="text-gray-400">🥈</span>' : ''}
                 ${location.recordCount >= 3 ? '<span class="text-amber-600">🥉</span>' : ''}
-                <span class="text-sm text-gray-600">${location.recordCount}</span>
+                <span class="text-sm font-bold text-gray-800">${location.recordCount}</span>
               </div>
             </div>
           </div>
           
-          <div class="mb-3">
-            <p class="text-xs font-medium text-gray-700 mb-1">Specii de pești:</p>
-            <div class="flex flex-wrap gap-1">
-              ${location.species.map(species => 
-                `<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">${species}</span>`
-              ).join('')}
-            </div>
-          </div>
-          
-          <div class="flex gap-2">
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors">
+          <div class="flex gap-3">
+            <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors">
+            <button class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
               Adaugă record
             </button>
           </div>
         </div>
       `;
 
-      marker.bindPopup(popupContent, {
-        maxWidth: isMobile ? 240 : 300,
-        closeButton: !isMobile // No close button on mobile for simplicity
-      });
+        const popup = new mapboxgl.Popup({
+          maxWidth: isMobile ? 240 : 400,
+          closeButton: false, // Custom close button
+          className: 'custom-popup'
+        }).setHTML(popupContent);
+
+        marker.setPopup(popup);
+      } else {
+        console.error('Map not ready for marker creation');
+      }
     });
     
     // CRITICAL: High-performance marker adding
-    if (locationsLayerRef.current && markers.length > 0) {
+    if (markers.length > 0) {
       try {
         if (isMobile) {
           // Mobile: Add markers in batches to prevent blocking
@@ -422,8 +696,8 @@ export default function Home() {
             const batch = markers.slice(i, i + batchSize);
             setTimeout(() => {
               batch.forEach(marker => {
-                if (locationsLayerRef.current && marker) {
-                  locationsLayerRef.current.addLayer(marker);
+                if (marker) {
+                  markersRef.current.push(marker);
                 }
               });
             }, (i / batchSize) * 50); // 50ms delay between batches
@@ -431,8 +705,8 @@ export default function Home() {
         } else {
           // Desktop: Add all markers immediately
           markers.forEach(marker => {
-            if (locationsLayerRef.current && marker) {
-              locationsLayerRef.current.addLayer(marker);
+            if (marker) {
+              markersRef.current.push(marker);
             }
           });
         }
@@ -448,22 +722,31 @@ export default function Home() {
     setActiveFilter(type);
     
     if (mapInstanceRef.current) {
-      const isMobile = window.innerWidth <= 768;
-      // Resetează harta la poziția inițială (România) cu animație mai rapidă
-      mapInstanceRef.current.setView([45.9432, 25.0094], isMobile ? 6 : 7, { animate: true, duration: isMobile ? 0.3 : 0.5 });
-      // Adaugă locațiile cu delay mic pentru performanță (mai mare pe mobil)
+      // Resetează zoom-ul la România
+      mapInstanceRef.current.flyTo({
+        center: [25.0094, 45.9432],
+        zoom: 6,
+        duration: 800
+      });
+      
+      // Adaugă locațiile filtrate după animație
       setTimeout(() => {
-        addLocationsToMap(mapInstanceRef.current!, type);
-      }, isMobile ? 100 : 50);
+        if (databaseLocations.length > 0) {
+          addLocationsToMap(mapInstanceRef.current, type);
+        }
+      }, 900);
     }
   };
 
   // Funcție pentru centrarea pe locația utilizatorului cu watchPosition
   const centerOnUserLocation = async () => {
     try {
+      setIsLocating(true);
+      
       // Verifică dacă geolocation este disponibil
       if (!navigator.geolocation) {
         alert('Geolocation nu este suportat de acest browser.');
+        setIsLocating(false);
         return;
       }
 
@@ -475,23 +758,145 @@ export default function Home() {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
+            console.log('📍 GPS coordinates:', latitude, longitude);
+            
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.setView([latitude, longitude], 12);
+              mapInstanceRef.current.flyTo({
+                center: [longitude, latitude],
+                zoom: 15,
+                duration: 1000
+              });
+              
+              // Adaugă marker pentru locația userului
+              addUserLocationMarker(latitude, longitude);
             }
+            setIsLocating(false);
           },
           (error) => {
             console.error('Eroare la obținerea locației:', error);
-            // Dacă nu poate obține locația, afișează popup-ul
+            let errorMessage = 'Nu s-a putut obține locația.';
+            
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'Permisiunea pentru locație a fost refuzată. Te rugăm să activezi locația în setările browser-ului.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Locația nu este disponibilă. Verifică dacă GPS-ul este activat.';
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'Timeout la obținerea locației. Încearcă din nou.';
+                break;
+            }
+            
+            alert(errorMessage);
             setShowLocationRequest(true);
+            setIsLocating(false);
           },
-          { maximumAge: 300000, timeout: 10000, enableHighAccuracy: true }
+          { 
+            maximumAge: 0, // Nu folosește cache
+            timeout: 30000, // Timeout și mai mare pentru mobil
+            enableHighAccuracy: true, // Precizie maximă
+            watchPosition: false // Nu urmări poziția
+          }
         );
       } else {
         // Dacă nu a dat permisiunea, afișează popup-ul
         setShowLocationRequest(true);
+        setIsLocating(false);
       }
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
+      setIsLocating(false);
+    }
+  };
+
+  // Funcție pentru adăugarea markerului pentru locația userului
+  const addUserLocationMarker = async (latitude: number, longitude: number) => {
+    if (!mapInstanceRef.current) return;
+
+    // Șterge markerul anterior dacă există
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.remove();
+    }
+
+    // Creează markerul pentru locația userului - MEREU MARE
+    const userMarkerEl = document.createElement('div');
+    userMarkerEl.className = 'user-location-marker';
+    userMarkerEl.style.cssText = `
+      width: 40px;
+      height: 40px;
+      background: white;
+      border: 4px solid #3B82F6;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      z-index: 1000;
+      position: relative;
+    `;
+    userMarkerEl.innerHTML = '🎣';
+
+        if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+      const userMarker = new mapboxgl.Marker(userMarkerEl)
+        .setLngLat([longitude, latitude])
+        .addTo(mapInstanceRef.current);
+
+      userLocationMarkerRef.current = userMarker;
+
+      // Adaugă popup cu informații despre locația userului
+      const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+      const userPhoto = user?.user_metadata?.avatar_url || '';
+      
+      // Obține adresa prin reverse geocoding
+      try {
+        const address = await geocodingService.reverseGeocode(latitude, longitude);
+        
+        const popup = new mapboxgl.Popup({
+          maxWidth: 250,
+          closeButton: false,
+          closeOnClick: false,
+          className: 'custom-popup'
+        }).setHTML(`
+          <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+            <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
+            <div class="text-center mb-3">
+              <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
+                ${userPhoto ? 
+                  `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
+                  `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
+                }
+              </div>
+              <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
+              <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
+            </div>
+            
+            <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
+              <div class="text-center">
+                <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
+              <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+            </div>
+              <div class="text-center">
+                <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
+                <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
+              </div>
+            </div>
+          </div>
+        `);
+
+        userMarker.setPopup(popup);
+      } catch (error) {
+        console.error('Eroare la reverse geocoding:', error);
+      }
+    } else {
+      console.error('Map not ready for user marker');
     }
   };
 
@@ -506,80 +911,118 @@ export default function Home() {
     try {
       // Șterge markerul anterior dacă există
       if (userLocationMarkerRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeLayer(userLocationMarkerRef.current);
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
       }
 
-      // Folosește watchPosition pentru primul fix rapid
-      const watchId = navigator.geolocation.watchPosition(
+      // Folosește getCurrentPosition pentru mobil (mai stabil)
+      const isMobile = window.innerWidth <= 768;
+      
+      navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          console.log('📍 Geolocation position:', { latitude, longitude, accuracy: position.coords.accuracy });
           
-          if (mapInstanceRef.current) {
-            // Centrează harta pe locația utilizatorului
-            mapInstanceRef.current.setView([latitude, longitude], 12);
+          if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+            // Centrează harta pe locația utilizatorului cu animație smooth
+            mapInstanceRef.current.flyTo({
+              center: [longitude, latitude],
+              zoom: 12,
+              duration: 1000
+            });
             
             // Obține adresa prin reverse geocoding
             const address = await geocodingService.reverseGeocode(latitude, longitude);
             
             // Creează marker cu fundal alb și design îmbunătățit
-            const isMobile = window.innerWidth <= 768;
-            const userIcon = L.divIcon({
-              className: 'user-location-marker',
-              html: `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`,
-              iconSize: [48, 48],
-              iconAnchor: [24, 24]
-            });
+            const userMarkerEl = document.createElement('div');
+            userMarkerEl.className = 'user-location-marker';
+            userMarkerEl.innerHTML = `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`;
 
-            const userMarker = L.marker([latitude, longitude], { icon: userIcon });
+            let userMarker: mapboxgl.Marker | null = null;
+            
+            userMarker = new mapboxgl.Marker(userMarkerEl)
+              .setLngLat([longitude, latitude])
+              .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
-            userMarker.addTo(mapInstanceRef.current);
 
             // Adaugă popup cu design îmbunătățit
             const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
             const userPhoto = user?.user_metadata?.avatar_url || '';
             
-            userMarker.bindPopup(`
-              <div class="p-3 min-w-[160px] max-w-[180px] bg-white">
-                <div class="text-center mb-2">
-                  <div class="w-10 h-10 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center overflow-hidden shadow-sm mx-auto mb-1">
+            const popup = new mapboxgl.Popup({
+              maxWidth: 250,
+              closeButton: false,
+              closeOnClick: false,
+              className: 'custom-popup',
+              offset: [0, -10] // Popup deasupra markerului
+            }).setHTML(`
+              <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+                <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+                
+                <div class="text-center mb-3">
+                  <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
                     ${userPhoto ? 
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                      `<span class="text-gray-600 font-bold text-sm">${userName.charAt(0).toUpperCase()}</span>`
+                      `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
                     }
                   </div>
-                  <h3 class="font-bold text-sm text-gray-800 mb-1">${userName}</h3>
-                  <p class="text-xs text-gray-600">📍 Locația ta curentă</p>
+                  <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
+                  <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
                 </div>
                 
-                <div class="text-center space-y-1">
+                <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
+                  <div class="text-center">
+                    <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
                   <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-                  <p class="text-xs text-gray-600">${address}</p>
+                </div>
+                  <div class="text-center">
+                    <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
+                    <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
+              </div>
                 </div>
               </div>
-            `, {
-              className: 'custom-popup',
-              maxWidth: 200,
-              closeButton: true,
-              autoClose: false,
-              closeOnClick: false
-            }).openPopup();
+            `);
+
+            if (userMarker) {
+              userMarker.setPopup(popup);
+              // Deschide popup-ul automat
+              setTimeout(() => {
+                if (userMarker) {
+                  userMarker.togglePopup();
+                }
+              }, 500);
+            }
 
             // Salvează că utilizatorul a acceptat locația
             localStorage.setItem('locationAccepted', 'true');
           }
-
-          // Oprește watchPosition după primul fix
-          navigator.geolocation.clearWatch(watchId);
         },
         (error) => {
           console.error('Eroare la obținerea locației:', error);
-          navigator.geolocation.clearWatch(watchId);
-          alert('Nu s-a putut obține locația. Verifică permisiunile browser-ului.');
+          
+          if (error.code === 1) {
+            console.error('❌ Permission denied - user denied location access');
+            alert('Permisiunea de locație a fost refuzată. Te rog să activezi locația în setările browser-ului și să reîmprospătezi pagina.');
+          } else if (error.code === 2) {
+            console.error('❌ Position unavailable - location could not be determined');
+            alert('Locația nu poate fi determinată. Verifică dacă GPS-ul este activat și că ai semnal bun.');
+          } else if (error.code === 3) {
+            console.error('❌ Timeout - location request timed out');
+            alert('Cererea de locație a expirat. Încearcă din nou sau verifică conexiunea la internet.');
+          } else {
+            console.error('❌ Unknown geolocation error:', error);
+            alert('Nu s-a putut obține locația. Verifică că ai activat locația în browser și că ai semnal bun.');
+          }
         },
         {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 300000 // 5 minute cache
+          timeout: isMobile ? 30000 : 15000, // Timeout mai mare pentru mobil
+          maximumAge: isMobile ? 300000 : 60000 // Cache mai mare pentru mobil
         }
       );
     } catch (error) {
@@ -648,7 +1091,7 @@ export default function Home() {
       )}
 
       {/* Hero Section - Small Banner */}
-      <section className="relative py-4 md:py-6 px-4 md:px-6 lg:px-8">
+      <section className="relative py-4 md:py-6 px-4 md:px-6 lg:px-8 mt-2 md:-mt-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-4 md:p-6 text-center shadow-lg">
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
@@ -664,6 +1107,77 @@ export default function Home() {
       {/* Map Section - Mobile Optimized */}
       <section className="px-4 md:px-6 lg:px-8 mb-16">
         <div className="max-w-7xl mx-auto">
+          {/* Search Bar */}
+          <div className="relative mb-6 max-w-md mx-auto">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Caută locații, județe, râuri, lacuri..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                className="w-full px-4 py-3 pl-12 pr-4 bg-white border border-gray-200 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              />
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+                {searchResults.map((location, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      console.log('🖱️ Clicked on search result:', location);
+                      selectLocation(location);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg">
+                        {getWaterTypeEmoji(location.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{location.name}</p>
+                        <p className="text-sm text-gray-600 truncate">
+                          {location.subtitle && `${location.subtitle} • `}
+                          {location.county}, {location.region.charAt(0).toUpperCase() + location.region.slice(1)}
+                        </p>
+                      </div>
+                      <div className="text-xs text-gray-500 capitalize">
+                        {location.type === 'river' ? 'Râu' : 
+                         location.type === 'lake' ? 'Lac' :
+                         location.type === 'balti_salbatic' ? 'Bălți Sălbatice' :
+                         location.type === 'private_pond' ? 'Bălți Private' : location.type}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {showSearchResults && searchResults.length === 0 && searchQuery && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
+                Nu s-au găsit locații pentru "{searchQuery}"
+              </div>
+            )}
+          </div>
+
           {/* Map Controls - Mobile Optimized */}
           <div className="mb-6">
             <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
@@ -671,9 +1185,14 @@ export default function Home() {
                 { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
                 { type: 'river', label: 'Râuri', icon: MapPin, color: 'bg-emerald-500 hover:bg-emerald-600' },
                 { type: 'lake', label: 'Lacuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
-                { type: 'pond', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
+                { type: 'balti_salbatic', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
                 { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
-              ].map(({ type, label, icon: Icon, color }) => (
+              ].map(({ type, label, icon: Icon, color }) => {
+                const count = type === 'all' 
+                  ? databaseLocations.length 
+                  : databaseLocations.filter(loc => loc.type === type).length;
+                
+                return (
                 <button
                   key={type}
                   onClick={() => filterLocations(type)}
@@ -682,9 +1201,12 @@ export default function Home() {
                   }`}
                 >
                   <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="text-sm md:text-base">{label}</span>
+                  <span className="text-sm md:text-base">
+                    {label} {isLoadingLocations ? '...' : `(${count})`}
+                  </span>
                 </button>
-              ))}
+                );
+              })}
               
               <button
                 onClick={openShopPopup}
@@ -698,11 +1220,31 @@ export default function Home() {
 
           {/* Map Container - Mobile Optimized */}
           <div className="relative">
+            {mapError ? (
+              <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="text-center p-8">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Eroare la încărcarea hărții</h3>
+                  <p className="text-gray-600 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Reîmprospătează pagina
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div 
               ref={mapContainerRef} 
               className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden"
               style={{ zIndex: 1 }}
             />
+            )}
             
             {/* Map Controls - Top Left (Zoom) */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
@@ -726,10 +1268,17 @@ export default function Home() {
             <div className="absolute top-4 right-4 z-10">
               <button
                 onClick={centerOnUserLocation}
-                className="bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                disabled={isLocating}
+                className={`bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl ${
+                  isLocating ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
                 title="Centrare pe locația mea"
               >
+                {isLocating ? (
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
                 <Navigation className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>

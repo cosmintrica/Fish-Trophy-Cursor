@@ -1,28 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
-import L from 'leaflet';
-import { fishingLocations } from '@/services/locations';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { loadFishingLocations } from '@/services/fishingLocations';
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/lib/auth-supabase';
 
-// Import Leaflet CSS
-import 'leaflet/dist/leaflet.css';
-
-// Fix Leaflet icon issues
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Mapbox token - token personal
+mapboxgl.accessToken = 'pk.eyJ1IjoiY29zbWludHJpY2EiLCJhIjoiY21mNGtpZnA4MDUwazJtc2tvdDdhc2dwYSJ9.f7S4wKF1IskQCSBn9_7zIQ';
 
 export default function BlackSea() {
   const { user } = useAuth();
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const locationsLayerRef = useRef<L.LayerGroup | null>(null);
-  const userLocationMarkerRef = useRef<L.Marker | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [fishingLocations, setFishingLocations] = useState<any[]>([]);
+
+  // Încarcă locațiile din baza de date
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const locations = await loadFishingLocations();
+        setFishingLocations(locations);
+        console.log('✅ Loaded fishing locations for BlackSea:', locations.length);
+      } catch (error) {
+        console.error('❌ Error loading fishing locations:', error);
+      }
+    };
+    
+    loadLocations();
+  }, []);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -30,35 +40,55 @@ export default function BlackSea() {
     // Detectează dacă este mobile
     const isMobile = window.innerWidth < 768;
     
-    // Inițializează harta cu configurații diferite pentru mobile și desktop
-    const map = L.map(mapContainerRef.current, {
-      center: isMobile ? [45.5, 25.0] : [44.1733, 28.6383], // Centru diferit pentru mobile (toată România)
-      zoom: isMobile ? 6 : 8, // Zoom mai mic pe mobile pentru a vedea toată țara
-      zoomControl: true,
-      attributionControl: true,
-      // Configurări pentru performanță pe mobile
-      preferCanvas: isMobile, // Folosește Canvas pentru performanță mai bună pe mobile
-      zoomSnap: isMobile ? 0.5 : 1, // Zoom mai fluid pe mobile
-      zoomDelta: isMobile ? 0.5 : 1,
-      wheelPxPerZoomLevel: isMobile ? 60 : 120, // Zoom mai sensibil pe mobile
-      // Configurări pentru touch (Leaflet le suportă implicit)
-      // Configurări pentru performanță
-      renderer: isMobile ? L.canvas() : undefined
-    });
+    // Inițializează harta cu configurații optimizate pentru România
+    const mapConfig: mapboxgl.MapboxOptions = {
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/outdoors-v12',
+      center: [25.0, 45.5], // Centru România
+      zoom: isMobile ? 6 : 7, // Zoom optimizat
+      minZoom: 5,
+      maxZoom: isMobile ? 14 : 16, // Limitat pentru performanță
+      pitch: 0,
+      bearing: 0,
+      antialias: !isMobile,
+      renderWorldCopies: false,
+      // Bounds strict pentru România
+      maxBounds: [
+        [20.0, 43.5], // Southwest
+        [30.0, 48.5]  // Northeast
+      ] as [[number, number], [number, number]],
+      // Optimizări performanță
+      preferCanvas: isMobile,
+      zoomAnimation: !isMobile,
+      detectRetina: !isMobile,
+      updateWhenZooming: false,
+      keepBuffer: 1
+    };
 
-    // Adaugă layer-ul OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
+    const map = new mapboxgl.Map(mapConfig);
     mapInstanceRef.current = map;
 
-    // Creează layer separat pentru locații
-    const locationsLayer = L.layerGroup().addTo(map);
-    locationsLayerRef.current = locationsLayer;
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl({
+      showCompass: !isMobile,
+      showZoom: true,
+      visualizePitch: false
+    }), 'top-right');
 
-    // Adaugă locațiile maritime inițiale
-    addMaritimeLocationsToMap(map, 'all');
+    // Add geolocation control
+    map.addControl(new mapboxgl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: true
+      },
+      trackUserLocation: true,
+      showUserHeading: true,
+      showUserLocation: true
+    }), 'top-right');
+
+    // Adaugă locațiile maritime inițiale (doar dacă sunt încărcate)
+    if (fishingLocations.length > 0) {
+      addMaritimeLocationsToMap(map, 'all');
+    }
 
     // Verifică dacă utilizatorul a acceptat deja locația și o afișează
     const locationAccepted = localStorage.getItem('locationAccepted');
@@ -71,22 +101,25 @@ export default function BlackSea() {
           const address = await geocodingService.reverseGeocode(latitude, longitude);
           
           // Creează marker cu fundal alb și design îmbunătățit
-          const userIcon = L.divIcon({
-            className: 'user-location-marker',
-            html: `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`,
-            iconSize: [56, 56],
-            iconAnchor: [28, 28]
-          });
+          const userMarkerEl = document.createElement('div');
+          userMarkerEl.className = 'user-location-marker';
+          userMarkerEl.innerHTML = `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`;
 
-          const userMarker = L.marker([latitude, longitude], { icon: userIcon });
+          const userMarker = new mapboxgl.Marker(userMarkerEl)
+            .setLngLat([longitude, latitude])
+            .addTo(map);
           userLocationMarkerRef.current = userMarker;
-          userMarker.addTo(map);
 
           // Adaugă popup cu design îmbunătățit
           const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
           const userPhoto = user?.user_metadata?.avatar_url || '';
           
-          userMarker.bindPopup(`
+          const popup = new mapboxgl.Popup({
+            maxWidth: 400,
+            closeButton: true,
+            closeOnClick: false,
+            className: 'custom-popup'
+          }).setHTML(`
             <div class="p-6 min-w-[320px] bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow-2xl border border-cyan-200">
               <div class="flex items-center gap-4 mb-4">
                 <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 border-4 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
@@ -117,13 +150,9 @@ export default function BlackSea() {
                 <p class="text-xs text-gray-500 text-center">🌊 Fish Trophy - Litoralul Românesc</p>
               </div>
             </div>
-          `, {
-            className: 'custom-popup',
-            maxWidth: 400,
-            closeButton: true,
-            autoClose: false,
-            closeOnClick: false
-          });
+          `);
+
+          userMarker.setPopup(popup);
         },
         (error) => {
           console.error('Eroare la obținerea locației:', error);
@@ -140,7 +169,7 @@ export default function BlackSea() {
     const handleResize = () => {
       if (mapInstanceRef.current) {
         setTimeout(() => {
-          mapInstanceRef.current?.invalidateSize();
+          mapInstanceRef.current?.resize();
         }, 100);
       }
     };
@@ -156,13 +185,18 @@ export default function BlackSea() {
         mapInstanceRef.current.remove();
       }
     };
-  }, [user]);
+  }, [user, fishingLocations]);
 
   // Funcție pentru adăugarea locațiilor maritime pe hartă
-  const addMaritimeLocationsToMap = (_map: L.Map, filterType: string) => {
-    // Șterge doar markerii din layer-ul de locații
-    if (locationsLayerRef.current) {
-      locationsLayerRef.current.clearLayers();
+  const addMaritimeLocationsToMap = (_map: mapboxgl.Map, filterType: string) => {
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    // Verifică dacă locațiile sunt încărcate
+    if (fishingLocations.length === 0) {
+      console.log('⚠️ No fishing locations loaded yet');
+      return;
     }
 
     // Filtrează doar locațiile maritime
@@ -171,24 +205,42 @@ export default function BlackSea() {
       maritimeLocations.filter(loc => loc.type === filterType);
 
     locationsToShow.forEach(location => {
-      const iconSize = 45; // Marker mai mare pentru Marea Neagră
-      const icon = L.divIcon({
-        className: 'custom-marker-maritime',
-        html: `<div class="w-11 h-11 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full border-4 border-white shadow-2xl hover:scale-110 transition-transform duration-200"></div>`,
-        iconSize: [iconSize, iconSize],
-        iconAnchor: [iconSize / 2, iconSize / 2]
+      // Marker mai mare pentru Marea Neagră
+      const markerEl = document.createElement('div');
+      markerEl.className = 'custom-marker-maritime';
+      markerEl.style.cssText = `
+        width: 45px;
+        height: 45px;
+        background: linear-gradient(135deg, #06B6D4, #3B82F6);
+        border: 4px solid white;
+        border-radius: 50%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      `;
+      
+      // Hover effect
+      markerEl.addEventListener('mouseenter', () => {
+        markerEl.style.transform = 'scale(1.1)';
+      });
+      
+      markerEl.addEventListener('mouseleave', () => {
+        markerEl.style.transform = 'scale(1)';
       });
 
-      const marker = L.marker(location.coords, { icon });
-      if (locationsLayerRef.current) {
-        locationsLayerRef.current.addLayer(marker);
-      }
+      const marker = new mapboxgl.Marker(markerEl)
+        .setLngLat(location.coords)
+        .addTo(_map);
+      
+      markersRef.current.push(marker);
       
       marker.bindPopup(`
         <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
           <div class="flex items-center gap-3 mb-3">
             <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
-              <Waves className="w-7 h-7 text-white" />
+              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
             </div>
             <div>
               <h3 class="font-bold text-lg text-cyan-900">${location.name}</h3>
@@ -226,7 +278,11 @@ export default function BlackSea() {
             </button>
           </div>
         </div>
-      `);
+      `, {
+        maxWidth: 350,
+        closeButton: true,
+        closeOnClick: false
+      });
     });
   };
 
@@ -236,7 +292,8 @@ export default function BlackSea() {
     
     if (mapInstanceRef.current) {
       // Resetează harta la poziția inițială (Litoralul românesc)
-      mapInstanceRef.current.setView([44.1733, 28.6383], 8);
+      mapInstanceRef.current.setCenter([28.6383, 44.1733]);
+      mapInstanceRef.current.setZoom(8);
       addMaritimeLocationsToMap(mapInstanceRef.current, type);
     }
   };
@@ -259,7 +316,8 @@ export default function BlackSea() {
           (position) => {
             const { latitude, longitude } = position.coords;
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.setView([latitude, longitude], 12);
+              mapInstanceRef.current.setCenter([longitude, latitude]);
+              mapInstanceRef.current.setZoom(12);
             }
           },
           (error) => {
