@@ -1,20 +1,34 @@
 // netlify/functions/species.mjs
-import { neon } from '@netlify/neon';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function handler(event) {
-  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-  
   try {
     if (event.httpMethod === 'GET') {
       console.log('🔍 GET request for species list');
-      const speciesList = await sql`
-        SELECT id, name, common_name_ro, scientific_name, description, image_url, 
-               min_weight_kg, max_weight_kg, habitat, season, created_at, updated_at
-        FROM species 
-        ORDER BY common_name_ro
-      `;
       
-      console.log(`✅ Found ${speciesList.length} species`);
+      const { data: speciesList, error } = await supabase
+        .from('fish_species')
+        .select(`
+          id, name, common_name_ro, scientific_name, description, image_url, 
+          min_weight_kg, max_weight_kg, habitat, season, region, created_at, updated_at
+        `)
+        .order('common_name_ro');
+      
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`✅ Found ${speciesList?.length || 0} species`);
       return {
         statusCode: 200,
         headers: {
@@ -23,7 +37,7 @@ export async function handler(event) {
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         },
-        body: JSON.stringify(speciesList)
+        body: JSON.stringify(speciesList || [])
       };
     }
 

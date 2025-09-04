@@ -1,22 +1,36 @@
 // netlify/functions/locations.mjs
-import { neon } from '@netlify/neon';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function handler(event) {
-  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
-  
   try {
     if (event.httpMethod === 'GET') {
       console.log('🔍 GET request for locations list');
       
-      const locations = await sql`
-        SELECT l.id, l.name, l.description, l.geom, l.created_at, l.updated_at,
-               wb.name as water_body_name, wb.type as water_body_type
-        FROM locations l
-        LEFT JOIN water_bodies wb ON l.water_body_id = wb.id
-        ORDER BY l.name
-      `;
+      const { data: locations, error } = await supabase
+        .from('fishing_locations')
+        .select(`
+          id, name, subtitle, administrare, type, county, region,
+          latitude, longitude, description, facilities, access_type,
+          access_fee, best_season, best_time, parking_available,
+          parking_fee, boat_rental, boat_rental_fee, created_at, updated_at
+        `)
+        .order('name');
       
-      console.log(`✅ Found ${locations.length} locations`);
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`✅ Found ${locations?.length || 0} locations`);
       return {
         statusCode: 200,
         headers: {
@@ -25,7 +39,7 @@ export async function handler(event) {
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         },
-        body: JSON.stringify(locations)
+        body: JSON.stringify(locations || [])
       };
     }
 

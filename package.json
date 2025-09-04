@@ -19,7 +19,6 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "devDependencies": {
-    "@neondatabase/serverless": "^0.9.5",
     "@netlify/functions": "^2.8.2",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
@@ -35,8 +34,6 @@
     "node": ">=20.0.0 <23.0.0"
   },
   "dependencies": {
-    "@netlify/neon": "^0.1.0",
-    "firebase-admin": "^13.5.0",
-    "pg": "^8.16.3"
+    "@supabase/supabase-js": "^2.39.0"
   }
 }

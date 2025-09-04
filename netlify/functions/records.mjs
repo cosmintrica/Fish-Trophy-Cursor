@@ -1,8 +1,16 @@
 // netlify/functions/records.mjs
-import { neon } from '@netlify/neon';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function handler(event) {
-  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
 
   try {
     // Handle CORS preflight requests
@@ -24,49 +32,41 @@ export async function handler(event) {
       // Get query parameters
       const { user_id, species_id, status, limit = 50 } = event.queryStringParameters || {};
 
-      let query = `
-        SELECT
-          r.id, r.user_id, r.species_id, r.water_body_id, r.location_id,
-          r.weight_kg, r.length_cm, r.captured_at, r.coordinates,
-          r.photo_url, r.notes, r.status, r.rejected_reason,
-          r.created_at, r.updated_at,
-          u.display_name, u.photo_url as user_photo_url,
-          s.name as species_name, s.common_name_ro,
-          wb.name as water_body_name
-        FROM records r
-        LEFT JOIN users u ON u.id = r.user_id
-        LEFT JOIN species s ON s.id = r.species_id
-        LEFT JOIN water_bodies wb ON wb.id = r.water_body_id
-        WHERE 1=1
-      `;
-
-      const params = [];
-      let paramIndex = 1;
+      // Build Supabase query
+      let query = supabase
+        .from('records')
+        .select(`
+          id, user_id, species_id, water_body_id, location_id,
+          weight_kg, length_cm, captured_at, coordinates,
+          photo_url, notes, status, rejected_reason,
+          created_at, updated_at,
+          users!records_user_id_fkey(display_name, photo_url),
+          species!records_species_id_fkey(name, common_name_ro),
+          water_bodies!records_water_body_id_fkey(name)
+        `)
+        .order('captured_at', { ascending: false })
+        .limit(parseInt(limit));
 
       if (user_id) {
-        query += ` AND r.user_id = $${paramIndex}`;
-        params.push(user_id);
-        paramIndex++;
+        query = query.eq('user_id', user_id);
       }
 
       if (species_id) {
-        query += ` AND r.species_id = $${paramIndex}`;
-        params.push(species_id);
-        paramIndex++;
+        query = query.eq('species_id', species_id);
       }
 
       if (status) {
-        query += ` AND r.status = $${paramIndex}`;
-        params.push(status);
-        paramIndex++;
+        query = query.eq('status', status);
       }
 
-      query += ` ORDER BY r.captured_at DESC LIMIT $${paramIndex}`;
-      params.push(parseInt(limit));
+      const { data: records, error } = await query;
 
-      const records = await sql.unsafe(query, params);
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
 
-      console.log(`✅ Found ${records.length} records`);
+      console.log(`✅ Found ${records?.length || 0} records`);
 
       return {
         statusCode: 200,
@@ -76,7 +76,7 @@ export async function handler(event) {
         },
         body: JSON.stringify({
           success: true,
-          data: records
+          data: records || []
         })
       };
     }
@@ -106,24 +106,30 @@ export async function handler(event) {
         };
       }
 
-      // Insert new record
-      const newRecords = await sql`
-        INSERT INTO records (
-          user_id, species_id, water_body_id, location_id,
-          weight_kg, length_cm, captured_at, coordinates,
-          photo_url, notes, status, created_at, updated_at
-        )
-        VALUES (
-          ${user_id}, ${species_id}, ${water_body_id || null}, ${location_id || null},
-          ${weight_kg}, ${length_cm || null}, ${captured_at}, ${coordinates || null},
-          ${photo_url || null}, ${notes || null}, 'pending', NOW(), NOW()
-        )
-        RETURNING id, user_id, species_id, water_body_id, location_id,
-                  weight_kg, length_cm, captured_at, coordinates,
-                  photo_url, notes, status, created_at, updated_at
-      `;
+      // Insert new record using Supabase
+      const { data: newRecord, error } = await supabase
+        .from('records')
+        .insert({
+          user_id,
+          species_id,
+          water_body_id: water_body_id || null,
+          location_id: location_id || null,
+          weight_kg,
+          length_cm: length_cm || null,
+          captured_at,
+          coordinates: coordinates || null,
+          photo_url: photo_url || null,
+          notes: notes || null,
+          status: 'pending'
+        })
+        .select()
+        .single();
 
-      const newRecord = newRecords[0];
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
+
       console.log(`✅ Created new record with ID: ${newRecord.id}`);
 
       return {
@@ -166,60 +172,19 @@ export async function handler(event) {
         photo_url, notes, status, rejected_reason
       } = updateData;
 
-      // Build dynamic update query
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
+      // Build update object for Supabase
+      const updateData = {};
 
-      if (weight_kg !== undefined) {
-        updateFields.push(`weight_kg = $${paramIndex}`);
-        updateValues.push(weight_kg);
-        paramIndex++;
-      }
+      if (weight_kg !== undefined) updateData.weight_kg = weight_kg;
+      if (length_cm !== undefined) updateData.length_cm = length_cm;
+      if (captured_at !== undefined) updateData.captured_at = captured_at;
+      if (coordinates !== undefined) updateData.coordinates = coordinates;
+      if (photo_url !== undefined) updateData.photo_url = photo_url;
+      if (notes !== undefined) updateData.notes = notes;
+      if (status !== undefined) updateData.status = status;
+      if (rejected_reason !== undefined) updateData.rejected_reason = rejected_reason;
 
-      if (length_cm !== undefined) {
-        updateFields.push(`length_cm = $${paramIndex}`);
-        updateValues.push(length_cm);
-        paramIndex++;
-      }
-
-      if (captured_at !== undefined) {
-        updateFields.push(`captured_at = $${paramIndex}`);
-        updateValues.push(captured_at);
-        paramIndex++;
-      }
-
-      if (coordinates !== undefined) {
-        updateFields.push(`coordinates = $${paramIndex}`);
-        updateValues.push(coordinates);
-        paramIndex++;
-      }
-
-      if (photo_url !== undefined) {
-        updateFields.push(`photo_url = $${paramIndex}`);
-        updateValues.push(photo_url);
-        paramIndex++;
-      }
-
-      if (notes !== undefined) {
-        updateFields.push(`notes = $${paramIndex}`);
-        updateValues.push(notes);
-        paramIndex++;
-      }
-
-      if (status !== undefined) {
-        updateFields.push(`status = $${paramIndex}`);
-        updateValues.push(status);
-        paramIndex++;
-      }
-
-      if (rejected_reason !== undefined) {
-        updateFields.push(`rejected_reason = $${paramIndex}`);
-        updateValues.push(rejected_reason);
-        paramIndex++;
-      }
-
-      if (updateFields.length === 0) {
+      if (Object.keys(updateData).length === 0) {
         return {
           statusCode: 400,
           headers: {
@@ -233,22 +198,20 @@ export async function handler(event) {
         };
       }
 
-      updateFields.push(`updated_at = NOW()`);
-      updateValues.push(recordId);
+      // Update record using Supabase
+      const { data: updatedRecord, error } = await supabase
+        .from('records')
+        .update(updateData)
+        .eq('id', recordId)
+        .select()
+        .single();
 
-      const query = `
-        UPDATE records
-        SET ${updateFields.join(', ')}
-        WHERE id = $${paramIndex}
-        RETURNING id, user_id, species_id, water_body_id, location_id,
-                  weight_kg, length_cm, captured_at, coordinates,
-                  photo_url, notes, status, rejected_reason,
-                  created_at, updated_at
-      `;
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
 
-      const updatedRecords = await sql.unsafe(query, updateValues);
-
-      if (updatedRecords.length === 0) {
+      if (!updatedRecord) {
         return {
           statusCode: 404,
           headers: {
@@ -262,7 +225,6 @@ export async function handler(event) {
         };
       }
 
-      const updatedRecord = updatedRecords[0];
       console.log(`✅ Updated record with ID: ${updatedRecord.id}`);
 
       return {

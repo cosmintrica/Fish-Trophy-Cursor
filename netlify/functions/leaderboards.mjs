@@ -1,8 +1,16 @@
 // netlify/functions/leaderboards.mjs
-import { neon } from '@netlify/neon';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function handler(event) {
-  const sql = neon(); // automatically uses NETLIFY_DATABASE_URL
 
   try {
     // Handle CORS preflight requests
@@ -24,48 +32,49 @@ export async function handler(event) {
       // Get query parameters
       const { species_id, period = 'all', limit = 10 } = event.queryStringParameters || {};
 
-      let query = `
-        SELECT
-          r.id as record_id,
-          r.weight_kg,
-          r.length_cm,
-          r.captured_at,
-          r.photo_url,
-          r.notes,
-          u.id as user_id,
-          u.display_name,
-          u.photo_url as user_photo_url,
-          s.name as species_name,
-          s.common_name_ro,
-          wb.name as water_body_name,
-          ROW_NUMBER() OVER (ORDER BY r.weight_kg DESC) as rank
-        FROM records r
-        LEFT JOIN users u ON u.id = r.user_id
-        LEFT JOIN species s ON s.id = r.species_id
-        LEFT JOIN water_bodies wb ON wb.id = r.water_body_id
-        WHERE r.status = 'approved'
-      `;
-
-      const params = [];
-      let paramIndex = 1;
+      // Build Supabase query
+      let query = supabase
+        .from('records')
+        .select(`
+          id,
+          weight_kg,
+          length_cm,
+          captured_at,
+          photo_url,
+          notes,
+          users!records_user_id_fkey(id, display_name, photo_url),
+          species!records_species_id_fkey(name, common_name_ro),
+          water_bodies!records_water_body_id_fkey(name)
+        `)
+        .eq('status', 'approved')
+        .order('weight_kg', { ascending: false })
+        .limit(parseInt(limit));
 
       if (species_id) {
-        query += ` AND r.species_id = $${paramIndex}`;
-        params.push(species_id);
-        paramIndex++;
+        query = query.eq('species_id', species_id);
       }
 
       if (period !== 'all') {
         const days = period === 'year' ? 365 : period === 'month' ? 30 : 7;
-        query += ` AND r.captured_at >= NOW() - INTERVAL '${days} days'`;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        query = query.gte('captured_at', cutoffDate.toISOString());
       }
 
-      query += ` ORDER BY r.weight_kg DESC LIMIT $${paramIndex}`;
-      params.push(parseInt(limit));
+      const { data: leaderboard, error } = await query;
 
-      const leaderboard = await sql.unsafe(query, params);
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
 
-      console.log(`✅ Found ${leaderboard.length} leaderboard entries`);
+      // Add rank to each entry
+      const leaderboardWithRank = (leaderboard || []).map((entry, index) => ({
+        ...entry,
+        rank: index + 1
+      }));
+
+      console.log(`✅ Found ${leaderboardWithRank.length} leaderboard entries`);
 
       return {
         statusCode: 200,
@@ -75,7 +84,7 @@ export async function handler(event) {
         },
         body: JSON.stringify({
           success: true,
-          data: leaderboard
+          data: leaderboardWithRank
         })
       };
     }
