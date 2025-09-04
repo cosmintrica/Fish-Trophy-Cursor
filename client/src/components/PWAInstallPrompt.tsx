@@ -7,7 +7,7 @@ interface PWAInstallPromptProps {
   onDismiss: () => void;
 }
 
-export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPromptProps) {
+export default function PWAInstallPrompt({ onInstall: _onInstall, onDismiss: _onDismiss }: PWAInstallPromptProps) {
   const { isInstallable, isInstalled, installApp, dismissNotification } = usePWAInstall();
   
   // Props are used directly in the component, no need for wrapper functions
@@ -41,52 +41,7 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
     dismissNotification();
   };
 
-  // Tutorial modal (apare doar prima dată)
-  if (showTutorial) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Download className="w-8 h-8 text-white" />
-            </div>
-            
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Instalează Fish Trophy
-            </h2>
-            
-            <p className="text-gray-600 mb-6">
-              {isIOS 
-                ? 'Pentru o experiență mai bună, adaugă aplicația pe ecranul de start:'
-                : 'Pentru o experiență mai bună, instalează aplicația:'
-              }
-            </p>
-
-            {isIOS ? (
-              <div className="text-left text-sm text-gray-700 space-y-2 mb-6">
-                <p>1. Apasă butonul Share (împărtășire) din Safari</p>
-                <p>2. Selectează "Adaugă la ecranul de start"</p>
-                <p>3. Apasă "Adaugă"</p>
-              </div>
-            ) : (
-              <div className="text-left text-sm text-gray-700 space-y-2 mb-6">
-                <p>1. Apasă butonul "Instalează" din notificarea de jos</p>
-                <p>2. Confirmă instalarea</p>
-                <p>3. Aplicația va apărea pe ecranul de start</p>
-              </div>
-            )}
-            
-            <button
-              onClick={closeTutorial}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
-            >
-              Am înțeles
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Tutorial modal removed - using notification only
 
   // Notificare jos (rămâne până când utilizatorul o închide)
   if (!showNotification || !isInstallable || isInstalled) {

@@ -391,8 +391,8 @@ export default function Home() {
       // preferCanvas: isMobile, // Not supported in Mapbox GL
       // zoomAnimation: true, // Not supported in Mapbox GL
       // detectRetina: false, // Not supported in Mapbox GL
-      updateWhenZooming: true, // Activat pentru sincronizare
-      keepBuffer: 2, // Mărit pentru sincronizare
+      // updateWhenZooming: true, // Not supported in Mapbox GL
+      // keepBuffer: 2, // Not supported in Mapbox GL
       // Previne chenarele albe și reîncărcarea
       preserveDrawingBuffer: false,
       refreshExpiredTiles: false,
