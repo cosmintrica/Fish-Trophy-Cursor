@@ -14,6 +14,7 @@
   SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*,node_modules/**/*,client/node_modules/**/*,netlify/functions/**/*,.env*"
   SECRETS_SCAN_ENABLED = "false"
   CI = "false"
+  # Supabase configuration will be handled by Netlify Supabase extension
 
 # API redirects - must come BEFORE catch-all redirect
 # Order is CRITICAL - most specific routes first!
@@ -32,3 +33,7 @@
 
 [functions]
   directory = "netlify/functions"
+
+# Use Supabase extension instead of Neon
+[[plugins]]
+  package = "@netlify/plugin-supabase"
