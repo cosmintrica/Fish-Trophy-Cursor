@@ -638,7 +638,7 @@ export default function Home() {
     mapInstanceRef.current = map;
 
     // Adaugă error handling pentru harta
-    map.on('error', (e) => {
+    map.on('error', (e: any) => {
       console.error('Map error:', e);
       setMapError(true);
     });
