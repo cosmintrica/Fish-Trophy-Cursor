@@ -9,6 +9,17 @@ interface PWAInstallPromptProps {
 
 export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPromptProps) {
   const { isInstallable, isInstalled, showTutorial, installApp, closeTutorial, dismissNotification } = usePWAInstall();
+  
+  // Use the props instead of destructured values
+  const handleInstall = () => {
+    installApp();
+    onInstall();
+  };
+  
+  const handleDismiss = () => {
+    dismissNotification();
+    onDismiss();
+  };
   const [isIOS, setIsIOS] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 

@@ -302,7 +302,7 @@ export default function Home() {
           console.log('❌ No marker found for location, creating temp popup');
           // Creează un popup temporar dacă nu găsește markerul
           const tempPopup = new mapboxgl.Popup({
-            maxWidth: 300,
+            maxWidth: '300px',
             closeButton: true,
             className: 'custom-popup'
           }).setHTML(`
@@ -400,7 +400,7 @@ export default function Home() {
       crossSourceCollisions: false,
       // Optimizări pentru stabilitate
       maxTileCacheSize: 50, // Mărit pentru sincronizare
-      localIdeographFontFamily: false,
+      localIdeographFontFamily: 'Arial',
       // Previne reîncărcarea
       attributionControl: false,
       logoPosition: 'bottom-right'
@@ -675,7 +675,7 @@ export default function Home() {
       `;
 
         const popup = new mapboxgl.Popup({
-          maxWidth: isMobile ? 240 : 400,
+          maxWidth: isMobile ? '240px' : '400px',
           closeButton: false, // Custom close button
           className: 'custom-popup'
         }).setHTML(popupContent);
@@ -857,7 +857,7 @@ export default function Home() {
         const address = await geocodingService.reverseGeocode(latitude, longitude);
         
         const popup = new mapboxgl.Popup({
-          maxWidth: 250,
+          maxWidth: '250px',
           closeButton: false,
           closeOnClick: false,
           className: 'custom-popup'
@@ -953,7 +953,7 @@ export default function Home() {
             const userPhoto = user?.user_metadata?.avatar_url || '';
             
             const popup = new mapboxgl.Popup({
-              maxWidth: 250,
+              maxWidth: '250px',
               closeButton: false,
               closeOnClick: false,
               className: 'custom-popup',

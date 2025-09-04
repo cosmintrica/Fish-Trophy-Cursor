@@ -59,7 +59,7 @@ export default function BlackSea() {
       ] as [[number, number], [number, number]],
       // Optimizări performanță
       // preferCanvas: isMobile, // Not supported in Mapbox GL
-      zoomAnimation: !isMobile,
+      // zoomAnimation: !isMobile, // Not supported in Mapbox GL
       detectRetina: !isMobile,
       updateWhenZooming: false,
       keepBuffer: 1
@@ -115,7 +115,7 @@ export default function BlackSea() {
           const userPhoto = user?.user_metadata?.avatar_url || '';
           
           const popup = new mapboxgl.Popup({
-            maxWidth: 400,
+            maxWidth: '400px',
             closeButton: true,
             closeOnClick: false,
             className: 'custom-popup'
@@ -237,7 +237,7 @@ export default function BlackSea() {
       // Mapbox GL doesn't have bindPopup - using popup on click instead
       marker.getElement().addEventListener('click', () => {
         const popup = new mapboxgl.Popup({
-          maxWidth: 350,
+          maxWidth: '350px',
           closeButton: true,
           closeOnClick: false
         }).setHTML(`
