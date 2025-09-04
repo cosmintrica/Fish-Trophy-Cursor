@@ -58,7 +58,7 @@ export default function BlackSea() {
         [30.0, 48.5]  // Northeast
       ] as [[number, number], [number, number]],
       // Optimizări performanță
-      preferCanvas: isMobile,
+      // preferCanvas: isMobile, // Not supported in Mapbox GL
       zoomAnimation: !isMobile,
       detectRetina: !isMobile,
       updateWhenZooming: false,
@@ -234,7 +234,7 @@ export default function BlackSea() {
       
       markersRef.current.push(marker);
       
-      marker.bindPopup(`
+      // marker.bindPopup(` // Mapbox GL doesn't have bindPopup
         <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
           <div class="flex items-center gap-3 mb-3">
             <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
@@ -282,7 +282,7 @@ export default function BlackSea() {
         maxWidth: 350,
         closeButton: true,
         closeOnClick: false
-      });
+      }); // Mapbox GL doesn't have bindPopup
     });
   };
 

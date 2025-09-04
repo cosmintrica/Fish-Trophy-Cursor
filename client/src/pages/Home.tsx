@@ -732,7 +732,9 @@ export default function Home() {
       // Adaugă locațiile filtrate după animație
       setTimeout(() => {
         if (databaseLocations.length > 0) {
-          addLocationsToMap(mapInstanceRef.current, type);
+          if (mapInstanceRef.current) {
+            addLocationsToMap(mapInstanceRef.current, type);
+          }
         }
       }, 900);
     }
@@ -796,7 +798,7 @@ export default function Home() {
             maximumAge: 0, // Nu folosește cache
             timeout: 30000, // Timeout și mai mare pentru mobil
             enableHighAccuracy: true, // Precizie maximă
-            watchPosition: false // Nu urmări poziția
+            // watchPosition: false // Nu urmări poziția - not a valid option
           }
         );
       } else {

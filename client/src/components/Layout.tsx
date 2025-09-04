@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setDeferredPrompt(e as any);
       setShowPWAInstallPrompt(true);
     };
 

@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { X, Download, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
-export default function PWAInstallPrompt() {
+interface PWAInstallPromptProps {
+  onInstall: () => void;
+  onDismiss: () => void;
+}
+
+export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPromptProps) {
   const { isInstallable, isInstalled, showTutorial, installApp, closeTutorial, dismissNotification } = usePWAInstall();
   const [isIOS, setIsIOS] = useState(false);
   const [showNotification, setShowNotification] = useState(false);

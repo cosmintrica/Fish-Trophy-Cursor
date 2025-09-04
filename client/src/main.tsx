@@ -1,4 +1,4 @@
-import React from 'react'; // Explicitly import React for better compatibility
+// import React from 'react'; // Not needed with automatic JSX runtime // Explicitly import React for better compatibility
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
