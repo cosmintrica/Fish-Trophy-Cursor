@@ -36,15 +36,15 @@ export async function handler(event) {
       let query = supabase
         .from('records')
         .select(`
-          id, user_id, species_id, water_body_id, location_id,
-          weight_kg, length_cm, captured_at, coordinates,
-          photo_url, notes, status, rejected_reason,
+          id, user_id, species_id, location_id,
+          weight, length, date_caught, time_caught,
+          image_url, status, rejection_reason,
           created_at, updated_at,
-          users!records_user_id_fkey(display_name, photo_url),
-          species!records_species_id_fkey(name, common_name_ro),
-          water_bodies!records_water_body_id_fkey(name)
+          profiles!records_user_id_fkey(display_name, photo_url),
+          fish_species!records_species_id_fkey(name, scientific_name),
+          fishing_locations!records_location_id_fkey(name)
         `)
-        .order('captured_at', { ascending: false })
+        .order('date_caught', { ascending: false })
         .limit(parseInt(limit));
 
       if (user_id) {
@@ -86,13 +86,13 @@ export async function handler(event) {
 
       const recordData = JSON.parse(event.body || '{}');
       const {
-        user_id, species_id, water_body_id, location_id,
-        weight_kg, length_cm, captured_at, coordinates,
-        photo_url, notes
+        user_id, species_id, location_id,
+        weight, length, date_caught, time_caught,
+        image_url, species_name, location_name
       } = recordData;
 
       // Validate required fields
-      if (!user_id || !species_id || !weight_kg || !captured_at) {
+      if (!user_id || !species_id || !weight || !date_caught) {
         return {
           statusCode: 400,
           headers: {
@@ -101,7 +101,7 @@ export async function handler(event) {
           },
           body: JSON.stringify({
             success: false,
-            error: 'Missing required fields: user_id, species_id, weight_kg, captured_at'
+            error: 'Missing required fields: user_id, species_id, weight, date_caught'
           })
         };
       }
@@ -112,14 +112,14 @@ export async function handler(event) {
         .insert({
           user_id,
           species_id,
-          water_body_id: water_body_id || null,
           location_id: location_id || null,
-          weight_kg,
-          length_cm: length_cm || null,
-          captured_at,
-          coordinates: coordinates || null,
-          photo_url: photo_url || null,
-          notes: notes || null,
+          weight,
+          length: length || null,
+          date_caught,
+          time_caught: time_caught || null,
+          image_url: image_url || null,
+          species_name: species_name || null,
+          location_name: location_name || null,
           status: 'pending'
         })
         .select()
@@ -168,23 +168,22 @@ export async function handler(event) {
 
       const updateData = JSON.parse(event.body || '{}');
       const {
-        weight_kg, length_cm, captured_at, coordinates,
-        photo_url, notes, status, rejected_reason
+        weight, length, date_caught, time_caught,
+        image_url, status, rejection_reason
       } = updateData;
 
       // Build update object for Supabase
-      const updateData = {};
+      const updateFields = {};
 
-      if (weight_kg !== undefined) updateData.weight_kg = weight_kg;
-      if (length_cm !== undefined) updateData.length_cm = length_cm;
-      if (captured_at !== undefined) updateData.captured_at = captured_at;
-      if (coordinates !== undefined) updateData.coordinates = coordinates;
-      if (photo_url !== undefined) updateData.photo_url = photo_url;
-      if (notes !== undefined) updateData.notes = notes;
-      if (status !== undefined) updateData.status = status;
-      if (rejected_reason !== undefined) updateData.rejected_reason = rejected_reason;
+      if (weight !== undefined) updateFields.weight = weight;
+      if (length !== undefined) updateFields.length = length;
+      if (date_caught !== undefined) updateFields.date_caught = date_caught;
+      if (time_caught !== undefined) updateFields.time_caught = time_caught;
+      if (image_url !== undefined) updateFields.image_url = image_url;
+      if (status !== undefined) updateFields.status = status;
+      if (rejection_reason !== undefined) updateFields.rejection_reason = rejection_reason;
 
-      if (Object.keys(updateData).length === 0) {
+      if (Object.keys(updateFields).length === 0) {
         return {
           statusCode: 400,
           headers: {
@@ -201,7 +200,7 @@ export async function handler(event) {
       // Update record using Supabase
       const { data: updatedRecord, error } = await supabase
         .from('records')
-        .update(updateData)
+        .update(updateFields)
         .eq('id', recordId)
         .select()
         .single();

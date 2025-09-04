@@ -37,17 +37,17 @@ export async function handler(event) {
         .from('records')
         .select(`
           id,
-          weight_kg,
-          length_cm,
-          captured_at,
-          photo_url,
-          notes,
-          users!records_user_id_fkey(id, display_name, photo_url),
-          species!records_species_id_fkey(name, common_name_ro),
-          water_bodies!records_water_body_id_fkey(name)
+          weight,
+          length,
+          date_caught,
+          time_caught,
+          image_url,
+          profiles!records_user_id_fkey(id, display_name, photo_url),
+          fish_species!records_species_id_fkey(name, scientific_name),
+          fishing_locations!records_location_id_fkey(name)
         `)
-        .eq('status', 'approved')
-        .order('weight_kg', { ascending: false })
+        .eq('status', 'verified')
+        .order('weight', { ascending: false })
         .limit(parseInt(limit));
 
       if (species_id) {
@@ -58,7 +58,7 @@ export async function handler(event) {
         const days = period === 'year' ? 365 : period === 'month' ? 30 : 7;
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
-        query = query.gte('captured_at', cutoffDate.toISOString());
+        query = query.gte('date_caught', cutoffDate.toISOString().split('T')[0]);
       }
 
       const { data: leaderboard, error } = await query;
