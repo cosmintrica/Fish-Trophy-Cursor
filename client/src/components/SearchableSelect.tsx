@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
 import { matchesAtStart } from '@/data/romania-locations';
 

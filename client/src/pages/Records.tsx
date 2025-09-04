@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Trophy, Medal, Crown, Target, Calendar, Users, Award } from 'lucide-react';
 
 // Mock data pentru demonstrație

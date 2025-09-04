@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -106,13 +106,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     closeMobileMenu();
   }, [location.pathname]);
 
-  // Fallback pentru cazurile când aplicația nu se încarcă - DUPĂ toate hook-urile
+  // Fallback pentru cazurile c�nd aplica?ia nu se �ncarca - DUPA toate hook-urile
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Se încarcă...</p>
+          <p className="text-gray-600">Se �ncarca...</p>
         </div>
       </div>
     );
@@ -146,7 +146,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     : 'text-gray-700 hover:text-blue-600'
                 }`}
               >
-                Acasă
+                Acasa
               </Link>
               <Link
                 to="/species"
@@ -280,7 +280,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={closeMobileMenu}
             >
               <Home className="w-5 h-5" />
-              <span className="font-medium">Acasă</span>
+              <span className="font-medium">Acasa</span>
             </Link>
             
             <Link
@@ -321,7 +321,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 onClick={closeMobileMenu}
               >
                 <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagră</span>
+                <span className="font-medium">Marea Neagra</span>
               </Link>
             ) : (
               <button
@@ -332,7 +332,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors w-full text-left"
               >
                 <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagră</span>
+                <span className="font-medium">Marea Neagra</span>
               </button>
             )}
             
@@ -379,7 +379,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="flex items-center justify-center w-full px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
               >
                 <X className="w-4 h-4 mr-2" />
-                Ieșire
+                                 Ieșire
               </button>
             </div>
           ) : (
@@ -408,7 +408,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="flex items-center justify-center w-full px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Adaugă pe ecranul principal
+                Adauga pe ecranul principal
               </button>
             </div>
           )} */}
@@ -434,7 +434,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span className="text-2xl md:text-3xl font-bold">Fish Trophy</span>
               </div>
               <p className="text-gray-300 max-w-md">
-                Descoperă cele mai bune locații de pescuit din România, urmărește recordurile și concurează cu alții pescari pasionați.
+                Descopera cele mai bune loca?ii de pescuit din Rom�nia, urmare?te recordurile ?i concureaza cu al?ii pescari pasiona?i.
               </p>
             </div>
 
@@ -495,7 +495,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <p className="text-gray-400">
-              © 2025 Fish Trophy. Toate drepturile rezervate.
+              � 2025 Fish Trophy. Toate drepturile rezervate.
             </p>
           </div>
         </div>
@@ -516,16 +516,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
                 <Fish className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagra</h3>
               <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                Această secțiune este în construcție și va fi disponibilă în curând. 
-                Vom adăuga locații de pescuit, specii marine și recorduri din Marea Neagră.
+                Aceasta sec?iune este �n construc?ie ?i va fi disponibila �n cur�nd. 
+                Vom adauga loca?ii de pescuit, specii marine ?i recorduri din Marea Neagra.
               </p>
               <button
                 onClick={() => setShowBlackSeaPopup(false)}
                 className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg sm:rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
-                Înțeleg
+                �n?eleg
               </button>
             </div>
           </div>
