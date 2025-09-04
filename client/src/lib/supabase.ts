@@ -41,7 +41,7 @@ function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
   }
 }
 
-export const supabase = createSafeSupabase() as any
+export const supabase = createSafeSupabase() as unknown as SupabaseClient
 
 // Storage bucket names (Supabase - only avatars and thumbnails)
 export const STORAGE_BUCKETS = {

@@ -354,7 +354,7 @@ export default function Home() {
               const offsetPx = 120; // deplasează centrul în sus pentru a vedea popupul
               const center = map.project([lng, lat]);
               const adjusted = { x: center.x, y: center.y - offsetPx };
-              const adjustedLngLat = map.unproject(adjusted as any);
+              const adjustedLngLat = map.unproject(adjusted as unknown as [number, number]);
               map.easeTo({
                 center: [adjustedLngLat.lng, adjustedLngLat.lat],
                 duration: 800,
