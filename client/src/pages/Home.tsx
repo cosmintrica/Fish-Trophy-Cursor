@@ -416,22 +416,6 @@ export default function Home() {
       .replace(/ț/g, 't');
   };
 
-  // Funcția pentru emoji-ul tipului de apă
-  const getWaterTypeEmoji = (type: string) => {
-    switch (type) {
-      case 'river':
-      case 'fluviu':
-        return '🌊';
-      case 'lake':
-        return '🏞️';
-      case 'balti_salbatic':
-        return '🌿';
-      case 'private_pond':
-        return '🏡';
-      default:
-        return '💧';
-    }
-  };
 
   // Funcția de căutare
   const handleSearch = (query: string) => {

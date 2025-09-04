@@ -20,7 +20,7 @@ export interface FishingLocation {
   id: string;
   name: string;
   coords: [number, number];
-  type: 'river' | 'lake' | 'pond' | 'private_pond' | 'balti_salbatic' | 'maritime';
+  type: 'river' | 'lake' | 'pond' | 'private_pond' | 'balti_salbatic' | 'maritime' | 'fluviu';
   subtitle?: string;
   administrare?: string;
   description: string;

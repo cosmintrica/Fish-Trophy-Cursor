@@ -186,11 +186,7 @@ export default function BlackSea() {
       maxZoom: isMobile ? 14 : 16, // Limitat pentru performanță
       pitch: 0,
       bearing: 0,
-      antialias: true,
       renderWorldCopies: false,
-      // GPU Acceleration optimizations
-      preserveDrawingBuffer: false,
-      failIfMajorPerformanceCaveat: false,
       refreshExpiredTiles: true,
       fadeDuration: 80,
       // Bounds strict pentru România
@@ -222,7 +218,6 @@ export default function BlackSea() {
         enableHighAccuracy: true
       },
       trackUserLocation: true,
-      showUserHeading: true,
       showUserLocation: true
     }), 'top-right');
 
