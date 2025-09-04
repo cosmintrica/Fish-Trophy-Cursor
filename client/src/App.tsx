@@ -7,7 +7,7 @@ import AdminRoute from '@/components/AdminRoute';
 import ScrollToTop from '@/components/ScrollToTop';
 
 // Pages
-import HomeMapLibre from '@/pages/HomeMapLibre';
+import Home from '@/pages/Home';
 import BlackSea from '@/pages/BlackSea';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
@@ -27,7 +27,7 @@ function App() {
           <Layout>
             <ScrollToTop />
             <Routes>
-              <Route path="/" element={<HomeMapLibre />} />
+              <Route path="/" element={<Home />} />
               <Route path="/email-confirmation" element={<EmailConfirmation />} />
               <Route 
                 path="/black-sea" 
