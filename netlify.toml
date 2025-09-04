@@ -35,3 +35,4 @@
   directory = "netlify/functions"
 
 # Supabase extension configured via Netlify App UI - no plugin configuration needed
+# Trigger rebuild
