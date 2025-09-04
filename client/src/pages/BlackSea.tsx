@@ -62,7 +62,7 @@ export default function BlackSea() {
       // zoomAnimation: !isMobile, // Not supported in Mapbox GL
       // detectRetina: !isMobile, // Not supported in Mapbox GL
       // updateWhenZooming: false, // Not supported in Mapbox GL
-      keepBuffer: 1
+      // keepBuffer: 1 // Not supported in Mapbox GL
     };
 
     const map = new mapboxgl.Map(mapConfig);
