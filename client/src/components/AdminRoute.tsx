@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import BlackSeaComingSoon from '@/pages/BlackSeaComingSoon';
 
 interface AdminRouteProps {

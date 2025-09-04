@@ -1,9 +1,14 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText } from 'lucide-react';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, loading } = useAuth();
@@ -19,7 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   // PWA Install Prompt Logic
   const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     const isStandalone = ((): boolean => {
@@ -58,7 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as any);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPWAInstallPrompt(true);
     };
 

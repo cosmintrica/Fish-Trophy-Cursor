@@ -6,6 +6,13 @@ interface PositionOptions {
 }
 
 // Use built-in GeolocationPositionError type directly
+interface GeolocationPositionError {
+  code: number;
+  message: string;
+  PERMISSION_DENIED: number;
+  POSITION_UNAVAILABLE: number;
+  TIMEOUT: number;
+}
 
 export interface UserLocation {
   latitude: number;
@@ -101,7 +108,7 @@ class GeolocationService {
   // Watch rapid pentru actualizări; returnează watchId
   startWatch(
     onUpdate: (loc: UserLocation) => void,
-    onError?: (err: any) => void,
+    onError?: (err: GeolocationPositionError) => void,
     highAccuracy = false
   ): number | null {
     if (!this.isSupported()) return null;

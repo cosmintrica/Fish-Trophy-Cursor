@@ -7,7 +7,7 @@ interface PWAInstallPromptProps {
   onDismiss: () => void;
 }
 
-export default function PWAInstallPrompt({ onInstall: _onInstall, onDismiss: _onDismiss }: PWAInstallPromptProps) {
+export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPromptProps) {
   const { isInstallable, isInstalled, installApp, dismissNotification } = usePWAInstall();
   
   // Props are used directly in the component, no need for wrapper functions
@@ -34,11 +34,13 @@ export default function PWAInstallPrompt({ onInstall: _onInstall, onDismiss: _on
   const handleInstallAsync = async () => {
     await installApp();
     setShowNotification(false);
+    onInstall();
   };
 
   const handleDismissNotification = () => {
     setShowNotification(false);
     dismissNotification();
+    onDismiss();
   };
 
   // Tutorial modal removed - using notification only

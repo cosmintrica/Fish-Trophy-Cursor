@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { X, Mail, Lock, Eye, EyeOff, User, CheckCircle } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
@@ -90,7 +90,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (err: unknown) {
       // Supabase error handling
       if (err && typeof err === 'object' && 'message' in err) {
-        const message = (err as any).message;
+        const message = (err as { message: string }).message;
         if (message.includes('already registered') || message.includes('User already registered')) {
           setError('Acest email este deja folosit. Încearcă să te autentifici.');
         } else if (message.includes('Invalid email') || message.includes('invalid email')) {
@@ -130,7 +130,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (err: unknown) {
       // Supabase error handling
       if (err && typeof err === 'object' && 'message' in err) {
-        const message = (err as any).message;
+        const message = (err as { message: string }).message;
         if (message.includes('popup_closed_by_user')) {
           setError('Fereastra de autentificare a fost închisă. Încearcă din nou.');
         } else if (message.includes('popup_blocked')) {

@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, MapPin, Navigation, X } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { loadFishingLocations } from '@/services/fishingLocations';
+import { loadFishingLocations, FishingLocation } from '@/services/fishingLocations';
 
 import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 
@@ -63,429 +63,16 @@ export default function Home() {
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [databaseLocations, setDatabaseLocations] = useState<any[]>([]);
+  const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Array<FishingLocation & { score: number }>>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [mapError, setMapError] = useState(false);
 
-  // Încarcă locațiile din baza de date
-  useEffect(() => {
-    const loadLocations = async () => {
-      setIsLoadingLocations(true);
-      try {
-        const locations = await loadFishingLocations();
-        setDatabaseLocations(locations);
-        console.log(`✅ Loaded ${locations.length} locations from database`);
-      } catch (error) {
-        console.error('❌ Error loading locations:', error);
-      } finally {
-        setIsLoadingLocations(false);
-      }
-    };
-
-    loadLocations();
-  }, []);
-
-  // Reîncarcă markerele când se actualizează locațiile din baza de date
-  useEffect(() => {
-    if (mapInstanceRef.current && databaseLocations.length > 0) {
-      console.log('🔄 Reloading markers with database locations...');
-      addLocationsToMap(mapInstanceRef.current, activeFilter);
-    }
-  }, [databaseLocations, activeFilter]);
-
-  // Funcția pentru normalizarea textului (elimină diacriticele)
-  const normalizeText = (text: string) => {
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Elimină diacriticele
-      .replace(/ă/g, 'a')
-      .replace(/â/g, 'a')
-      .replace(/î/g, 'i')
-      .replace(/ș/g, 's')
-      .replace(/ț/g, 't');
-  };
-
-  // Funcția pentru emoji-ul tipului de apă
-  const getWaterTypeEmoji = (type: string) => {
-    switch (type) {
-      case 'river':
-        return '🌊';
-      case 'lake':
-        return '🏞️';
-      case 'balti_salbatic':
-        return '🌿';
-      case 'private_pond':
-        return '🏡';
-      default:
-        return '💧';
-    }
-  };
-
-  // Funcția de căutare
-  const handleSearch = (query: string) => {
-    console.log('🔍 Searching for:', query);
-    setSearchQuery(query);
-    if (query.trim() === '') {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    const normalizedQuery = normalizeText(query);
-    
-    // Creează rezultate cu scor de prioritate
-    const resultsWithScore = databaseLocations.map(location => {
-      let score = 0;
-      
-      // Prioritate maximă pentru nume (exact match)
-      if (normalizeText(location.name).toLowerCase() === normalizedQuery.toLowerCase()) {
-        score += 1000;
-      }
-      // Prioritate foarte mare pentru nume (starts with) - pentru râuri
-      else if (normalizeText(location.name).toLowerCase().startsWith(normalizedQuery.toLowerCase())) {
-        score += 800;
-      }
-      // Prioritate mare pentru nume (contains) - pentru râuri
-      else if (normalizeText(location.name).toLowerCase().includes(normalizedQuery.toLowerCase())) {
-        score += 600;
-      }
-      // Prioritate medie pentru nume (partial match)
-      else if (normalizeText(location.name).includes(normalizedQuery)) {
-        score += 300;
-      }
-      
-      // Prioritate pentru subtitle
-      if (location.subtitle && normalizeText(location.subtitle).includes(normalizedQuery)) {
-        score += 200;
-      }
-      
-      // Prioritate pentru județ
-      if (normalizeText(location.county).includes(normalizedQuery)) {
-        score += 150;
-      }
-      
-      // Prioritate pentru administrare
-      if (location.administrare && normalizeText(location.administrare).includes(normalizedQuery)) {
-        score += 100;
-      }
-      
-      // Prioritate pentru regiune
-      if (normalizeText(location.region).includes(normalizedQuery)) {
-        score += 50;
-      }
-      
-      // Prioritate pentru tip
-      if (normalizeText(location.type).includes(normalizedQuery)) {
-        score += 25;
-      }
-      
-      return { ...location, score };
-    }).filter(location => location.score > 0)
-      .sort((a, b) => b.score - a.score); // Sortează după scor descrescător
-
-    console.log('🔍 Found results:', resultsWithScore.length);
-    console.log('🔍 Top 5 results:', resultsWithScore.slice(0, 5).map(loc => ({ name: loc.name, score: loc.score })));
-    setSearchResults(resultsWithScore.slice(0, 10)); // Limitează la 10 rezultate
-    setShowSearchResults(true);
-
-    // Dacă se caută un județ, fac zoom pe județ
-    if (normalizedQuery.length >= 3) {
-      console.log('🔍 Searching for county:', normalizedQuery);
-      console.log('🔍 Sample locations county:', resultsWithScore.slice(0, 3).map(loc => ({ name: loc.name, county: loc.county })));
-      
-      const countyResults = resultsWithScore.filter(loc => 
-        normalizeText(loc.county).includes(normalizedQuery)
-      );
-      
-      console.log('🏛️ County results:', countyResults.length);
-      console.log('🏛️ Map instance for county zoom:', mapInstanceRef.current);
-      
-      if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-        // Calculează centrul județului
-        const validResults = countyResults.filter(loc => {
-          const lat = loc.coords ? loc.coords[1] : loc.latitude;
-          const lng = loc.coords ? loc.coords[0] : loc.longitude;
-          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-        });
-        
-        if (validResults.length === 0) {
-          console.error('❌ No valid coordinates found for county');
-          return;
-        }
-        
-        const avgLat = validResults.reduce((sum, loc) => {
-          const lat = loc.coords ? loc.coords[1] : loc.latitude;
-          return sum + lat;
-        }, 0) / validResults.length;
-        const avgLng = validResults.reduce((sum, loc) => {
-          const lng = loc.coords ? loc.coords[0] : loc.longitude;
-          return sum + lng;
-        }, 0) / validResults.length;
-        
-        console.log('🎯 Flying to county center:', avgLat, avgLng);
-        
-        // Verifică dacă coordonatele sunt valide
-        if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
-          mapInstanceRef.current.flyTo({
-            center: [avgLng, avgLat],
-            zoom: 10,
-            duration: 1000
-          });
-          console.log('✅ County zoom completed');
-        } else {
-          console.error('❌ Invalid county coordinates:', avgLat, avgLng);
-        }
-      } else {
-        console.log('❌ County zoom failed - no results or map not ready');
-      }
-    }
-  };
-
-  // Funcția pentru Enter în căutare
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      console.log('⌨️ Enter pressed, searching for:', searchQuery);
-      handleSearch(searchQuery);
-    }
-  };
-
-  // Funcția pentru a selecta o locație din căutare
-  const selectLocation = (location: any) => {
-    console.log('🎯 Selecting location:', location);
-    console.log('🎯 Map instance:', mapInstanceRef.current);
-    
-    // Verifică dacă coordonatele sunt valide
-    const lng = location.coords ? location.coords[0] : location.longitude;
-    const lat = location.coords ? location.coords[1] : location.latitude;
-    
-    if (!lng || !lat || isNaN(lng) || isNaN(lat)) {
-      console.error('❌ Invalid coordinates:', lng, lat);
-      return;
-    }
-    
-    if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-      // Centrează harta pe locația selectată
-      mapInstanceRef.current.flyTo({
-        center: [lng, lat],
-        zoom: 14,
-        duration: 1000
-      });
-      
-      // Găsește markerul corespunzător și deschide popup-ul
-      setTimeout(() => {
-        const markers = markersRef.current;
-        console.log('🔍 Looking for marker among', markers.length, 'markers');
-        
-        const targetMarker = markers.find(marker => {
-          const markerLngLat = marker.getLngLat();
-          const distance = Math.sqrt(
-            Math.pow(markerLngLat.lng - lng, 2) + 
-            Math.pow(markerLngLat.lat - lat, 2)
-          );
-          return distance < 0.01; // Toleranță mai mare
-        });
-        
-        console.log('🎯 Found target marker:', targetMarker);
-        
-        if (targetMarker) {
-          const popup = targetMarker.getPopup();
-          if (popup && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-            popup.addTo(mapInstanceRef.current);
-            console.log('✅ Popup opened');
-          }
-        } else {
-          console.log('❌ No marker found for location, creating temp popup');
-          // Creează un popup temporar dacă nu găsește markerul
-          const tempPopup = new mapboxgl.Popup({
-            maxWidth: '300px',
-            closeButton: true,
-            className: 'custom-popup'
-          }).setHTML(`
-            <div class="p-4 bg-white rounded-xl shadow-lg border border-gray-100">
-              <h3 class="font-bold text-lg text-gray-800 mb-2">${location.name}</h3>
-              <p class="text-sm text-gray-600">${location.subtitle || ''}</p>
-              <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
-              <div class="mt-3 flex gap-2">
-                <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
-                  Vezi recorduri
-                </button>
-                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600">
-                  Adaugă record
-                </button>
-                </div>
-              </div>
-          `);
-          
-          if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-            tempPopup.setLngLat([lng, lat])
-              .addTo(mapInstanceRef.current);
-            console.log('✅ Temp popup created');
-          }
-        }
-      }, 1200); // După ce se termină animația
-    } else {
-      console.error('❌ Map not ready for location selection');
-    }
-    setShowSearchResults(false);
-    setSearchQuery('');
-  };
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return; // Previne reîncărcarea
-
-    // Previne reîncărcarea la focus change - COMPLET DEZACTIVAT
-    const handleVisibilityChange = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-    
-    const handleFocus = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    // Previne reîncărcarea la resize
-    const handleResize = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-    
-    const handleBlur = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-    
-    // Adaugă event listeners cu capture: true pentru a preveni propagarea
-    document.addEventListener('visibilitychange', handleVisibilityChange, { capture: true, passive: false });
-    window.addEventListener('focus', handleFocus, { capture: true, passive: false });
-    window.addEventListener('blur', handleBlur, { capture: true, passive: false });
-    window.addEventListener('resize', handleResize, { capture: true, passive: false });
-
-    // Detect if mobile device - more accurate detection
-    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
-    
-    // CRITICAL: Simplified config to prevent reload issues and white boxes
-    const mapConfig: mapboxgl.MapboxOptions = {
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [25.0094, 45.9432] as [number, number], // Centru România
-      zoom: 6,
-      minZoom: 3,
-      maxZoom: 18,
-      pitch: 0,
-      bearing: 0,
-      antialias: !isMobile,
-      renderWorldCopies: false,
-      // Optimizări pentru stabilitate și sincronizare
-      // preferCanvas: isMobile, // Not supported in Mapbox GL
-      // zoomAnimation: true, // Not supported in Mapbox GL
-      // detectRetina: false, // Not supported in Mapbox GL
-      // updateWhenZooming: true, // Not supported in Mapbox GL
-      // keepBuffer: 2, // Not supported in Mapbox GL
-      // Previne chenarele albe și reîncărcarea
-      preserveDrawingBuffer: false,
-      refreshExpiredTiles: false,
-      fadeDuration: 200, // Animație smooth pentru sincronizare
-      crossSourceCollisions: false,
-      // Optimizări pentru stabilitate
-      maxTileCacheSize: 50, // Mărit pentru sincronizare
-      localIdeographFontFamily: 'Arial',
-      // Previne reîncărcarea
-      attributionControl: false,
-      logoPosition: 'bottom-right'
-    };
-
-    const map = new mapboxgl.Map(mapConfig);
-    mapInstanceRef.current = map;
-
-    // Adaugă error handling pentru harta
-    map.on('error', (e) => {
-      console.error('Map error:', e);
-      setMapError(true);
-    });
-
-    // Custom navigation controls (no native controls)
-    // map.addControl(new mapboxgl.NavigationControl({
-    //   showCompass: !isMobile,
-    //   showZoom: true,
-    //   visualizePitch: false
-    // }), 'top-right');
-
-    // Custom geolocation control (no native controls)
-    // map.addControl(new mapboxgl.GeolocateControl({
-    //   positionOptions: {
-    //     enableHighAccuracy: true
-    //   },
-    //   trackUserLocation: true,
-    //   showUserHeading: true,
-    //   showUserLocation: true
-    // }), 'top-right');
-
-    // Load locations after map is ready - UNIFIED STRATEGY
-    setTimeout(() => {
-      console.log('🔄 Loading locations after map ready...');
-      if (databaseLocations.length > 0) {
-        addLocationsToMap(map, 'all');
-      }
-    }, 200); // Single delay for stability
-
-    // CRITICAL: Optimized event listeners to prevent reload issues
-      map.on('click', () => {
-        setShowShopPopup(false);
-        setShowLocationRequest(false);
-      setShowSearchResults(false);
-    });
-    
-    // Previne reîncărcarea la focus change
-    map.on('blur', () => {
-      // Nu face nimic - previne reîncărcarea
-    });
-    
-    map.on('focus', () => {
-      // Nu face nimic - previne reîncărcarea
-    });
-
-    // Nu mai cerem geolocația automat - doar când userul apasă pe săgeată
-    // const locationAccepted = localStorage.getItem('locationAccepted');
-    // if (locationAccepted === 'true' && navigator.geolocation) {
-    // navigator.geolocation.getCurrentPosition(...) - comentat pentru a nu cere automat
-    // }
-
-    return () => {
-      // Cleanup event listeners
-      document.removeEventListener('visibilitychange', handleVisibilityChange, { capture: true });
-      window.removeEventListener('focus', handleFocus, { capture: true });
-      window.removeEventListener('blur', handleBlur, { capture: true });
-      window.removeEventListener('resize', handleResize, { capture: true });
-      
-      // Cleanup doar dacă componenta se unmount complet
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-      // Cleanup markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-      if (userLocationMarkerRef.current) {
-        userLocationMarkerRef.current.remove();
-        userLocationMarkerRef.current = null;
-      }
-    };
-  }, [user]);
-
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
-  const addLocationsToMap = (_map: mapboxgl.Map, filterType: string) => {
+  const addLocationsToMap = useCallback((_map: mapboxgl.Map, filterType: string) => {
     if (!_map || !_map.getContainer()) {
       console.error('❌ Map instance is null or not ready');
       return;
@@ -715,7 +302,418 @@ export default function Home() {
         console.error('Error adding markers to map:', error);
       }
     }
+  }, [databaseLocations]);
+
+  // Încarcă locațiile din baza de date
+  useEffect(() => {
+    const loadLocations = async () => {
+      setIsLoadingLocations(true);
+      try {
+        const locations = await loadFishingLocations();
+        setDatabaseLocations(locations);
+        console.log(`✅ Loaded ${locations.length} locations from database`);
+      } catch (error) {
+        console.error('❌ Error loading locations:', error);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    };
+
+    loadLocations();
+  }, []);
+
+  // Reîncarcă markerele când se actualizează locațiile din baza de date
+  useEffect(() => {
+    if (mapInstanceRef.current && databaseLocations.length > 0) {
+      console.log('🔄 Reloading markers with database locations...');
+      addLocationsToMap(mapInstanceRef.current, activeFilter);
+    }
+  }, [databaseLocations, activeFilter, addLocationsToMap]);
+
+  // Funcția pentru normalizarea textului (elimină diacriticele)
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Elimină diacriticele
+      .replace(/ă/g, 'a')
+      .replace(/â/g, 'a')
+      .replace(/î/g, 'i')
+      .replace(/ș/g, 's')
+      .replace(/ț/g, 't');
   };
+
+  // Funcția pentru emoji-ul tipului de apă
+  const getWaterTypeEmoji = (type: string) => {
+    switch (type) {
+      case 'river':
+        return '🌊';
+      case 'lake':
+        return '🏞️';
+      case 'balti_salbatic':
+        return '🌿';
+      case 'private_pond':
+        return '🏡';
+      default:
+        return '💧';
+    }
+  };
+
+  // Funcția de căutare
+  const handleSearch = (query: string) => {
+    console.log('🔍 Searching for:', query);
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const normalizedQuery = normalizeText(query);
+    
+    // Creează rezultate cu scor de prioritate
+    const resultsWithScore = databaseLocations.map(location => {
+      let score = 0;
+      
+      // Prioritate maximă pentru nume (exact match)
+      if (normalizeText(location.name).toLowerCase() === normalizedQuery.toLowerCase()) {
+        score += 1000;
+      }
+      // Prioritate foarte mare pentru nume (starts with) - pentru râuri
+      else if (normalizeText(location.name).toLowerCase().startsWith(normalizedQuery.toLowerCase())) {
+        score += 800;
+      }
+      // Prioritate mare pentru nume (contains) - pentru râuri
+      else if (normalizeText(location.name).toLowerCase().includes(normalizedQuery.toLowerCase())) {
+        score += 600;
+      }
+      // Prioritate medie pentru nume (partial match)
+      else if (normalizeText(location.name).includes(normalizedQuery)) {
+        score += 300;
+      }
+      
+      // Prioritate pentru subtitle
+      if (location.subtitle && normalizeText(location.subtitle).includes(normalizedQuery)) {
+        score += 200;
+      }
+      
+      // Prioritate pentru județ
+      if (normalizeText(location.county).includes(normalizedQuery)) {
+        score += 150;
+      }
+      
+      // Prioritate pentru administrare
+      if (location.administrare && normalizeText(location.administrare).includes(normalizedQuery)) {
+        score += 100;
+      }
+      
+      // Prioritate pentru regiune
+      if (normalizeText(location.region).includes(normalizedQuery)) {
+        score += 50;
+      }
+      
+      // Prioritate pentru tip
+      if (normalizeText(location.type).includes(normalizedQuery)) {
+        score += 25;
+      }
+      
+      return { ...location, score };
+    }).filter(location => location.score > 0)
+      .sort((a, b) => b.score - a.score); // Sortează după scor descrescător
+
+    console.log('🔍 Found results:', resultsWithScore.length);
+    console.log('🔍 Top 5 results:', resultsWithScore.slice(0, 5).map(loc => ({ name: loc.name, score: loc.score })));
+    setSearchResults(resultsWithScore.slice(0, 10)); // Limitează la 10 rezultate
+    setShowSearchResults(true);
+
+    // Dacă se caută un județ, fac zoom pe județ
+    if (normalizedQuery.length >= 3) {
+      console.log('🔍 Searching for county:', normalizedQuery);
+      console.log('🔍 Sample locations county:', resultsWithScore.slice(0, 3).map(loc => ({ name: loc.name, county: loc.county })));
+      
+      const countyResults = resultsWithScore.filter(loc => 
+        normalizeText(loc.county).includes(normalizedQuery)
+      );
+      
+      console.log('🏛️ County results:', countyResults.length);
+      console.log('🏛️ Map instance for county zoom:', mapInstanceRef.current);
+      
+      if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+        // Calculează centrul județului
+        const validResults = countyResults.filter(loc => {
+          const lat = loc.coords[1];
+          const lng = loc.coords[0];
+          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        });
+        
+        if (validResults.length === 0) {
+          console.error('❌ No valid coordinates found for county');
+          return;
+        }
+        
+        const avgLat = validResults.reduce((sum, loc) => {
+          return sum + loc.coords[1];
+        }, 0) / validResults.length;
+        const avgLng = validResults.reduce((sum, loc) => {
+          return sum + loc.coords[0];
+        }, 0) / validResults.length;
+        
+        console.log('🎯 Flying to county center:', avgLat, avgLng);
+        
+        // Verifică dacă coordonatele sunt valide
+        if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
+          mapInstanceRef.current.flyTo({
+            center: [avgLng, avgLat],
+            zoom: 10,
+            duration: 1000
+          });
+          console.log('✅ County zoom completed');
+        } else {
+          console.error('❌ Invalid county coordinates:', avgLat, avgLng);
+        }
+      } else {
+        console.log('❌ County zoom failed - no results or map not ready');
+      }
+    }
+  };
+
+  // Funcția pentru Enter în căutare
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      console.log('⌨️ Enter pressed, searching for:', searchQuery);
+      handleSearch(searchQuery);
+    }
+  };
+
+  // Funcția pentru a selecta o locație din căutare
+  const selectLocation = (location: FishingLocation & { score: number }) => {
+    console.log('🎯 Selecting location:', location);
+    console.log('🎯 Map instance:', mapInstanceRef.current);
+    
+    // Verifică dacă coordonatele sunt valide
+    const lng = location.coords[0];
+    const lat = location.coords[1];
+    
+    if (!lng || !lat || isNaN(lng) || isNaN(lat)) {
+      console.error('❌ Invalid coordinates:', lng, lat);
+      return;
+    }
+    
+    if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+      // Centrează harta pe locația selectată
+      mapInstanceRef.current.flyTo({
+        center: [lng, lat],
+        zoom: 14,
+        duration: 1000
+      });
+      
+      // Găsește markerul corespunzător și deschide popup-ul
+      setTimeout(() => {
+        const markers = markersRef.current;
+        console.log('🔍 Looking for marker among', markers.length, 'markers');
+        
+        const targetMarker = markers.find(marker => {
+          const markerLngLat = marker.getLngLat();
+          const distance = Math.sqrt(
+            Math.pow(markerLngLat.lng - lng, 2) + 
+            Math.pow(markerLngLat.lat - lat, 2)
+          );
+          return distance < 0.01; // Toleranță mai mare
+        });
+        
+        console.log('🎯 Found target marker:', targetMarker);
+        
+        if (targetMarker) {
+          const popup = targetMarker.getPopup();
+          if (popup && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+            popup.addTo(mapInstanceRef.current);
+            console.log('✅ Popup opened');
+          }
+        } else {
+          console.log('❌ No marker found for location, creating temp popup');
+          // Creează un popup temporar dacă nu găsește markerul
+          const tempPopup = new mapboxgl.Popup({
+            maxWidth: '300px',
+            closeButton: true,
+            className: 'custom-popup'
+          }).setHTML(`
+            <div class="p-4 bg-white rounded-xl shadow-lg border border-gray-100">
+              <h3 class="font-bold text-lg text-gray-800 mb-2">${location.name}</h3>
+              <p class="text-sm text-gray-600">${location.subtitle || ''}</p>
+              <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
+              <div class="mt-3 flex gap-2">
+                <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
+                  Vezi recorduri
+                </button>
+                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600">
+                  Adaugă record
+                </button>
+                </div>
+              </div>
+          `);
+          
+          if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+            tempPopup.setLngLat([lng, lat])
+              .addTo(mapInstanceRef.current);
+            console.log('✅ Temp popup created');
+          }
+        }
+      }, 1200); // După ce se termină animația
+    } else {
+      console.error('❌ Map not ready for location selection');
+    }
+    setShowSearchResults(false);
+    setSearchQuery('');
+  };
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return; // Previne reîncărcarea
+
+    // Previne reîncărcarea la focus change - COMPLET DEZACTIVAT
+    const handleVisibilityChange = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    const handleFocus = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    // Previne reîncărcarea la resize
+    const handleResize = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    const handleBlur = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+    
+    // Adaugă event listeners cu capture: true pentru a preveni propagarea
+    document.addEventListener('visibilitychange', handleVisibilityChange, { capture: true, passive: false });
+    window.addEventListener('focus', handleFocus, { capture: true, passive: false });
+    window.addEventListener('blur', handleBlur, { capture: true, passive: false });
+    window.addEventListener('resize', handleResize, { capture: true, passive: false });
+
+    // Detect if mobile device - more accurate detection
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
+    
+    // CRITICAL: Simplified config to prevent reload issues and white boxes
+    const mapConfig: mapboxgl.MapboxOptions = {
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [25.0094, 45.9432] as [number, number], // Centru România
+      zoom: 6,
+      minZoom: 3,
+      maxZoom: 18,
+      pitch: 0,
+      bearing: 0,
+      antialias: !isMobile,
+      renderWorldCopies: false,
+      // Optimizări pentru stabilitate și sincronizare
+      // preferCanvas: isMobile, // Not supported in Mapbox GL
+      // zoomAnimation: true, // Not supported in Mapbox GL
+      // detectRetina: false, // Not supported in Mapbox GL
+      // updateWhenZooming: true, // Not supported in Mapbox GL
+      // keepBuffer: 2, // Not supported in Mapbox GL
+      // Previne chenarele albe și reîncărcarea
+      preserveDrawingBuffer: false,
+      refreshExpiredTiles: false,
+      fadeDuration: 200, // Animație smooth pentru sincronizare
+      crossSourceCollisions: false,
+      // Optimizări pentru stabilitate
+      maxTileCacheSize: 50, // Mărit pentru sincronizare
+      localIdeographFontFamily: 'Arial',
+      // Previne reîncărcarea
+      attributionControl: false,
+      logoPosition: 'bottom-right'
+    };
+
+    const map = new mapboxgl.Map(mapConfig);
+    mapInstanceRef.current = map;
+
+    // Adaugă error handling pentru harta
+    map.on('error', (e) => {
+      console.error('Map error:', e);
+      setMapError(true);
+    });
+
+    // Custom navigation controls (no native controls)
+    // map.addControl(new mapboxgl.NavigationControl({
+    //   showCompass: !isMobile,
+    //   showZoom: true,
+    //   visualizePitch: false
+    // }), 'top-right');
+
+    // Custom geolocation control (no native controls)
+    // map.addControl(new mapboxgl.GeolocateControl({
+    //   positionOptions: {
+    //     enableHighAccuracy: true
+    //   },
+    //   trackUserLocation: true,
+    //   showUserHeading: true,
+    //   showUserLocation: true
+    // }), 'top-right');
+
+    // Load locations after map is ready - UNIFIED STRATEGY
+    setTimeout(() => {
+      console.log('🔄 Loading locations after map ready...');
+      if (databaseLocations.length > 0) {
+        addLocationsToMap(map, 'all');
+      }
+    }, 200); // Single delay for stability
+
+    // CRITICAL: Optimized event listeners to prevent reload issues
+      map.on('click', () => {
+        setShowShopPopup(false);
+        setShowLocationRequest(false);
+      setShowSearchResults(false);
+    });
+    
+    // Previne reîncărcarea la focus change
+    map.on('blur', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
+    
+    map.on('focus', () => {
+      // Nu face nimic - previne reîncărcarea
+    });
+
+    // Nu mai cerem geolocația automat - doar când userul apasă pe săgeată
+    // const locationAccepted = localStorage.getItem('locationAccepted');
+    // if (locationAccepted === 'true' && navigator.geolocation) {
+    // navigator.geolocation.getCurrentPosition(...) - comentat pentru a nu cere automat
+    // }
+
+    return () => {
+      // Cleanup event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange, { capture: true });
+      window.removeEventListener('focus', handleFocus, { capture: true });
+      window.removeEventListener('blur', handleBlur, { capture: true });
+      window.removeEventListener('resize', handleResize, { capture: true });
+      
+      // Cleanup doar dacă componenta se unmount complet
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      // Cleanup markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
+    };
+  }, [user, addLocationsToMap, databaseLocations.length]);
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

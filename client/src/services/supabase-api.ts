@@ -124,7 +124,7 @@ class SupabaseApiService {
     }
   }
 
-  async createRecord(recordData: any) {
+  async createRecord(recordData: Record<string, unknown>) {
     try {
       const { data, error } = await supabase
         .from('records')
@@ -144,7 +144,7 @@ class SupabaseApiService {
     }
   }
 
-  async updateRecord(recordId: string, updates: any) {
+  async updateRecord(recordId: string, updates: Record<string, unknown>) {
     try {
       const { data, error } = await supabase
         .from('records')

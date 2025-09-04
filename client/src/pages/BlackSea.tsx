@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { loadFishingLocations } from '@/services/fishingLocations';
 import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 // Mapbox token - from environment variables
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
@@ -17,7 +17,123 @@ export default function BlackSea() {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [fishingLocations, setFishingLocations] = useState<any[]>([]);
+  const [fishingLocations, setFishingLocations] = useState<Array<{
+    id: string;
+    name: string;
+    type: string;
+    county: string;
+    description: string;
+    coords: [number, number];
+    species: string[];
+    facilities: string[];
+    recordCount: number;
+    parking: boolean;
+    camping: boolean;
+  }>>([]);
+
+  // Funcție pentru adăugarea locațiilor maritime pe hartă
+  const addMaritimeLocationsToMap = useCallback((_map: mapboxgl.Map, filterType: string) => {
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    // Verifică dacă locațiile sunt încărcate
+    if (fishingLocations.length === 0) {
+      console.log('⚠️ No fishing locations loaded yet');
+      return;
+    }
+
+    // Filtrează doar locațiile maritime
+    const maritimeLocations = fishingLocations.filter(loc => loc.type === 'maritime');
+    const locationsToShow = filterType === 'all' ? maritimeLocations : 
+      maritimeLocations.filter(loc => loc.type === filterType);
+
+    locationsToShow.forEach(location => {
+      // Marker mai mare pentru Marea Neagră
+      const markerEl = document.createElement('div');
+      markerEl.className = 'custom-marker-maritime';
+      markerEl.style.cssText = `
+        width: 45px;
+        height: 45px;
+        background: linear-gradient(135deg, #06B6D4, #3B82F6);
+        border: 4px solid white;
+        border-radius: 50%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      `;
+      
+      // Hover effect
+      markerEl.addEventListener('mouseenter', () => {
+        markerEl.style.transform = 'scale(1.1)';
+      });
+      
+      markerEl.addEventListener('mouseleave', () => {
+        markerEl.style.transform = 'scale(1)';
+      });
+
+      const marker = new mapboxgl.Marker(markerEl)
+        .setLngLat(location.coords)
+        .addTo(_map);
+      
+      markersRef.current.push(marker);
+      
+      // Mapbox GL doesn't have bindPopup - using popup on click instead
+      marker.getElement().addEventListener('click', () => {
+        const popup = new mapboxgl.Popup({
+          maxWidth: '350px',
+          closeButton: true,
+          closeOnClick: false
+        }).setHTML(`
+          <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-lg text-cyan-900">${location.name}</h3>
+                <p class="text-sm text-cyan-700">${location.county}, Litoralul Românesc</p>
+              </div>
+            </div>
+            
+            <p class="text-cyan-800 mb-3">${location.description}</p>
+            
+            <div class="mb-3">
+              <div class="flex flex-wrap gap-1 mb-2">
+                ${location.species.map((species: string) => 
+                  `<span class="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded">${species}</span>`
+                ).join('')}
+              </div>
+              <div class="flex flex-wrap gap-1">
+                ${location.facilities.map((facility: string) => 
+                  `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">${facility}</span>`
+                ).join('')}
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm text-cyan-700 mb-3">
+              <span>📊 ${location.recordCount} recorduri</span>
+              <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
+              <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
+            </div>
+            
+            <div class="flex gap-2">
+              <button class="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Vezi recorduri
+              </button>
+              <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Adaugă record
+              </button>
+            </div>
+          </div>
+        `);
+        
+        popup.setLngLat(location.coords).addTo(_map);
+      });
+    });
+  }, [fishingLocations]);
 
   // Încarcă locațiile din baza de date
   useEffect(() => {
@@ -185,111 +301,7 @@ export default function BlackSea() {
         mapInstanceRef.current.remove();
       }
     };
-  }, [user, fishingLocations]);
-
-  // Funcție pentru adăugarea locațiilor maritime pe hartă
-  const addMaritimeLocationsToMap = (_map: mapboxgl.Map, filterType: string) => {
-    // Clear existing markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-
-    // Verifică dacă locațiile sunt încărcate
-    if (fishingLocations.length === 0) {
-      console.log('⚠️ No fishing locations loaded yet');
-      return;
-    }
-
-    // Filtrează doar locațiile maritime
-    const maritimeLocations = fishingLocations.filter(loc => loc.type === 'maritime');
-    const locationsToShow = filterType === 'all' ? maritimeLocations : 
-      maritimeLocations.filter(loc => loc.type === filterType);
-
-    locationsToShow.forEach(location => {
-      // Marker mai mare pentru Marea Neagră
-      const markerEl = document.createElement('div');
-      markerEl.className = 'custom-marker-maritime';
-      markerEl.style.cssText = `
-        width: 45px;
-        height: 45px;
-        background: linear-gradient(135deg, #06B6D4, #3B82F6);
-        border: 4px solid white;
-        border-radius: 50%;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-      `;
-      
-      // Hover effect
-      markerEl.addEventListener('mouseenter', () => {
-        markerEl.style.transform = 'scale(1.1)';
-      });
-      
-      markerEl.addEventListener('mouseleave', () => {
-        markerEl.style.transform = 'scale(1)';
-      });
-
-      const marker = new mapboxgl.Marker(markerEl)
-        .setLngLat(location.coords)
-        .addTo(_map);
-      
-      markersRef.current.push(marker);
-      
-      // Mapbox GL doesn't have bindPopup - using popup on click instead
-      marker.getElement().addEventListener('click', () => {
-        const popup = new mapboxgl.Popup({
-          maxWidth: '350px',
-          closeButton: true,
-          closeOnClick: false
-        }).setHTML(`
-          <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
-                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                </svg>
-              </div>
-              <div>
-                <h3 class="font-bold text-lg text-cyan-900">${location.name}</h3>
-                <p class="text-sm text-cyan-700">${location.county}, Litoralul Românesc</p>
-              </div>
-            </div>
-            
-            <p class="text-cyan-800 mb-3">${location.description}</p>
-            
-            <div class="mb-3">
-              <div class="flex flex-wrap gap-1 mb-2">
-                ${location.species.map((species: string) => 
-                  `<span class="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded">${species}</span>`
-                ).join('')}
-              </div>
-              <div class="flex flex-wrap gap-1">
-                ${location.facilities.map((facility: string) => 
-                  `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">${facility}</span>`
-                ).join('')}
-              </div>
-            </div>
-            
-            <div class="flex items-center justify-between text-sm text-cyan-700 mb-3">
-              <span>📊 ${location.recordCount} recorduri</span>
-              <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
-              <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
-            </div>
-            
-            <div class="flex gap-2">
-              <button class="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-                Vezi recorduri
-              </button>
-              <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-                Adaugă record
-              </button>
-            </div>
-          </div>
-        `);
-        
-        popup.setLngLat(location.coords).addTo(_map);
-      });
-    });
-  };
+  }, [user, fishingLocations, addMaritimeLocationsToMap]);
 
   // Funcție pentru filtrarea locațiilor maritime
   const filterMaritimeLocations = (type: string) => {

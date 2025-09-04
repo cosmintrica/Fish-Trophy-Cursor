@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { supabaseApi } from '@/services/supabase-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,7 +148,7 @@ const Profile: React.FC = () => {
         // Check if user has Google provider - verifică mai multe surse
         const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
                                  user.app_metadata?.providers?.includes('google') ||
-                                 user.identities?.some(identity => identity.provider === 'google');
+                                 user.identities?.some((identity: any) => identity.provider === 'google');
         
         setIsGoogleUser(hasGoogleProvider);
         setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
@@ -444,7 +444,7 @@ const Profile: React.FC = () => {
     try {
       // First, verify the current password by attempting to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
+        email: user.email || '',
         password: passwordData.currentPassword
       });
 
@@ -494,7 +494,7 @@ const Profile: React.FC = () => {
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: user.email!
+        email: user.email ?? ''
       });
 
       if (error) {
