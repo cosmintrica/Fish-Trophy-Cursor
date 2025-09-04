@@ -26,14 +26,6 @@
   port = 8889
   targetPort = 5173
 
-[build.environment]
-  NODE_VERSION = "20"
-  DEBUG = "vite:*"
-  SECRETS_SCAN_OMIT_PATHS = "env.example,dist/**/*,node_modules/**/*,client/node_modules/**/*,netlify/functions/**/*,.env*"
-  SECRETS_SCAN_ENABLED = "false"
-  CI = "false"
-  # Supabase configuration will be handled by Netlify Supabase extension
-
 # API redirects - must come BEFORE catch-all redirect
 # Order is CRITICAL - most specific routes first!
 
