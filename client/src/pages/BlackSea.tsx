@@ -7,8 +7,8 @@ import { loadFishingLocations } from '@/services/fishingLocations';
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/lib/auth-supabase';
 
-// Mapbox token - token personal
-mapboxgl.accessToken = 'pk.eyJ1IjoiY29zbWludHJpY2EiLCJhIjoiY21mNGtpZnA4MDUwazJtc2tvdDdhc2dwYSJ9.f7S4wKF1IskQCSBn9_7zIQ';
+// Mapbox token - from environment variables
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 export default function BlackSea() {
   const { user } = useAuth();

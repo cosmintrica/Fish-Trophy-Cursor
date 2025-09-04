@@ -10,8 +10,8 @@ import { useAuth } from '@/lib/auth-supabase';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 
-// Mapbox token - token personal
-mapboxgl.accessToken = 'pk.eyJ1IjoiY29zbWludHJpY2EiLCJhIjoiY21mNGtpZnA4MDUwazJtc2tvdDdhc2dwYSJ9.f7S4wKF1IskQCSBn9_7zIQ';
+// Mapbox token - from environment variables
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 // CRITICAL: Mobile-specific CSS optimizations
 const mobileCSS = `

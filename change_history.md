@@ -1,5 +1,27 @@
 # 📝 Change History - Fish Trophy Project
 
+## [2025-09-04] - 06:30 - Service Worker Cache Conflicts & React Hooks Fix
+
+### 🔧 CRITICAL FIXES
+- **Fixed Service Worker cache conflicts**: Disabled SW in dev to prevent React conflicts
+- **Resolved Invalid hook call errors**: Fixed React hooks order violations
+- **Fixed white page on refresh**: Resolved browser cache issues
+- **Added React dedupe**: Prevented multiple React instances in vite.config.ts
+- **Improved HMR configuration**: Better websocket stability for development
+
+### 🛠️ TECHNICAL CHANGES
+- **Service Worker**: Now only registers in production (`import.meta.env.PROD`)
+- **Vite config**: Added `dedupe: ['react', 'react-dom']` and improved HMR settings
+- **Cache management**: Cleaned all Vite caches and reinstalled dependencies
+- **JSX runtime**: Maintained automatic JSX runtime with proper configuration
+- **Error handling**: Added proper error boundaries and fallbacks
+
+### 🎯 RESULT
+- **Application works perfectly in incognito mode** (confirms cache issue was resolved)
+- **No more Invalid hook call errors**
+- **Stable development environment**
+- **All React hooks working correctly**
+
 ## [2025-09-03] - 02:15 - Complete Supabase Migration & Cleanup
 
 ### 🚀 COMPLETE MIGRATION TO SUPABASE
