@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Fish, MapPin, Navigation, X } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { loadFishingLocations, FishingLocation } from '@/services/fishingLocations';
 
 import { geocodingService } from '@/services/geocoding';
@@ -10,12 +10,11 @@ import { useAuth } from '@/hooks/useAuth';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 
-// Mapbox token - from environment variables
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+// MapLibre doesn't need access token
 
 // CRITICAL: Mobile-specific CSS optimizations
 const mobileCSS = `
-  .mapboxgl-container {
+  .maplibregl-container {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -24,7 +23,7 @@ const mobileCSS = `
     user-select: none;
   }
   
-  .mapboxgl-canvas {
+  .maplibregl-canvas {
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
   }
@@ -34,11 +33,11 @@ const mobileCSS = `
   }
   
   @media (max-width: 768px) {
-    .mapboxgl-popup-content {
+    .maplibregl-popup-content {
       margin: 8px !important;
     }
     
-    .mapboxgl-popup-tip {
+    .maplibregl-popup-tip {
       width: 12px !important;
       height: 12px !important;
     }
@@ -55,10 +54,10 @@ if (typeof document !== 'undefined') {
 export default function Home() {
   const { user } = useAuth();
   const { websiteData, organizationData } = useStructuredData();
-  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
@@ -72,7 +71,7 @@ export default function Home() {
   const [mapError, setMapError] = useState(false);
 
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
-  const addLocationsToMap = useCallback((_map: mapboxgl.Map, filterType: string) => {
+  const addLocationsToMap = useCallback((_map: maplibregl.Map, filterType: string) => {
     if (!_map || !_map.getContainer()) {
       console.error('❌ Map instance is null or not ready');
       return;
@@ -95,7 +94,7 @@ export default function Home() {
     console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 
     // Adaugă markerii în batch pentru performanță mai bună
-    const markers: mapboxgl.Marker[] = [];
+    const markers: maplibregl.Marker[] = [];
     
     locationsToShow.forEach(location => {
       // Determină culoarea în funcție de tipul locației
@@ -170,10 +169,10 @@ export default function Home() {
         // });
       }
 
-      let marker: mapboxgl.Marker | null = null;
+      let marker: maplibregl.Marker | null = null;
       
       if (_map && _map.getContainer()) {
-        marker = new mapboxgl.Marker(markerEl)
+        marker = new maplibregl.Marker(markerEl)
           .setLngLat(location.coords)
           .addTo(_map);
         
@@ -182,7 +181,7 @@ export default function Home() {
       // CRITICAL: Ultra-simplified popup for mobile performance
       const popupContent = isMobile ? `
         <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
-          <button class="absolute top-2 right-2 w-5 h-5 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+          <button class="absolute top-2 right-2 w-5 h-5 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -218,7 +217,7 @@ export default function Home() {
         </div>
       ` : `
         <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-          <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+          <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -261,7 +260,7 @@ export default function Home() {
         </div>
       `;
 
-        const popup = new mapboxgl.Popup({
+        const popup = new maplibregl.Popup({
           maxWidth: isMobile ? '240px' : '400px',
           closeButton: false, // Custom close button
           className: 'custom-popup'
@@ -532,7 +531,7 @@ export default function Home() {
         } else {
           console.log('❌ No marker found for location, creating temp popup');
           // Creează un popup temporar dacă nu găsește markerul
-          const tempPopup = new mapboxgl.Popup({
+          const tempPopup = new maplibregl.Popup({
             maxWidth: '300px',
             closeButton: true,
             className: 'custom-popup'
@@ -607,16 +606,15 @@ export default function Home() {
     console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
     // CRITICAL: Simplified config to prevent reload issues and white boxes
-    const mapConfig: mapboxgl.MapboxOptions = {
+    const mapConfig: maplibregl.MapOptions = {
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'https://demotiles.maplibre.org/style.json',
       center: [25.0094, 45.9432] as [number, number], // Centru România
       zoom: 6,
       minZoom: 3,
       maxZoom: 18,
       pitch: 0,
       bearing: 0,
-      antialias: !isMobile,
       renderWorldCopies: false,
       // Optimizări pentru stabilitate și sincronizare
       // preferCanvas: isMobile, // Not supported in Mapbox GL
@@ -625,7 +623,6 @@ export default function Home() {
       // updateWhenZooming: true, // Not supported in Mapbox GL
       // keepBuffer: 2, // Not supported in Mapbox GL
       // Previne chenarele albe și reîncărcarea
-      preserveDrawingBuffer: false,
       refreshExpiredTiles: false,
       fadeDuration: 200, // Animație smooth pentru sincronizare
       crossSourceCollisions: false,
@@ -637,7 +634,7 @@ export default function Home() {
       logoPosition: 'bottom-right'
     };
 
-    const map = new mapboxgl.Map(mapConfig);
+    const map = new maplibregl.Map(mapConfig);
     mapInstanceRef.current = map;
 
     // Adaugă error handling pentru harta
@@ -647,14 +644,14 @@ export default function Home() {
     });
 
     // Custom navigation controls (no native controls)
-    // map.addControl(new mapboxgl.NavigationControl({
+    // map.addControl(new maplibregl.NavigationControl({
     //   showCompass: !isMobile,
     //   showZoom: true,
     //   visualizePitch: false
     // }), 'top-right');
 
     // Custom geolocation control (no native controls)
-    // map.addControl(new mapboxgl.GeolocateControl({
+    // map.addControl(new maplibregl.GeolocateControl({
     //   positionOptions: {
     //     enableHighAccuracy: true
     //   },
@@ -840,7 +837,7 @@ export default function Home() {
     userMarkerEl.innerHTML = '🎣';
 
         if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-      const userMarker = new mapboxgl.Marker(userMarkerEl)
+      const userMarker = new maplibregl.Marker(userMarkerEl)
         .setLngLat([longitude, latitude])
         .addTo(mapInstanceRef.current);
 
@@ -854,14 +851,14 @@ export default function Home() {
       try {
         const address = await geocodingService.reverseGeocode(latitude, longitude);
         
-        const popup = new mapboxgl.Popup({
+        const popup = new maplibregl.Popup({
           maxWidth: '250px',
           closeButton: false,
           closeOnClick: false,
           className: 'custom-popup'
         }).setHTML(`
           <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-            <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+            <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
@@ -939,9 +936,9 @@ export default function Home() {
             userMarkerEl.className = 'user-location-marker';
             userMarkerEl.innerHTML = `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`;
 
-            let userMarker: mapboxgl.Marker | null = null;
+            let userMarker: maplibregl.Marker | null = null;
             
-            userMarker = new mapboxgl.Marker(userMarkerEl)
+            userMarker = new maplibregl.Marker(userMarkerEl)
               .setLngLat([longitude, latitude])
               .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
@@ -950,7 +947,7 @@ export default function Home() {
             const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
             const userPhoto = user?.user_metadata?.avatar_url || '';
             
-            const popup = new mapboxgl.Popup({
+            const popup = new maplibregl.Popup({
               maxWidth: '250px',
               closeButton: false,
               closeOnClick: false,
@@ -958,7 +955,7 @@ export default function Home() {
               offset: [0, -10] // Popup deasupra markerului
             }).setHTML(`
               <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-                <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.mapboxgl-popup').remove()">
+                <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
