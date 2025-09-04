@@ -234,55 +234,60 @@ export default function BlackSea() {
       
       markersRef.current.push(marker);
       
-      // marker.bindPopup(` // Mapbox GL doesn't have bindPopup
-        <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
-              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-              </svg>
+      // Mapbox GL doesn't have bindPopup - using popup on click instead
+      marker.getElement().addEventListener('click', () => {
+        const popup = new mapboxgl.Popup({
+          maxWidth: 350,
+          closeButton: true,
+          closeOnClick: false
+        }).setHTML(`
+          <div class="p-4 min-w-[300px] max-w-[350px] bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-lg text-cyan-900">${location.name}</h3>
+                <p class="text-sm text-cyan-700">${location.county}, Litoralul Românesc</p>
+              </div>
             </div>
-            <div>
-              <h3 class="font-bold text-lg text-cyan-900">${location.name}</h3>
-              <p class="text-sm text-cyan-700">${location.county}, Litoralul Românesc</p>
+            
+            <p class="text-cyan-800 mb-3">${location.description}</p>
+            
+            <div class="mb-3">
+              <div class="flex flex-wrap gap-1 mb-2">
+                ${location.species.map((species: string) => 
+                  `<span class="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded">${species}</span>`
+                ).join('')}
+              </div>
+              <div class="flex flex-wrap gap-1">
+                ${location.facilities.map((facility: string) => 
+                  `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">${facility}</span>`
+                ).join('')}
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm text-cyan-700 mb-3">
+              <span>📊 ${location.recordCount} recorduri</span>
+              <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
+              <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
+            </div>
+            
+            <div class="flex gap-2">
+              <button class="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Vezi recorduri
+              </button>
+              <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                Adaugă record
+              </button>
             </div>
           </div>
-          
-          <p class="text-cyan-800 mb-3">${location.description}</p>
-          
-          <div class="mb-3">
-            <div class="flex flex-wrap gap-1 mb-2">
-              ${location.species.map(species => 
-                `<span class="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded">${species}</span>`
-              ).join('')}
-            </div>
-            <div class="flex flex-wrap gap-1">
-              ${location.facilities.map(facility => 
-                `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">${facility}</span>`
-              ).join('')}
-            </div>
-          </div>
-          
-          <div class="flex items-center justify-between text-sm text-cyan-700 mb-3">
-            <span>📊 ${location.recordCount} recorduri</span>
-            <span>🚗 ${location.parking ? 'Parcare' : 'Fără parcare'}</span>
-            <span>🏕️ ${location.camping ? 'Camping' : 'Fără camping'}</span>
-          </div>
-          
-          <div class="flex gap-2">
-            <button class="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-              Vezi recorduri
-            </button>
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-              Adaugă record
-            </button>
-          </div>
-        </div>
-      `, {
-        maxWidth: 350,
-        closeButton: true,
-        closeOnClick: false
-      }); // Mapbox GL doesn't have bindPopup
+        `);
+        
+        popup.setLngLat(location.coords).addTo(_map);
+      });
     });
   };
 
