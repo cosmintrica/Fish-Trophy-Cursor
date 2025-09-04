@@ -100,7 +100,7 @@ const Species = () => {
         'Pești migratori': 'amestec'
       };
       const mapped = categoryMap[selectedCategory]
-      matchesCategory = speciesItem.category === (mapped as any);
+      matchesCategory = speciesItem.category === mapped;
     }
     
     return matchesSearch && matchesCategory;

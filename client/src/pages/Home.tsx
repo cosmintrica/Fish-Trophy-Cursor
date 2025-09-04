@@ -236,7 +236,7 @@ export default function Home() {
       let marker: maplibregl.Marker | null = null;
       
       // Use coords [lng, lat] coming from service; validate before adding
-      const [lng, lat] = location.coords || [] as any;
+      const [lng, lat] = location.coords || [0, 0];
       if (
         _map &&
         _map.getContainer() &&
@@ -246,7 +246,7 @@ export default function Home() {
         !Number.isNaN(lat)
       ) {
         // marker ca în designul anterior: cerc colorat cu border alb
-        marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' as any })
+        marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
           .setLngLat([lng, lat])
           .addTo(_map);
         
@@ -418,7 +418,7 @@ export default function Home() {
 
 
   // Funcția de căutare
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     console.log('🔍 Searching for:', query);
     setSearchQuery(query);
     if (query.trim() === '') {
@@ -533,7 +533,7 @@ export default function Home() {
         console.log('❌ County zoom failed - no results or map not ready');
       }
     }
-  };
+  }, [databaseLocations]);
 
   // Debounce pentru căutare – mai fluid și fără „salturi”
   useEffect(() => {
@@ -546,7 +546,7 @@ export default function Home() {
       }
     }, 150);
     return () => clearTimeout(id);
-  }, [searchQuery]);
+  }, [searchQuery, handleSearch]);
 
   // Funcția pentru Enter în căutare
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
@@ -603,7 +603,7 @@ export default function Home() {
           
           // Center with offset for better visibility
           const c = map.project([lng, lat]);
-          const adj = map.unproject([c.x, c.y - 120] as any);
+          const adj = map.unproject([c.x, c.y - 120]);
           map.easeTo({ center: [adj.lng, adj.lat], duration: 400 });
         } else {
           // Create temp popup if no marker found
@@ -741,7 +741,7 @@ export default function Home() {
     mapContainer.style.background = '#f8fafc';
 
     // Adaugă error handling pentru harta
-    map.on('error', (e: any) => {
+    map.on('error', (e: Error) => {
       console.error('Map error:', e);
       setMapError(true);
     });
@@ -813,7 +813,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, addLocationsToMap, databaseLocations.length]);
+  }, [user, addLocationsToMap, databaseLocations.length, activeFilter]);
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

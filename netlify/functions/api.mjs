@@ -1,12 +1,20 @@
 // Simple catch-all API for local/dev usage
-import { json } from '@netlify/functions'
 
 // In-memory stores (dev only)
 const profiles = new Map()
 const records = new Map()
 
-const ok = (data, init = {}) => json(data, { status: 200, headers: cors(), ...init })
-const bad = (message, status = 400) => json({ success: false, error: message }, { status, headers: cors() })
+const ok = (data, init = {}) => ({
+  statusCode: 200,
+  headers: cors(),
+  body: JSON.stringify(data),
+  ...init
+})
+const bad = (message, status = 400) => ({
+  statusCode: status,
+  headers: cors(),
+  body: JSON.stringify({ success: false, error: message })
+})
 const cors = () => ({
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -27,7 +35,10 @@ const parsePath = (path) => path.replace(/^\/api\//, '').split('/')
 export const handler = async (event) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: cors() })
+    return {
+      statusCode: 204,
+      headers: cors()
+    }
   }
 
   const segments = parsePath(event.path)

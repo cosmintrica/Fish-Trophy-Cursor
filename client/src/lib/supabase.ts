@@ -4,7 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
-function createSafeSupabase(): SupabaseClient | any {
+function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
   const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val)
   if (!looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
     return createClient(supabaseUrl, supabaseAnonKey)
@@ -20,6 +20,10 @@ function createSafeSupabase(): SupabaseClient | any {
       signInWithOAuth: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
       signOut: async () => ({ error: null }),
       updateUser: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      resend: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      setSession: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      verifyOtp: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
+      linkIdentity: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
     },
     storage: {
       from: () => ({
@@ -37,7 +41,7 @@ function createSafeSupabase(): SupabaseClient | any {
   }
 }
 
-export const supabase = createSafeSupabase()
+export const supabase = createSafeSupabase() as any
 
 // Storage bucket names (Supabase - only avatars and thumbnails)
 export const STORAGE_BUCKETS = {
