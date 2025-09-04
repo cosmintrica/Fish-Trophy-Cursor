@@ -34,6 +34,4 @@
 [functions]
   directory = "netlify/functions"
 
-# Use Supabase extension instead of Neon
-[[plugins]]
-  package = "@netlify/plugin-supabase"
+# Supabase extension configured via Netlify App UI - no plugin configuration needed
