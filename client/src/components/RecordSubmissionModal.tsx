@@ -22,7 +22,7 @@ interface Species {
   scientific_name: string;
 }
 
-interface Location {
+interface FishingLocation {
   id: string;
   name: string;
   type: string;
@@ -37,7 +37,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [species, setSpecies] = useState<Species[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [locations, setLocations] = useState<FishingLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState(locationId || '');
   
   // State for limited display and search

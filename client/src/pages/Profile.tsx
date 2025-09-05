@@ -289,7 +289,7 @@ const Profile = () => {
     checkGoogleAuthStatus();
     loadUserGear();
     loadUserRecords();
-  }, [user, loadProfileData, checkGoogleAuthStatus, loadUserGear]);
+  }, [user, loadProfileData, checkGoogleAuthStatus, loadUserGear, loadUserRecords]);
 
   // Load location data when county/city changes
   useEffect(() => {

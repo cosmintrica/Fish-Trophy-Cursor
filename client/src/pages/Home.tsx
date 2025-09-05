@@ -186,6 +186,7 @@ export default function Home() {
     locationsToShow.forEach(location => {
       // Debug: log location type for Dunărea
       if (location.name && location.name.toLowerCase().includes('dunărea')) {
+        console.log('Dunărea location type:', location.type);
       }
       
       // Determină culoarea în funcție de tipul locației
@@ -446,7 +447,7 @@ export default function Home() {
     if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
       addLocationsToMap(mapInstanceRef.current, activeFilter);
     }
-  }, [databaseLocations, isLoadingLocations]);
+  }, [databaseLocations, isLoadingLocations, activeFilter, addLocationsToMap]);
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -564,6 +565,7 @@ export default function Home() {
           console.error('❌ Invalid county coordinates:', avgLat, avgLng);
         }
       } else {
+        console.log('No valid coordinates found for county');
       }
     }
   }, [databaseLocations]);
@@ -844,7 +846,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, addLocationsToMap, databaseLocations.length]); // Removed activeFilter to prevent re-render
+  }, [user, addLocationsToMap, databaseLocations.length, activeFilter]); // Added activeFilter back
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

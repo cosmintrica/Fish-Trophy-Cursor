@@ -4,11 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+interface Record {
+  id: string;
+  weight: number;
+  length_cm: number;
+  captured_at: string;
+  notes?: string;
+  photo_url?: string;
+  video_url?: string;
+  status: string;
+  fish_species?: {
+    name: string;
+  };
+  fishing_locations?: {
+    name: string;
+    type: string;
+    county: string;
+  };
+  profiles?: {
+    display_name: string;
+  };
+}
+
 interface RecordDetailsModalProps {
-  record: any;
+  record: Record | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit?: (record: any) => void;
+  onEdit?: (record: Record) => void;
   onDelete?: (recordId: string) => void;
   isAdmin?: boolean;
   canEdit?: boolean;

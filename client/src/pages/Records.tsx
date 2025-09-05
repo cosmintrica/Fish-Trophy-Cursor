@@ -3,11 +3,33 @@ import { Trophy, Target, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X,
 import { supabase } from '@/lib/supabase';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
+interface Record {
+  id: string;
+  weight: number;
+  length_cm: number;
+  captured_at: string;
+  notes?: string;
+  photo_url?: string;
+  video_url?: string;
+  status: string;
+  fish_species?: {
+    name: string;
+  };
+  fishing_locations?: {
+    name: string;
+    type: string;
+    county: string;
+  };
+  profiles?: {
+    display_name: string;
+  };
+}
+
 const Records = () => {
   // Real data states
-  const [records, setRecords] = useState<any[]>([]);
-  const [species, setSpecies] = useState<any[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
+  const [records, setRecords] = useState<Record[]>([]);
+  const [species, setSpecies] = useState<{id: string; name: string}[]>([]);
+  const [locations, setLocations] = useState<{id: string; name: string; type: string; county: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState('all');
@@ -16,7 +38,7 @@ const Records = () => {
   const [activeTab, setActiveTab] = useState('overall');
   
   // Modal states
-  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Advanced filters
@@ -41,12 +63,20 @@ const Records = () => {
           *,
           fish_species:species_id(name),
           fishing_locations:location_id(name, type, county),
-          profiles:user_id(display_name)
+          profiles:user_id(display_name, email)
         `)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
 
       if (error) throw error;
+      console.log('Records loaded:', data);
+      
+      // Debug: Check if profiles data exists
+      if (data && data.length > 0) {
+        console.log('First record profiles data:', data[0].profiles);
+        console.log('First record user_id:', data[0].user_id);
+      }
+      
       setRecords(data || []);
     } catch (error) {
       console.error('Error loading records:', error);
@@ -67,6 +97,21 @@ const Records = () => {
     }
   };
 
+  // Debug function to check profiles
+  const checkProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .limit(5);
+
+      if (error) throw error;
+      console.log('Profiles in database:', data);
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+    }
+  };
+
   const loadLocations = async () => {
     try {
       const { data, error } = await supabase
@@ -82,15 +127,16 @@ const Records = () => {
   };
 
   useEffect(() => {
-    const loadAllData = async () => {
-      setLoading(true);
-      await Promise.all([
-        loadRecords(),
-        loadSpecies(),
-        loadLocations()
-      ]);
-      setLoading(false);
-    };
+      const loadAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      loadRecords(),
+      loadSpecies(),
+      loadLocations(),
+      checkProfiles() // Debug profiles
+    ]);
+    setLoading(false);
+  };
 
     loadAllData();
   }, []);
@@ -154,7 +200,7 @@ const Records = () => {
     setShowLocationDropdown(false);
   };
 
-  const openRecordModal = (record: any) => {
+  const openRecordModal = (record: Record) => {
     setSelectedRecord(record);
     setIsModalOpen(true);
   };
@@ -195,27 +241,27 @@ const Records = () => {
   const getRankIcon = (rank: number) => {
     if (rank === 1) {
       return (
-        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full text-white font-bold text-xl shadow-lg">
-          🥇
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full text-white font-bold text-2xl shadow-2xl border-4 border-yellow-300 transform rotate-12 hover:scale-110 transition-all duration-300">
+          <div className="text-4xl">🏆</div>
         </div>
       );
     }
     if (rank === 2) {
       return (
-        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full text-white font-bold text-xl shadow-lg">
-          🥈
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500 rounded-full text-white font-bold text-2xl shadow-2xl border-4 border-gray-200 transform rotate-12 hover:scale-110 transition-all duration-300">
+          <div className="text-4xl">🥈</div>
         </div>
       );
     }
     if (rank === 3) {
       return (
-        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-700 rounded-full text-white font-bold text-xl shadow-lg">
-          🥉
+        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 rounded-full text-white font-bold text-2xl shadow-2xl border-4 border-amber-300 transform rotate-12 hover:scale-110 transition-all duration-300">
+          <div className="text-4xl">🥉</div>
         </div>
       );
     }
     return (
-      <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg text-white font-bold text-lg">
+      <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg text-white font-bold text-lg shadow-lg">
         {rank}
       </div>
     );
@@ -514,7 +560,7 @@ const Records = () => {
                         {/* Record Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold text-gray-900 truncate">{record.profiles?.display_name || 'Pescător Anonim'}</h3>
+                            <h3 className="text-lg font-bold text-gray-900 truncate">{record.profiles?.display_name || 'Utilizator'}</h3>
                             {getStatusBadge(record.status)}
                           </div>
                           <p className="text-sm text-gray-700 font-medium">{record.fish_species?.name}</p>
