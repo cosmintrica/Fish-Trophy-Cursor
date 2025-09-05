@@ -53,20 +53,19 @@ const Admin: React.FC = () => {
   const loadRealData = async () => {
     setIsLoading(true);
     try {
-      // Load pending records
+      // Load pending records with correct column names
       const { data: records, error: recordsError } = await supabase
         .from('records')
         .select(`
           id,
-          species_name,
           weight,
-          length,
-          location_name,
-          date_caught,
-          time_caught,
+          length_cm,
+          captured_at,
           status,
           created_at,
-          profiles!inner(display_name)
+          fish_species:species_id(name),
+          fishing_locations:location_id(name),
+          profiles:user_id(display_name)
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
@@ -136,12 +135,14 @@ const Admin: React.FC = () => {
 
   const handleApproveRecord = async (recordId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('records')
         .update({ 
           status: 'verified',
           verified_at: new Date().toISOString(),
-          verified_by: (await supabase.auth.getUser()).data.user?.id
+          verified_by: user?.id
         })
         .eq('id', recordId);
 
@@ -158,12 +159,14 @@ const Admin: React.FC = () => {
 
   const handleRejectRecord = async (recordId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('records')
         .update({ 
           status: 'rejected',
           verified_at: new Date().toISOString(),
-          verified_by: (await supabase.auth.getUser()).data.user?.id,
+          verified_by: user?.id,
           rejection_reason: 'Nu îndeplinește criteriile'
         })
         .eq('id', recordId);

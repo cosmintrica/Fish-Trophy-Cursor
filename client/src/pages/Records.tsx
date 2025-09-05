@@ -66,14 +66,13 @@ const Records = () => {
   // Load real data from database
   const loadRecords = async () => {
     try {
-      // Load records with profiles in a single query using joins
+      // First load records
       const { data: recordsData, error: recordsError } = await supabase
         .from('records')
         .select(`
           *,
           fish_species:species_id(name),
-          fishing_locations:location_id(name, type, county),
-          profiles:user_id(display_name, email)
+          fishing_locations:location_id(name, type, county)
         `)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
@@ -84,11 +83,43 @@ const Records = () => {
         return;
       }
 
-      console.log('Records with profiles loaded:', recordsData);
-      if (recordsData && recordsData.length > 0) {
-        console.log('First record profile data:', recordsData[0].profiles);
+      if (!recordsData || recordsData.length === 0) {
+        setRecords([]);
+        return;
       }
-      setRecords(recordsData || []);
+
+      // Get unique user IDs
+      const userIds = [...new Set(recordsData.map(record => record.user_id))];
+      console.log('User IDs for profiles:', userIds);
+
+      // Load profiles separately - try with public access first
+      console.log('Attempting to load profiles for user IDs:', userIds);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error loading profiles:', profilesError);
+        // If profiles fail, still show records but without names
+        const recordsWithoutProfiles = recordsData.map(record => ({
+          ...record,
+          profiles: null
+        }));
+        setRecords(recordsWithoutProfiles);
+        return;
+      }
+
+      console.log('Profiles loaded:', profilesData);
+
+      // Merge records with profiles
+      const recordsWithProfiles = recordsData.map(record => ({
+        ...record,
+        profiles: profilesData?.find(profile => profile.id === record.user_id) || null
+      }));
+
+      console.log('Records with profiles:', recordsWithProfiles);
+      setRecords(recordsWithProfiles);
     } catch (error) {
       console.error('Error loading records:', error);
       setRecords([]);

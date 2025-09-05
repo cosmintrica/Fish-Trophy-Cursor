@@ -21,7 +21,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   // Check if user is admin - use environment variable for security
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
   const isAdmin = user?.email === adminEmail;
-  const [showBlackSeaPopup, setShowBlackSeaPopup] = useState(false);
+  // Removed Black Sea popup - now direct link
 
   // PWA Install Prompt Logic
   const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
@@ -179,12 +179,12 @@ export default function Layout({ children }: { children: ReactNode }) {
                   Marea Neagră
                 </Link>
               ) : (
-                <button
-                  onClick={() => setShowBlackSeaPopup(true)}
+                <Link
+                  to="/black-sea"
                   className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   Marea Neagră
-                </button>
+                </Link>
               )}
               {isAdmin && (
                 <Link
@@ -325,16 +325,14 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <span className="font-medium">Marea Neagră</span>
               </Link>
             ) : (
-              <button
-                onClick={() => {
-                  setShowBlackSeaPopup(true);
-                  closeMobileMenu();
-                }}
-                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors w-full text-left"
+              <Link
+                to="/black-sea"
+                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
               >
                 <MapPin className="w-5 h-5" />
                 <span className="font-medium">Marea Neagră</span>
-              </button>
+              </Link>
             )}
             
             {isAdmin && (
@@ -520,30 +518,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Black Sea Coming Soon Popup */}
-      {showBlackSeaPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlackSeaPopup(false)} />
-          <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full mx-2 sm:mx-0 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Fish className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Marea Neagră</h3>
-              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                Această secțiune este în construcție și va fi disponibilă în curând. 
-                Vom adăuga locații de pescuit, specii marine și recorduri din Marea Neagră.
-              </p>
-              <button
-                onClick={() => setShowBlackSeaPopup(false)}
-                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg sm:rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
-              >
-                Înțeleg
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Black Sea popup removed - now direct link */}
 
       {/* PWA Install Prompt */}
       {showPWAInstallPrompt && (

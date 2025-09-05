@@ -3,7 +3,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from '@/lib/auth-supabase';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AdminRoute from '@/components/AdminRoute';
+// AdminRoute removed - Black Sea now public
 import ScrollToTop from '@/components/ScrollToTop';
 
 // Pages
@@ -30,14 +30,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/email-confirmation" element={<EmailConfirmation />} />
-              <Route 
-                path="/black-sea" 
-                element={
-                  <AdminRoute>
-                    <BlackSea />
-                  </AdminRoute>
-                } 
-              />
+              <Route path="/black-sea" element={<BlackSea />} />
               <Route path="/species" element={<Species />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
               <Route path="/records" element={<Records />} />
