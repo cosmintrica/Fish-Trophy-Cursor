@@ -50,6 +50,46 @@
   background: transparent !important;
 }
 
+/* GPU Acceleration for smooth animations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize card animations */
+.group {
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize image scaling */
+.group img {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize button interactions */
+button {
+  will-change: background-color, transform, box-shadow;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize hover effects */
+.hover\:scale-110:hover {
+  transform: scale(1.1) translateZ(0);
+}
+
+.hover\:-translate-y-2:hover {
+  transform: translateY(-0.5rem) translateZ(0);
+}
+
+.hover\:scale-\[1\.02\]:hover {
+  transform: scale(1.02) translateZ(0);
+}
+
 /* Previne chenarele albe la focus change */
 .mapboxgl-canvas:focus {
   outline: none !important;

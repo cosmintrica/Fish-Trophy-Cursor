@@ -6,7 +6,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName?: string, location?: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName?: string, countyId?: string, cityId?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Record<string, unknown>) => Promise<void>;

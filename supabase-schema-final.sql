@@ -22,7 +22,9 @@ create table if not exists public.profiles (
   photo_url text,
   phone text,
   bio text default 'Pescar pasionat din România!',
-  location text,
+  location text, -- Keep for backward compatibility
+  county_id text references public.counties(id),
+  city_id uuid references public.cities(id),
   website text,
   role text default 'user' check (role in ('user','admin')),
   created_at timestamptz default now(),
@@ -42,6 +44,10 @@ create policy "Users can view own profile"
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
+
+create policy "Users can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
 
 -- updated_at auto
 create or replace function public.update_updated_at_column()
@@ -470,7 +476,39 @@ before update on public.fishing_regulations
 for each row execute function public.update_updated_at_column();
 
 -- =============================================
--- 10. USER GEAR (echipamente utilizatori)
+-- 10. COUNTIES AND CITIES (judete si orase)
+-- =============================================
+
+-- Tabela pentru judete
+create table if not exists public.counties (
+  id text primary key,
+  name text not null unique,
+  created_at timestamptz default now()
+);
+
+-- Tabela pentru orase
+create table if not exists public.cities (
+  id uuid default gen_random_uuid() primary key,
+  county_id text not null references public.counties(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now(),
+  unique (county_id, name)
+);
+
+-- Indexuri pentru performanta
+create index if not exists idx_cities_county_id on public.cities(county_id);
+create index if not exists idx_cities_name on public.cities(name);
+
+-- RLS pentru judete si orase
+alter table public.counties enable row level security;
+alter table public.cities enable row level security;
+
+-- Politici RLS - toate sunt publice pentru citire
+create policy "Counties are viewable by everyone" on public.counties for select using (true);
+create policy "Cities are viewable by everyone" on public.cities for select using (true);
+
+-- =============================================
+-- 11. USER GEAR (echipamente utilizatori)
 -- =============================================
 create table if not exists public.user_gear (
   id uuid default gen_random_uuid() primary key,

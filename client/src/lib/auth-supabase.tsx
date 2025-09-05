@@ -38,10 +38,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // CRITICAL: Set loading to false after a timeout to prevent white screen
     const timeout = setTimeout(() => {
       if (mounted) {
-        console.log('⚠️ Auth loading timeout - forcing loading to false');
+        console.warn('⚠️ Auth loading timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 3000); // 3 second timeout
+    }, 5000); // 5 second timeout
 
     // Listen for auth changes with error handling
     const {
@@ -69,14 +69,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, displayName?: string, location?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, countyId?: string, cityId?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           display_name: displayName,
-          location: location,
+          county_id: countyId,
+          city_id: cityId,
         },
       },
     });
@@ -103,6 +104,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       data: updates,
     });
     if (error) throw error;
+
+    // Also update the profiles table if user is authenticated
+    if (user?.id) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          display_name: updates.display_name,
+          county_id: updates.county_id,
+          city_id: updates.city_id,
+          bio: updates.bio,
+          phone: updates.phone,
+          website: updates.website,
+          updated_at: new Date().toISOString(),
+        });
+      
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      }
+    }
   };
 
   const value = {

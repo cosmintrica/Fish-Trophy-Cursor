@@ -25,8 +25,8 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
         className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors"
         style={{ willChange: 'background-color' }}
       >
-        <h3 className="text-sm md:text-base font-semibold text-gray-900 flex items-start gap-2">
-          <span className="text-blue-600 font-bold text-sm">Q{index + 1}.</span>
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 flex items-start gap-2">
+          <span className="text-blue-600 font-bold text-base">Q{index + 1}.</span>
           <span className="flex-1">{question}</span>
         </h3>
         <div 
@@ -52,7 +52,7 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
         }}
       >
         <div className="px-4 pb-3">
-          <p className="text-sm text-gray-700 leading-relaxed pl-6">
+          <p className="text-base text-gray-700 leading-relaxed pl-6">
             {answer}
           </p>
         </div>
@@ -63,7 +63,7 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
 
 // MapLibre doesn't need access token
 
-// CRITICAL: Mobile-specific CSS optimizations
+// CRITICAL: Mobile-specific CSS optimizations + Anti-flicker
 const mobileCSS = `
   .maplibregl-container {
     -webkit-tap-highlight-color: transparent;
@@ -72,15 +72,33 @@ const mobileCSS = `
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    will-change: auto;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
   }
   
   .maplibregl-canvas {
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
+    will-change: auto;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
   .custom-marker {
     pointer-events: auto !important;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+  
+  /* Prevent size changes during loading - 4:3 aspect ratio */
+  .maplibregl-map {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 450px;
+    max-height: 650px;
+    aspect-ratio: 4/3;
   }
   
   @media (max-width: 768px) {
@@ -679,66 +697,69 @@ export default function Home() {
     
     console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
-    // CRITICAL: Simplified config to prevent reload issues and white boxes
-    const mapConfig: maplibregl.MapOptions = {
-      container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          'osm': {
-            type: 'raster',
-            tiles: [
-              'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
-          }
-        },
-        layers: [
-          {
-            id: 'osm',
-            type: 'raster',
-            source: 'osm'
-          }
-        ]
-      },
-      center: [25.0094, 45.9432] as [number, number], // Centru România
-      zoom: 6,
-      minZoom: 3,
-      maxZoom: 18,
-      pitch: 0,
-      bearing: 0,
-      renderWorldCopies: false,
-      // Optimizări pentru performanță și stabilitate
-      refreshExpiredTiles: true,
-      fadeDuration: 0, // Eliminat complet pentru a preveni flicker
-      crossSourceCollisions: false,
-      attributionControl: false,
-      // GPU Acceleration optimizations - removed unsupported properties
-      // Optimizări anti-flicker
-      localIdeographFontFamily: false,
-      transformRequest: (url, resourceType) => {
-        if (resourceType === 'Tile' && url.includes('openstreetmap.org')) {
-          return {
-            url,
-            headers: {
-              'Cache-Control': 'max-age=31536000'
+          // CRITICAL: Optimized config to prevent flicker and size changes
+      const mapConfig: maplibregl.MapOptions = {
+        container: mapContainerRef.current,
+        style: {
+          version: 8,
+          sources: {
+            'osm': {
+              type: 'raster',
+              tiles: [
+                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              ],
+              tileSize: 256,
+              attribution: '© OpenStreetMap contributors'
             }
-          };
-        }
-        return { url };
-      },
-      logoPosition: 'bottom-right'
-    };
+          },
+          layers: [
+            {
+              id: 'osm',
+              type: 'raster',
+              source: 'osm'
+            }
+          ]
+        },
+        center: [25.0094, 45.9432] as [number, number], // Centru România
+        zoom: isMobile ? 5.5 : 6,
+        minZoom: 3,
+        maxZoom: 18,
+        pitch: 0,
+        bearing: 0,
+        renderWorldCopies: false,
+        // Anti-flicker optimizations
+        refreshExpiredTiles: false, // Disabled to prevent flicker
+        fadeDuration: 0,
+        crossSourceCollisions: false,
+        attributionControl: false,
+        localIdeographFontFamily: false,
+        // Prevent size changes during loading
+        transformRequest: (url, resourceType) => {
+          if (resourceType === 'Tile' && url.includes('openstreetmap.org')) {
+            return {
+              url,
+              headers: {
+                'Cache-Control': 'max-age=31536000'
+              }
+            };
+          }
+          return { url };
+        },
+        logoPosition: 'bottom-right'
+      };
 
     const map = new maplibregl.Map(mapConfig);
     mapInstanceRef.current = map;
 
-    // Simple initialization to prevent flicker
+    // Prevent flicker and size changes
     const mapContainer = map.getContainer();
     mapContainer.style.background = '#f8fafc';
+    mapContainer.style.willChange = 'auto';
+    mapContainer.style.transform = 'translateZ(0)';
+    mapContainer.style.backfaceVisibility = 'hidden';
+    mapContainer.style.perspective = '1000px';
 
     // Adaugă error handling pentru harta
     map.on('error', (e: Error) => {
@@ -813,7 +834,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, addLocationsToMap, databaseLocations.length, activeFilter]);
+  }, [user]); // Removed dependencies that cause re-renders
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
@@ -921,23 +942,24 @@ export default function Home() {
     const userMarkerEl = document.createElement('div');
     userMarkerEl.className = 'user-location-marker';
           userMarkerEl.style.cssText = `
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 3px solid #3B82F6;
-        border-radius: 50%;
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        z-index: 1000;
-        position: relative;
-        will-change: transform;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        width: 50px !important;
+        height: 50px !important;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+        border: 3px solid #3B82F6 !important;
+        border-radius: 50% !important;
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15) !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 24px !important;
+        z-index: 1000 !important;
+        position: relative !important;
+        will-change: transform !important;
       `;
       userMarkerEl.innerHTML = '🎣';
+      
+      console.log('🎣 User marker created with fishing pole emoji (addUserLocationMarker):', userMarkerEl);
       
       // Add hover effect
       userMarkerEl.addEventListener('mouseenter', () => {
@@ -1048,7 +1070,25 @@ export default function Home() {
             // Creează marker cu fundal alb și design îmbunătățit
             const userMarkerEl = document.createElement('div');
             userMarkerEl.className = 'user-location-marker';
-            userMarkerEl.innerHTML = `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl">🎣</div>`;
+            userMarkerEl.style.cssText = `
+              width: 50px !important;
+              height: 50px !important;
+              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+              border: 3px solid #3B82F6 !important;
+              border-radius: 50% !important;
+              box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15) !important;
+              cursor: pointer !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              font-size: 24px !important;
+              z-index: 1000 !important;
+              position: relative !important;
+              will-change: transform !important;
+            `;
+            userMarkerEl.innerHTML = '🎣';
+            
+            console.log('🎣 User marker created with fishing pole emoji:', userMarkerEl);
 
             let userMarker: maplibregl.Marker | null = null;
             
@@ -1056,6 +1096,9 @@ export default function Home() {
               .setLngLat([longitude, latitude])
               .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
+            
+            console.log('🎣 User marker added to map:', userMarker);
+            console.log('🎣 Map instance:', mapInstanceRef.current);
 
             // Adaugă popup cu design îmbunătățit
             const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
@@ -1292,7 +1335,7 @@ export default function Home() {
 
           {/* Map Controls - Mobile Optimized */}
           <div className="mb-6">
-            <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
+            <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
               {[
                 { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
                 { type: 'river', label: 'Ape curgătoare', icon: MapPin, color: 'bg-emerald-500 hover:bg-emerald-600' },
@@ -1313,13 +1356,13 @@ export default function Home() {
                 <button
                   key={type}
                   onClick={() => filterLocations(type)}
-                  className={`${color} text-white px-4 py-2 md:px-6 md:py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 ${
-                    activeFilter === type ? 'ring-4 ring-blue-200' : ''
+                  className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${
+                    activeFilter === type ? 'ring-2 ring-blue-200' : ''
                   }`}
                   style={{ willChange: 'transform, box-shadow, background-color' }}
                 >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="text-sm md:text-base">
+                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="text-xs md:text-sm">
                     {label} {isLoadingLocations ? '...' : `(${count})`}
                   </span>
                 </button>
@@ -1328,11 +1371,11 @@ export default function Home() {
               
               <button
                 onClick={openShopPopup}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105"
                 style={{ willChange: 'transform, box-shadow, background-color' }}
               >
-                <MapPin className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-sm md:text-base">Magazine de Pescuit</span>
+                <MapPin className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="text-xs md:text-sm">Magazine de Pescuit</span>
               </button>
             </div>
           </div>
@@ -1407,7 +1450,7 @@ export default function Home() {
       {/* FAQ Section - Mobile Optimized */}
       <section className="px-4 md:px-6 lg:px-8 mb-16">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-xl md:text-2xl font-bold text-center text-gray-900 mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
             Întrebări Frecvente
           </h2>
           

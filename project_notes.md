@@ -1,26 +1,28 @@
 # Fish Trophy Cursor - Project Notes
 
-## Current Status (2025-09-04 15:30)
+## Current Status (2025-09-05 05:00)
 
-### Recent Fixes
-- **Build Configuration Fixed**: Resolved Vite build issues that generated incorrect HTML
-- **Bundle Size Optimized**: Implemented intelligent code splitting (Mapbox 1.5MB, React 184KB, Supabase 122KB)
-- **Linting Errors Resolved**: Fixed all TypeScript and ESLint errors for successful builds
-- **Netlify Cache Optimized**: Added cache plugin to reduce 483MB cache size
-- **Security Improved**: Moved all API keys to environment variables (Mapbox, Supabase)
-- **Service Worker Cache Conflicts**: Disabled Service Worker in development to prevent React conflicts
-- **React Hooks Issues**: Fixed Invalid hook call and useState null errors
-- **White Page on Refresh**: Resolved browser cache issues causing white page
-- **Complete Supabase Migration**: Migrated from Firebase Auth + Neon DB to Supabase
-- **Code Cleanup**: Removed 23 old Netlify functions and all Firebase/Neon dependencies
-- **Build Success**: Project now builds successfully with proper HTML generation
+### Recent Major Achievements
+- **Species Page Complete Redesign**: Modern, compact cards with professional UI/UX
+- **Database Integration**: Complete migration from hardcoded data to Supabase database
+- **Location Data Migration**: Moved counties and cities from hardcoded to database tables
+- **Profile System Enhancement**: Updated profiles to use county_id and city_id from database
+- **Search & Filtering**: Diacritic-insensitive search with priority for fish names
+- **Pagination System**: 15-20 species initially with "vezi mai multe" functionality
+- **Account Management**: Secure account deletion with password verification
+- **Google Auth Integration**: Restored Google password setting functionality
 
 ### Current Focus
-- **Deployment Ready**: All build issues resolved, ready for Netlify deployment
-- **Performance Optimized**: Bundle size reduced through intelligent code splitting
-- **Security Hardened**: All sensitive data moved to environment variables
-- **Cache Optimized**: Netlify cache reduced from 483MB to manageable size
-- **Testing**: Verify deployment works correctly on fishtrophy.ro
+- **Profile Location Display**: Debugging county/city display from database (county_id/city_id undefined)
+- **Species Page Polish**: Finalizing card design and information display
+- **Database Schema**: Ensuring all tables and relationships are properly configured
+- **Testing**: Comprehensive testing of all new features and database integration
+
+### 🚨 Current Issues (2025-09-05)
+- **Profile Location Display**: County and city not displaying from database - shows "Locația nu este setată"
+- **Database Debug**: Added console logs to track county_id/city_id loading from profiles table
+- **Account Deletion**: Function works but only deletes data, not the actual Supabase Auth account
+- **Google Auth**: Removed linking option but kept password setting functionality
 
 ## 📋 Overview
 Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își înregistreze și să își partajeze capturile.

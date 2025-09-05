@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
 import SearchableSelect from '@/components/SearchableSelect';
-import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations';
+// import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations'; // Now using database
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -40,11 +40,12 @@ const Profile = () => {
     displayName: user?.user_metadata?.display_name || '',
     email: user?.email || '',
     phone: '',
-    location: '',
     bio: 'Pescar pasionat din România!'
   });
   const [selectedCounty, setSelectedCounty] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [counties, setCounties] = useState<{id: string, name: string}[]>([]);
+  const [cities, setCities] = useState<{id: string, name: string}[]>([]);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -57,7 +58,21 @@ const Profile = () => {
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
-  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+
+  // State pentru echipamente
+  const [userGear, setUserGear] = useState<any[]>([]);
+  const [isLoadingGear, setIsLoadingGear] = useState(false);
+  const [isAddingGear, setIsAddingGear] = useState(false);
+  const [showAddGearModal, setShowAddGearModal] = useState(false);
+  const [newGear, setNewGear] = useState({
+    gear_type: 'undita',
+    brand: '',
+    model: '',
+    description: '',
+    quantity: 1,
+    purchase_date: '',
+    price: 0
+  });
 
   // Mock data pentru recorduri - în viitor va veni din API
   const mockRecords = [
@@ -86,89 +101,251 @@ const Profile = () => {
   // Show mock records only for admin
   const records = isAdmin ? mockRecords : [];
 
+  // Încarcă judetele din baza de date
+  const loadCounties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('counties')
+        .select('id, name')
+        .order('name');
+      
+      if (error) {
+        console.error('Error loading counties:', error);
+        return;
+      }
+      
+      console.log('🔍 Counties loaded:', data?.length || 0, 'counties');
+      setCounties(data || []);
+    } catch (error) {
+      console.error('Error loading counties:', error);
+    }
+  };
+
+  // Încarcă orașele pentru un județ
+  const loadCities = async (countyId: string) => {
+    if (!countyId) {
+      setCities([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('cities')
+        .select('id, name')
+        .eq('county_id', countyId)
+        .order('name');
+      
+      if (error) {
+        console.error('Error loading cities:', error);
+        return;
+      }
+      
+      console.log('🔍 Cities loaded for county', countyId, ':', data?.length || 0, 'cities');
+      setCities(data || []);
+    } catch (error) {
+      console.error('Error loading cities:', error);
+    }
+  };
+
   // Încarcă datele profilului din Supabase
-  useEffect(() => {
-    const loadProfileData = async () => {
-      if (!user?.id) return;
+  const loadProfileData = async () => {
+    if (!user?.id) return;
 
-      try {
-        // Încearcă să încarce din tabela profiles
-        const result = await supabaseApi.getProfile(user.id);
+    try {
+      // Încarcă judetele
+      await loadCounties();
+      
+      // Încearcă să încarce din tabela profiles
+      const result = await supabaseApi.getProfile(user.id);
 
-        if (result.success && result.data) {
-          const location = result.data.location || user.user_metadata?.location || '';
-          const { county, city } = parseLocation(location);
-          
-          setProfileData({
-            displayName: result.data.displayName || user.user_metadata?.display_name || '',
-            email: result.data.email || user.email || '',
-            phone: result.data.phone || '',
-            location: location,
-            bio: result.data.bio || 'Pescar pasionat din România!'
-          });
-          setSelectedCounty(county);
-          setSelectedCity(city);
-        } else {
-          // Dacă nu există în baza de date, folosește datele din user_metadata
-          const location = user.user_metadata?.location || '';
-          const { county, city } = parseLocation(location);
-          
-          setProfileData({
-            displayName: user.user_metadata?.display_name || '',
-            email: user.email || '',
-            phone: '',
-            location: location,
-            bio: 'Pescar pasionat din România!'
-          });
-          setSelectedCounty(county);
-          setSelectedCity(city);
-        }
-      } catch (error) {
-        console.error('Error loading profile data:', error);
-        // Fallback la user_metadata daca exista o eroare
-        const location = user.user_metadata?.location || '';
-        const { county, city } = parseLocation(location);
+      if (result.success && result.data) {
+        console.log('🔍 Profile data loaded:', {
+          county_id: result.data.county_id,
+          city_id: result.data.city_id,
+          displayName: result.data.displayName
+        });
         
+        setProfileData({
+          displayName: result.data.displayName || user.user_metadata?.display_name || '',
+          email: result.data.email || user.email || '',
+          phone: result.data.phone || '',
+          bio: result.data.bio || 'Pescar pasionat din România!'
+        });
+        setSelectedCounty(result.data.county_id || '');
+        setSelectedCity(result.data.city_id || '');
+        
+        // Load cities for the selected county
+        if (result.data.county_id) {
+          console.log('🔍 Loading cities for county:', result.data.county_id);
+          await loadCities(result.data.county_id);
+        }
+      } else {
+        // Dacă nu există în baza de date, folosește datele din user_metadata
         setProfileData({
           displayName: user.user_metadata?.display_name || '',
           email: user.email || '',
           phone: '',
-          location: location,
           bio: 'Pescar pasionat din România!'
         });
-        setSelectedCounty(county);
-        setSelectedCity(city);
+        setSelectedCounty(user.user_metadata?.county_id || '');
+        setSelectedCity(user.user_metadata?.city_id || '');
       }
-    };
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      // Fallback la user_metadata daca exista o eroare
+      setProfileData({
+        displayName: user.user_metadata?.display_name || '',
+        email: user.email || '',
+        phone: '',
+        bio: 'Pescar pasionat din România!'
+      });
+      setSelectedCounty(user.user_metadata?.county_id || '');
+      setSelectedCity(user.user_metadata?.city_id || '');
+    }
+  };
 
-    const checkGoogleAuthStatus = async () => {
-      if (!user?.id) return;
-      
-      try {
-        // Check if user has Google provider - verifica mai multe surse
-        const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
-                                 user.app_metadata?.providers?.includes('google') ||
-                                 user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
-        
-        setIsGoogleUser(hasGoogleProvider);
-        setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
-        
-        console.log('Google Auth Status:', {
-          provider: user.app_metadata?.provider,
-          providers: user.app_metadata?.providers,
-          identities: user.identities,
-          hasGoogleProvider,
-          emailConfirmed: user.email_confirmed_at,
-          userEmail: user.email
-        });
-      } catch (error) {
-        console.error('Error checking Google Auth status:', error);
-      }
-    };
-
+  useEffect(() => {
     loadProfileData();
     checkGoogleAuthStatus();
+    loadUserGear();
   }, [user]);
+
+  const checkGoogleAuthStatus = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
+                               user.app_metadata?.providers?.includes('google') ||
+                               user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
+      
+      setIsGoogleUser(hasGoogleProvider);
+      setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
+    } catch (error) {
+      console.error('Error checking Google Auth status:', error);
+    }
+  };
+
+  // Încarcă echipamentele utilizatorului
+  const loadUserGear = async () => {
+    if (!user?.id) return;
+    
+    setIsLoadingGear(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_gear')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading gear:', error);
+        toast.error('Eroare la încărcarea echipamentelor');
+        return;
+      }
+
+      setUserGear(data || []);
+    } catch (error) {
+      console.error('Error loading gear:', error);
+      toast.error('Eroare la încărcarea echipamentelor');
+    } finally {
+      setIsLoadingGear(false);
+    }
+  };
+
+  // Adaugă echipament nou
+  const addGear = async () => {
+    if (!user?.id) return;
+
+    // Validare câmpuri obligatorii
+    if (!newGear.brand.trim()) {
+      toast.error('Marca este obligatorie');
+      return;
+    }
+    if (!newGear.model.trim()) {
+      toast.error('Modelul este obligatoriu');
+      return;
+    }
+    if (!newGear.quantity || newGear.quantity < 1) {
+      toast.error('Cantitatea trebuie să fie cel puțin 1');
+      return;
+    }
+
+    setIsAddingGear(true);
+    try {
+      console.log('Adding gear with data:', {
+        user_id: user.id,
+        gear_type: newGear.gear_type,
+        brand: newGear.brand,
+        model: newGear.model,
+        description: newGear.description,
+        quantity: newGear.quantity,
+        purchase_date: newGear.purchase_date || null,
+        price: newGear.price
+      });
+
+      const { data, error } = await supabase
+        .from('user_gear')
+        .insert({
+          user_id: user.id,
+          gear_type: newGear.gear_type,
+          brand: newGear.brand,
+          model: newGear.model,
+          description: newGear.description,
+          quantity: newGear.quantity,
+          purchase_date: newGear.purchase_date || null,
+          purchase_price: newGear.price
+        })
+        .select();
+
+      console.log('Gear insert result:', { data, error });
+
+      if (error) {
+        console.error('Error adding gear:', error);
+        toast.error('Eroare la adăugarea echipamentului');
+        return;
+      }
+
+      toast.success('Echipamentul a fost adăugat cu succes!');
+      setShowAddGearModal(false);
+      setNewGear({
+        gear_type: 'undita',
+        brand: '',
+        model: '',
+        description: '',
+        quantity: 1,
+        purchase_date: '',
+        price: 0
+      });
+      loadUserGear();
+    } catch (error) {
+      console.error('Error adding gear:', error);
+      toast.error('Eroare la adăugarea echipamentului');
+    } finally {
+      setIsAddingGear(false);
+    }
+  };
+
+  // Șterge echipament
+  const deleteGear = async (gearId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_gear')
+        .delete()
+        .eq('id', gearId);
+
+      if (error) {
+        console.error('Error deleting gear:', error);
+        toast.error('Eroare la ștergerea echipamentului');
+        return;
+      }
+
+      toast.success('Echipamentul a fost șters cu succes!');
+      loadUserGear();
+    } catch (error) {
+      console.error('Error deleting gear:', error);
+      toast.error('Eroare la ștergerea echipamentului');
+    }
+  };
 
   const handleProfileUpdate = async () => {
     if (!user?.id) {
@@ -180,15 +357,11 @@ const Profile = () => {
     toast.loading('Se actualizeaza profilul...', { id: 'profile-update' });
 
     try {
-      // Build location from selected county and city
-      const location = buildLocation(selectedCounty, selectedCity);
-      
       // Actualizeaza Supabase Auth cu toate datele
       const { error: authError } = await supabase.auth.updateUser({
         data: { 
           display_name: profileData.displayName,
           phone: profileData.phone,
-          location: location,
           bio: profileData.bio
         }
       });
@@ -199,52 +372,66 @@ const Profile = () => {
       }
 
       // Actualizează și în tabela profiles din baza de date
-      const { error: dbError } = await supabase
+      console.log('Updating profile in database:', {
+        id: user.id,
+        email: user.email,
+        display_name: profileData.displayName,
+        phone: profileData.phone,
+        bio: profileData.bio,
+        selectedCounty: selectedCounty,
+        selectedCity: selectedCity
+      });
+
+      // Try update first, then insert if not exists
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
+        .update({
           email: user.email,
           display_name: profileData.displayName,
           phone: profileData.phone,
-          location: location,
+          county_id: selectedCounty || null,
+          city_id: selectedCity || null,
           bio: profileData.bio,
           updated_at: new Date().toISOString()
-        });
+        })
+        .eq('id', user.id)
+        .select();
 
-      if (dbError) {
-        console.error('Database update error:', dbError);
-        // Încearcă să creeze profilul dacă nu există
-        const { error: insertError } = await supabase
+      if (updateError) {
+        console.error('Update error, trying insert:', updateError);
+        
+        // If update fails, try insert
+        const { data: insertData, error: insertError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
             email: user.email,
             display_name: profileData.displayName,
             phone: profileData.phone,
-            location: location,
+            county_id: selectedCounty || null,
+            city_id: selectedCity || null,
             bio: profileData.bio,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          });
+          })
+          .select();
 
         if (insertError) {
           console.error('Insert error:', insertError);
-          toast.warning('Profilul a fost actualizat în autentificare, dar nu s-a putut salva în baza de date.', { id: 'profile-update' });
-        } else {
-          toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
+          toast.error('Eroare la actualizarea bazei de date: ' + insertError.message, { id: 'profile-update' });
+          return;
         }
+        
+        console.log('Profile inserted successfully:', insertData);
       } else {
-        toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
+        console.log('Profile updated successfully:', updateData);
       }
+
+      console.log('Profile update/insert completed successfully');
+      toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
       
-      // Update local state with all edited fields so UI reflects immediately
-      setProfileData(prev => ({
-        ...prev,
-        displayName: profileData.displayName,
-        phone: profileData.phone,
-        location,
-        bio: profileData.bio
-      }));
+      // Reload profile data to get updated county_id and city_id
+      await loadProfileData();
       setIsEditing(false);
       
     } catch (error) {
@@ -316,35 +503,13 @@ const Profile = () => {
     confirmPassword: ''
   });
 
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
 
   // Helper function to parse location string into county and city
-  const parseLocation = (location: string) => {
-    if (!location) return { county: '', city: '' };
-    
-    const parts = location.split(', ');
-    if (parts.length >= 2) {
-      const city = parts[0].trim();
-      const countyName = parts[1].trim();
-      
-      // Find county by name
-      const county = ROMANIA_COUNTIES.find(c => c.name === countyName);
-      return {
-        county: county?.id || '',
-        city: city
-      };
-    }
-    
-    return { county: '', city: '' };
-  };
-
-  // Helper function to build location string from county and city
-  const buildLocation = (countyId: string, city: string) => {
-    if (!countyId || !city) return '';
-    const county = getCountyById(countyId);
-    return county ? `${city}, ${county.name}` : '';
-  };
 
   const handleSetPasswordForGoogle = async () => {
     if (!user?.id) {
@@ -401,6 +566,69 @@ const Profile = () => {
     } catch (error) {
       console.error('Error setting password:', error);
       toast.error('Eroare la setarea parolei');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+    
+    if (!deletePassword) {
+      toast.error('Introdu parola pentru a confirma ștergerea contului');
+      return;
+    }
+    
+    setIsDeletingAccount(true);
+    toast.loading('Se șterge contul...', { id: 'delete-account' });
+    
+    try {
+      // Verify password first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: deletePassword
+      });
+      
+      if (signInError) {
+        toast.error('Parola introdusă este incorectă', { id: 'delete-account' });
+        return;
+      }
+      
+      // Delete user data from profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+      }
+      
+      // Delete user gear
+      const { error: gearError } = await supabase
+        .from('user_gear')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (gearError) {
+        console.error('Error deleting gear:', gearError);
+      }
+      
+      // Note: admin.deleteUser requires Service Role Key
+      // For now, we'll only delete the data and sign out
+      // The user will need to manually delete the account from Supabase Dashboard
+      console.log('Account data deleted. User needs to manually delete account from Supabase Dashboard.');
+      
+      // Sign out
+      await supabase.auth.signOut();
+      
+      toast.success('Datele contului au fost șterse! Pentru ștergerea completă, contactează administratorul.', { id: 'delete-account' });
+      
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error('Eroare la ștergerea contului. Contactează suportul.', { id: 'delete-account' });
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteConfirm(false);
+      setDeletePassword('');
     }
   };
 
@@ -516,38 +744,6 @@ const Profile = () => {
 
 
 
-  const handleLinkGoogle = async () => {
-    setIsLinkingGoogle(true);
-    toast.loading('Se conectează cu Google...', { id: 'google-link' });
-
-    try {
-      const { error } = await supabase.auth.linkIdentity({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/profile`,
-        },
-      });
-      
-      if (error) {
-        if (error.message.includes('already linked')) {
-          toast.error('Contul Google este deja conectat la acest cont', { id: 'google-link' });
-        } else if (error.message.includes('popup_closed_by_user')) {
-          toast.error('Fereastra de autentificare a fost închisă', { id: 'google-link' });
-        } else if (error.message.includes('popup_blocked')) {
-          toast.error('Popup-ul a fost blocat. Permite popup-urile pentru acest site', { id: 'google-link' });
-        } else {
-          toast.error('Eroare la conectarea cu Google: ' + error.message, { id: 'google-link' });
-        }
-      } else {
-        toast.success('🔄 Redirecționare către Google...', { id: 'google-link' });
-      }
-    } catch (error) {
-      console.error('Error linking Google:', error);
-      toast.error('❌ A apărut o eroare la conectarea cu Google', { id: 'google-link' });
-    } finally {
-      setIsLinkingGoogle(false);
-    }
-  };
 
   const handleProfileImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -799,91 +995,80 @@ const Profile = () => {
               <TabsContent value="gear" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Echipamentele mele</h2>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    onClick={() => setShowAddGearModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     <Wrench className="w-4 h-4 mr-2" />
                     Adaugă echipament
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Mock gear data - în viitor va veni din API */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Undiță Shimano</CardTitle>
-                      <CardDescription>Undiță pentru pescuit la mare</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Tip:</span> Undiță
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marcă:</span> Shimano
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Model:</span> Exage 4000
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Preț:</span> 250 RON
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Momeală Berkley</CardTitle>
-                      <CardDescription>Momeală artificială pentru crap</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Tip:</span> Momeală
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marcă:</span> Berkley
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Model:</span> PowerBait
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Preț:</span> 45 RON
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Scaun de pescuit</CardTitle>
-                      <CardDescription>Scaun confortabil pentru sesiuni lungi</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Tip:</span> Accesoriu
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Marcă:</span> Fox
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Model:</span> R-Series
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Preț:</span> 180 RON
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Nu ai adăugat încă echipamente?</p>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Wrench className="w-4 h-4 mr-2" />
-                    Adaugă primul echipament
-                  </Button>
-                </div>
+                {isLoadingGear ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Se încarcă echipamentele...</p>
+                  </div>
+                ) : userGear.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userGear.map((gear) => (
+                      <Card key={gear.id}>
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg">{gear.brand} {gear.model}</CardTitle>
+                              <CardDescription>{gear.description}</CardDescription>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteGear(gear.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              Șterge
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Tip:</span> {gear.gear_type}
+                            </p>
+                            {gear.brand && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Marcă:</span> {gear.brand}
+                              </p>
+                            )}
+                            {gear.model && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Model:</span> {gear.model}
+                              </p>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Cantitate:</span> {gear.quantity}
+                            </p>
+                            {gear.purchase_price > 0 && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Preț:</span> {gear.purchase_price} RON
+                              </p>
+                            )}
+                            {gear.purchase_date && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Data cumpărării:</span> {new Date(gear.purchase_date).toLocaleDateString('ro-RO')}
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Wrench className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Nu ai adăugat încă echipamente?</h3>
+                    <p className="text-gray-600 mb-6">Folosește butonul "Adaugă echipament" de sus pentru a începe să îți organizezi inventarul.</p>
+                  </div>
+                )}
               </TabsContent>
 
               {/* Tab Profil */}
@@ -942,14 +1127,15 @@ const Profile = () => {
                                 Județ
                               </Label>
                               <SearchableSelect
-                                options={ROMANIA_COUNTIES.map(county => ({
+                                options={counties.map(county => ({
                                   value: county.id,
                                   label: county.name
                                 }))}
                                 value={selectedCounty}
-                                onChange={(countyId) => {
+                                onChange={async (countyId) => {
                                   setSelectedCounty(countyId);
                                   setSelectedCity(''); // Reset city when county changes
+                                  await loadCities(countyId);
                                 }}
                                 placeholder="Selectează județul"
                                 searchPlaceholder="Caută județ..."
@@ -960,13 +1146,10 @@ const Profile = () => {
                                 Oraș
                               </Label>
                               <SearchableSelect
-                                options={selectedCounty 
-                                  ? searchCities(selectedCounty, '').map(city => ({
-                                      value: city,
-                                      label: city
-                                    }))
-                                  : []
-                                }
+                                options={cities.map(city => ({
+                                  value: city.id,
+                                  label: city.name
+                                }))}
                                 value={selectedCity}
                                 onChange={setSelectedCity}
                                 placeholder={selectedCounty ? "Selectează orașul" : "Selectează mai întâi județul"}
@@ -977,10 +1160,31 @@ const Profile = () => {
                           </div>
                         ) : (
                           <Input
-                            value={profileData.location}
+                            value={(() => {
+                              console.log('🔍 Location Debug:', {
+                                selectedCounty,
+                                selectedCity,
+                                countiesCount: counties.length,
+                                citiesCount: cities.length,
+                                counties: counties.slice(0, 3),
+                                cities: cities.slice(0, 3)
+                              });
+                              
+                              const countyName = counties.find(c => c.id === selectedCounty)?.name || '';
+                              const cityName = cities.find(c => c.id === selectedCity)?.name || '';
+                              
+                              console.log('🔍 Found names:', { countyName, cityName });
+                              
+                              if (countyName && cityName) {
+                                return `${cityName}, ${countyName}`;
+                              } else if (countyName) {
+                                return countyName;
+                              }
+                              return 'Locația nu este setată';
+                            })()}
                             disabled={true}
                             className="bg-gray-100 text-gray-500 cursor-not-allowed"
-                            placeholder="Oraș, Județ"
+                            placeholder="Locația nu este setată"
                           />
                         )}
                       </div>
@@ -1320,7 +1524,7 @@ const Profile = () => {
                       <span>Conturi conectate</span>
                     </CardTitle>
                     <CardDescription>
-                      Gestioneaza-?i conturile conectate pentru autentificare
+                      Gestionează-ți conturile conectate pentru autentificare
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1346,18 +1550,12 @@ const Profile = () => {
                         <div>
                           {isGoogleUser ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              ? Conectat
+                              ✓ Conectat
                             </span>
                           ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={handleLinkGoogle}
-                              disabled={isLinkingGoogle}
-                              className="text-blue-600 border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isLinkingGoogle ? 'Se conectează...' : 'Conectează'}
-                            </Button>
+                            <span className="text-gray-500 text-sm">
+                              Nu este conectat
+                            </span>
                           )}
                         </div>
                       </div>
@@ -1401,11 +1599,231 @@ const Profile = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Secțiunea de ștergere cont */}
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-red-700">
+                      <User className="w-5 h-5" />
+                      <span>Ștergere cont</span>
+                    </CardTitle>
+                    <CardDescription className="text-red-600">
+                      Această acțiune este permanentă și nu poate fi anulată
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-red-100 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-sm font-bold">!</span>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-red-800 font-medium mb-2">Atenție!</h4>
+                          <p className="text-red-700 text-sm mb-3">
+                            Ștergerea contului va elimina permanent:
+                          </p>
+                          <ul className="text-red-700 text-sm space-y-1 ml-4">
+                            <li>• Toate datele personale și profilul</li>
+                            <li>• Toate recordurile și realizările</li>
+                            <li>• Echipamentele salvate</li>
+                            <li>• Istoricul de activitate</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!showDeleteConfirm ? (
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full"
+                      >
+                        <User className="w-4 h-4 mr-2" />
+                        Șterge contul
+                      </Button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="deletePassword" className="text-red-700 font-medium">
+                            Confirmă parola pentru a șterge contul
+                          </Label>
+                          <Input
+                            id="deletePassword"
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Introdu parola contului"
+                            className="mt-2 border-red-300 focus:border-red-500"
+                          />
+                        </div>
+                        <div className="flex space-x-3">
+                          <Button 
+                            variant="destructive" 
+                            onClick={handleDeleteAccount}
+                            disabled={isDeletingAccount || !deletePassword}
+                            className="flex-1"
+                          >
+                            {isDeletingAccount ? (
+                              <>
+                                <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                Se șterge...
+                              </>
+                            ) : (
+                              <>
+                                <User className="w-4 h-4 mr-2" />
+                                Confirmă ștergerea
+                              </>
+                            )}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setDeletePassword('');
+                            }}
+                            className="flex-1"
+                          >
+                            Anulează
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
         </div>
       </div>
+
+      {/* Modal pentru adăugarea echipamentelor */}
+      {showAddGearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold">Adaugă echipament nou</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddGearModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="gear_type">Tip echipament</Label>
+                  <select
+                    id="gear_type"
+                    value={newGear.gear_type}
+                    onChange={(e) => setNewGear(prev => ({ ...prev, gear_type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="undita">Undiță</option>
+                    <option value="mulineta">Mulinetă</option>
+                    <option value="scaun">Scaun</option>
+                    <option value="rucsac">Rucsac</option>
+                    <option value="vesta">Vestă</option>
+                    <option value="cizme">Cizme</option>
+                    <option value="altceva">Altceva</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="brand">Marcă *</Label>
+                  <Input
+                    id="brand"
+                    value={newGear.brand}
+                    onChange={(e) => setNewGear(prev => ({ ...prev, brand: e.target.value }))}
+                    placeholder="Ex: Shimano, Daiwa, Fox..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="model">Model *</Label>
+                  <Input
+                    id="model"
+                    value={newGear.model}
+                    onChange={(e) => setNewGear(prev => ({ ...prev, model: e.target.value }))}
+                    placeholder="Ex: Exage 4000, PowerBait..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Descriere</Label>
+                  <textarea
+                    id="description"
+                    value={newGear.description}
+                    onChange={(e) => setNewGear(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descrierea echipamentului..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="quantity">Cantitate</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={newGear.quantity}
+                      onChange={(e) => setNewGear(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="price">Preț (RON)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newGear.price}
+                      onChange={(e) => setNewGear(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="purchase_date">Data cumpărării (opțional)</Label>
+                  <Input
+                    id="purchase_date"
+                    type="date"
+                    value={newGear.purchase_date}
+                    onChange={(e) => setNewGear(prev => ({ ...prev, purchase_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddGearModal(false)}
+                  disabled={isAddingGear}
+                >
+                  Anulează
+                </Button>
+                <Button
+                  onClick={addGear}
+                  disabled={isAddingGear}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isAddingGear ? 'Se adaugă...' : 'Adaugă echipament'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

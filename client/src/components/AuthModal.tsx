@@ -1,9 +1,9 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { X, Mail, Lock, Eye, EyeOff, User, CheckCircle } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
-import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations';
+import { supabase } from '@/lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,8 +23,62 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [success, setSuccess] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [counties, setCounties] = useState<{id: string, name: string}[]>([]);
+  const [cities, setCities] = useState<{id: string, name: string}[]>([]);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
+
+  // Load counties from database
+  const loadCounties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('counties')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      setCounties(data || []);
+    } catch (error) {
+      console.error('Error loading counties:', error);
+    }
+  };
+
+  // Load cities for selected county
+  const loadCities = async (countyId: string) => {
+    if (!countyId) {
+      setCities([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('cities')
+        .select('id, name')
+        .eq('county_id', countyId)
+        .order('name');
+      
+      if (error) throw error;
+      setCities(data || []);
+    } catch (error) {
+      console.error('Error loading cities:', error);
+    }
+  };
+
+  // Load counties on component mount
+  useEffect(() => {
+    if (isOpen) {
+      loadCounties();
+    }
+  }, [isOpen]);
+
+  // Load cities when county changes
+  useEffect(() => {
+    if (selectedCounty) {
+      loadCities(selectedCounty);
+    } else {
+      setCities([]);
+    }
+  }, [selectedCounty]);
 
   if (!isOpen) return null;
 
@@ -68,10 +122,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
           return;
         }
 
-        const county = getCountyById(selectedCounty);
-        const location = `${selectedCity}, ${county?.name}`;
-        
-        await signUp(email, password, displayName, location);
+        await signUp(email, password, displayName, selectedCounty, selectedCity);
         
         setSuccess('Contul a fost creat cu succes!');
         setShowSuccess(true);
@@ -157,17 +208,15 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   };
 
   // Prepare options for dropdowns
-  const countyOptions = ROMANIA_COUNTIES.map(county => ({
+  const countyOptions = counties.map(county => ({
     value: county.id,
     label: county.name
   }));
 
-  const cityOptions = selectedCounty 
-    ? searchCities(selectedCounty, '').map(city => ({
-        value: city,
-        label: city
-      }))
-    : [];
+  const cityOptions = cities.map(city => ({
+    value: city.id,
+    label: city.name
+  }));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">

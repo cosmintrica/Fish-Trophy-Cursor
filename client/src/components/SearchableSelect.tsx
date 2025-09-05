@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
-import { matchesAtStart } from '@/data/romania-locations';
+
+// Helper function for search matching
+const matchesAtStart = (text: string, query: string): boolean => {
+  return text.toLowerCase().startsWith(query.toLowerCase());
+};
 
 interface SearchableSelectProps {
   options: Array<{ value: string; label: string }>;

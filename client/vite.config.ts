@@ -8,6 +8,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    hmr: {
+      overlay: false, // Disable error overlay to reduce console noise
+    },
   },
   resolve: {
     alias: {
