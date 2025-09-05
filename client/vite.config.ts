@@ -13,54 +13,25 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    dedupe: ['react', 'react-dom'],
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true,
+    sourcemap: false,
+    minify: false,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Split vendor libraries for better caching
-          if (id.includes('node_modules')) {
-            if (id.includes('react') && !id.includes('react-router')) {
-              return 'react-vendor';
-            }
-            if (id.includes('react-router')) {
-              return 'router-vendor';
-            }
-            if (id.includes('lucide-react')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('maplibre-gl') || id.includes('mapbox-gl')) {
-              return 'mapbox-vendor';
-            }
-            if (id.includes('@supabase')) {
-              return 'supabase-vendor';
-            }
-            // Group other small libraries together
-            return 'vendor';
-          }
-        },
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        manualChunks: undefined,
+        chunkFileNames: 'assets/[name].js',
+        entryFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
       },
     },
-    chunkSizeWarningLimit: 2000,
-    minify: false,
+    chunkSizeWarningLimit: 5000,
   },
   publicDir: 'public',
   optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      'lucide-react',
-      'maplibre-gl',
-      '@supabase/supabase-js',
-    ],
-    exclude: ['web-vitals'],
+    include: [],
+    exclude: [],
   },
 });
