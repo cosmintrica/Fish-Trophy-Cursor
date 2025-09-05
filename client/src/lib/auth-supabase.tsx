@@ -35,13 +35,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       });
 
-    // CRITICAL: Set loading to false after a timeout to prevent white screen
+    // Set loading to false after a short timeout to prevent white screen
     const timeout = setTimeout(() => {
       if (mounted) {
-        console.warn('⚠️ Auth loading timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 5000); // 5 second timeout
+    }, 3000); // 3 second timeout
 
     // Listen for auth changes with error handling
     const {

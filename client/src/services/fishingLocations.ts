@@ -102,7 +102,6 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
 // Încarcă toate locațiile din baza de date
 export const loadFishingLocations = async (): Promise<FishingLocation[]> => {
   try {
-    console.log('🔄 Loading fishing locations from database...');
     
     const { data, error } = await supabase
       .from('fishing_locations')
@@ -115,11 +114,9 @@ export const loadFishingLocations = async (): Promise<FishingLocation[]> => {
     }
 
     if (!data) {
-      console.log('⚠️ No fishing locations found in database');
       return [];
     }
 
-    console.log(`✅ Loaded ${data.length} fishing locations from database`);
     
     // Convertește locațiile la formatul aplicației
     const locations = data.map(convertLocation);

@@ -32,6 +32,8 @@ class SupabaseApiService {
           phone: data.phone || '',
           location: data.location || '',
           bio: data.bio || '',
+          county_id: data.county_id || '',
+          city_id: data.city_id || '',
         }
       };
     } catch (error) {
@@ -49,6 +51,8 @@ class SupabaseApiService {
           phone: profileData.phone,
           location: profileData.location,
           bio: profileData.bio,
+          county_id: profileData.county_id,
+          city_id: profileData.city_id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId)
@@ -68,6 +72,8 @@ class SupabaseApiService {
           phone: data.phone || '',
           location: data.location || '',
           bio: data.bio || '',
+          county_id: data.county_id || '',
+          city_id: data.city_id || '',
         }
       };
     } catch (error) {

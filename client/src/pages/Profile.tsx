@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import RecordDetailsModal from '@/components/RecordDetailsModal';
 import {
   User,
   Trophy,
@@ -20,7 +21,8 @@ import {
   MapPin,
   Scale,
   Ruler,
-  Wrench
+  Wrench,
+  Fish
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,6 +60,10 @@ const Profile = () => {
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
+  
+  // Modal states
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // State pentru echipamente
   const [userGear, setUserGear] = useState<Array<{
@@ -84,32 +90,34 @@ const Profile = () => {
     price: 0
   });
 
-  // Mock data pentru recorduri - în viitor va veni din API
-  const mockRecords = [
-    {
-      id: 1,
-      species: 'Crap',
-      weight: 8.5,
-      length: 75,
-      location: 'Lacul Snagov',
-      date: '2024-01-15',
-      status: 'verified',
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center'
-    },
-    {
-      id: 2,
-      species: 'Șalău',
-      weight: 2.3,
-      length: 45,
-      location: 'Dunărea',
-      date: '2024-01-10',
-      status: 'pending',
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center'
-    }
-  ];
+  // Real records from database
+  const [records, setRecords] = useState<any[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
 
-  // Show mock records only for admin
-  const records = isAdmin ? mockRecords : [];
+  // Load user's records from database
+  const loadUserRecords = async () => {
+    if (!user?.id) return;
+    
+    setLoadingRecords(true);
+    try {
+      const { data, error } = await supabase
+        .from('records')
+        .select(`
+          *,
+          fish_species:species_id(name),
+          fishing_locations:location_id(name, type, county)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setRecords(data || []);
+    } catch (error) {
+      console.error('Error loading user records:', error);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
 
   // Încarcă judetele din baza de date
   const loadCounties = async () => {
@@ -214,6 +222,25 @@ const Profile = () => {
     }
   }, [user]);
 
+  // Încarcă datele de locație separat pentru afișare
+  const loadLocationData = useCallback(async () => {
+    if (!selectedCounty && !selectedCity) return;
+    
+    try {
+      // Reload counties if not loaded
+      if (counties.length === 0) {
+        await loadCounties();
+      }
+      
+      // Load cities if county is selected but cities not loaded
+      if (selectedCounty && cities.length === 0) {
+        await loadCities(selectedCounty);
+      }
+    } catch (error) {
+      console.error('Error loading location data:', error);
+    }
+  }, [selectedCounty, selectedCity, counties.length, cities.length]);
+
   const checkGoogleAuthStatus = useCallback(async () => {
     if (!user?.id) return;
     
@@ -261,7 +288,13 @@ const Profile = () => {
     loadProfileData();
     checkGoogleAuthStatus();
     loadUserGear();
+    loadUserRecords();
   }, [user, loadProfileData, checkGoogleAuthStatus, loadUserGear]);
+
+  // Load location data when county/city changes
+  useEffect(() => {
+    loadLocationData();
+  }, [loadLocationData]);
 
   // Adaugă echipament nou
   const addGear = async () => {
@@ -339,17 +372,22 @@ const Profile = () => {
   // Șterge echipament
   const deleteGear = async (gearId: string) => {
     try {
+      console.log('Deleting gear with ID:', gearId);
+      console.log('Current user ID:', user?.id);
+      
       const { error } = await supabase
         .from('user_gear')
         .delete()
-        .eq('id', gearId);
+        .eq('id', gearId)
+        .eq('user_id', user?.id); // Adaugă și user_id pentru siguranță
 
       if (error) {
         console.error('Error deleting gear:', error);
-        toast.error('Eroare la ștergerea echipamentului');
+        toast.error(`Eroare la ștergerea echipamentului: ${error.message}`);
         return;
       }
 
+      console.log('Gear deleted successfully');
       toast.success('Echipamentul a fost șters cu succes!');
       loadUserGear();
     } catch (error) {
@@ -836,6 +874,16 @@ const Profile = () => {
     );
   };
 
+  const openRecordModal = (record: any) => {
+    setSelectedRecord(record);
+    setIsModalOpen(true);
+  };
+
+  const closeRecordModal = () => {
+    setIsModalOpen(false);
+    setSelectedRecord(null);
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -931,19 +979,38 @@ const Profile = () => {
               <TabsContent value="records" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Recordurile mele</h2>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      // Navigate to records page or open modal
+                      window.location.href = '/records';
+                    }}
+                  >
                     <Trophy className="w-4 h-4 mr-2" />
                     Adaugă Record
                   </Button>
                 </div>
 
-                {records.length === 0 ? (
+                {loadingRecords ? (
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Se încarcă recordurile...</p>
+                    </CardContent>
+                  </Card>
+                ) : records.length === 0 ? (
                   <Card>
                     <CardContent className="text-center py-12">
                       <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă recorduri</h3>
                       <p className="text-gray-600 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
-                      <Button>Adaugă primul record</Button>
+                      <Button 
+                        onClick={() => {
+                          window.location.href = '/records';
+                        }}
+                      >
+                        Adaugă primul record
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
@@ -951,19 +1018,17 @@ const Profile = () => {
                     {records.map((record) => (
                       <Card key={record.id} className="overflow-hidden">
                         <div className="aspect-video bg-gray-200 relative">
-                          <img
-                            src={record.image}
-                            alt={record.species}
-                            className="w-full h-full object-cover"
-                          />
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                            <Fish className="w-16 h-16 text-blue-400" />
+                          </div>
                           <div className="absolute top-2 right-2">
                             {getStatusBadge(record.status)}
                           </div>
                         </div>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-lg">{record.species}</h3>
-                            <span className="text-sm text-gray-500">{record.date}</span>
+                            <h3 className="font-semibold text-lg">{record.fish_species?.name || 'Specie necunoscută'}</h3>
+                            <span className="text-sm text-gray-500">{new Date(record.captured_at).toLocaleDateString('ro-RO')}</span>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 mb-3">
@@ -976,27 +1041,48 @@ const Profile = () => {
                             <div className="flex items-center space-x-2">
                               <Ruler className="w-4 h-4 text-green-600" />
                               <span className="text-sm">
-                                <span className="font-medium">{record.length} cm</span>
+                                <span className="font-medium">{record.length_cm} cm</span>
                               </span>
                             </div>
                           </div>
 
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <MapPin className="w-4 h-4" />
-                            <span>{record.location}</span>
+                            <span>{record.fishing_locations?.name || 'Locație necunoscută'}</span>
                           </div>
 
                           <div className="mt-3 flex space-x-2">
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => openRecordModal(record)}
+                            >
                               Vezi detalii
                             </Button>
                             {record.status === 'pending' && (
-                              <Button variant="outline" size="sm" className="flex-1">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1"
+                                onClick={() => {
+                                  // TODO: Implement edit functionality
+                                  alert(`Editare record: ${record.fish_species?.name}`);
+                                }}
+                              >
                                 Editează
                               </Button>
                             )}
                             {isAdmin && record.status === 'verified' && (
-                              <Button variant="outline" size="sm" className="flex-1 text-orange-600 border-orange-300">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 text-orange-600 border-orange-300"
+                                onClick={() => {
+                                  // Open admin edit modal
+                                  alert(`Editare admin record: ${record.fish_species?.name}`);
+                                }}
+                              >
                                 Editează (Admin)
                               </Button>
                             )}
@@ -1835,6 +1921,15 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      {/* Record Details Modal */}
+      <RecordDetailsModal
+        record={selectedRecord}
+        isOpen={isModalOpen}
+        onClose={closeRecordModal}
+        isAdmin={isAdmin}
+        canEdit={selectedRecord?.status === 'pending'}
+      />
     </div>
   );
 };

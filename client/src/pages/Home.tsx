@@ -179,7 +179,6 @@ export default function Home() {
     // Show all locations - performance is handled by smaller markers and simplified popups
     const locationsToShow = allLocations;
     
-    console.log(`📍 Adding ${locationsToShow.length} locations (Mobile: ${isMobile})`);
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: maplibregl.Marker[] = [];
@@ -187,7 +186,6 @@ export default function Home() {
     locationsToShow.forEach(location => {
       // Debug: log location type for Dunărea
       if (location.name && location.name.toLowerCase().includes('dunărea')) {
-        console.log('🔍 Dunărea type:', location.type, 'name:', location.name);
       }
       
       // Determină culoarea în funcție de tipul locației
@@ -306,7 +304,7 @@ export default function Home() {
           </div>
           
           <div class="flex gap-2">
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
             </button>
             <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
@@ -349,7 +347,7 @@ export default function Home() {
           </div>
           
           <div class="flex gap-3">
-            <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
+            <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
             </button>
             <button class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
@@ -367,9 +365,10 @@ export default function Home() {
 
         marker.setPopup(popup);
         
-        // Add event listener for "Adaugă record" buttons
+        // Add event listeners for popup buttons
         popup.on('open', () => {
           setTimeout(() => {
+            // Add record button
             const addRecordButtons = document.querySelectorAll('[data-action="add-record"]');
             addRecordButtons.forEach(button => {
               button.addEventListener('click', (e) => {
@@ -379,6 +378,20 @@ export default function Home() {
                 if (locationId && locationName) {
                   setSelectedLocationForRecord({ id: locationId, name: locationName });
                   setShowRecordModal(true);
+                }
+              });
+            });
+
+            // View records button
+            const viewRecordsButtons = document.querySelectorAll('[data-action="view-records"]');
+            viewRecordsButtons.forEach(button => {
+              button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const locationId = button.getAttribute('data-location-id');
+                const locationName = button.getAttribute('data-location-name');
+                if (locationId && locationName) {
+                  // Navigate to records page with location filter
+                  window.location.href = `/records?location=${encodeURIComponent(locationId)}`;
                 }
               });
             });
@@ -409,25 +422,19 @@ export default function Home() {
     
     // Add markers directly - no batching needed
     markersRef.current = markers.filter(marker => marker !== null);
-    console.log(`✅ Added ${markers.length} markers (Mobile: ${isMobile})`);
   }, [databaseLocations]);
 
   // Încarcă locațiile din baza de date
   useEffect(() => {
     const loadLocations = async () => {
-      console.log('🚀 Starting to load fishing locations...');
       setIsLoadingLocations(true);
       try {
-        console.log('📞 Calling loadFishingLocations...');
         const locations = await loadFishingLocations();
-        console.log('📥 Received locations:', locations?.length || 0);
         setDatabaseLocations(locations);
-        console.log(`✅ Loaded ${locations.length} locations from database`);
       } catch (error) {
         console.error('❌ Error loading locations:', error);
       } finally {
         setIsLoadingLocations(false);
-        console.log('🔚 Finished loading locations');
       }
     };
 
@@ -436,11 +443,10 @@ export default function Home() {
 
   // Reîncarcă markerele când se actualizează locațiile din baza de date
   useEffect(() => {
-    if (mapInstanceRef.current && databaseLocations.length > 0) {
-      console.log('🔄 Reloading markers with database locations...');
+    if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
       addLocationsToMap(mapInstanceRef.current, activeFilter);
     }
-  }, [databaseLocations, activeFilter, addLocationsToMap]);
+  }, [databaseLocations, isLoadingLocations]);
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -458,7 +464,6 @@ export default function Home() {
 
   // Funcția de căutare
   const handleSearch = useCallback((query: string) => {
-    console.log('🔍 Searching for:', query);
     setSearchQuery(query);
     if (query.trim() === '') {
       setSearchResults([]);
@@ -518,22 +523,14 @@ export default function Home() {
     }).filter(location => location.score > 0)
       .sort((a, b) => b.score - a.score); // Sortează după scor descrescător
 
-    console.log('🔍 Found results:', resultsWithScore.length);
-    console.log('🔍 Top 5 results:', resultsWithScore.slice(0, 5).map(loc => ({ name: loc.name, score: loc.score })));
     setSearchResults(resultsWithScore.slice(0, 10)); // Limitează la 10 rezultate
     setShowSearchResults(true);
 
     // Dacă se caută un județ, fac zoom pe județ
     if (normalizedQuery.length >= 3) {
-      console.log('🔍 Searching for county:', normalizedQuery);
-      console.log('🔍 Sample locations county:', resultsWithScore.slice(0, 3).map(loc => ({ name: loc.name, county: loc.county })));
-      
       const countyResults = resultsWithScore.filter(loc => 
         normalizeText(loc.county).includes(normalizedQuery)
       );
-      
-      console.log('🏛️ County results:', countyResults.length);
-      console.log('🏛️ Map instance for county zoom:', mapInstanceRef.current);
       
       if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
         // Calculează centrul județului
@@ -555,7 +552,6 @@ export default function Home() {
           return sum + loc.coords[0];
         }, 0) / validResults.length;
         
-        console.log('🎯 Flying to county center:', avgLat, avgLng);
         
         // Verifică dacă coordonatele sunt valide
         if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
@@ -564,12 +560,10 @@ export default function Home() {
             zoom: 10,
             duration: 1000
           });
-          console.log('✅ County zoom completed');
         } else {
           console.error('❌ Invalid county coordinates:', avgLat, avgLng);
         }
       } else {
-        console.log('❌ County zoom failed - no results or map not ready');
       }
     }
   }, [databaseLocations]);
@@ -590,15 +584,12 @@ export default function Home() {
   // Funcția pentru Enter în căutare
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      console.log('⌨️ Enter pressed, searching for:', searchQuery);
       handleSearch(searchQuery);
     }
   };
 
   // Funcția pentru a selecta o locație din căutare
   const selectLocation = (location: FishingLocation & { score: number }) => {
-    console.log('🎯 Selecting location:', location);
-    console.log('🎯 Map instance:', mapInstanceRef.current);
     
     // Verifică dacă coordonatele sunt valide
     const lng = location.coords[0];
@@ -716,7 +707,6 @@ export default function Home() {
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    console.log(`🗺️ Initializing map - Mobile: ${isMobile}, Screen: ${window.innerWidth}x${window.innerHeight}`);
     
           // CRITICAL: Optimized config to prevent flicker and size changes
       const mapConfig: maplibregl.MapOptions = {
@@ -807,7 +797,6 @@ export default function Home() {
 
     // Load locations after map is ready
     map.once('load', () => {
-      console.log('🔄 Loading locations after map ready...');
       if (databaseLocations.length > 0) {
         addLocationsToMap(map, activeFilter);
       }
@@ -855,7 +844,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, activeFilter, addLocationsToMap, databaseLocations.length]); // Added missing dependencies
+  }, [user, addLocationsToMap, databaseLocations.length]); // Removed activeFilter to prevent re-render
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
@@ -863,13 +852,6 @@ export default function Home() {
     
     if (mapInstanceRef.current) {
       const map = mapInstanceRef.current;
-      
-      // Fly to Romania first
-      map.flyTo({
-        center: [25.0094, 45.9432],
-        zoom: 6,
-        duration: 600
-      });
       
       // Add markers immediately after setting active filter
       if (databaseLocations.length > 0) {
@@ -898,7 +880,6 @@ export default function Home() {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
-            console.log('📍 GPS coordinates:', latitude, longitude);
             
             if (mapInstanceRef.current) {
               mapInstanceRef.current.flyTo({
@@ -980,7 +961,6 @@ export default function Home() {
       `;
       userMarkerEl.innerHTML = '🎣';
       
-      console.log('🎣 User marker created with fishing pole emoji (addUserLocationMarker):', userMarkerEl);
       
       // Add hover effect
       userMarkerEl.addEventListener('mouseenter', () => {
@@ -1075,7 +1055,6 @@ export default function Home() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          console.log('📍 Geolocation position:', { latitude, longitude, accuracy: position.coords.accuracy });
           
           if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
             // Centrează harta pe locația utilizatorului cu animație smooth
@@ -1109,7 +1088,6 @@ export default function Home() {
             `;
             userMarkerEl.innerHTML = '🎣';
             
-            console.log('🎣 User marker created with fishing pole emoji:', userMarkerEl);
 
             let userMarker: maplibregl.Marker | null = null;
             
@@ -1118,8 +1096,6 @@ export default function Home() {
               .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
             
-            console.log('🎣 User marker added to map:', userMarker);
-            console.log('🎣 Map instance:', mapInstanceRef.current);
 
             // Adaugă popup cu design îmbunătățit
             const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
@@ -1319,7 +1295,6 @@ export default function Home() {
                   <button
                     key={index}
                     onClick={() => {
-                      console.log('🖱️ Clicked on search result:', location);
                       selectLocation(location);
                     }}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"

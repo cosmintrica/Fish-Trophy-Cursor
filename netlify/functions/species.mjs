@@ -45,11 +45,11 @@ export const handler = async (event) => {
       let query = supabase
         .from('fish_species')
         .select('*')
-        .order('common_ro');
+        .order('name');
 
       // Apply search filter
       if (queryParams.search) {
-        query = query.or(`common_ro.ilike.%${queryParams.search}%,scientific_name.ilike.%${queryParams.search}%`);
+        query = query.or(`name.ilike.%${queryParams.search}%,scientific_name.ilike.%${queryParams.search}%`);
       }
 
       // Apply limit

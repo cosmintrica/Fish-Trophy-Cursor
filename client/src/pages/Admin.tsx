@@ -12,15 +12,27 @@ import {
   Users, 
   Activity,
   Database,
-  Server
+  Server,
+  ExternalLink,
+  TrendingUp
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const Admin: React.FC = () => {
   const [trafficData, setTrafficData] = useState({
     pageViews: 0,
     uniqueVisitors: 0,
     bounceRate: 0,
-    avgSessionTime: 0
+    avgSessionTime: 0,
+    dailyStats: [] as any[],
+    monthlyStats: [] as any[],
+    yearlyStats: [] as any[],
+    timelineData: [] as any[],
+    deviceStats: {} as Record<string, number>,
+    browserStats: {} as Record<string, number>,
+    osStats: {} as Record<string, number>,
+    countryStats: {} as Record<string, number>,
+    referrerStats: {} as Record<string, number>
   });
 
   const [buildStatus] = useState({
@@ -30,47 +42,141 @@ const Admin: React.FC = () => {
     commitHash: 'abc1234'
   });
 
-  const [pendingRecords, setPendingRecords] = useState([
-    {
-      id: '1',
-      species: 'Crap',
-      weight: '12.5 kg',
-      location: 'Lacul Băneasa',
-      angler: 'Ion Popescu',
-      submittedAt: '2024-01-15T10:30:00Z',
-      imageUrl: '/placeholder-fish.jpg'
-    },
-    {
-      id: '2',
-      species: 'Știucă',
-      weight: '8.2 kg',
-      location: 'Dunărea',
-      angler: 'Maria Ionescu',
-      submittedAt: '2024-01-15T09:15:00Z',
-      imageUrl: '/placeholder-fish.jpg'
-    }
-  ]);
+  const [pendingRecords, setPendingRecords] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate traffic data loading
+  // Load real data from database
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTrafficData(prev => ({
-        pageViews: prev.pageViews + Math.floor(Math.random() * 5),
-        uniqueVisitors: prev.uniqueVisitors + Math.floor(Math.random() * 2),
-        bounceRate: 35 + Math.random() * 10,
-        avgSessionTime: 180 + Math.random() * 60
-      }));
-    }, 5000);
-
-    return () => clearInterval(interval);
+    loadRealData();
   }, []);
 
-  const handleApproveRecord = (recordId: string) => {
-    setPendingRecords(prev => prev.filter(record => record.id !== recordId));
+  const loadRealData = async () => {
+    setIsLoading(true);
+    try {
+      // Load pending records
+      const { data: records, error: recordsError } = await supabase
+        .from('records')
+        .select(`
+          id,
+          species_name,
+          weight,
+          length,
+          location_name,
+          date_caught,
+          time_caught,
+          status,
+          created_at,
+          profiles!inner(display_name)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (recordsError) {
+        console.error('Error loading records:', recordsError);
+      } else {
+        setPendingRecords(records || []);
+      }
+
+      // Load detailed analytics data
+      const [analyticsResponse, demographicsResponse, timelineResponse, referrersResponse] = await Promise.all([
+        fetch('/api/analytics-detailed/overview'),
+        fetch('/api/analytics-detailed/demographics'),
+        fetch('/api/analytics-detailed/timeline?period=daily&limit=30'),
+        fetch('/api/analytics-detailed/referrers')
+      ]);
+
+      const [analyticsResult, demographicsResult, timelineResult, referrersResult] = await Promise.all([
+        analyticsResponse.json(),
+        demographicsResponse.json(),
+        timelineResponse.json(),
+        referrersResponse.json()
+      ]);
+
+      if (analyticsResult.success) {
+        const data = analyticsResult.data;
+        setTrafficData(prev => ({
+          ...prev,
+          uniqueVisitors: data.visitors.total,
+          pageViews: data.pageViews.total,
+          bounceRate: data.bounceRate.value,
+          avgSessionTime: data.avgSessionTime.value,
+          dailyStats: [{ 
+            date: new Date().toISOString().split('T')[0], 
+            users: data.visitors.today,
+            records: data.records.today,
+            pageViews: data.pageViews.today
+          }],
+          monthlyStats: [{ 
+            month: new Date().toISOString().split('T')[0], 
+            users: data.visitors.thisMonth,
+            records: data.records.total,
+            pageViews: Math.floor(data.pageViews.total * 0.1)
+          }],
+          yearlyStats: [{ 
+            year: new Date().getFullYear().toString(), 
+            users: data.visitors.thisYear,
+            records: data.records.total,
+            pageViews: data.pageViews.total
+          }],
+          // Add new detailed data
+          deviceStats: demographicsResult.success ? demographicsResult.data.devices : {},
+          browserStats: demographicsResult.success ? demographicsResult.data.browsers : {},
+          osStats: demographicsResult.success ? demographicsResult.data.operatingSystems : {},
+          countryStats: demographicsResult.success ? demographicsResult.data.countries : {},
+          referrerStats: referrersResult.success ? referrersResult.data : {},
+          timelineData: timelineResult.success ? timelineResult.data : []
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRejectRecord = (recordId: string) => {
-    setPendingRecords(prev => prev.filter(record => record.id !== recordId));
+  const handleApproveRecord = async (recordId: string) => {
+    try {
+      const { error } = await supabase
+        .from('records')
+        .update({ 
+          status: 'verified',
+          verified_at: new Date().toISOString(),
+          verified_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', recordId);
+
+      if (error) {
+        console.error('Error approving record:', error);
+        return;
+      }
+
+      setPendingRecords(prev => prev.filter(record => record.id !== recordId));
+    } catch (error) {
+      console.error('Error approving record:', error);
+    }
+  };
+
+  const handleRejectRecord = async (recordId: string) => {
+    try {
+      const { error } = await supabase
+        .from('records')
+        .update({ 
+          status: 'rejected',
+          verified_at: new Date().toISOString(),
+          verified_by: (await supabase.auth.getUser()).data.user?.id,
+          rejection_reason: 'Nu îndeplinește criteriile'
+        })
+        .eq('id', recordId);
+
+      if (error) {
+        console.error('Error rejecting record:', error);
+        return;
+      }
+
+      setPendingRecords(prev => prev.filter(record => record.id !== recordId));
+    } catch (error) {
+      console.error('Error rejecting record:', error);
+    }
   };
 
   return (
@@ -202,6 +308,208 @@ const Admin: React.FC = () => {
               </Card>
             </div>
 
+            {/* Detailed Analytics */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Device Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Dispozitive
+                  </CardTitle>
+                  <CardDescription>
+                    Distribuția pe tipuri de dispozitive
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(trafficData.deviceStats).map(([device, count]) => {
+                      const total = Object.values(trafficData.deviceStats).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      return (
+                        <div key={device} className="flex items-center justify-between">
+                          <span className="text-sm capitalize">{device}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Browser Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Browsere
+                  </CardTitle>
+                  <CardDescription>
+                    Distribuția pe browsere
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(trafficData.browserStats).map(([browser, count]) => {
+                      const total = Object.values(trafficData.browserStats).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      return (
+                        <div key={browser} className="flex items-center justify-between">
+                          <span className="text-sm">{browser}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Operating Systems */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="w-5 h-5" />
+                    Sisteme de Operare
+                  </CardTitle>
+                  <CardDescription>
+                    Distribuția pe OS
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(trafficData.osStats).map(([os, count]) => {
+                      const total = Object.values(trafficData.osStats).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      return (
+                        <div key={os} className="flex items-center justify-between">
+                          <span className="text-sm">{os}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Countries */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Țări
+                  </CardTitle>
+                  <CardDescription>
+                    Distribuția geografică
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(trafficData.countryStats).map(([country, count]) => {
+                      const total = Object.values(trafficData.countryStats).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      return (
+                        <div key={country} className="flex items-center justify-between">
+                          <span className="text-sm">{country}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Referrers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ExternalLink className="w-5 h-5" />
+                    Surse de Trafic
+                  </CardTitle>
+                  <CardDescription>
+                    De unde vin vizitatorii
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(trafficData.referrerStats).map(([referrer, count]) => {
+                      const total = Object.values(trafficData.referrerStats).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      return (
+                        <div key={referrer} className="flex items-center justify-between">
+                          <span className="text-sm">{referrer}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-red-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Timeline Chart */}
+              <Card className="md:col-span-2 lg:col-span-3">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Evoluția Traficului
+                  </CardTitle>
+                  <CardDescription>
+                    Ultimele 30 de zile
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="text-center">
+                      <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-muted-foreground">Graficul va fi implementat în curând</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {trafficData.timelineData.length} puncte de date disponibile
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* System Info */}
             <Card>
               <CardHeader>
@@ -247,17 +555,31 @@ const Admin: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {pendingRecords.map((record) => (
-                    <div key={record.id} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <h4 className="font-semibold">{record.species} - {record.weight}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {record.location} • {record.angler}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Trimis: {new Date(record.submittedAt).toLocaleString('ro-RO')}
-                          </p>
+                  {isLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">Se încarcă recordurile...</p>
+                    </div>
+                  ) : pendingRecords.length === 0 ? (
+                    <div className="text-center py-8">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                      <p className="text-muted-foreground">Nu există recorduri în așteptare</p>
+                    </div>
+                  ) : (
+                    pendingRecords.map((record) => (
+                      <div key={record.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <h4 className="font-semibold">{record.species_name} - {record.weight} kg</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Lungime: {record.length} cm • Data: {new Date(record.date_caught).toLocaleDateString('ro-RO')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Trimis: {new Date(record.created_at).toLocaleString('ro-RO')}
+                            </p>
                         </div>
                         <div className="flex gap-2">
                           <Button 
@@ -278,21 +600,14 @@ const Admin: React.FC = () => {
                             <XCircle className="w-4 h-4 mr-1" />
                             Respinge
                           </Button>
+                          <Button size="sm" variant="ghost">
+                            <Eye className="w-4 h-4 mr-1" />
+                            Vezi Detalii
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost">
-                          <Eye className="w-4 h-4 mr-1" />
-                          Vezi Detalii
-                        </Button>
-                      </div>
                     </div>
-                  ))}
-                  
-                  {pendingRecords.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nu există recorduri în așteptare
-                    </div>
+                  ))
                   )}
                 </div>
               </CardContent>

@@ -19,7 +19,7 @@ interface RecordSubmissionModalProps {
 
 interface Species {
   id: string;
-  common_ro: string;
+  name: string;
   scientific_name: string;
 }
 
@@ -41,9 +41,15 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState(locationId || '');
   
+  // State for limited display and search
+  const [showAllSpecies, setShowAllSpecies] = useState(false);
+  const [showAllLocations, setShowAllLocations] = useState(false);
+  const [speciesSearchTerm, setSpeciesSearchTerm] = useState('');
+  const [locationSearchTerm, setLocationSearchTerm] = useState('');
+  
   const [formData, setFormData] = useState({
     species_id: '',
-    weight_kg: '',
+    weight: '',
     length_cm: '',
     captured_at: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:MM format
     notes: '',
@@ -61,26 +67,99 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
   const loadSpecies = async () => {
     try {
+      // Try API first
       const response = await fetch('/api/species');
       const result = await response.json();
       if (result.success) {
         setSpecies(result.data);
+        return;
       }
     } catch (error) {
-      console.error('Error loading species:', error);
+      console.error('Error loading species from API:', error);
+    }
+
+    // Fallback to direct Supabase query
+    try {
+      const { data, error } = await supabase
+        .from('fish_species')
+        .select('id, name, scientific_name')
+        .order('name');
+
+      if (error) throw error;
+      setSpecies(data || []);
+    } catch (error) {
+      console.error('Error loading species from Supabase:', error);
+      setSpecies([]);
     }
   };
 
   const loadLocations = async () => {
     try {
+      // Try API first
       const response = await fetch('/api/locations');
       const result = await response.json();
       if (result.success) {
         setLocations(result.data);
+        return;
       }
     } catch (error) {
-      console.error('Error loading locations:', error);
+      console.error('Error loading locations from API:', error);
     }
+
+    // Fallback to direct Supabase query
+    try {
+      const { data, error } = await supabase
+        .from('fishing_locations')
+        .select('id, name, type, county')
+        .order('name');
+
+      if (error) throw error;
+      setLocations(data || []);
+    } catch (error) {
+      console.error('Error loading locations from Supabase:', error);
+      setLocations([]);
+    }
+  };
+
+  // Get filtered species based on search and display limit
+  const getFilteredSpecies = () => {
+    // Only show results when searching
+    if (!speciesSearchTerm.trim()) {
+      return [];
+    }
+    
+    let filtered = species.filter(s => 
+      (s.name?.toLowerCase() || '').includes(speciesSearchTerm.toLowerCase()) ||
+      (s.scientific_name?.toLowerCase() || '').includes(speciesSearchTerm.toLowerCase())
+    );
+    
+    // Apply display limit (show only first 10 if not showing all)
+    if (!showAllSpecies) {
+      filtered = filtered.slice(0, 10);
+    }
+    
+    return filtered;
+  };
+
+  // Get filtered locations based on search and display limit
+  const getFilteredLocations = () => {
+    // Only show results when searching
+    if (!locationSearchTerm.trim()) {
+      return [];
+    }
+    
+    let filtered = locations.filter(l => 
+      (l.name?.toLowerCase() || '').includes(locationSearchTerm.toLowerCase()) ||
+      (l.type?.toLowerCase() || '').includes(locationSearchTerm.toLowerCase()) ||
+      (l.county?.toLowerCase() || '').includes(locationSearchTerm.toLowerCase())
+    );
+    
+    // Apply display limit (show only first 10 if not showing all)
+    if (!showAllLocations) {
+      filtered = filtered.slice(0, 10);
+    }
+    
+    return filtered;
   };
 
   const handleInputChange = (field: string, value: string | File | null) => {
@@ -110,7 +189,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       return;
     }
 
-    if (!formData.species_id || !formData.weight_kg || !formData.length_cm || !selectedLocation) {
+    if (!formData.species_id || !formData.weight || !formData.length_cm || !selectedLocation) {
       toast.error('Completează toate câmpurile obligatorii');
       return;
     }
@@ -121,7 +200,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     try {
       const recordData = {
         species_id: formData.species_id,
-        weight_kg: parseFloat(formData.weight_kg),
+        weight: parseFloat(formData.weight),
         length_cm: parseFloat(formData.length_cm),
         location_id: selectedLocation,
         captured_at: formData.captured_at,
@@ -154,7 +233,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         // Reset form
         setFormData({
           species_id: '',
-          weight_kg: '',
+          weight: '',
           length_cm: '',
           captured_at: new Date().toISOString().slice(0, 16),
           notes: '',
@@ -195,16 +274,72 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
               <Label htmlFor="species" className="text-sm font-medium">
                 Specia de pește <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
-                options={species.map(s => ({
-                  value: s.id,
-                  label: `${s.common_ro} (${s.scientific_name})`
-                }))}
-                value={formData.species_id}
-                onChange={(value) => handleInputChange('species_id', value)}
-                placeholder="Selectează specia de pește"
-                searchPlaceholder="Caută specia..."
-              />
+              
+              {/* Search Input */}
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Caută specia..."
+                  value={speciesSearchTerm}
+                  onChange={(e) => setSpeciesSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+                
+                {/* Species List */}
+                                  <div className="max-h-48 overflow-y-auto border rounded-lg">
+                    {!speciesSearchTerm.trim() ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="text-sm">Caută o specie de pește...</div>
+                      </div>
+                    ) : getFilteredSpecies().length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="text-sm">Nu s-au găsit specii pentru "{speciesSearchTerm}"</div>
+                      </div>
+                    ) : (
+                      getFilteredSpecies().map((s) => (
+                        <div
+                          key={s.id}
+                          className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 ${
+                            formData.species_id === s.id ? 'bg-blue-50 border-blue-200' : ''
+                          }`}
+                          onClick={() => {
+                            handleInputChange('species_id', s.id);
+                            setSpeciesSearchTerm(s.name);
+                          }}
+                        >
+                          <div className="font-medium">{s.name}</div>
+                          <div className="text-sm text-gray-500">{s.scientific_name}</div>
+                        </div>
+                      ))
+                    )}
+                  
+                  {/* Show More Button */}
+                  {!showAllSpecies && speciesSearchTerm && getFilteredSpecies().length > 10 && (
+                    <div className="p-3 text-center border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSpecies(true)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Arată toate ({getFilteredSpecies().length} rezultate)
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Show Less Button */}
+                  {showAllSpecies && speciesSearchTerm && (
+                    <div className="p-3 text-center border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSpecies(false)}
+                        className="text-gray-600 hover:text-gray-800 text-sm font-medium"
+                      >
+                        Arată mai puține
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Location Selection */}
@@ -212,16 +347,74 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
               <Label htmlFor="location" className="text-sm font-medium">
                 Locația de pescuit <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
-                options={locations.map(l => ({
-                  value: l.id,
-                  label: `${l.name} (${l.type}, ${l.county})`
-                }))}
-                value={selectedLocation}
-                onChange={setSelectedLocation}
-                placeholder="Selectează locația de pescuit"
-                searchPlaceholder="Caută locația..."
-              />
+              
+              {/* Search Input */}
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Caută locația..."
+                  value={locationSearchTerm}
+                  onChange={(e) => setLocationSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+                
+                {/* Location List */}
+                                  <div className="max-h-48 overflow-y-auto border rounded-lg">
+                    {!locationSearchTerm.trim() ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="text-sm">Caută o locație de pescuit...</div>
+                      </div>
+                    ) : getFilteredLocations().length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="text-sm">Nu s-au găsit locații pentru "{locationSearchTerm}"</div>
+                      </div>
+                    ) : (
+                      getFilteredLocations().map((l) => (
+                        <div
+                          key={l.id}
+                          className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 ${
+                            selectedLocation === l.id ? 'bg-blue-50 border-blue-200' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedLocation(l.id);
+                            setLocationSearchTerm(l.name);
+                          }}
+                        >
+                          <div className="font-medium">{l.name.replace(/_/g, ' ')}</div>
+                          <div className="text-sm text-gray-500 capitalize">
+                            {l.type.replace(/_/g, ' ')} • {l.county}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  
+                  {/* Show More Button */}
+                  {!showAllLocations && locationSearchTerm && getFilteredLocations().length > 10 && (
+                    <div className="p-3 text-center border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllLocations(true)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Arată toate ({getFilteredLocations().length} rezultate)
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Show Less Button */}
+                  {showAllLocations && locationSearchTerm && (
+                    <div className="p-3 text-center border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllLocations(false)}
+                        className="text-gray-600 hover:text-gray-800 text-sm font-medium"
+                      >
+                        Arată mai puține
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Weight and Length */}
@@ -236,8 +429,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  value={formData.weight_kg}
-                  onChange={(e) => handleInputChange('weight_kg', e.target.value)}
+                  value={formData.weight}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
                   placeholder="ex: 2.5"
                   className="w-full"
                 />
@@ -277,58 +470,72 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
             </div>
 
             {/* File Uploads */}
-            <div className="space-y-4">
-              <Label className="text-sm font-medium">Fișiere (opțional)</Label>
+            <div className="space-y-6">
+              <Label className="text-sm font-medium text-gray-700">Fișiere (opțional)</Label>
               
               {/* Photo Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2">
-                  <Camera className="w-4 h-4" />
+              <div className="space-y-3">
+                <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2 text-gray-700">
+                  <Camera className="w-4 h-4 text-blue-500" />
                   Fotografie
                 </Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id="photo"
+                <div className="border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
+                  <input
                     type="file"
+                    id="photo"
                     accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleFileUpload(file, 'photo');
                     }}
-                    className="flex-1"
+                    className="hidden"
                   />
-                  {formData.photo_file && (
-                    <div className="text-sm text-green-600 flex items-center gap-1">
-                      <FileText className="w-4 h-4" />
-                      {formData.photo_file.name}
+                  <label htmlFor="photo" className="cursor-pointer block">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                      <Camera className="w-8 h-8 text-blue-500" />
                     </div>
-                  )}
+                    <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Apasă pentru a selecta o imagine</p>
+                    <p className="text-xs text-gray-500 mt-2">PNG, JPG, WEBP până la 10MB</p>
+                    {formData.photo_file && (
+                      <p className="text-xs text-green-600 mt-2 font-medium flex items-center justify-center gap-1">
+                        <FileText className="w-3 h-3" />
+                        {formData.photo_file.name}
+                      </p>
+                    )}
+                  </label>
                 </div>
               </div>
 
               {/* Video Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2">
-                  <Video className="w-4 h-4" />
+              <div className="space-y-3">
+                <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700">
+                  <Video className="w-4 h-4 text-green-500" />
                   Videoclip
                 </Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id="video"
+                <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center hover:border-green-500 hover:bg-green-50/30 transition-all duration-200 group">
+                  <input
                     type="file"
+                    id="video"
                     accept="video/*"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleFileUpload(file, 'video');
                     }}
-                    className="flex-1"
+                    className="hidden"
                   />
-                  {formData.video_file && (
-                    <div className="text-sm text-green-600 flex items-center gap-1">
-                      <FileText className="w-4 h-4" />
-                      {formData.video_file.name}
+                  <label htmlFor="video" className="cursor-pointer block">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition-colors">
+                      <Video className="w-8 h-8 text-green-500" />
                     </div>
-                  )}
+                    <p className="text-sm font-medium text-gray-700 group-hover:text-green-600">Apasă pentru a selecta un videoclip</p>
+                    <p className="text-xs text-gray-500 mt-2">MP4, MOV, AVI până la 100MB</p>
+                    {formData.video_file && (
+                      <p className="text-xs text-green-600 mt-2 font-medium flex items-center justify-center gap-1">
+                        <FileText className="w-3 h-3" />
+                        {formData.video_file.name}
+                      </p>
+                    )}
+                  </label>
                 </div>
               </div>
             </div>

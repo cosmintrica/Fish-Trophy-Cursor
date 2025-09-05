@@ -1,332 +1,588 @@
-import { useState } from 'react';
-import { Trophy, Medal, Crown, Target, Calendar, Users, Award } from 'lucide-react';
-
-// Mock data pentru demonstrație
-const mockLeaderboards = {
-  overall: [
-    { rank: 1, name: 'Mihai Popescu', totalWeight: 45.2, totalFish: 127, avatar: '/icon_premium.png', team: 'Echipa Zaga Zaga' },
-    { rank: 2, name: 'Ana Ionescu', totalWeight: 38.7, totalFish: 98, avatar: '/icon_free.png', team: 'Pescarii Dunarii' },
-    { rank: 3, name: 'Alexandru Marin', totalWeight: 35.1, totalFish: 89, avatar: '/icon_premium.png', team: 'Echipa Zaga Zaga' },
-    { rank: 4, name: 'Maria Popa', totalWeight: 32.8, totalFish: 76, avatar: '/icon_free.png', team: 'Lacul Snagov' },
-    { rank: 5, name: 'Ion Georgescu', totalWeight: 29.4, totalFish: 65, avatar: '/icon_premium.png', team: 'Pescarii Dunarii' }
-  ],
-  monthly: [
-    { rank: 1, name: 'Ana Ionescu', weight: 12.5, fish: 23, species: 'Crap', avatar: '/icon_free.png', team: 'Pescarii Dunarii' },
-    { rank: 2, name: 'Mihai Popescu', weight: 11.8, fish: 19, species: 'Șalău', avatar: '/icon_premium.png', team: 'Echipa Zaga Zaga' },
-    { rank: 3, name: 'Alexandru Marin', weight: 10.2, fish: 18, species: 'Biban', avatar: '/icon_premium.png', team: 'Echipa Zaga Zaga' }
-  ],
-  species: [
-    { species: 'Crap', record: 12.5, holder: 'Mihai Popescu', date: '2024-03-15', location: 'Lacul Snagov' },
-    { species: 'Șalău', record: 8.2, holder: 'Ana Ionescu', date: '2024-02-28', location: 'Dunărea' },
-    { species: 'Biban', record: 1.8, holder: 'Alexandru Marin', date: '2024-04-02', location: 'Lacul Herăstrău' },
-    { species: 'Platca', record: 3.2, holder: 'Maria Popa', date: '2024-01-20', location: 'Lacul Cernica' }
-  ]
-};
-
-const mockTeams = [
-  { name: 'Echipa Zaga Zaga', members: 12, totalWeight: 156.7, rank: 1, color: 'bg-blue-500' },
-  { name: 'Pescarii Dunarii', members: 8, totalWeight: 134.2, rank: 2, color: 'bg-green-500' },
-  { name: 'Lacul Snagov', members: 15, totalWeight: 98.4, rank: 3, color: 'bg-purple-500' }
-];
+import { useState, useEffect } from 'react';
+import { Trophy, Medal, Crown, Target, Calendar, Users, Award, Fish, Scale, Ruler, MapPin, Clock, Search, Filter, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 const Records = () => {
-  const [activeTab, setActiveTab] = useState('overall');
-  const [timeframe, setTimeframe] = useState('all-time');
+  // Real data states
+  const [records, setRecords] = useState<any[]>([]);
+  const [species, setSpecies] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [activeTab, setActiveTab] = useState('overall');
+  
+  // Modal states
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Advanced filters
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [minWeight, setMinWeight] = useState('');
+  const [maxWeight, setMaxWeight] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  
+  // Search filters
+  const [speciesSearchTerm, setSpeciesSearchTerm] = useState('');
+  const [locationSearchTerm, setLocationSearchTerm] = useState('');
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1: return <Crown className="w-5 h-5 text-yellow-500" />;
-      case 2: return <Medal className="w-5 h-5 text-gray-400" />;
-      case 3: return <Award className="w-5 h-5 text-amber-600" />;
-      default: return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">#{rank}</span>;
+  // Load real data from database
+  const loadRecords = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('records')
+        .select(`
+          *,
+          fish_species:species_id(name),
+          fishing_locations:location_id(name, type, county),
+          profiles:user_id(display_name)
+        `)
+        .in('status', ['verified', 'pending'])
+        .order('weight', { ascending: false });
+
+      if (error) throw error;
+      setRecords(data || []);
+    } catch (error) {
+      console.error('Error loading records:', error);
     }
   };
 
+  const loadSpecies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fish_species')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setSpecies(data || []);
+    } catch (error) {
+      console.error('Error loading species:', error);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fishing_locations')
+        .select('id, name, type, county')
+        .order('name');
+
+      if (error) throw error;
+      setLocations(data || []);
+    } catch (error) {
+      console.error('Error loading locations:', error);
+    }
+  };
+
+  useEffect(() => {
+    const loadAllData = async () => {
+      setLoading(true);
+      await Promise.all([
+        loadRecords(),
+        loadSpecies(),
+        loadLocations()
+      ]);
+      setLoading(false);
+    };
+
+    loadAllData();
+  }, []);
+
+  const getFilteredRecords = () => {
+    let filtered = records;
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(record => 
+        record.fish_species?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.fishing_locations?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.profiles?.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by species
+    if (selectedSpecies !== 'all') {
+      filtered = filtered.filter(record => record.species_id === selectedSpecies);
+    }
+
+    // Filter by location
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(record => record.location_id === selectedLocation);
+    }
+
+    // Filter by status
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(record => record.status === selectedStatus);
+    }
+
+    // Advanced filters
+    if (minWeight) {
+      filtered = filtered.filter(record => record.weight >= parseFloat(minWeight));
+    }
+    if (maxWeight) {
+      filtered = filtered.filter(record => record.weight <= parseFloat(maxWeight));
+    }
+    if (dateFrom) {
+      filtered = filtered.filter(record => new Date(record.captured_at) >= new Date(dateFrom));
+    }
+    if (dateTo) {
+      filtered = filtered.filter(record => new Date(record.captured_at) <= new Date(dateTo));
+    }
+
+    return filtered;
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedSpecies('all');
+    setSelectedLocation('all');
+    setSelectedStatus('all');
+    setMinWeight('');
+    setMaxWeight('');
+    setDateFrom('');
+    setDateTo('');
+    setSpeciesSearchTerm('');
+    setLocationSearchTerm('');
+    setShowSpeciesDropdown(false);
+    setShowLocationDropdown(false);
+  };
+
+  const openRecordModal = (record: any) => {
+    setSelectedRecord(record);
+    setIsModalOpen(true);
+  };
+
+  const closeRecordModal = () => {
+    setIsModalOpen(false);
+    setSelectedRecord(null);
+  };
+
+  const getFilteredSpecies = () => {
+    if (!speciesSearchTerm.trim()) return species;
+    return species.filter(s => 
+      s.name.toLowerCase().includes(speciesSearchTerm.toLowerCase())
+    );
+  };
+
+  const getFilteredLocations = () => {
+    if (!locationSearchTerm.trim()) return locations;
+    return locations.filter(l => 
+      l.name.toLowerCase().includes(locationSearchTerm.toLowerCase()) ||
+      l.type.toLowerCase().includes(locationSearchTerm.toLowerCase()) ||
+      l.county.toLowerCase().includes(locationSearchTerm.toLowerCase())
+    );
+  };
+
+  const selectSpecies = (speciesId: string, speciesName: string) => {
+    setSelectedSpecies(speciesId);
+    setSpeciesSearchTerm(speciesName);
+    setShowSpeciesDropdown(false);
+  };
+
+  const selectLocation = (locationId: string, locationName: string) => {
+    setSelectedLocation(locationId);
+    setLocationSearchTerm(locationName);
+    setShowLocationDropdown(false);
+  };
+
+  const getRankIcon = (rank: number) => {
+    if (rank === 1) {
+      return (
+        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full text-white font-bold text-xl shadow-lg">
+          🥇
+        </div>
+      );
+    }
+    if (rank === 2) {
+      return (
+        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full text-white font-bold text-xl shadow-lg">
+          🥈
+        </div>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-700 rounded-full text-white font-bold text-xl shadow-lg">
+          🥉
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg text-white font-bold text-lg">
+        {rank}
+      </div>
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'verified') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
+          ✅ Verificat
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
+        ⏳ În așteptare
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen py-12">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            🏆 Recorduri & Clasamente
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header - Compact */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Trophy className="w-12 h-12 text-yellow-500" />
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+            Recorduri & Clasamente
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Urmărește cele mai mari capturi din România și concurează pentru 
-            locul de frunte în clasamentele noastre.
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Urmărește cele mai mari capturi din România
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="mb-8 space-y-4">
-          {/* Timeframe Selector */}
-          <div className="flex justify-center">
-            <div className="bg-muted/50 p-1 rounded-lg">
-              {['all-time', 'monthly', 'weekly'].map(period => (
+        {/* Search and Filters - Compact */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6 mb-6">
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="max-w-xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Caută recorduri, specii, locații, pescari..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filters Row - Compact */}
+            <div className="flex flex-wrap justify-center gap-3">
+              {/* Species Filter with Search */}
+              <div className="relative">
+                <div className="flex items-center space-x-2">
+                  <Fish className="w-4 h-4 text-gray-600" />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Caută specie..."
+                      value={speciesSearchTerm}
+                      onChange={(e) => {
+                        setSpeciesSearchTerm(e.target.value);
+                        setShowSpeciesDropdown(true);
+                      }}
+                      onFocus={() => setShowSpeciesDropdown(true)}
+                      className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-[150px]"
+                    />
+                    {showSpeciesDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                        <div 
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            setSelectedSpecies('all');
+                            setSpeciesSearchTerm('');
+                            setShowSpeciesDropdown(false);
+                          }}
+                        >
+                          Toate speciile
+                        </div>
+                        {getFilteredSpecies().map(s => (
+                          <div
+                            key={s.id}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onClick={() => selectSpecies(s.id, s.name)}
+                          >
+                            {s.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Filter with Search */}
+              <div className="relative">
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-gray-600" />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Caută locație..."
+                      value={locationSearchTerm}
+                      onChange={(e) => {
+                        setLocationSearchTerm(e.target.value);
+                        setShowLocationDropdown(true);
+                      }}
+                      onFocus={() => setShowLocationDropdown(true)}
+                      className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-[150px]"
+                    />
+                    {showLocationDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                        <div 
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            setSelectedLocation('all');
+                            setLocationSearchTerm('');
+                            setShowLocationDropdown(false);
+                          }}
+                        >
+                          Toate locațiile
+                        </div>
+                        {getFilteredLocations().map(l => (
+                          <div
+                            key={l.id}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onClick={() => selectLocation(l.id, l.name)}
+                          >
+                            <div className="font-medium">{l.name.replace(/_/g, ' ')}</div>
+                            <div className="text-xs text-gray-500 capitalize">
+                              {l.type.replace(/_/g, ' ')} • {l.county}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Filters Toggle */}
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center space-x-1 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+                <span>Filtre avansate</span>
+              </button>
+
+              {/* Reset Filters */}
+              <button
+                onClick={resetFilters}
+                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Resetează</span>
+              </button>
+            </div>
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate min (kg)</label>
+                  <input
+                    type="number"
+                    value={minWeight}
+                    onChange={(e) => setMinWeight(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate max (kg)</label>
+                  <input
+                    type="number"
+                    value={maxWeight}
+                    onChange={(e) => setMaxWeight(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">De la data</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Până la data</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Results Count */}
+            {getFilteredRecords().length > 0 && (
+              <div className="text-center">
+                <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                  {getFilteredRecords().length} recorduri găsite
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Category Tabs - Compact */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-1 shadow-lg border border-white/20">
+            <div className="flex space-x-1">
+              {[
+                { id: 'overall', label: 'General', icon: Trophy },
+                { id: 'monthly', label: 'Lunar', icon: Calendar },
+                { id: 'species', label: 'Pe Specii', icon: Target },
+                { id: 'teams', label: 'Echipe', icon: Users }
+              ].map(({ id, label, icon: Icon }) => (
                 <button
-                  key={period}
-                  onClick={() => setTimeframe(period)}
-                  className={`px-4 py-2 rounded-md text-sm transition-colors ${
-                    timeframe === period 
-                      ? 'bg-background text-foreground shadow-sm' 
-                      : 'text-muted-foreground hover:text-foreground'
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === id
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  {period === 'all-time' ? 'Tot Timpul' : 
-                   period === 'monthly' ? 'Luna Aceasta' : 'Săptămâna Aceasta'}
+                  <Icon className="w-4 h-4 mr-2" />
+                  {label}
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Advanced Filters */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-muted-foreground">Specie:</label>
-              <select 
-                value={selectedSpecies} 
-                onChange={(e) => setSelectedSpecies(e.target.value)}
-                className="px-3 py-1 border border-border rounded-md bg-background text-foreground text-sm"
-              >
-                <option value="all">Toate speciile</option>
-                <option value="crap">Crap</option>
-                <option value="salau">Șalău</option>
-                <option value="biban">Biban</option>
-                <option value="platca">Platca</option>
-              </select>
+        {/* Leaderboard Content - Compact */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white">🏆 Clasament General</h2>
+              <p className="text-blue-100 text-sm">Cele mai bune performanțe</p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-muted-foreground">Locație:</label>
-              <select 
-                value={selectedLocation} 
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="px-3 py-1 border border-border rounded-md bg-background text-foreground text-sm"
-              >
-                <option value="all">Toate locațiile</option>
-                <option value="snagov">Lacul Snagov</option>
-                <option value="dunarea">Dunărea</option>
-                <option value="herastrau">Lacul Herăstrău</option>
-                <option value="cernica">Lacul Cernica</option>
-              </select>
-            </div>
+          <div className="p-6">
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Se încarcă recordurile...</h3>
+              </div>
+            ) : getFilteredRecords().length === 0 ? (
+              <div className="text-center py-12">
+                <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all' || selectedStatus !== 'all'
+                    ? 'Nu s-au găsit recorduri' 
+                    : 'Nu există recorduri încă'
+                  }
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all' || selectedStatus !== 'all'
+                    ? 'Încearcă să modifici criteriile de căutare.' 
+                    : 'Fii primul care adaugă un record!'
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {getFilteredRecords().slice(0, 15).map((record, index) => (
+                  <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {/* Rank */}
+                        {getRankIcon(index + 1)}
+
+                        {/* Record Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-lg font-bold text-gray-900 truncate">{record.profiles?.display_name || 'Pescător Anonim'}</h3>
+                            {getStatusBadge(record.status)}
+                          </div>
+                          <p className="text-sm text-gray-700 font-medium">{record.fish_species?.name}</p>
+                          <p className="text-xs text-gray-500 flex items-center">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {record.fishing_locations?.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Weight and Length */}
+                      <div className="text-right">
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="text-center">
+                            <div className="flex items-center text-2xl font-bold text-blue-600">
+                              <Scale className="w-5 h-5 mr-1" />
+                              {record.weight || 'N/A'} kg
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="flex items-center text-lg font-bold text-gray-600">
+                              <Ruler className="w-4 h-4 mr-1" />
+                              {record.length_cm || 'N/A'} cm
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button 
+                            onClick={() => openRecordModal(record)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            Vezi
+                          </button>
+                          {(record.status === 'pending' || record.status === 'verified') && (
+                            <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center">
+                              <Edit className="w-3 h-3 mr-1" />
+                              Editează
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Load More Button */}
+                {getFilteredRecords().length > 15 && (
+                  <div className="text-center pt-4">
+                    <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
+                      Vezi mai multe ({getFilteredRecords().length - 15} rămase)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-muted/50 p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('overall')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'overall' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Trophy className="w-4 h-4 inline mr-2" />
-              General
-            </button>
-            <button
-              onClick={() => setActiveTab('monthly')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'monthly' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Calendar className="w-4 h-4 inline mr-2" />
-              Lunar
-            </button>
-            <button
-              onClick={() => setActiveTab('species')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'species' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Target className="w-4 h-4 inline mr-2" />
-              Pe Specii
-            </button>
-            <button
-              onClick={() => setActiveTab('teams')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'teams' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Users className="w-4 h-4 inline mr-2" />
-              Echipe
-            </button>
-          </div>
-        </div>
-
-        {/* Overall Leaderboard */}
-        {activeTab === 'overall' && (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Clasament General</h2>
-              <p className="text-muted-foreground">
-                Cele mai bune performanțe din toate timpurile
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {mockLeaderboards.overall.map((angler) => (
-                <div key={angler.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex items-center justify-center w-12 h-12 mr-4">
-                        {getRankIcon(angler.rank)}
-                      </div>
-                      <img 
-                        src={angler.avatar} 
-                        alt={angler.name}
-                        className="w-12 h-12 rounded-full object-cover mr-4"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground">{angler.name}</h3>
-                        <p className="text-sm text-muted-foreground">{angler.team}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-foreground">{angler.totalWeight} kg</div>
-                      <div className="text-sm text-muted-foreground">{angler.totalFish} pești</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Monthly Leaderboard */}
-        {activeTab === 'monthly' && (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Luna Aceasta</h2>
-              <p className="text-muted-foreground">
-                Cele mai bune performanțe din luna curentă
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {mockLeaderboards.monthly.map((angler) => (
-                <div key={angler.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex items-center justify-center w-12 h-12 mr-4">
-                        {getRankIcon(angler.rank)}
-                      </div>
-                      <img 
-                        src={angler.avatar} 
-                        alt={angler.name}
-                        className="w-12 h-12 rounded-full object-cover mr-4"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground">{angler.name}</h3>
-                        <p className="text-sm text-muted-foreground">{angler.species} - {angler.team}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-foreground">{angler.weight} kg</div>
-                      <div className="text-sm text-muted-foreground">{angler.fish} pești</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Species Records */}
-        {activeTab === 'species' && (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Recorduri pe Specii</h2>
-              <p className="text-muted-foreground">
-                Cele mai mari capturi pentru fiecare specie
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockLeaderboards.species.map((record) => (
-                <div key={record.species} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-foreground">{record.species}</h3>
-                    <div className="text-3xl font-bold text-primary">{record.record} kg</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Recordist:</span>
-                      <span className="font-medium">{record.holder}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Data:</span>
-                      <span className="font-medium">{new Date(record.date).toLocaleDateString('ro-RO')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Locația:</span>
-                      <span className="font-medium">{record.location}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Teams Leaderboard */}
-        {activeTab === 'teams' && (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Clasament Echipe</h2>
-              <p className="text-muted-foreground">
-                Cele mai performante echipe de pescari
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {mockTeams.map((team) => (
-                <div key={team.name} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className={`w-12 h-12 ${team.color} rounded-full flex items-center justify-center mr-4`}>
-                        <span className="text-white font-bold text-lg">#{team.rank}</span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground">{team.name}</h3>
-                        <p className="text-sm text-muted-foreground">{team.members} membri</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-foreground">{team.totalWeight} kg</div>
-                      <div className="text-sm text-muted-foreground">total capturat</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Development Note */}
-        <div className="mt-16 text-center">
-          <div className="bg-muted/50 p-6 rounded-2xl max-w-2xl mx-auto">
-            <h3 className="text-lg font-bold mb-2">🚧 Schiță de Dezvoltare</h3>
-            <p className="text-muted-foreground">
-              Această pagină este o schiță funcțională care demonstrează design-ul și structura 
-              pentru leaderboards și recorduri. Funcționalitatea completă va fi implementată 
-              în următoarele faze de dezvoltare.
-            </p>
-          </div>
-        </div>
+        {/* Record Details Modal */}
+        <RecordDetailsModal
+          record={selectedRecord}
+          isOpen={isModalOpen}
+          onClose={closeRecordModal}
+          isAdmin={false}
+          canEdit={false}
+        />
       </div>
     </div>
   );
