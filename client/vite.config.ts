@@ -63,7 +63,6 @@ export default defineConfig({
     },
   },
   publicDir: 'public',
-  assetsInclude: ['**/*.html'],
   optimizeDeps: {
     include: [
       'react',
