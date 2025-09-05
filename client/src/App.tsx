@@ -15,6 +15,7 @@ import Records from '@/pages/Records';
 import Admin from '@/pages/Admin';
 import SubmissionGuide from '@/pages/SubmissionGuide';
 import Profile from '@/pages/Profile';
+import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
@@ -40,6 +41,7 @@ function App() {
               <Route path="/species" element={<Species />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
               <Route path="/records" element={<Records />} />
+              <Route path="/profile/:userId" element={<PublicProfile />} />
               <Route path="/submission-guide" element={<SubmissionGuide />} />
               <Route path="/fishing-shops" element={<FishingShops />} />
               <Route path="/og-generator" element={<OgGenerator />} />

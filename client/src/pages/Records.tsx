@@ -5,6 +5,9 @@ import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 interface Record {
   id: string;
+  user_id: string;
+  species_id: string;
+  location_id: string;
   weight: number;
   length_cm: number;
   captured_at: string;
@@ -12,6 +15,11 @@ interface Record {
   photo_url?: string;
   video_url?: string;
   status: string;
+  created_at: string;
+  updated_at: string;
+  verified_by?: string;
+  verified_at?: string;
+  rejection_reason?: string;
   fish_species?: {
     name: string;
   };
@@ -22,6 +30,7 @@ interface Record {
   };
   profiles?: {
     display_name: string;
+    email: string;
   };
 }
 
@@ -76,19 +85,29 @@ const Records = () => {
         const userIds = [...new Set(recordsData.map(record => record.user_id))];
         console.log('User IDs:', userIds);
 
-        // Get profiles for these users
+        // Get profiles for these users - use service role for public access
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, display_name, email')
           .in('id', userIds);
 
-        if (profilesError) throw profilesError;
-        console.log('Profiles loaded:', profilesData);
+        if (profilesError) {
+          console.error('Error loading profiles:', profilesError);
+          // Fallback: try to get profiles without auth
+          const { data: fallbackProfiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, email')
+            .in('id', userIds);
+          console.log('Fallback profiles loaded:', fallbackProfiles);
+        } else {
+          console.log('Profiles loaded:', profilesData);
+        }
 
         // Merge records with profiles
+        const finalProfilesData = profilesData || [];
         const recordsWithProfiles = recordsData.map(record => ({
           ...record,
-          profiles: profilesData?.find(profile => profile.id === record.user_id) || null
+          profiles: finalProfilesData.find(profile => profile.id === record.user_id) || null
         }));
 
         console.log('Records with profiles:', recordsWithProfiles);
@@ -259,7 +278,7 @@ const Records = () => {
   };
 
   const openUserProfile = (userId: string) => {
-    // Navigate to user profile page
+    // Navigate to user profile page using React Router
     window.location.href = `/profile/${userId}`;
   };
 

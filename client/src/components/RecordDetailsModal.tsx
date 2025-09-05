@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 
 interface Record {
   id: string;
+  user_id: string;
+  species_id: string;
+  location_id: string;
   weight: number;
   length_cm: number;
   captured_at: string;
@@ -13,6 +16,11 @@ interface Record {
   photo_url?: string;
   video_url?: string;
   status: string;
+  created_at: string;
+  updated_at: string;
+  verified_by?: string;
+  verified_at?: string;
+  rejection_reason?: string;
   fish_species?: {
     name: string;
   };
@@ -23,6 +31,7 @@ interface Record {
   };
   profiles?: {
     display_name: string;
+    email: string;
   };
 }
 
