@@ -49,18 +49,7 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 2000,
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-        passes: 1,
-      },
-      mangle: {
-        toplevel: false,
-        reserved: ['i', 'j', 'k', 'x', 'y', 'z'],
-      },
-    },
+    minify: false,
   },
   publicDir: 'public',
   optimizeDeps: {

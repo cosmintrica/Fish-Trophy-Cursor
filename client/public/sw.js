@@ -1,6 +1,6 @@
 // Service Worker pentru Fish Trophy
-const CACHE_NAME = 'fish-trophy-v6';
-const STATIC_CACHE = 'fish-trophy-static-v6';
+const CACHE_NAME = 'fish-trophy-v7';
+const STATIC_CACHE = 'fish-trophy-static-v7';
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
@@ -95,15 +95,16 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE) {
+          // Delete ALL old caches, including v5 and v6
+          if (cacheName.startsWith('fish-trophy') && cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE) {
             console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      // Don't take control immediately to prevent conflicts
-      // return self.clients.claim();
+      // Force claim all clients to ensure new SW takes control immediately
+      return self.clients.claim();
     })
   );
 });
