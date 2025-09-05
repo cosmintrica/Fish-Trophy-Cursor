@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Fish, MapPin, Scale, Ruler, Calendar, Trophy, Wrench, User, Mail, Phone, Globe } from 'lucide-react';
+import { MapPin, Scale, Ruler, Calendar, Trophy, Wrench, Globe } from 'lucide-react';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 interface UserProfile {
@@ -20,6 +20,9 @@ interface UserProfile {
 
 interface UserRecord {
   id: string;
+  user_id: string;
+  species_id: string;
+  location_id: string;
   weight: number;
   length_cm: number;
   captured_at: string;
@@ -27,6 +30,11 @@ interface UserRecord {
   photo_url?: string;
   video_url?: string;
   status: string;
+  created_at: string;
+  updated_at: string;
+  verified_by?: string;
+  verified_at?: string;
+  rejection_reason?: string;
   fish_species?: {
     name: string;
   };

@@ -293,7 +293,7 @@ const RecordDetailsModal = ({
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-800 mb-2">Informații Admin</h4>
                   <p className="text-blue-700">
-                    Verificat de: {record.verified_by} la {formatDate(record.verified_at)}
+                    Verificat de: {record.verified_by} la {record.verified_at ? formatDate(record.verified_at) : 'N/A'}
                   </p>
                 </div>
               )}
