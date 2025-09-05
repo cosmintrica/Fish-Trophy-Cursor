@@ -1,4 +1,4 @@
-import { Fish, Waves, Ship, Compass, Navigation, Clock, MapPin, Trophy } from 'lucide-react';
+import { Fish, Navigation, Clock, MapPin } from 'lucide-react';
 
 export default function BlackSea() {
   return (
