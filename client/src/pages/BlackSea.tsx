@@ -1,34 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { Fish, Waves, Ship, Compass, Navigation } from 'lucide-react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { loadFishingLocations } from '@/services/fishingLocations';
-import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/hooks/useAuth';
-
-// MapLibre doesn't need access token
+import { Fish, Waves, Ship, Compass, Navigation, Clock, MapPin, Trophy } from 'lucide-react';
 
 export default function BlackSea() {
-  const { user } = useAuth();
-  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [fishingLocations, setFishingLocations] = useState<Array<{
-    id: string;
-    name: string;
-    type: string;
-    county: string;
-    description: string;
-    coords: [number, number];
-    species: string[];
-    facilities: string[];
-    recordCount: number;
-    parking: boolean;
-    camping: boolean;
-  }>>([]);
 
   // Funcție pentru adăugarea locațiilor maritime pe hartă
   const addMaritimeLocationsToMap = useCallback((_map: maplibregl.Map, filterType: string) => {

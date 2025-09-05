@@ -8,7 +8,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 
 // Pages
 import Home from '@/pages/Home';
-import BlackSea from '@/pages/BlackSea';
+import BlackSeaComingSoon from '@/pages/BlackSeaComingSoon';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Records from '@/pages/Records';
@@ -30,7 +30,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/email-confirmation" element={<EmailConfirmation />} />
-              <Route path="/black-sea" element={<BlackSea />} />
+              <Route path="/black-sea" element={<BlackSeaComingSoon />} />
               <Route path="/species" element={<Species />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
               <Route path="/records" element={<Records />} />

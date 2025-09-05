@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* GPU Acceleration for better performance */
+* {
+  will-change: auto;
+}
+
+/* Optimize animations and transitions */
+.animate-spin,
+.transition-all,
+.transition-colors,
+.transition-transform,
+.hover\:scale-105,
+.hover\:scale-110 {
+  will-change: transform;
+}
+
+/* Optimize cards and modals */
+.bg-white,
+.bg-gradient-to-br,
+.shadow-lg,
+.hover\:shadow-xl {
+  will-change: transform, box-shadow;
+}
+
+/* Optimize map elements */
+.maplibregl-map,
+.maplibregl-marker {
+  will-change: transform;
+}
+
 /* Custom popup styles - MapLibre */
 .custom-popup .maplibregl-popup-content {
   padding: 0 !important;

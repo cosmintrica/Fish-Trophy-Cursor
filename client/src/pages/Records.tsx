@@ -111,6 +111,7 @@ const Records = () => {
       }
 
       console.log('Profiles loaded:', profilesData);
+      console.log('First profile:', profilesData?.[0]);
 
       // Merge records with profiles
       const recordsWithProfiles = recordsData.map(record => ({
@@ -591,17 +592,17 @@ const Records = () => {
             ) : (
               <div className="space-y-3">
                 {getFilteredRecords().slice(0, 15).map((record, index) => (
-                  <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
+                  <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-3 sm:p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center space-x-3 sm:space-x-4">
                         {/* Rank */}
                         {getRankIcon(index + 1)}
 
                         {/* Record Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                             <h3 
-                              className="text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                              className="text-base sm:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
                               onClick={() => openUserProfile(record.user_id)}
                               title="Vezi profilul utilizatorului"
                             >
@@ -618,31 +619,31 @@ const Records = () => {
                       </div>
 
                       {/* Weight and Length */}
-                      <div className="text-right">
-                        <div className="flex items-center gap-4 mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 sm:text-right">
+                        <div className="flex items-center justify-between sm:justify-center gap-4 mb-2">
                           <div className="text-center">
-                            <div className="flex items-center text-2xl font-bold text-blue-600">
-                              <Scale className="w-5 h-5 mr-1" />
-                              {record.weight || 'N/A'} kg
+                            <div className="flex items-center text-lg sm:text-2xl font-bold text-blue-600">
+                              <Scale className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+                              <span className="truncate">{record.weight || 'N/A'} kg</span>
                             </div>
                           </div>
                           <div className="text-center">
-                            <div className="flex items-center text-lg font-bold text-gray-600">
-                              <Ruler className="w-4 h-4 mr-1" />
-                              {record.length_cm || 'N/A'} cm
+                            <div className="flex items-center text-sm sm:text-lg font-bold text-gray-600">
+                              <Ruler className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                              <span className="truncate">{record.length_cm || 'N/A'} cm</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2 justify-center sm:justify-end">
                           <button 
                             onClick={() => openRecordModal(record)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
+                            className="px-2 sm:px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
                           >
                             <Eye className="w-3 h-3 mr-1" />
                             Vezi
                           </button>
                           {(record.status === 'pending' || record.status === 'verified') && (
-                            <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center">
+                            <button className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center">
                               <Edit className="w-3 h-3 mr-1" />
                               Editează
                             </button>
