@@ -98,6 +98,77 @@ export const handler = async (event) => {
     }
   }
 
+  // /og - Open Graph Image Generator
+  if (segments[0] === 'og') {
+    if (method === 'GET') {
+      const title = event.queryStringParameters?.title || 'Fish Trophy'
+      const subtitle = event.queryStringParameters?.subtitle || 'Platforma Pescarilor din România'
+      const domain = event.queryStringParameters?.domain || 'FishTrophy.ro'
+      
+      // Generate SVG image
+      const svg = `
+        <svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#f0f9ff;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          
+          <!-- Background -->
+          <rect width="1200" height="630" fill="url(#bg)"/>
+          
+          <!-- Decorative elements -->
+          <circle cx="100" cy="100" r="60" fill="rgba(255,255,255,0.1)"/>
+          <circle cx="1100" cy="530" r="80" fill="rgba(255,255,255,0.08)"/>
+          <circle cx="200" cy="500" r="40" fill="rgba(255,255,255,0.06)"/>
+          
+          <!-- Fish icon -->
+          <g transform="translate(50, 200)">
+            <path d="M0,0 L80,20 L120,60 L100,100 L60,120 L20,100 L0,60 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+            <circle cx="20" cy="30" r="8" fill="rgba(255,255,255,0.4)"/>
+            <path d="M60,40 Q80,50 100,40" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/>
+          </g>
+          
+          <!-- Trophy icon -->
+          <g transform="translate(1000, 150)">
+            <rect x="0" y="40" width="60" height="80" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+            <rect x="10" y="20" width="40" height="20" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+            <circle cx="30" cy="30" r="15" fill="rgba(255,255,255,0.3)"/>
+          </g>
+          
+          <!-- Main content -->
+          <text x="600" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="url(#textGrad)">${title}</text>
+          <text x="600" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="rgba(255,255,255,0.9)">${subtitle}</text>
+          
+          <!-- Domain -->
+          <text x="600" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.7)">${domain}</text>
+          
+          <!-- Decorative line -->
+          <line x1="300" y1="350" x2="900" y2="350" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+          
+          <!-- Bottom accent -->
+          <rect x="0" y="580" width="1200" height="50" fill="rgba(0,0,0,0.1)"/>
+        </svg>
+      `
+      
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=3600',
+          ...cors()
+        },
+        body: svg
+      }
+    }
+  }
+
   return bad('Not found', 404)
 }
 

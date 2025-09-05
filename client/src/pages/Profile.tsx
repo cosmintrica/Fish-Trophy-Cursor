@@ -162,7 +162,7 @@ const Profile = () => {
     if (!user?.id) return;
 
     try {
-      // Încarcă judetele
+      // Încarcă judetele PRIMUL
       await loadCounties();
       
       // Încearcă să încarce din tabela profiles
@@ -623,15 +623,21 @@ const Profile = () => {
         console.error('Error deleting gear:', gearError);
       }
       
-      // Note: admin.deleteUser requires Service Role Key
-      // For now, we'll only delete the data and sign out
-      // The user will need to manually delete the account from Supabase Dashboard
-      console.log('Account data deleted. User needs to manually delete account from Supabase Dashboard.');
+      // Delete user records
+      const { error: recordsError } = await supabase
+        .from('records')
+        .delete()
+        .eq('angler', user.id);
+      
+      if (recordsError) {
+        console.error('Error deleting records:', recordsError);
+      }
+      
+      // Success - all data deleted
+      toast.success('Cont șters cu succes! Toate datele au fost eliminate.', { id: 'delete-account' });
       
       // Sign out
       await supabase.auth.signOut();
-      
-      toast.success('Datele contului au fost șterse! Pentru ștergerea completă, contactează administratorul.', { id: 'delete-account' });
       
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -1172,20 +1178,14 @@ const Profile = () => {
                         ) : (
                           <Input
                             value={(() => {
-                              console.log('🔍 Location Debug:', {
-                                selectedCounty,
-                                selectedCity,
-                                countiesCount: counties.length,
-                                citiesCount: cities.length,
-                                counties: counties.slice(0, 3),
-                                cities: cities.slice(0, 3)
-                              });
-                              
+                              // Așteaptă să se încarce counties și cities
+                              if (counties.length === 0 || cities.length === 0) {
+                                return 'Se încarcă...';
+                              }
+
                               const countyName = counties.find(c => c.id === selectedCounty)?.name || '';
                               const cityName = cities.find(c => c.id === selectedCity)?.name || '';
-                              
-                              console.log('🔍 Found names:', { countyName, cityName });
-                              
+
                               if (countyName && cityName) {
                                 return `${cityName}, ${countyName}`;
                               } else if (countyName) {

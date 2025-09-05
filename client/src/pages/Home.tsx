@@ -9,6 +9,7 @@ import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/hooks/useAuth';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
+import RecordSubmissionModal from '@/components/RecordSubmissionModal';
 
 // FAQ Component with animations
 function FAQItem({ question, answer, index, isOpen, onToggle }: { 
@@ -131,6 +132,8 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [selectedLocationForRecord, setSelectedLocationForRecord] = useState<{id: string, name: string} | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -306,7 +309,7 @@ export default function Home() {
             <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
               Adaugă record
             </button>
           </div>
@@ -349,7 +352,7 @@ export default function Home() {
             <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
+            <button class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
               Adaugă record
             </button>
           </div>
@@ -363,6 +366,24 @@ export default function Home() {
         }).setHTML(popupContent);
 
         marker.setPopup(popup);
+        
+        // Add event listener for "Adaugă record" buttons
+        popup.on('open', () => {
+          setTimeout(() => {
+            const addRecordButtons = document.querySelectorAll('[data-action="add-record"]');
+            addRecordButtons.forEach(button => {
+              button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const locationId = button.getAttribute('data-location-id');
+                const locationName = button.getAttribute('data-location-name');
+                if (locationId && locationName) {
+                  setSelectedLocationForRecord({ id: locationId, name: locationName });
+                  setShowRecordModal(true);
+                }
+              });
+            });
+          }, 100);
+        });
         
         // Add event listener to center popup when opened
         marker.getElement().addEventListener('click', () => {
@@ -638,7 +659,7 @@ export default function Home() {
                 <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
                   Vezi recorduri
                 </button>
-                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600">
+                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
                   Adaugă record
                 </button>
                 </div>
@@ -1561,6 +1582,17 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Record Submission Modal */}
+      <RecordSubmissionModal
+        isOpen={showRecordModal}
+        onClose={() => {
+          setShowRecordModal(false);
+          setSelectedLocationForRecord(null);
+        }}
+        locationId={selectedLocationForRecord?.id}
+        locationName={selectedLocationForRecord?.name}
+      />
       </div>
     </>
   );

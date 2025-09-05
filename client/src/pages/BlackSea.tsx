@@ -180,20 +180,19 @@ export default function BlackSea() {
           }
         ]
       },
-      center: [25.0, 45.5], // Centru România
-      zoom: isMobile ? 6 : 7, // Zoom optimizat
-      minZoom: 5,
+      center: [28.8, 44.1], // Centrat pe Marea Neagră - litoralul românesc
+      zoom: isMobile ? 7 : 8, // Zoom mai mare pentru focus pe litoral
+      minZoom: 6, // Zoom minim mai mare pentru focus pe litoral
       maxZoom: isMobile ? 14 : 16, // Limitat pentru performanță
+      maxBounds: [
+        [27.5, 43.5], // Sud-vest - litoralul românesc
+        [30.5, 45.0]  // Nord-est - focus pe Marea Neagră
+      ] as [[number, number], [number, number]],
       pitch: 0,
       bearing: 0,
       renderWorldCopies: false,
       refreshExpiredTiles: true,
       fadeDuration: 80,
-      // Bounds strict pentru România
-      maxBounds: [
-        [20.0, 43.5], // Southwest
-        [30.0, 48.5]  // Northeast
-      ] as [[number, number], [number, number]],
       // Optimizări performanță
       // preferCanvas: isMobile, // Not supported in Mapbox GL
       // zoomAnimation: !isMobile, // Not supported in Mapbox GL
