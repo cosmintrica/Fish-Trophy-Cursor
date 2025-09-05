@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Crown, Target, Calendar, Users, Award, Fish, Scale, Ruler, MapPin, Clock, Search, Filter, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
+import { Trophy, Target, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
