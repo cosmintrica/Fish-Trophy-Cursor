@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabaseApi } from '@/services/supabase-api';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,17 @@ const Profile = () => {
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
 
   // State pentru echipamente
-  const [userGear, setUserGear] = useState<any[]>([]);
+  const [userGear, setUserGear] = useState<Array<{
+    id: string;
+    brand: string;
+    model: string;
+    quantity: number;
+    purchase_date?: string;
+    purchase_price?: number;
+    notes?: string;
+    description?: string;
+    gear_type?: string;
+  }>>([]);
   const [isLoadingGear, setIsLoadingGear] = useState(false);
   const [isAddingGear, setIsAddingGear] = useState(false);
   const [showAddGearModal, setShowAddGearModal] = useState(false);
@@ -148,7 +158,7 @@ const Profile = () => {
   };
 
   // Încarcă datele profilului din Supabase
-  const loadProfileData = async () => {
+  const loadProfileData = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -202,15 +212,9 @@ const Profile = () => {
       setSelectedCounty(user.user_metadata?.county_id || '');
       setSelectedCity(user.user_metadata?.city_id || '');
     }
-  };
-
-  useEffect(() => {
-    loadProfileData();
-    checkGoogleAuthStatus();
-    loadUserGear();
   }, [user]);
 
-  const checkGoogleAuthStatus = async () => {
+  const checkGoogleAuthStatus = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -223,10 +227,10 @@ const Profile = () => {
     } catch (error) {
       console.error('Error checking Google Auth status:', error);
     }
-  };
+  }, [user]);
 
   // Încarcă echipamentele utilizatorului
-  const loadUserGear = async () => {
+  const loadUserGear = useCallback(async () => {
     if (!user?.id) return;
     
     setIsLoadingGear(true);
@@ -250,7 +254,14 @@ const Profile = () => {
     } finally {
       setIsLoadingGear(false);
     }
-  };
+  }, [user]);
+
+  // useEffect pentru încărcarea datelor
+  useEffect(() => {
+    loadProfileData();
+    checkGoogleAuthStatus();
+    loadUserGear();
+  }, [user, loadProfileData, checkGoogleAuthStatus, loadUserGear]);
 
   // Adaugă echipament nou
   const addGear = async () => {
@@ -583,7 +594,7 @@ const Profile = () => {
     try {
       // Verify password first
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
+        email: user.email || '',
         password: deletePassword
       });
       
@@ -1047,7 +1058,7 @@ const Profile = () => {
                             <p className="text-sm text-gray-600">
                               <span className="font-medium">Cantitate:</span> {gear.quantity}
                             </p>
-                            {gear.purchase_price > 0 && (
+                            {gear.purchase_price && gear.purchase_price > 0 && (
                               <p className="text-sm text-gray-600">
                                 <span className="font-medium">Preț:</span> {gear.purchase_price} RON
                               </p>

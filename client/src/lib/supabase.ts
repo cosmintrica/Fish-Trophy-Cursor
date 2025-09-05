@@ -197,5 +197,7 @@ export interface Profile {
   phone?: string
   location?: string
   bio?: string
+  county_id?: string
+  city_id?: string
 }
 

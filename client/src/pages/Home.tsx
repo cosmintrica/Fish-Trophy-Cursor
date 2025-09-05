@@ -834,7 +834,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user]); // Removed dependencies that cause re-renders
+  }, [user, activeFilter, addLocationsToMap, databaseLocations.length]); // Added missing dependencies
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
