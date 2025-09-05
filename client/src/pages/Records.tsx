@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Target, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
