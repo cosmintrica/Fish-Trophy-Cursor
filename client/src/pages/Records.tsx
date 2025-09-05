@@ -57,27 +57,45 @@ const Records = () => {
   // Load real data from database
   const loadRecords = async () => {
     try {
-      const { data, error } = await supabase
+      // First get records
+      const { data: recordsData, error: recordsError } = await supabase
         .from('records')
         .select(`
           *,
           fish_species:species_id(name),
-          fishing_locations:location_id(name, type, county),
-          profiles:user_id(display_name, email)
+          fishing_locations:location_id(name, type, county)
         `)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
 
-      if (error) throw error;
-      console.log('Records loaded:', data);
-      
-      // Debug: Check if profiles data exists
-      if (data && data.length > 0) {
-        console.log('First record profiles data:', data[0].profiles);
-        console.log('First record user_id:', data[0].user_id);
+      if (recordsError) throw recordsError;
+      console.log('Records loaded:', recordsData);
+
+      if (recordsData && recordsData.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(recordsData.map(record => record.user_id))];
+        console.log('User IDs:', userIds);
+
+        // Get profiles for these users
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, email')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+        console.log('Profiles loaded:', profilesData);
+
+        // Merge records with profiles
+        const recordsWithProfiles = recordsData.map(record => ({
+          ...record,
+          profiles: profilesData?.find(profile => profile.id === record.user_id) || null
+        }));
+
+        console.log('Records with profiles:', recordsWithProfiles);
+        setRecords(recordsWithProfiles);
+      } else {
+        setRecords([]);
       }
-      
-      setRecords(data || []);
     } catch (error) {
       console.error('Error loading records:', error);
     }
@@ -107,8 +125,43 @@ const Records = () => {
 
       if (error) throw error;
       console.log('Profiles in database:', data);
+      
+      // If no profiles exist, create some test data
+      if (!data || data.length === 0) {
+        console.log('No profiles found, creating test profiles...');
+        await createTestProfiles();
+      }
     } catch (error) {
       console.error('Error loading profiles:', error);
+    }
+  };
+
+  // Create test profiles for debugging
+  const createTestProfiles = async () => {
+    try {
+      const testProfiles = [
+        {
+          id: 'test-user-1',
+          email: 'test1@example.com',
+          display_name: 'Pescător Expert',
+          role: 'user'
+        },
+        {
+          id: 'test-user-2', 
+          email: 'test2@example.com',
+          display_name: 'Master Angler',
+          role: 'user'
+        }
+      ];
+
+      const { error } = await supabase
+        .from('profiles')
+        .insert(testProfiles);
+
+      if (error) throw error;
+      console.log('Test profiles created');
+    } catch (error) {
+      console.error('Error creating test profiles:', error);
     }
   };
 
@@ -203,6 +256,11 @@ const Records = () => {
   const openRecordModal = (record: Record) => {
     setSelectedRecord(record);
     setIsModalOpen(true);
+  };
+
+  const openUserProfile = (userId: string) => {
+    // Navigate to user profile page
+    window.location.href = `/profile/${userId}`;
   };
 
   const closeRecordModal = () => {
@@ -560,7 +618,13 @@ const Records = () => {
                         {/* Record Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold text-gray-900 truncate">{record.profiles?.display_name || 'Utilizator'}</h3>
+                            <h3 
+                              className="text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                              onClick={() => openUserProfile(record.user_id)}
+                              title="Vezi profilul utilizatorului"
+                            >
+                              {record.profiles?.display_name || 'Utilizator'}
+                            </h3>
                             {getStatusBadge(record.status)}
                           </div>
                           <p className="text-sm text-gray-700 font-medium">{record.fish_species?.name}</p>
