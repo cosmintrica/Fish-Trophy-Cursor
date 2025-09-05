@@ -1,6 +1,6 @@
 // Service Worker pentru Fish Trophy
-const CACHE_NAME = 'fish-trophy-v5';
-const STATIC_CACHE = 'fish-trophy-static-v5';
+const CACHE_NAME = 'fish-trophy-v6';
+const STATIC_CACHE = 'fish-trophy-static-v6';
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {

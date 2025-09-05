@@ -829,12 +829,10 @@ export default function Home() {
         duration: 600
       });
       
-      // Add markers only after moveend to prevent duplication
-      map.once('moveend', () => {
-        if (databaseLocations.length > 0) {
-          addLocationsToMap(map, type);
-        }
-      });
+      // Add markers immediately after setting active filter
+      if (databaseLocations.length > 0) {
+        addLocationsToMap(map, type);
+      }
     }
   };
 
@@ -937,7 +935,7 @@ export default function Home() {
         z-index: 1000;
         position: relative;
         will-change: transform;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       `;
       userMarkerEl.innerHTML = '🎣';
       
@@ -1050,7 +1048,7 @@ export default function Home() {
             // Creează marker cu fundal alb și design îmbunătățit
             const userMarkerEl = document.createElement('div');
             userMarkerEl.className = 'user-location-marker';
-            userMarkerEl.innerHTML = `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl ${!isMobile ? 'transform hover:scale-110 transition-transform duration-200' : ''}">🎣</div>`;
+            userMarkerEl.innerHTML = `<div class="w-12 h-12 bg-white border-3 border-blue-500 rounded-full shadow-xl flex items-center justify-center text-2xl">🎣</div>`;
 
             let userMarker: maplibregl.Marker | null = null;
             

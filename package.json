@@ -13,6 +13,7 @@
     "lint:fix:client": "cd client && npm run lint:fix",
     "type-check": "npm run type-check:client",
     "type-check:client": "cd client && npm run type-check",
+    "preview": "cd client && npm run preview",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

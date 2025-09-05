@@ -5,8 +5,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
 function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
-  const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val)
-  if (!looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
+  const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val) || val === 'https://your-project.supabase.co'
+  
+  if (supabaseUrl && supabaseAnonKey && !looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
     return createClient(supabaseUrl, supabaseAnonKey)
   }
   // Lightweight stub for local development without real credentials
@@ -32,11 +33,17 @@ function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
       })
     },
     from: () => ({
-      select: async () => ({ data: [], error: new Error('DB disabled in dev (no credentials)') }),
+      select: () => ({
+        order: () => ({
+          data: [],
+          error: new Error('DB disabled in dev (no credentials)')
+        }),
+        data: [],
+        error: new Error('DB disabled in dev (no credentials)')
+      }),
       insert: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
       update: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
-      delete: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') }),
-      order: () => ({ select: async () => ({ data: [], error: new Error('DB disabled in dev (no credentials)') }) })
+      delete: async () => ({ data: null, error: new Error('DB disabled in dev (no credentials)') })
     })
   }
 }

@@ -59,7 +59,7 @@ export default function BlackSea() {
         border-radius: 50%;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         cursor: pointer;
-        transition: transform 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       `;
       
       // Hover effect
@@ -239,7 +239,7 @@ export default function BlackSea() {
           // Creează marker cu fundal alb și design îmbunătățit
           const userMarkerEl = document.createElement('div');
           userMarkerEl.className = 'user-location-marker';
-          userMarkerEl.innerHTML = `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-200">🎣</div>`;
+          userMarkerEl.innerHTML = `<div class="w-14 h-14 bg-white border-4 border-cyan-500 rounded-full shadow-2xl flex items-center justify-center text-3xl">🎣</div>`;
 
           const userMarker = new maplibregl.Marker(userMarkerEl)
             .setLngLat([longitude, latitude])

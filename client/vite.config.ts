@@ -33,7 +33,7 @@ export default defineConfig({
             if (id.includes('lucide-react')) {
               return 'ui-vendor';
             }
-            if (id.includes('mapbox-gl')) {
+            if (id.includes('maplibre-gl') || id.includes('mapbox-gl')) {
               return 'mapbox-vendor';
             }
             if (id.includes('@supabase')) {
@@ -63,13 +63,14 @@ export default defineConfig({
     },
   },
   publicDir: 'public',
+  assetsInclude: ['**/*.html'],
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'react-router-dom',
       'lucide-react',
-      'mapbox-gl',
+      'maplibre-gl',
       '@supabase/supabase-js',
     ],
     exclude: ['web-vitals'],
