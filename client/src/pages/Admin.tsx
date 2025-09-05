@@ -81,14 +81,14 @@ const Admin: React.FC = () => {
         .from('profiles')
         .select('id, created_at');
 
-      const { data: allRecords, error: recordsError } = await supabase
+      const { data: allRecords, error: allRecordsError } = await supabase
         .from('records')
         .select('id, created_at, status');
 
-      if (!usersError && !recordsError) {
+      if (!usersError && !allRecordsError) {
         const totalUsers = allUsers?.length || 0;
         const totalRecords = allRecords?.length || 0;
-        const verifiedRecords = allRecords?.filter(r => r.status === 'verified').length || 0;
+        // const verifiedRecords = allRecords?.filter(r => r.status === 'verified').length || 0;
         
         // Calculate today's data
         const today = new Date();
