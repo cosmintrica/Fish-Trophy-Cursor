@@ -8,7 +8,7 @@ interface FishSpecies {
   scientific_name: string;
   category: 'dulce' | 'sarat' | 'amestec';
   water_type: 'lac' | 'rau' | 'baraj' | 'mare' | 'delta';
-  region: string;
+  fish_species_region: { region: string }[];
   min_weight: number;
   max_weight: number;
   min_length: number;
@@ -40,7 +40,10 @@ const Species = () => {
         setLoading(true);
         const { data, error } = await supabase
           .from('fish_species')
-          .select('*')
+          .select(`
+            *,
+            fish_species_region(region)
+          `)
           .order('name');
 
         if (error) {
@@ -234,7 +237,9 @@ const Species = () => {
                   <div className="flex justify-between items-center">
                     <div className="text-sm">
                       <span className="font-medium">Regiunea: </span>
-                      <span className="text-muted-foreground capitalize">{speciesItem.region}</span>
+                      <span className="text-muted-foreground capitalize">
+                        {speciesItem.fish_species_region?.map(r => r.region).join(', ') || 'N/A'}
+                      </span>
                     </div>
                     <div className="text-sm">
                       <span className="font-medium">Tip apă: </span>
