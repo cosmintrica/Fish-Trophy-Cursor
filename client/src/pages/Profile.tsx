@@ -283,13 +283,23 @@ const Profile = () => {
     }
   }, [user]);
 
-  // useEffect pentru încărcarea datelor
+  // useEffect pentru încărcarea datelor - secvențial pentru a evita cereri multiple
   useEffect(() => {
-    loadProfileData();
-    checkGoogleAuthStatus();
-    loadUserGear();
-    loadUserRecords();
-  }, [user, loadProfileData, checkGoogleAuthStatus, loadUserGear, loadUserRecords]);
+    const loadDataSequentially = async () => {
+      if (!user) return;
+      
+      try {
+        await loadProfileData();
+        await checkGoogleAuthStatus();
+        await loadUserGear();
+        await loadUserRecords();
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      }
+    };
+    
+    loadDataSequentially();
+  }, [user]);
 
   // Load location data when county/city changes
   useEffect(() => {

@@ -66,57 +66,32 @@ const Records = () => {
   // Load real data from database
   const loadRecords = async () => {
     try {
-      // First get records
+      // Load records with profiles in a single query using joins
       const { data: recordsData, error: recordsError } = await supabase
         .from('records')
         .select(`
           *,
           fish_species:species_id(name),
-          fishing_locations:location_id(name, type, county)
+          fishing_locations:location_id(name, type, county),
+          profiles:user_id(display_name, email)
         `)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
 
-      if (recordsError) throw recordsError;
-      console.log('Records loaded:', recordsData);
-
-      if (recordsData && recordsData.length > 0) {
-        // Get unique user IDs
-        const userIds = [...new Set(recordsData.map(record => record.user_id))];
-        console.log('User IDs:', userIds);
-
-        // Get profiles for these users - use service role for public access
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name, email')
-          .in('id', userIds);
-
-        if (profilesError) {
-          console.error('Error loading profiles:', profilesError);
-          // Fallback: try to get profiles without auth
-          const { data: fallbackProfiles } = await supabase
-            .from('profiles')
-            .select('id, display_name, email')
-            .in('id', userIds);
-          console.log('Fallback profiles loaded:', fallbackProfiles);
-        } else {
-          console.log('Profiles loaded:', profilesData);
-        }
-
-        // Merge records with profiles
-        const finalProfilesData = profilesData || [];
-        const recordsWithProfiles = recordsData.map(record => ({
-          ...record,
-          profiles: finalProfilesData.find(profile => profile.id === record.user_id) || null
-        }));
-
-        console.log('Records with profiles:', recordsWithProfiles);
-        setRecords(recordsWithProfiles);
-      } else {
+      if (recordsError) {
+        console.error('Error loading records:', recordsError);
         setRecords([]);
+        return;
       }
+
+      console.log('Records with profiles loaded:', recordsData);
+      if (recordsData && recordsData.length > 0) {
+        console.log('First record profile data:', recordsData[0].profiles);
+      }
+      setRecords(recordsData || []);
     } catch (error) {
       console.error('Error loading records:', error);
+      setRecords([]);
     }
   };
 
@@ -135,54 +110,7 @@ const Records = () => {
   };
 
   // Debug function to check profiles
-  const checkProfiles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, display_name, email')
-        .limit(5);
-
-      if (error) throw error;
-      console.log('Profiles in database:', data);
-      
-      // If no profiles exist, create some test data
-      if (!data || data.length === 0) {
-        console.log('No profiles found, creating test profiles...');
-        await createTestProfiles();
-      }
-    } catch (error) {
-      console.error('Error loading profiles:', error);
-    }
-  };
-
-  // Create test profiles for debugging
-  const createTestProfiles = async () => {
-    try {
-      const testProfiles = [
-        {
-          id: 'test-user-1',
-          email: 'test1@example.com',
-          display_name: 'Pescător Expert',
-          role: 'user'
-        },
-        {
-          id: 'test-user-2', 
-          email: 'test2@example.com',
-          display_name: 'Master Angler',
-          role: 'user'
-        }
-      ];
-
-      const { error } = await supabase
-        .from('profiles')
-        .insert(testProfiles);
-
-      if (error) throw error;
-      console.log('Test profiles created');
-    } catch (error) {
-      console.error('Error creating test profiles:', error);
-    }
-  };
+  // Removed debug functions to avoid extra database requests
 
   const loadLocations = async () => {
     try {
@@ -199,16 +127,20 @@ const Records = () => {
   };
 
   useEffect(() => {
-      const loadAllData = async () => {
-    setLoading(true);
-    await Promise.all([
-      loadRecords(),
-      loadSpecies(),
-      loadLocations(),
-      checkProfiles() // Debug profiles
-    ]);
-    setLoading(false);
-  };
+    const loadAllData = async () => {
+      setLoading(true);
+      try {
+        // Load data sequentially to avoid overwhelming the database
+        await loadSpecies();
+        await loadLocations();
+        await loadRecords();
+        // Removed debug profiles to avoid extra requests
+      } catch (error) {
+        console.error('Error loading records data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     loadAllData();
   }, []);
