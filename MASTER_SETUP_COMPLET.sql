@@ -1,16 +1,75 @@
 -- =============================================
--- FISH TROPHY – FINAL SCHEMA (idempotent)
--- Safe to run multiple times
+-- MASTER SETUP COMPLET - FISH TROPHY
+-- Rulează acest script în Supabase SQL Editor
 -- =============================================
 
+-- ====== PASUL 1: RESET COMPLET ======
+-- Șterge toate tabelele în ordinea corectă (din cauza foreign keys)
+DROP TABLE IF EXISTS public.fish_species_bait CASCADE;
+DROP TABLE IF EXISTS public.fish_species_method CASCADE;
+DROP TABLE IF EXISTS public.fish_method CASCADE;
+DROP TABLE IF EXISTS public.fish_bait CASCADE;
+DROP TABLE IF EXISTS public.shop_reviews CASCADE;
+DROP TABLE IF EXISTS public.fishing_shops CASCADE;
+DROP TABLE IF EXISTS public.fishing_regulations CASCADE;
+DROP TABLE IF EXISTS public.fishing_techniques CASCADE;
+DROP TABLE IF EXISTS public.user_gear CASCADE;
+DROP TABLE IF EXISTS public.location_species CASCADE;
+DROP TABLE IF EXISTS public.records CASCADE;
+DROP TABLE IF EXISTS public.fishing_locations CASCADE;
+DROP TABLE IF EXISTS public.fish_species CASCADE;
+DROP TABLE IF EXISTS public.cities CASCADE;
+DROP TABLE IF EXISTS public.counties CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Șterge funcțiile
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.sync_profile_email() CASCADE;
+DROP FUNCTION IF EXISTS public.is_admin(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS public.set_verification_fields() CASCADE;
+DROP FUNCTION IF EXISTS public.update_shop_rating() CASCADE;
+DROP FUNCTION IF EXISTS public.get_public_profiles() CASCADE;
+
+-- Șterge trigger-urile de pe auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+
+-- Șterge obiectele din bucket-uri dacă există
+DELETE FROM storage.objects WHERE bucket_id IN ('avatars', 'thumbnails');
+
+-- Șterge bucket-urile doar dacă nu au obiecte
+DO $$
+BEGIN
+  -- Verifică dacă bucket-urile există și le șterge doar dacă sunt goale
+  IF EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars') THEN
+    DELETE FROM storage.buckets WHERE id = 'avatars';
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'thumbnails') THEN
+    DELETE FROM storage.buckets WHERE id = 'thumbnails';
+  END IF;
+EXCEPTION
+  WHEN foreign_key_violation THEN
+    -- Ignoră eroarea dacă există obiecte în bucket-uri
+    NULL;
+END $$;
+
+-- Șterge politicile de storage
+DROP POLICY IF EXISTS "Users can upload own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can upload thumbnails" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can update own thumbnails" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view thumbnails" ON storage.objects;
+
+SELECT '✅ Reset complet finalizat!' as status;
+
+-- ====== PASUL 2: APLICĂ SCHEMA FINALĂ ======
 -- Extensions (UUIDs, fuzzy search)
 create extension if not exists pgcrypto;
 create extension if not exists pg_trgm;
-
--- =============================================
--- 0. Helper: funcție pentru rol admin (va fi creată după profiles)
--- =============================================
--- Funcția va fi mutată după crearea tabelului profiles
 
 -- =============================================
 -- 1. PROFILES (utilizatori)
@@ -22,9 +81,7 @@ create table if not exists public.profiles (
   photo_url text,
   phone text,
   bio text default 'Pescar pasionat din România!',
-  location text, -- Keep for backward compatibility
-  county_id text references public.counties(id),
-  city_id uuid references public.cities(id),
+  location text,
   website text,
   role text default 'user' check (role in ('user','admin')),
   created_at timestamptz default now(),
@@ -44,10 +101,6 @@ create policy "Users can view own profile"
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id);
 
 -- updated_at auto
 create or replace function public.update_updated_at_column()
@@ -478,39 +531,7 @@ before update on public.fishing_regulations
 for each row execute function public.update_updated_at_column();
 
 -- =============================================
--- 10. COUNTIES AND CITIES (judete si orase)
--- =============================================
-
--- Tabela pentru judete
-create table if not exists public.counties (
-  id text primary key,
-  name text not null unique,
-  created_at timestamptz default now()
-);
-
--- Tabela pentru orase
-create table if not exists public.cities (
-  id uuid default gen_random_uuid() primary key,
-  county_id text not null references public.counties(id) on delete cascade,
-  name text not null,
-  created_at timestamptz default now(),
-  unique (county_id, name)
-);
-
--- Indexuri pentru performanta
-create index if not exists idx_cities_county_id on public.cities(county_id);
-create index if not exists idx_cities_name on public.cities(name);
-
--- RLS pentru judete si orase
-alter table public.counties enable row level security;
-alter table public.cities enable row level security;
-
--- Politici RLS - toate sunt publice pentru citire
-create policy "Counties are viewable by everyone" on public.counties for select using (true);
-create policy "Cities are viewable by everyone" on public.cities for select using (true);
-
--- =============================================
--- 11. USER GEAR (echipamente utilizatori)
+-- 10. USER GEAR (echipamente utilizatori)
 -- =============================================
 create table if not exists public.user_gear (
   id uuid default gen_random_uuid() primary key,
@@ -563,13 +584,12 @@ create index if not exists idx_user_gear_user on public.user_gear(user_id);
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, display_name, photo_url, location, role)
+  insert into public.profiles (id, email, display_name, photo_url, role)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'display_name',''),
     coalesce(new.raw_user_meta_data->>'avatar_url',''),
-    coalesce(new.raw_user_meta_data->>'location',''),
     case when lower(new.email) = 'cosmin.trica@outlook.com' then 'admin' else 'user' end
   )
   on conflict (id) do nothing;
@@ -640,37 +660,7 @@ create policy "Anyone can view thumbnails" on storage.objects
   for select using (bucket_id = 'thumbnails');
 
 -- =============================================
--- 13. SAMPLE DATA (idempotentă)
--- =============================================
-insert into public.fish_species (name, scientific_name, category, water_type, region, min_weight, max_weight, min_length, max_length, description, habitat, feeding_habits, spawning_season, is_native, is_protected) values
-('Crap','Cyprinus carpio','dulce','lac','muntenia',0.5,25.0,20,100,'Pește de apă dulce foarte popular în România','Ape stătătoare cu vegetație abundentă','Omnivor','Mai-Iunie',true,false),
-('Șalău','Sander lucioperca','dulce','lac','muntenia',0.3,8.0,25,80,'Pește prădător de apă dulce','Ape adânci cu fund nisipos','Carnivor','Martie-Aprilie',true,false),
-('Biban','Perca fluviatilis','dulce','lac','muntenia',0.2,2.0,15,50,'Pește mic de apă dulce','Ape cu vegetație abundentă','Carnivor','Aprilie-Mai',true,false),
-('Platca','Abramis brama','dulce','lac','muntenia',0.3,3.0,20,60,'Pește de apă dulce cu corp lat','Ape cu fund nisipos/argilos','Omnivor','Mai-Iunie',true,false),
-('Somn','Silurus glanis','dulce','lac','muntenia',1.0,50.0,40,200,'Cel mai mare pește de apă dulce din România','Ape adânci cu fund nisipos','Carnivor','Mai-Iunie',true,false),
-('Sturion','Acipenser sturio','amestec','mare','dobrogea',5.0,100.0,100,300,'Pește rar și protejat','Marea Neagră și Dunăre','Carnivor','Aprilie-Mai',true,true),
-('Hamsie','Engraulis encrasicolus','sarat','mare','dobrogea',0.01,0.05,8,15,'Pește mic de mare foarte comun','Marea Neagră','Omnivor','Mai-Iulie',true,false),
-('Sprot','Sprattus sprattus','sarat','mare','dobrogea',0.02,0.08,10,18,'Pește mic de mare','Marea Neagră','Omnivor','Mai-Iunie',true,false)
-on conflict (name) do nothing;
-
-insert into public.fishing_locations (name, type, county, region, latitude, longitude, description, facilities, access_type, access_fee, best_season, best_time, parking_available, parking_fee, boat_rental, boat_rental_fee) values
-('Lacul Snagov','lac','Ilfov','muntenia',44.7333,26.1833,'Lacul cel mai popular din jurul Bucureștiului', array['parcare','wc','restaurant','chirii_barcă'],'platit',50.00,'Primăvară-Toamnă','Dimineața și seara',true,10.00,true,100.00),
-('Dunărea','rau','Constanța','dobrogea',44.1667,28.6333,'Cel mai mare râu din România', array['parcare','wc','magazin_pecete'],'gratuit',0.00,'Toate anotimpurile','Dimineața și seara',true,0.00,true,80.00),
-('Lacul Herăstrău','lac','București','muntenia',44.4833,26.0833,'Lacul din Parcul Herăstrău', array['parcare','wc','restaurant'],'platit',30.00,'Primăvară-Toamnă','Dimineața și seara',true,5.00,false,0.00),
-('Lacul Cernica','lac','Ilfov','muntenia',44.4167,26.2833,'Lacul din Cernica', array['parcare','wc'],'platit',40.00,'Primăvară-Toamnă','Dimineața și seara',true,8.00,true,90.00),
-('Râul Argeș','rau','Argeș','muntenia',44.3167,24.3167,'Râu de munte cu ape curate', array['parcare'],'gratuit',0.00,'Primăvară-Toamnă','Dimineața și seara',true,0.00,false,0.00),
-('Marea Neagră - Constanța','mare','Constanța','dobrogea',44.1667,28.6333,'Plajele din Constanța', array['parcare','wc','restaurant','chirii_barcă'],'gratuit',0.00,'Primăvară-Toamnă','Dimineața și seara',true,0.00,true,120.00),
-('Delta Dunării','delta','Tulcea','dobrogea',45.1667,29.0000,'Delta Dunării - patrimoniu UNESCO', array['parcare','wc','restaurant','chirii_barcă','ghidaj'],'permis_necesar',100.00,'Primăvară-Toamnă','Dimineața și seara',true,0.00,true,150.00)
-on conflict do nothing;
-
-insert into public.fishing_shops (name, description, address, city, county, region, latitude, longitude, phone, email, website, opening_hours, services, rating, review_count) values
-('Magazinul Pescăruș','Magazin specializat în echipamente de pescuit','Strada Pescărușului 15','București','București','muntenia',44.4268,26.1025,'021-123-4567','contact@pescarus.ro','https://pescarus.ro','L-V: 9:00-18:00, S: 9:00-14:00', array['vanzare_echipamente','reparatii','cursuri'],4.5,25),
-('Pescuitul Perfect','Echipamente de calitate pentru pescuit','Bulevardul Pescărușului 45','Constanța','Constanța','dobrogea',44.1667,28.6333,'0241-123-456','info@pescuitulperfect.ro','https://pescuitulperfect.ro','L-V: 8:00-19:00, S: 8:00-16:00', array['vanzare_echipamente','reparatii','chirii'],4.2,18),
-('Lacul de Aur','Magazin pentru pescuit la lac','Strada Lacului 23','Snagov','Ilfov','muntenia',44.7333,26.1833,'021-987-6543','laculdeaur@snagov.ro','https://laculdeaur.ro','L-V: 7:00-20:00, S-D: 6:00-21:00', array['vanzare_echipamente','chirii','ghidaj'],4.8,32)
-on conflict do nothing;
-
--- =============================================
--- 14. FUNCȚII UTILE PENTRU CLIENT
+-- 13. FUNCȚII UTILE PENTRU CLIENT
 -- =============================================
 
 -- Leaderboard cu nume/poze fără server key
@@ -686,15 +676,4 @@ set search_path = public as $$
 $$;
 grant execute on function public.get_public_profiles() to anon, authenticated;
 
--- =============================================
--- 15. ATENȚIONĂRI PRACTICE
--- =============================================
-
--- UPLOAD STORAGE: Respectă structura de cale:
--- - avatars/<user_id>/filename.jpg
--- - thumbnails/<user_id>/filename.jpg
--- Altfel politicile RLS refuză uploadul!
-
--- VERIFICARE RECORD (admin): Dacă actualizezi cu service_role,
--- trimite verified_by din API-ul tău pentru claritate.
--- Funcția are fallback, dar e mai curat să setezi explicit ID-ul adminului.
+SELECT '✅ Schema finală aplicată cu succes!' as status;

@@ -92,7 +92,6 @@ create table if not exists public.fish_species (
   image_url text,
   is_native boolean default true,
   is_protected boolean default false,
-  needs_review boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -235,7 +234,6 @@ alter table public.records enable row level security;
 
 -- Select policies corecte - DOAR verified records public
 drop policy if exists "Users can view all records" on public.records;
-drop policy if exists "Public can view verified records" on public.records;
 create policy "Public can view verified records"
   on public.records for select using (status = 'verified');
 
