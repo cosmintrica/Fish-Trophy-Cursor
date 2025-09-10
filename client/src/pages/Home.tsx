@@ -462,7 +462,7 @@ export default function Home() {
         });
       });
     }
-  }, [databaseLocations.length, isLoadingLocations, activeFilter]); // Removed addLocationsToMap from dependencies to prevent infinite loops
+  }, [databaseLocations.length, isLoadingLocations, activeFilter, addLocationsToMap]); // Added addLocationsToMap back
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -583,7 +583,7 @@ export default function Home() {
         console.log('No valid coordinates found for county');
       }
     }
-  }, [databaseLocations]);
+  }, [databaseLocations, trackMapInteraction]);
 
   // Debounce pentru căutare – mai fluid și fără „salturi”
   useEffect(() => {
@@ -861,7 +861,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user]); // Only re-initialize when user changes
+  }, [user, activeFilter, addLocationsToMap, databaseLocations.length]); // Added missing dependencies
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

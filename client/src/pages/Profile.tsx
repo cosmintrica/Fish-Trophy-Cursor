@@ -302,7 +302,7 @@ const Profile = () => {
     };
 
     loadDataSequentially();
-  }, [user]);
+  }, [user, checkGoogleAuthStatus, loadProfileData, loadUserGear, loadUserRecords]);
 
   // Load location data when county/city changes
   useEffect(() => {

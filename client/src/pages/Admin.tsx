@@ -154,21 +154,21 @@ const Admin: React.FC = () => {
       await loadTrafficGraphData();
     };
     loadAllData();
-  }, []);
+  }, [loadTrafficGraphData]);
 
   // Load traffic data when period changes
   useEffect(() => {
     if (trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
+  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate, loadTrafficGraphData]);
 
   // Ensure chart loads data on first render
   useEffect(() => {
     if (trafficData.timelineData.length === 0 && trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.timelineData.length, trafficData.selectedPeriod]);
+  }, [trafficData.timelineData.length, trafficData.selectedPeriod, loadTrafficGraphData]);
 
   // Use traffic data directly to prevent memoization issues
   const memoizedTrafficData = trafficData.timelineData || [];
