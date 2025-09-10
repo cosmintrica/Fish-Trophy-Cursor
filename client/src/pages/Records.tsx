@@ -51,7 +51,7 @@ const Records = () => {
   const [activeTab, setActiveTab] = useState('overall');
 
   // Modal states
-  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<FishRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Advanced filters
@@ -219,7 +219,7 @@ const Records = () => {
     setShowLocationDropdown(false);
   };
 
-  const openRecordModal = (record: Record) => {
+  const openRecordModal = (record: FishRecord) => {
     setSelectedRecord(record);
     setIsModalOpen(true);
   };
@@ -234,7 +234,7 @@ const Records = () => {
     setSelectedRecord(null);
   };
 
-  const handleEditRecord = (record: Record) => {
+  const handleEditRecord = (record: FishRecord) => {
     // For now, just open the record details modal
     // In the future, this could open an edit modal
     setSelectedRecord(record);

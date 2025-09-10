@@ -64,6 +64,88 @@ const Admin: React.FC = () => {
     metric: string;
   } | null>(null);
 
+  // Load traffic graph data based on selected period
+  const loadTrafficGraphData = async () => {
+    try {
+      let data: any[] = [];
+
+      switch (trafficData.selectedPeriod) {
+        case '1h': {
+          const { data: hourData, error: hourError } = await supabase.rpc('get_traffic_last_hour');
+          if (hourError) {
+            console.error('Error loading hour data:', hourError);
+          }
+          data = hourData || [];
+          break;
+        }
+        case '24h': {
+          const { data: dayData, error: dayError } = await supabase.rpc('get_traffic_last_24h');
+          if (dayError) {
+            console.error('Error loading day data:', dayError);
+          }
+          data = dayData || [];
+          break;
+        }
+        case '7d': {
+          const { data: weekData, error: weekError } = await supabase.rpc('get_traffic_last_week');
+          if (weekError) {
+            console.error('Error loading week data:', weekError);
+          }
+          data = weekData || [];
+          break;
+        }
+        case '30d': {
+          const { data: monthData, error: monthError } = await supabase.rpc('get_traffic_last_month');
+          if (monthError) {
+            console.error('Error loading month data:', monthError);
+          }
+          data = monthData || [];
+          break;
+        }
+        case '1y': {
+          const { data: yearData, error: yearError } = await supabase.rpc('get_traffic_last_year');
+          if (yearError) {
+            console.error('Error loading year data:', yearError);
+          }
+          data = yearData || [];
+          break;
+        }
+        case 'custom':
+          if (trafficData.customStartDate && trafficData.customEndDate) {
+            const startDate = new Date(trafficData.customStartDate);
+            const endDate = new Date(trafficData.customEndDate);
+            const { data: customData, error: customError } = await supabase.rpc('get_traffic_custom_period', {
+              start_date: startDate.toISOString(),
+              end_date: endDate.toISOString()
+            });
+            if (customError) {
+              console.error('Error loading custom data:', customError);
+            }
+            data = customData || [];
+          }
+          break;
+        default:
+          data = [];
+      }
+
+      // Ensure data has the expected structure
+      const processedData = data.map(item => ({
+        time_period: item.time_period || item.timestamp || '',
+        page_views: item.page_views || 0,
+        unique_visitors: item.unique_visitors || 0,
+        sessions: item.sessions || 0
+      }));
+
+      setTrafficData(prev => ({
+        ...prev,
+        timelineData: processedData
+      }));
+    } catch (error) {
+      console.error('Error loading traffic graph data:', error);
+      // Don't reset data on error - keep existing data
+    }
+  };
+
   // Load real data from database
   useEffect(() => {
     const loadAllData = async () => {
@@ -157,88 +239,6 @@ const Admin: React.FC = () => {
 
     } catch (error) {
       console.error('Error loading detailed analytics:', error);
-    }
-  };
-
-  // Load traffic graph data based on selected period
-  const loadTrafficGraphData = async () => {
-    try {
-      let data: any[] = [];
-
-      switch (trafficData.selectedPeriod) {
-        case '1h': {
-          const { data: hourData, error: hourError } = await supabase.rpc('get_traffic_last_hour');
-          if (hourError) {
-            console.error('Error loading hour data:', hourError);
-          }
-          data = hourData || [];
-          break;
-        }
-        case '24h': {
-          const { data: dayData, error: dayError } = await supabase.rpc('get_traffic_last_24h');
-          if (dayError) {
-            console.error('Error loading day data:', dayError);
-          }
-          data = dayData || [];
-          break;
-        }
-        case '7d': {
-          const { data: weekData, error: weekError } = await supabase.rpc('get_traffic_last_week');
-          if (weekError) {
-            console.error('Error loading week data:', weekError);
-          }
-          data = weekData || [];
-          break;
-        }
-        case '30d': {
-          const { data: monthData, error: monthError } = await supabase.rpc('get_traffic_last_month');
-          if (monthError) {
-            console.error('Error loading month data:', monthError);
-          }
-          data = monthData || [];
-          break;
-        }
-        case '1y': {
-          const { data: yearData, error: yearError } = await supabase.rpc('get_traffic_last_year');
-          if (yearError) {
-            console.error('Error loading year data:', yearError);
-          }
-          data = yearData || [];
-          break;
-        }
-        case 'custom':
-          if (trafficData.customStartDate && trafficData.customEndDate) {
-            const startDate = new Date(trafficData.customStartDate);
-            const endDate = new Date(trafficData.customEndDate);
-            const { data: customData, error: customError } = await supabase.rpc('get_traffic_custom_period', {
-              start_date: startDate.toISOString(),
-              end_date: endDate.toISOString()
-            });
-            if (customError) {
-              console.error('Error loading custom data:', customError);
-            }
-            data = customData || [];
-          }
-          break;
-        default:
-          data = [];
-      }
-
-      // Ensure data has the expected structure
-      const processedData = data.map(item => ({
-        time_period: item.time_period || item.timestamp || '',
-        page_views: item.page_views || 0,
-        unique_visitors: item.unique_visitors || 0,
-        sessions: item.sessions || 0
-      }));
-
-      setTrafficData(prev => ({
-        ...prev,
-        timelineData: processedData
-      }));
-    } catch (error) {
-      console.error('Error loading traffic graph data:', error);
-      // Don't reset data on error - keep existing data
     }
   };
 
