@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string, displayName?: string, countyId?: string, cityId?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -81,6 +81,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       },
     });
     if (error) throw error;
+
+    // Create profile in profiles table
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          email: email,
+          display_name: displayName || '',
+          county_id: countyId || null,
+          city_id: cityId || null,
+          bio: 'Pescar pasionat din România!',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Don't throw error here as user is already created
+      }
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -119,7 +140,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           website: updates.website,
           updated_at: new Date().toISOString(),
         });
-      
+
       if (profileError) {
         console.error('Error updating profile:', profileError);
       }

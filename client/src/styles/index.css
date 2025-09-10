@@ -2,32 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* GPU Acceleration for better performance */
-* {
-  will-change: auto;
-}
-
-/* Optimize animations and transitions */
-.animate-spin,
-.transition-all,
-.transition-colors,
-.transition-transform,
-.hover\:scale-105,
-.hover\:scale-110 {
-  will-change: transform;
-}
-
-/* Optimize cards and modals */
-.bg-white,
-.bg-gradient-to-br,
-.shadow-lg,
-.hover\:shadow-xl {
-  will-change: transform, box-shadow;
-}
-
-/* Optimize map elements */
+/* Simplified GPU Acceleration - only for essential elements */
 .maplibregl-map,
-.maplibregl-marker {
+.maplibregl-marker,
+.custom-marker {
   will-change: transform;
 }
 
@@ -48,8 +26,101 @@
 /* Remove default popup background */
 .maplibregl-popup-content {
   background: transparent !important;
+}
+
+/* Fix modal positioning - ensure they appear centered in viewport */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Ensure modals are properly centered */
+.modal-content {
+  margin: 0 !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 56rem !important;
+  background: white !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  position: relative !important;
+  transform: none !important;
+}
+
+/* Force all modals to use these classes */
+.fixed.inset-0 {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Popup positioning fixes */
+.maplibregl-popup {
+  z-index: 1000 !important;
+}
+
+.maplibregl-popup-content {
+  margin: 0 !important;
   padding: 0 !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: white !important;
+  border-bottom-color: white !important;
+}
+
+.fixed.inset-0 > div {
+  margin: 0 !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 56rem !important;
+  background: white !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  position: relative !important;
+  transform: none !important;
+}
+
+/* Fix mobile menu scroll issue */
+body.mobile-menu-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+}
+
+/* Mobile menu should be fixed and not scroll with page */
+.lg\:hidden.fixed.inset-0 {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
 }
 
 /* Marker optimization - no transitions to prevent floating */
@@ -79,44 +150,10 @@
   background: transparent !important;
 }
 
-/* GPU Acceleration for smooth animations */
+/* Basic font smoothing */
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Optimize card animations */
-.group {
-  will-change: transform, box-shadow;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Optimize image scaling */
-.group img {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Optimize button interactions */
-button {
-  will-change: background-color, transform, box-shadow;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Optimize hover effects */
-.hover\:scale-110:hover {
-  transform: scale(1.1) translateZ(0);
-}
-
-.hover\:-translate-y-2:hover {
-  transform: translateY(-0.5rem) translateZ(0);
-}
-
-.hover\:scale-\[1\.02\]:hover {
-  transform: scale(1.02) translateZ(0);
 }
 
 /* Previne chenarele albe la focus change */
@@ -129,128 +166,21 @@ button {
   background: transparent !important;
 }
 
-/* GPU Acceleration and Performance Optimizations */
+/* Simplified Performance Optimizations */
 @layer base {
   * {
-    /* Optimizează rendering-ul pe mobile */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    /* Previne layout shift */
     box-sizing: border-box;
-    /* Font principal - Montserrat */
-    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   }
-  
-  /* GPU Acceleration for map and interactive elements */
+
+  /* Only essential GPU acceleration for map */
   .maplibregl-container,
   .maplibregl-canvas,
-  .custom-marker,
-  .user-location-marker,
-  .custom-popup,
-  .faq-item,
-  .hover\\:scale-110:hover,
-  /* Additional elements for GPU acceleration */
-  .bg-white,
-  .bg-blue-50,
-  .bg-gray-50,
-  .shadow-lg,
-  .shadow-xl,
-  .rounded-xl,
-  .rounded-2xl,
-  .border,
-  .border-gray-200,
-  .transition-colors,
-  .transition-all,
-  .transition-opacity,
-  .transition-shadow,
-  .hover\\:bg-gray-50,
-  .hover\\:bg-blue-100,
-  .hover\\:shadow-lg,
-  .hover\\:scale-105,
-  .hover\\:scale-110,
-  .animate-pulse,
-  .animate-bounce,
-  .animate-spin,
-  .animate-ping,
-  .animate-fade-in,
-  .animate-slide-up,
-  .animate-slide-down,
-  .animate-zoom-in,
-  .animate-zoom-out,
-  .backdrop-blur-sm,
-  .backdrop-blur-md,
-  .backdrop-blur-lg {
-    will-change: transform, opacity, box-shadow, background-color;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
-  }
-  
-  /* Hardware acceleration for animations */
-  .transition-transform,
-  .transition-all,
-  .transition-opacity,
-  .transition-shadow,
-  .animate-spin,
-  .animate-pulse,
-  .animate-bounce,
-  .hover\\:scale-110,
-  .hover\\:scale-105 {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-  }
-  
-  /* Specific optimizations for map elements */
-  .maplibregl-container {
-    will-change: opacity, transform;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
-  }
-  
-  .maplibregl-canvas {
+  .custom-marker {
     will-change: transform;
     transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
   }
-  
-  /* Optimize popup animations */
-  .maplibregl-popup {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-  }
-  
-  .maplibregl-popup-content {
-    will-change: transform, opacity, box-shadow;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-  }
-  
-  /* Optimize marker animations */
-  .custom-marker {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
-  }
-  
-  .user-location-marker {
-    will-change: transform, opacity, box-shadow;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
-  }
-  
+
   html {
     /* Îmbunătățește scroll-ul pe mobile */
     -webkit-overflow-scrolling: touch;
@@ -261,7 +191,7 @@ button {
     /* Optimizează font loading */
     font-display: swap;
   }
-  
+
   body {
     /* Previne scroll-ul orizontal pe mobile */
     overflow-x: hidden;
@@ -281,83 +211,16 @@ button {
   }
 }
 
-/* Optimizări pentru harta Leaflet pe mobile */
+/* Basic mobile optimizations */
 @layer utilities {
   .leaflet-container {
-    /* Îmbunătățește performanța hărții pe mobile */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    /* Optimizează touch events */
     touch-action: pan-x pan-y;
   }
-  
-  .leaflet-control-zoom {
-    /* Mărește butoanele de zoom pentru mobile */
-    @media (max-width: 768px) {
-      transform: scale(1.2);
-    }
-  }
-  
-  /* Optimizări pentru animații pe mobile */
-  @media (max-width: 768px) {
-    * {
-      /* Reduce animațiile pe mobile pentru performanță */
-      animation-duration: 0.2s !important;
-      transition-duration: 0.2s !important;
-    }
-  }
 
-  /* Previne Cumulative Layout Shift (CLS) */
-  .prevent-cls {
-    /* Rezervă spațiu pentru conținut care se încarcă */
-    min-height: 200px;
-    background-color: #f3f4f6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Optimizări pentru imagini */
   img {
-    /* Previne layout shift pentru imagini */
     height: auto;
     max-width: 100%;
-    /* Optimizează loading */
     loading: lazy;
-    decoding: async;
-  }
-
-  /* Skeleton loading pentru conținut */
-  .skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-  }
-
-  @keyframes loading {
-    0% {
-      background-position: 200% 0;
-    }
-    100% {
-      background-position: -200% 0;
-    }
-  }
-
-  /* Optimizări pentru Core Web Vitals */
-  .optimize-cls {
-    /* Previne layout shift */
-    contain: layout style paint;
-  }
-
-  .optimize-fid {
-    /* Optimizează First Input Delay */
-    will-change: transform;
-  }
-
-  .optimize-lcp {
-    /* Optimizează Largest Contentful Paint */
-    content-visibility: auto;
-    contain-intrinsic-size: 0 500px;
   }
 }
 

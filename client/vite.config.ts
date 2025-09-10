@@ -8,10 +8,12 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    strictPort: true, // Prevent port fallback
     hmr: {
       overlay: false, // Disable error overlay to reduce console noise
     },
   },
+  assetsInclude: ['**/*.html'],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

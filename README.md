@@ -1,63 +1,173 @@
-# Fish Trophy
+# 🎣 Fish Trophy - Aplicație de Pescuit
 
-Platformă pentru pescarii din România: hartă interactivă, recorduri, specii și comunitate.
+Aplicație web modernă pentru înregistrarea și gestionarea recordurilor de pescuit din România.
 
-## Caracteristici
+## 📁 Structura Proiectului
 
-- Hărți interactive cu locații (puncte) și ape (poligoane)
-- Sistem de recorduri cu moderare și leaderboard
-- Catalog de specii (detalii, habitat, filtrare)
-- Secțiunea Marea Neagră (temă dedicată și preseturi)
-- Admin (moderare și management conținut)
+```
+Fish-Trophy-Cursor/
+├── client/                     # 🖥️ Frontend React + Vite
+│   ├── src/
+│   │   ├── components/         # Componente React
+│   │   ├── pages/             # Pagini aplicație
+│   │   ├── services/          # Servicii API
+│   │   ├── hooks/             # Custom hooks
+│   │   └── styles/            # Stiluri CSS
+│   └── public/                # Fișiere statice
+├── netlify/                   # ☁️ Netlify Functions
+│   └── functions/             # Serverless functions
+├── supabase/                  # 🗄️ Baza de date
+│   └── migrations/            # Migrări Supabase
+├── backup-system/             # 🛡️ Sistem backup
+│   ├── scripts/               # Scripturi backup
+│   ├── backups/               # Backup-uri salvate
+│   └── docs/                  # Documentație backup
+├── project-docs/              # 📚 Documentație proiect
+│   ├── guides/                # Ghiduri utilizare
+│   ├── deployment/            # Ghiduri deployment
+│   ├── database/              # Scripturi baza de date
+│   └── history/               # Istoric modificări
+└── README.md                  # Acest fișier
+```
 
-## Tech Stack
+## 🚀 Comenzi Rapide
 
-- Frontend: React + Vite + TypeScript + Tailwind + shadcn/ui
-- API: Netlify Functions (catch‑all „/api”) pentru dev/local
-- Date: Supabase (Auth/Storage) + Cloudflare R2 (media grea)
-- Hărți: MapLibre GL + OSM tiles
+### Backup și Restore:
+```bash
+# Backup manual
+node backup.js backup
 
-## Cerințe
+# Backup de urgență
+node backup.js emergency "mesaj-urgență"
 
-- Node.js 20.x
-- Netlify CLI (opțional pentru `netlify dev`)
+# Restore
+node backup.js restore backup-2025-01-15
 
-## Setup Rapid
+# Verificare
+node backup.js verify
+```
 
-1. Copiază variabilele de mediu
+### Dezvoltare:
+```bash
+# Instalează dependențele
+cd client
+npm install
 
-   - `cp client/env.example client/.env.local`
-   - Completează `VITE_SUPABASE_URL` și `VITE_SUPABASE_ANON_KEY` pentru autentificare reală.
-   - În lipsa lor, aplicația pornește cu un „stub” sigur (fără Auth/DB), util pentru UI dev.
+# Pornește serverul de dezvoltare
+npm run dev
 
-2. Rulează în dev
+# Build pentru producție
+npm run build
+```
 
-   - Doar frontend: `npm run dev:client` (Vite)
-   - Frontend + API local: `npm run dev` (Netlify dev, redirecționează „/api/*” la funcția catch‑all).
+### Corectare Orașe:
+```bash
+# 1. Backup înainte
+node backup.js emergency "inainte-correctare-orase"
 
-3. Build
+# 2. Execută scriptul SQL în Supabase
+# Rulează project-docs/database/CORECTARE_ORASE_LIPSITE.sql
 
-   - `npm run build` (build client în `client/dist`)
+# 3. Verifică: 282 → 319 orașe
+```
 
-## API Dev (Netlify Functions)
+## 📖 Documentație
 
-- Redirect `"/api/*" -> "/.netlify/functions/:splat"` definit în `netlify.toml`.
-- Funcția `netlify/functions/api.mjs` acoperă minimul pentru:
-  - `GET/PUT /users/:id/profile`
-  - `GET /users/:id/records`
-  - `POST /records`, `PUT /records/:id`, `DELETE /records/:id`
-  - Returnează date în memorie (doar pentru local/dev).
+### 🛡️ Backup și Restore:
+- **`backup-system/README.md`** - Ghid sistem backup
+- **`backup-system/docs/GHID_BACKUP_RESTORE.md`** - Ghid complet backup
 
-## Notițe Securitate
+### 🏙️ Corectare Orașe:
+- **`project-docs/guides/GHID_FINAL_ORASE.md`** - Ghid corectare orașe
+- **`project-docs/database/CORECTARE_ORASE_LIPSITE.sql`** - Script SQL
 
-- Cheile reale Supabase NU mai sunt în cod. Folosește doar env (`client/.env.local`).
-- Configul Cloudflare R2 este doar din env (vezi cheile `VITE_R2_*`).
+### 🚀 Deployment:
+- **`project-docs/deployment/DEPLOY_NETLIFY.md`** - Ghid deployment Netlify
+- **`project-docs/deployment/NETLIFY_ENV_VARS.md`** - Variabile mediu
+- **`project-docs/deployment/production-instructions.md`** - Instrucțiuni producție
 
-## Probleme cunoscute / lucru în curs
+### 📊 Baza de Date:
+- **`project-docs/database/supabase-schema-final.sql`** - Schema finală
+- **`project-docs/database/CORECTARE_ORASE_LIPSITE.sql`** - Script corectare
 
-- Optimizări performanță hărți și marcaje pe mobil.
-- Ajustări UX la căutare și popup‑uri.
+### 📚 Istoric:
+- **`project-docs/history/change_history.md`** - Istoric modificări
+- **`project-docs/history/project_notes.md`** - Note proiect
+- **`project-docs/history/PUSH_SUMMARY.md`** - Rezumat push-uri
+
+## 🔧 Setup Inițial
+
+### 1. **Backup Inițial** (OBLIGATORIU!)
+```bash
+# Fă primul backup complet
+node backup.js backup "backup-initial-complet"
+
+# Verifică că backup-ul este valid
+node backup.js verify
+```
+
+### 2. **Setup Dezvoltare**
+```bash
+# Instalează dependențele
+cd client
+npm install
+
+# Pornește serverul
+npm run dev
+```
+
+### 3. **Setup Backup** (OPȚIONAL)
+```bash
+# Setup complet sistem backup
+node backup.js setup
+
+# Testează sistemul
+node backup.js test
+```
+
+## ⚠️ Importante
+
+### 🔒 **Siguranță:**
+1. **NICIODATĂ** să nu rulezi `supabase reset`!
+2. **ÎNTOTDEAUNA** fă backup înainte de modificări!
+3. **VERIFICĂ** backup-urile înainte de restore!
+4. **PĂSTREAZĂ** multiple backup-uri pentru siguranță!
+
+### 📊 **Corectare Orașe:**
+- **282 orașe** în baza de date actuală
+- **319 orașe** necesare (37 lipsă)
+- **Script SQL** pregătit pentru adăugare
+
+## 🎯 Status Proiect
+
+### ✅ **Complet:**
+- ✅ **Frontend React** - Funcțional
+- ✅ **Backend Supabase** - Configurat
+- ✅ **Sistem Backup** - Implementat
+- ✅ **Deployment Netlify** - Configurat
+- ✅ **Documentație** - Completă
+
+### 🔄 **În Progres:**
+- 🔄 **Corectare Orașe** - Pregătită (37 orașe lipsă)
+
+### 📋 **Următorii Pași:**
+1. **Backup inițial** (obligatoriu)
+2. **Corectare orașe** (opțional)
+3. **Testare completă** (recomandat)
+4. **Deployment producție** (când ești gata)
+
+## 🆘 Suport
+
+### 📖 **Documentație:**
+- Citește ghidurile din `project-docs/`
+- Verifică `backup-system/README.md` pentru backup
+- Consultă `project-docs/guides/` pentru instrucțiuni
+
+### 🔧 **Troubleshooting:**
+- **Backup**: `node backup.js test`
+- **Dezvoltare**: `cd client && npm run dev`
+- **Deployment**: Verifică `project-docs/deployment/`
 
 ---
 
-Construit pentru comunitatea pescarilor din România.
+**🎣 Fish Trophy - Aplicația ta de pescuit!**

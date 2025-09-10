@@ -35,7 +35,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         .from('counties')
         .select('id, name')
         .order('name');
-      
+
       if (error) throw error;
       setCounties(data || []);
     } catch (error) {
@@ -49,14 +49,14 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
       setCities([]);
       return;
     }
-    
+
     try {
       const { data, error } = await supabase
         .from('cities')
         .select('id, name')
         .eq('county_id', countyId)
         .order('name');
-      
+
       if (error) throw error;
       setCities(data || []);
     } catch (error) {
@@ -123,10 +123,10 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         }
 
         await signUp(email, password, displayName, selectedCounty, selectedCity);
-        
+
         setSuccess('Contul a fost creat cu succes!');
         setShowSuccess(true);
-        
+
         // Elegant transition - keep success message and transform form
         setTimeout(() => {
           setIsTransitioning(true);
@@ -170,7 +170,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setError('');
     setSuccess('');
     setShowSuccess(false);
-    
+
     try {
       await signInWithGoogle();
       setSuccess('Autentificare cu Google reușită!');
@@ -219,8 +219,8 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   }));
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className={`bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-md sm:max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto transition-all duration-300 ${
+    <div className="modal-overlay">
+      <div className={`modal-content p-4 sm:p-6 transition-all duration-300 ${
         isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
       }`}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">

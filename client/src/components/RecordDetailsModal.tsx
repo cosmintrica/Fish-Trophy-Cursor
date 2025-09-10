@@ -45,14 +45,14 @@ interface RecordDetailsModalProps {
   canEdit?: boolean;
 }
 
-const RecordDetailsModal = ({ 
-  record, 
-  isOpen, 
-  onClose, 
-  onEdit, 
-  onDelete, 
-  isAdmin = false, 
-  canEdit = false 
+const RecordDetailsModal = ({
+  record,
+  isOpen,
+  onClose,
+  onEdit,
+  onDelete,
+  isAdmin = false,
+  canEdit = false
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,7 +112,7 @@ const RecordDetailsModal = ({
 
   const handleDelete = async () => {
     if (!onDelete || !record.id) return;
-    
+
     if (window.confirm('Ești sigur că vrei să ștergi acest record?')) {
       setIsLoading(true);
       try {
@@ -127,8 +127,8 @@ const RecordDetailsModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="modal-overlay">
+      <div className="modal-content w-full max-w-2xl">
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
           <CardContent className="p-0">
             {/* Header */}
@@ -139,7 +139,7 @@ const RecordDetailsModal = ({
               >
                 <X className="w-5 h-5" />
               </button>
-              
+
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
                   <Fish className="w-8 h-8" />
@@ -177,7 +177,7 @@ const RecordDetailsModal = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl">
                   <div className="flex items-center space-x-3">
                     <Ruler className="w-8 h-8 text-green-600" />
@@ -201,7 +201,7 @@ const RecordDetailsModal = ({
                       <p className="font-medium">{record.profiles?.display_name || 'Utilizator'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <MapPin className="w-5 h-5 text-gray-600" />
                     <div>
@@ -222,7 +222,7 @@ const RecordDetailsModal = ({
                       <p className="font-medium">{formatDate(record.captured_at)}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Clock className="w-5 h-5 text-gray-600" />
                     <div>
@@ -245,8 +245,8 @@ const RecordDetailsModal = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {record.photo_url && (
                       <div className="relative group">
-                        <img 
-                          src={record.photo_url} 
+                        <img
+                          src={record.photo_url}
                           alt={`Poza record ${record.fish_species?.name}`}
                           className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
                         />
@@ -261,8 +261,8 @@ const RecordDetailsModal = ({
                     )}
                     {record.video_url && (
                       <div className="relative group">
-                        <video 
-                          src={record.video_url} 
+                        <video
+                          src={record.video_url}
                           controls
                           className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
                         />
@@ -303,17 +303,17 @@ const RecordDetailsModal = ({
                 <Button variant="outline" onClick={onClose}>
                   Închide
                 </Button>
-                
+
                 {canEdit && (
                   <Button onClick={handleEdit} className="bg-blue-600 hover:bg-blue-700">
                     <Edit className="w-4 h-4 mr-2" />
                     Editează
                   </Button>
                 )}
-                
+
                 {isAdmin && (
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={handleDelete}
                     disabled={isLoading}
                   >

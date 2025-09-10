@@ -1,7 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth-supabase';
+import { analytics } from '@/lib/analytics';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
+
+// Initialize analytics
+analytics;
 import ProtectedRoute from '@/components/ProtectedRoute';
 // AdminRoute removed - Black Sea now public
 import ScrollToTop from '@/components/ScrollToTop';
@@ -20,14 +26,21 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 
+// Analytics wrapper component that uses useAnalytics inside Router
+function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
+  useAnalytics();
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Layout>
-            <ScrollToTop />
-            <Routes>
+          <AnalyticsWrapper>
+            <Layout>
+              <ScrollToTop />
+              <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/email-confirmation" element={<EmailConfirmation />} />
               <Route path="/black-sea" element={<BlackSeaComingSoon />} />
@@ -56,7 +69,19 @@ function App() {
               />
             </Routes>
           </Layout>
+          </AnalyticsWrapper>
         </Router>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+            }
+          }}
+        />
       </AuthProvider>
     </HelmetProvider>
   );

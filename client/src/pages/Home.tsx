@@ -7,14 +7,15 @@ import { loadFishingLocations, FishingLocation } from '@/services/fishingLocatio
 
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/hooks/useAuth';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import RecordSubmissionModal from '@/components/RecordSubmissionModal';
 
 // FAQ Component with animations
-function FAQItem({ question, answer, index, isOpen, onToggle }: { 
-  question: string; 
-  answer: string; 
+function FAQItem({ question, answer, index, isOpen, onToggle }: {
+  question: string;
+  answer: string;
   index: number;
   isOpen: boolean;
   onToggle: () => void;
@@ -30,9 +31,9 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
           <span className="text-blue-600 font-bold text-base">Q{index + 1}.</span>
           <span className="flex-1">{question}</span>
         </h3>
-        <div 
+        <div
           className="ml-2 transition-transform duration-200 ease-out"
-          style={{ 
+          style={{
             transform: isOpen ? 'translateZ(0) rotate(180deg)' : 'translateZ(0) rotate(0deg)',
             willChange: 'transform'
           }}
@@ -42,8 +43,8 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
           </svg>
         </div>
       </button>
-      
-      <div 
+
+      <div
         className="overflow-hidden"
         style={{
           maxHeight: isOpen ? '400px' : '0px',
@@ -78,7 +79,7 @@ const mobileCSS = `
     backface-visibility: hidden;
     perspective: 1000px;
   }
-  
+
   .maplibregl-canvas {
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
@@ -86,13 +87,13 @@ const mobileCSS = `
     transform: translateZ(0);
     backface-visibility: hidden;
   }
-  
+
   .custom-marker {
     pointer-events: auto !important;
     will-change: transform;
     transform: translateZ(0);
   }
-  
+
   /* Prevent size changes during loading - 4:3 aspect ratio */
   .maplibregl-map {
     width: 100% !important;
@@ -101,12 +102,12 @@ const mobileCSS = `
     max-height: 650px;
     aspect-ratio: 4/3;
   }
-  
+
   @media (max-width: 768px) {
     .maplibregl-popup-content {
       margin: 8px !important;
     }
-    
+
     .maplibregl-popup-tip {
       width: 12px !important;
       height: 12px !important;
@@ -123,6 +124,7 @@ if (typeof document !== 'undefined') {
 
 export default function Home() {
   const { user } = useAuth();
+  const { trackMapInteraction } = useAnalytics();
   const { websiteData, organizationData } = useStructuredData();
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -150,24 +152,26 @@ export default function Home() {
       console.error('❌ Map instance is null or not ready');
       return;
     }
-    
-    // Clear existing markers synchronously with GPU optimization
-    markersRef.current.forEach(marker => {
-      const element = marker.getElement();
-      if (element) {
-        element.style.willChange = 'auto';
-        element.style.transform = 'none';
-      }
-      marker.remove();
-    });
+
+    // Clear existing markers with better performance
+    const markersToRemove = [...markersRef.current];
     markersRef.current = [];
     markerIndexRef.current.clear();
+
+    // Remove markers in batches to prevent flickering
+    markersToRemove.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        // Ignore errors when removing markers
+      }
+    });
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     // Adaugă locațiile filtrate din baza de date
-    const allLocations = filterType === 'all' ? databaseLocations : 
+    const allLocations = filterType === 'all' ? databaseLocations :
       databaseLocations.filter(loc => {
         if (filterType === 'river') {
           // Include both 'river' and 'fluviu' types for rivers
@@ -175,23 +179,20 @@ export default function Home() {
         }
         return loc.type === filterType;
       });
-    
+
     // Show all locations - performance is handled by smaller markers and simplified popups
     const locationsToShow = allLocations;
-    
+
 
     // Adaugă markerii în batch pentru performanță mai bună
     const markers: maplibregl.Marker[] = [];
-    
+
     locationsToShow.forEach(location => {
-      // Debug: log location type for Dunărea
-      if (location.name && location.name.toLowerCase().includes('dunărea')) {
-        console.log('Dunărea location type:', location.type);
-      }
-      
+      // Debug: log location type for Dunărea - REMOVED TO PREVENT SPAM
+
       // Determină culoarea în funcție de tipul locației
       let markerColor = '#6B7280'; // default pentru 'all'
-      
+
       switch (location.type) {
         case 'river':
         case 'fluviu':
@@ -217,7 +218,7 @@ export default function Home() {
       // CRITICAL: Optimized markers for mobile performance
       const markerEl = document.createElement('div');
       markerEl.className = 'custom-marker';
-      
+
       if (isMobile) {
         // Mobile: Simple circle marker
         markerEl.style.cssText = `
@@ -240,13 +241,13 @@ export default function Home() {
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           cursor: pointer;
         `;
-        
+
         // Hover effects for desktop - disabled to prevent position shift
         // markerEl.addEventListener('mouseenter', () => {
         //   markerEl.style.transform = 'scale(1.2)';
         //   markerEl.style.transformOrigin = 'center center';
         // });
-        
+
         // markerEl.addEventListener('mouseleave', () => {
         //   markerEl.style.transform = 'scale(1)';
         //   markerEl.style.transformOrigin = 'center center';
@@ -254,7 +255,7 @@ export default function Home() {
       }
 
       let marker: maplibregl.Marker | null = null;
-      
+
       // Use coords [lng, lat] coming from service; validate before adding
       const [lng, lat] = location.coords || [0, 0];
       if (
@@ -269,13 +270,13 @@ export default function Home() {
         marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
           .setLngLat([lng, lat])
           .addTo(_map);
-        
+
         markers.push(marker);
-        
+
         // Add to index for quick access
         const locationKey = `${location.name}:${lng}:${lat}`;
         markerIndexRef.current.set(locationKey, marker);
-      
+
       // CRITICAL: Ultra-simplified popup for mobile performance
       const popupContent = isMobile ? `
         <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
@@ -284,7 +285,7 @@ export default function Home() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
-          
+
           <div class="mb-3">
             <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
               <span class="text-lg">${location.type === 'river' || location.type === 'fluviu' ? '🌊' : location.type === 'lake' ? '🏞️' : location.type === 'balti_salbatic' ? '🌿' : location.type === 'private_pond' ? '🏡' : '💧'}</span>
@@ -293,17 +294,17 @@ export default function Home() {
             ${location.subtitle ? `<p class="text-xs text-gray-600 mb-1">${location.subtitle}</p>` : ''}
             <p class="text-xs text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
           </div>
-          
+
           ${location.administrare ? `
           <div class="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
             <p class="text-xs text-blue-700 leading-relaxed">${location.administrare}</p>
           </div>
           ` : ''}
-          
+
           <div class="mb-3">
             <p class="text-xs font-semibold text-gray-700">Recorduri: <span class="text-blue-600 font-bold">${location.recordCount}</span></p>
           </div>
-          
+
           <div class="flex gap-2">
             <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
@@ -328,13 +329,13 @@ export default function Home() {
             ${location.subtitle ? `<p class="text-sm text-gray-600 mb-1">${location.subtitle}</p>` : ''}
             <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
           </div>
-          
+
           ${location.administrare ? `
           <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
             <p class="text-sm text-blue-700 leading-relaxed">${location.administrare}</p>
           </div>
           ` : ''}
-          
+
           <div class="mb-4">
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-gray-700">Recorduri:</span>
@@ -346,7 +347,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          
+
           <div class="flex gap-3">
             <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
@@ -365,7 +366,7 @@ export default function Home() {
         }).setHTML(popupContent);
 
         marker.setPopup(popup);
-        
+
         // Add event listeners for popup buttons
         popup.on('open', () => {
           setTimeout(() => {
@@ -398,9 +399,16 @@ export default function Home() {
             });
           }, 100);
         });
-        
+
         // Add event listener to center popup when opened
         marker.getElement().addEventListener('click', () => {
+          // Track marker click
+          trackMapInteraction('marker_click', {
+            location_id: location.id,
+            location_name: location.name,
+            location_type: location.type
+          });
+
           setTimeout(() => {
             if (mapInstanceRef.current) {
               const map = mapInstanceRef.current;
@@ -420,7 +428,7 @@ export default function Home() {
         console.error('Map not ready for marker creation');
       }
     });
-    
+
     // Add markers directly - no batching needed
     markersRef.current = markers.filter(marker => marker !== null);
   }, [databaseLocations]);
@@ -445,9 +453,16 @@ export default function Home() {
   // Reîncarcă markerele când se actualizează locațiile din baza de date
   useEffect(() => {
     if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
-      addLocationsToMap(mapInstanceRef.current, activeFilter);
+      // Use double requestAnimationFrame for smoother transitions
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (mapInstanceRef.current) {
+            addLocationsToMap(mapInstanceRef.current, activeFilter);
+          }
+        });
+      });
     }
-  }, [databaseLocations, isLoadingLocations, activeFilter, addLocationsToMap]);
+  }, [databaseLocations.length, isLoadingLocations, activeFilter]); // Removed addLocationsToMap from dependencies to prevent infinite loops
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -473,11 +488,11 @@ export default function Home() {
     }
 
     const normalizedQuery = normalizeText(query);
-    
+
     // Creează rezultate cu scor de prioritate
     const resultsWithScore = databaseLocations.map(location => {
       let score = 0;
-      
+
       // Prioritate maximă pentru nume (exact match)
       if (normalizeText(location.name).toLowerCase() === normalizedQuery.toLowerCase()) {
         score += 1000;
@@ -494,32 +509,32 @@ export default function Home() {
       else if (normalizeText(location.name).includes(normalizedQuery)) {
         score += 300;
       }
-      
+
       // Prioritate pentru subtitle
       if (location.subtitle && normalizeText(location.subtitle).includes(normalizedQuery)) {
         score += 200;
       }
-      
+
       // Prioritate pentru județ
       if (normalizeText(location.county).includes(normalizedQuery)) {
         score += 150;
       }
-      
+
       // Prioritate pentru administrare
       if (location.administrare && normalizeText(location.administrare).includes(normalizedQuery)) {
         score += 100;
       }
-      
+
       // Prioritate pentru regiune
       if (normalizeText(location.region).includes(normalizedQuery)) {
         score += 50;
       }
-      
+
       // Prioritate pentru tip
       if (normalizeText(location.type).includes(normalizedQuery)) {
         score += 25;
       }
-      
+
       return { ...location, score };
     }).filter(location => location.score > 0)
       .sort((a, b) => b.score - a.score); // Sortează după scor descrescător
@@ -529,10 +544,10 @@ export default function Home() {
 
     // Dacă se caută un județ, fac zoom pe județ
     if (normalizedQuery.length >= 3) {
-      const countyResults = resultsWithScore.filter(loc => 
+      const countyResults = resultsWithScore.filter(loc =>
         normalizeText(loc.county).includes(normalizedQuery)
       );
-      
+
       if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
         // Calculează centrul județului
         const validResults = countyResults.filter(loc => {
@@ -540,20 +555,20 @@ export default function Home() {
           const lng = loc.coords[0];
           return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
         });
-        
+
         if (validResults.length === 0) {
           console.error('❌ No valid coordinates found for county');
           return;
         }
-        
+
         const avgLat = validResults.reduce((sum, loc) => {
           return sum + loc.coords[1];
         }, 0) / validResults.length;
         const avgLng = validResults.reduce((sum, loc) => {
           return sum + loc.coords[0];
         }, 0) / validResults.length;
-        
-        
+
+
         // Verifică dacă coordonatele sunt valide
         if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
           mapInstanceRef.current.flyTo({
@@ -592,47 +607,47 @@ export default function Home() {
 
   // Funcția pentru a selecta o locație din căutare
   const selectLocation = (location: FishingLocation & { score: number }) => {
-    
+
     // Verifică dacă coordonatele sunt valide
     const lng = location.coords[0];
     const lat = location.coords[1];
-    
+
     if (!lng || !lat || isNaN(lng) || isNaN(lat)) {
       console.error('❌ Invalid coordinates:', lng, lat);
       return;
     }
-    
+
     if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
       const map = mapInstanceRef.current;
-      
+
       // Fly to location first
       map.flyTo({
         center: [lng, lat],
         zoom: 14,
         duration: 800
       });
-      
+
       // Open popup after moveend
       map.once('moveend', () => {
         // Try to find marker using index first
         const locationKey = `${location.name}:${lng}:${lat}`;
         let targetMarker = markerIndexRef.current.get(locationKey);
-        
+
         // Fallback to distance-based search
         if (!targetMarker) {
           targetMarker = markersRef.current.find(marker => {
             const markerLngLat = marker.getLngLat();
             const distance = Math.sqrt(
-              Math.pow(markerLngLat.lng - lng, 2) + 
+              Math.pow(markerLngLat.lng - lng, 2) +
               Math.pow(markerLngLat.lat - lat, 2)
             );
             return distance < 0.01;
           });
         }
-        
+
         if (targetMarker) {
           targetMarker.togglePopup();
-          
+
           // Center with offset for better visibility
           const c = map.project([lng, lat]);
           const adj = map.unproject([c.x, c.y - 120]);
@@ -658,14 +673,14 @@ export default function Home() {
                 </div>
               </div>
           `);
-          
+
           tempPopup.setLngLat([lng, lat]).addTo(map);
         }
       });
     } else {
       console.error('❌ Map not ready for location selection');
     }
-    
+
     // Close search dropdown
     setSearchQuery('');
     setShowSearchResults(false);
@@ -680,7 +695,7 @@ export default function Home() {
       e.stopPropagation();
       return false;
     };
-    
+
     const handleFocus = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
@@ -693,13 +708,13 @@ export default function Home() {
       e.stopPropagation();
       return false;
     };
-    
+
     const handleBlur = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       return false;
     };
-    
+
     // Adaugă event listeners cu capture: true pentru a preveni propagarea
     document.addEventListener('visibilitychange', handleVisibilityChange, { capture: true, passive: false });
     window.addEventListener('focus', handleFocus, { capture: true, passive: false });
@@ -708,8 +723,8 @@ export default function Home() {
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    
+
+
           // CRITICAL: Optimized config to prevent flicker and size changes
       const mapConfig: maplibregl.MapOptions = {
         container: mapContainerRef.current,
@@ -810,12 +825,12 @@ export default function Home() {
         setShowLocationRequest(false);
       setShowSearchResults(false);
     });
-    
+
     // Previne reîncărcarea la focus change
     map.on('blur', () => {
       // Nu face nimic - previne reîncărcarea
     });
-    
+
     map.on('focus', () => {
       // Nu face nimic - previne reîncărcarea
     });
@@ -832,7 +847,7 @@ export default function Home() {
       window.removeEventListener('focus', handleFocus, { capture: true });
       window.removeEventListener('blur', handleBlur, { capture: true });
       window.removeEventListener('resize', handleResize, { capture: true });
-      
+
       // Cleanup doar dacă componenta se unmount complet
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -846,19 +861,24 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, addLocationsToMap, databaseLocations.length, activeFilter]); // Added activeFilter back
+  }, [user]); // Only re-initialize when user changes
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
     setActiveFilter(type);
-    
-    if (mapInstanceRef.current) {
+
+    // Track filter interaction
+    trackMapInteraction('filter', { filter_type: type });
+
+    if (mapInstanceRef.current && databaseLocations.length > 0) {
       const map = mapInstanceRef.current;
-      
-      // Add markers immediately after setting active filter
-      if (databaseLocations.length > 0) {
-        addLocationsToMap(map, type);
-      }
+
+      // Use double requestAnimationFrame for smoother transitions
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          addLocationsToMap(map, type);
+        });
+      });
     }
   };
 
@@ -866,7 +886,7 @@ export default function Home() {
   const centerOnUserLocation = async () => {
     try {
       setIsLocating(true);
-      
+
       // Verifică dacă geolocation este disponibil
       if (!navigator.geolocation) {
         alert('Geolocation nu este suportat de acest browser.');
@@ -876,20 +896,20 @@ export default function Home() {
 
       // Verifică dacă utilizatorul a dat deja permisiunea
       const locationAccepted = localStorage.getItem('locationAccepted') === 'true';
-      
+
       if (locationAccepted) {
         // Dacă a dat deja permisiunea, centrează direct pe locația sa
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
-            
+
             if (mapInstanceRef.current) {
               mapInstanceRef.current.flyTo({
                 center: [longitude, latitude],
                 zoom: 15,
                 duration: 1000
               });
-              
+
               // Adaugă marker pentru locația userului
               addUserLocationMarker(latitude, longitude);
             }
@@ -898,7 +918,7 @@ export default function Home() {
           (error) => {
             console.error('Eroare la obținerea locației:', error);
             let errorMessage = 'Nu s-a putut obține locația.';
-            
+
             switch(error.code) {
               case error.PERMISSION_DENIED:
                 errorMessage = 'Permisiunea pentru locație a fost refuzată. Te rugăm să activezi locația în setările browser-ului.';
@@ -910,12 +930,12 @@ export default function Home() {
                 errorMessage = 'Timeout la obținerea locației. Încearcă din nou.';
                 break;
             }
-            
+
             alert(errorMessage);
             setShowLocationRequest(true);
             setIsLocating(false);
           },
-          { 
+          {
             maximumAge: 0, // Nu folosește cache
             timeout: 30000, // Timeout și mai mare pentru mobil
             enableHighAccuracy: true, // Precizie maximă
@@ -962,14 +982,14 @@ export default function Home() {
         will-change: transform !important;
       `;
       userMarkerEl.innerHTML = '🎣';
-      
-      
+
+
       // Add hover effect
       userMarkerEl.addEventListener('mouseenter', () => {
         userMarkerEl.style.transform = 'scale(1.1)';
         userMarkerEl.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4), 0 6px 16px rgba(0,0,0,0.2)';
       });
-      
+
       userMarkerEl.addEventListener('mouseleave', () => {
         userMarkerEl.style.transform = 'scale(1)';
         userMarkerEl.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15)';
@@ -985,11 +1005,11 @@ export default function Home() {
       // Adaugă popup cu informații despre locația userului
       const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
       const userPhoto = user?.user_metadata?.avatar_url || '';
-      
+
       // Obține adresa prin reverse geocoding
       try {
         const address = await geocodingService.reverseGeocode(latitude, longitude);
-        
+
         const popup = new maplibregl.Popup({
           maxWidth: '250px',
           closeButton: false,
@@ -1002,10 +1022,10 @@ export default function Home() {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
             </button>
-            
+
             <div class="text-center mb-3">
               <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
-                ${userPhoto ? 
+                ${userPhoto ?
                   `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                   `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
                 }
@@ -1013,7 +1033,7 @@ export default function Home() {
               <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
               <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
             </div>
-            
+
             <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
               <div class="text-center">
                 <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
@@ -1039,7 +1059,7 @@ export default function Home() {
   // Funcție pentru gestionarea permisiunii de locație
   const handleLocationPermission = async (granted: boolean) => {
     setShowLocationRequest(false);
-    
+
     if (!granted) {
       return;
     }
@@ -1053,11 +1073,11 @@ export default function Home() {
 
       // Folosește getCurrentPosition pentru mobil (mai stabil)
       const isMobile = window.innerWidth <= 768;
-      
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
+
           if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
             // Centrează harta pe locația utilizatorului cu animație smooth
             mapInstanceRef.current.flyTo({
@@ -1065,10 +1085,10 @@ export default function Home() {
               zoom: 12,
               duration: 1000
             });
-            
+
             // Obține adresa prin reverse geocoding
             const address = await geocodingService.reverseGeocode(latitude, longitude);
-            
+
             // Creează marker cu fundal alb și design îmbunătățit
             const userMarkerEl = document.createElement('div');
             userMarkerEl.className = 'user-location-marker';
@@ -1089,20 +1109,20 @@ export default function Home() {
               will-change: transform !important;
             `;
             userMarkerEl.innerHTML = '🎣';
-            
+
 
             let userMarker: maplibregl.Marker | null = null;
-            
+
             userMarker = new maplibregl.Marker(userMarkerEl)
               .setLngLat([longitude, latitude])
               .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
-            
+
 
             // Adaugă popup cu design îmbunătățit
             const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
             const userPhoto = user?.user_metadata?.avatar_url || '';
-            
+
             const popup = new maplibregl.Popup({
               maxWidth: '250px',
               closeButton: false,
@@ -1116,10 +1136,10 @@ export default function Home() {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
                 </button>
-                
+
                 <div class="text-center mb-3">
                   <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
-                    ${userPhoto ? 
+                    ${userPhoto ?
                       `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
                       `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
                     }
@@ -1127,7 +1147,7 @@ export default function Home() {
                   <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
                   <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
                 </div>
-                
+
                 <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
                   <div class="text-center">
                     <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
@@ -1157,7 +1177,7 @@ export default function Home() {
         },
         (error) => {
           console.error('Eroare la obținerea locației:', error);
-          
+
           if (error.code === 1) {
             console.error('❌ Permission denied - user denied location access');
             alert('Permisiunea de locație a fost refuzată. Te rog să activezi locația în setările browser-ului și să reîmprospătezi pagina.');
@@ -1289,7 +1309,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            
+
             {/* Search Results Dropdown */}
             {showSearchResults && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
@@ -1313,7 +1333,7 @@ export default function Home() {
                         </p>
                       </div>
                       <div className="text-xs text-gray-500 capitalize">
-                        {location.type === 'river' || location.type === 'fluviu' ? 'Ape curgătoare' : 
+                        {location.type === 'river' || location.type === 'fluviu' ? 'Ape curgătoare' :
                          location.type === 'lake' ? 'Lac' :
                          location.type === 'balti_salbatic' ? 'Bălți Sălbatice' :
                          location.type === 'private_pond' ? 'Bălți Private' : location.type}
@@ -1323,7 +1343,7 @@ export default function Home() {
                 ))}
               </div>
             )}
-            
+
             {showSearchResults && searchResults.length === 0 && searchQuery && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
                 Nu s-au găsit locații pentru "{searchQuery}"
@@ -1341,15 +1361,15 @@ export default function Home() {
                 { type: 'balti_salbatic', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
                 { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
               ].map(({ type, label, icon: Icon, color }) => {
-                const count = type === 'all' 
-                  ? databaseLocations.length 
+                const count = type === 'all'
+                  ? databaseLocations.length
                   : databaseLocations.filter(loc => {
                     if (type === 'river') {
                       return loc.type === 'river' || loc.type === 'fluviu';
                     }
                     return loc.type === type;
                   }).length;
-                
+
                 return (
                 <button
                   key={type}
@@ -1366,7 +1386,7 @@ export default function Home() {
                 </button>
                 );
               })}
-              
+
               <button
                 onClick={openShopPopup}
                 className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105"
@@ -1390,8 +1410,8 @@ export default function Home() {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">Eroare la încărcarea hărții</h3>
                   <p className="text-gray-600 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
-                  <button 
-                    onClick={() => window.location.reload()} 
+                  <button
+                    onClick={() => window.location.reload()}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     Reîmprospătează pagina
@@ -1399,13 +1419,13 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-            <div 
-              ref={mapContainerRef} 
+            <div
+              ref={mapContainerRef}
               className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden"
               style={{ zIndex: 1 }}
             />
             )}
-            
+
             {/* Map Controls - Top Left (Zoom) */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
               <button
@@ -1451,7 +1471,7 @@ export default function Home() {
           <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
             Întrebări Frecvente
           </h2>
-          
+
           <div className="space-y-3">
             {[
               {
@@ -1479,10 +1499,10 @@ export default function Home() {
                 answer: "Planificăm să dezvoltăm funcționalități pentru competiții locale și naționale, un sistem de mentorat pentru pescarii începători și parteneriate cu autoritățile locale pentru amenajarea zonelor de pescuit."
               }
             ].map((faq, index) => (
-              <FAQItem 
-                key={index} 
-                question={faq.question} 
-                answer={faq.answer} 
+              <FAQItem
+                key={index}
+                question={faq.question}
+                answer={faq.answer}
                 index={index}
                 isOpen={openFAQIndex === index}
                 onToggle={() => setOpenFAQIndex(openFAQIndex === index ? null : index)}
@@ -1537,7 +1557,7 @@ export default function Home() {
               Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând.
             </p>
             <p className="text-gray-700 mb-8 leading-relaxed font-medium">
-              Vrei să-ți adaugi magazinul pe hartă? 
+              Vrei să-ți adaugi magazinul pe hartă?
               <br />
               <span className="text-blue-600">Trimite-ne un email cu detaliile tale!</span>
             </p>

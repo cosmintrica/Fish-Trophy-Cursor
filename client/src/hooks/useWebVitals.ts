@@ -20,8 +20,8 @@ export const useWebVitals = () => {
       onCLS((metric: WebVitalsMetric) => {
         console.log('CLS:', metric);
         // Send to analytics
-        if (window.gtag) {
-          window.gtag('event', 'web_vitals', {
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
             event_label: 'CLS',
             value: Math.round(metric.value * 1000), // Convert to milliseconds
@@ -37,8 +37,8 @@ export const useWebVitals = () => {
       // Interaction to Next Paint (INP) - replaces FID in Core Web Vitals
       onINP((metric: WebVitalsMetric) => {
         console.log('INP:', metric);
-        if (window.gtag) {
-          window.gtag('event', 'web_vitals', {
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
             event_label: 'INP',
             value: Math.round(metric.value),
@@ -54,8 +54,8 @@ export const useWebVitals = () => {
       // First Contentful Paint (FCP)
       onFCP((metric: WebVitalsMetric) => {
         console.log('FCP:', metric);
-        if (window.gtag) {
-          window.gtag('event', 'web_vitals', {
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
             event_label: 'FCP',
             value: Math.round(metric.value),
@@ -71,8 +71,8 @@ export const useWebVitals = () => {
       // Largest Contentful Paint (LCP)
       onLCP((metric: WebVitalsMetric) => {
         console.log('LCP:', metric);
-        if (window.gtag) {
-          window.gtag('event', 'web_vitals', {
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
             event_label: 'LCP',
             value: Math.round(metric.value),
@@ -88,8 +88,8 @@ export const useWebVitals = () => {
       // Time to First Byte (TTFB)
       onTTFB((metric: WebVitalsMetric) => {
         console.log('TTFB:', metric);
-        if (window.gtag) {
-          window.gtag('event', 'web_vitals', {
+        if ((window as any).gtag) {
+          (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
             event_label: 'TTFB',
             value: Math.round(metric.value),

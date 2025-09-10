@@ -2,9 +2,9 @@ import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
-import { Toaster } from '@/components/ui/toaster';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -13,6 +13,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
+  const { trackUserAction } = useAnalytics();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // PWA Install Prompt - folosim hook-ul
@@ -98,6 +99,14 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+    // Re-enable body scroll
+    document.body.classList.remove('mobile-menu-open');
+  };
+
+  const openMobileMenu = () => {
+    setIsMobileMenuOpen(true);
+    // Disable body scroll when menu is open
+    document.body.classList.add('mobile-menu-open');
   };
 
   // PWA Install Prompt logic - folosim hook-ul din PWAInstallPrompt
@@ -106,6 +115,13 @@ export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
     closeMobileMenu();
   }, [location.pathname]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, []);
 
   // Fallback pentru cazurile când aplicația nu se încarcă - DUPĂ toate hook-urile
   if (loading) {
@@ -142,8 +158,8 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Link
                 to="/"
                 className={`text-sm font-medium transition-colors ${
-                  location.pathname === '/' 
-                    ? 'text-blue-600' 
+                  location.pathname === '/'
+                    ? 'text-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
                 }`}
               >
@@ -171,8 +187,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <Link
                   to="/black-sea"
                   className={`text-sm font-medium transition-colors ${
-                    location.pathname === '/black-sea' 
-                      ? 'text-blue-600' 
+                    location.pathname === '/black-sea'
+                      ? 'text-blue-600'
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
@@ -223,7 +239,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
               {/* Mobile Menu Button */}
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
                 className="lg:hidden inline-flex items-center justify-center p-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               >
                 {isMobileMenuOpen ? (
@@ -242,11 +258,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       }`}>
         {/* Backdrop */}
-        <div 
+        <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={closeMobileMenu}
         />
-        
+
         {/* Menu Panel */}
         <div className={`absolute right-0 top-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ${
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
@@ -254,9 +270,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           {/* Menu Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <img 
-                src="/icon_free.png" 
-                alt="Fish Trophy" 
+              <img
+                src="/icon_free.png"
+                alt="Fish Trophy"
                 className="w-8 h-8 rounded-xl"
               />
               <span className="text-lg font-bold text-gray-900">Meniu</span>
@@ -274,8 +290,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Link
               to="/"
               className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                location.pathname === '/' 
-                  ? 'bg-blue-50 text-blue-600' 
+                location.pathname === '/'
+                  ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
               onClick={closeMobileMenu}
@@ -283,7 +299,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Home className="w-5 h-5" />
               <span className="font-medium">Acasă</span>
             </Link>
-            
+
             <Link
               to="/species"
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
@@ -292,7 +308,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Fish className="w-5 h-5" />
               <span className="font-medium">Specii</span>
             </Link>
-            
+
             <Link
               to="/records"
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
@@ -301,7 +317,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Trophy className="w-5 h-5" />
               <span className="font-medium">Recorduri</span>
             </Link>
-            
+
             <Link
               to="/submission-guide"
               className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
@@ -310,13 +326,13 @@ export default function Layout({ children }: { children: ReactNode }) {
               <FileText className="w-5 h-5" />
               <span className="font-medium">Ghid Submisie</span>
             </Link>
-            
+
             {isAdmin ? (
               <Link
                 to="/black-sea"
                 className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                  location.pathname === '/black-sea' 
-                    ? 'bg-blue-50 text-blue-600' 
+                  location.pathname === '/black-sea'
+                    ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 onClick={closeMobileMenu}
@@ -334,7 +350,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <span className="font-medium">Marea Neagră</span>
               </Link>
             )}
-            
+
             {isAdmin && (
               <Link
                 to="/admin"
@@ -360,7 +376,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   </p>
                 </div>
               </div>
-              
+
               <Link
                 to="/profile"
                 className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
@@ -369,9 +385,10 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <User className="w-4 h-4 mr-2" />
                 Profilul meu
               </Link>
-              
+
               <button
                 onClick={() => {
+                  trackUserAction('logout', { method: 'email' });
                   logout();
                   closeMobileMenu();
                 }}
@@ -395,6 +412,46 @@ export default function Layout({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
+
+          {/* Social Links */}
+          <div className="p-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Urmărește-ne</h3>
+            <div className="flex space-x-4">
+              <a
+                href="https://facebook.com/fishtrophy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              <a
+                href="https://instagram.com/fishtrophy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-10 h-10 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987s11.987-5.367 11.987-11.987C24.014 5.367 18.647.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323c-.875.807-2.026 1.297-3.323 1.297zm7.83-9.281c-.49 0-.98-.49-.98-.98s.49-.98.98-.98.98.49.98.98-.49.98-.98.98z"/>
+                </svg>
+              </a>
+              <a
+                href="https://youtube.com/fishtrophy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
 
           {/* PWA Install Button in Mobile Menu - temporarily disabled */}
           {/* {showPWAInstallPrompt && (
@@ -470,7 +527,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <li><Link to="/leaderboards" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Clasamente</Link></li>
                 <li><Link to="/fishing-shops" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Magazine</Link></li>
               </ul>
-              
+
               <div className="mt-6">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3">Urmărește-ne</h4>
                 <div className="flex space-x-2">
@@ -528,7 +585,6 @@ export default function Layout({ children }: { children: ReactNode }) {
         />
       )}
       {/* Global toast renderer (bottom-right, default styling) */}
-      <Toaster position="bottom-right" />
     </div>
   );
 }

@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "created_at": "2025-09-09T19:33:26.006Z",
+    "backup_name": "backup-initial-complet",
+    "version": "1.0",
+    "description": "Backup complet Fish Trophy Database"
+  },
+  "tables": {
+    "profiles": {
+      "table": "profiles",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "fishing_locations": {
+      "table": "fishing_locations",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "fish_species": {
+      "table": "fish_species",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "records": {
+      "table": "records",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "record_images": {
+      "table": "record_images",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "record_videos": {
+      "table": "record_videos",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "fishing_shops": {
+      "table": "fishing_shops",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "parking_spots": {
+      "table": "parking_spots",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "educational_content": {
+      "table": "educational_content",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "analytics_events": {
+      "table": "analytics_events",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "user_sessions": {
+      "table": "user_sessions",
+      "data": [],
+      "error": "Invalid API key"
+    },
+    "admin_actions": {
+      "table": "admin_actions",
+      "data": [],
+      "error": "Invalid API key"
+    }
+  },
+  "storage": {
+    "avatars": {
+      "files": [],
+      "error": "signature verification failed"
+    },
+    "thumbnails": {
+      "files": [],
+      "error": "signature verification failed"
+    }
+  },
+  "summary": {
+    "total_tables": 12,
+    "successful_tables": 0,
+    "total_records": 0,
+    "backup_size_bytes": 1264,
+    "created_at": "2025-09-09T19:33:28.027Z"
+  }
+}

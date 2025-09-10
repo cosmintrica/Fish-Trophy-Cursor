@@ -1,10 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
 
-// Helper function for search matching
-const matchesAtStart = (text: string, query: string): boolean => {
-  return text.toLowerCase().startsWith(query.toLowerCase());
+// Helper function to remove diacritics
+const removeDiacritics = (str: string): string => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 };
+
+// Helper function for search matching with diacritics support
+// const matchesAtStart = (text: string, query: string): boolean => {
+//   const normalizedText = removeDiacritics(text.toLowerCase());
+//   const normalizedQuery = removeDiacritics(query.toLowerCase());
+//   return normalizedText.startsWith(normalizedQuery);
+// };
 
 interface SearchableSelectProps {
   options: Array<{ value: string; label: string }>;
@@ -36,9 +43,12 @@ const SearchableSelect = ({
     if (!searchQuery.trim()) {
       setFilteredOptions(options);
     } else {
-      const filtered = options.filter(option =>
-        matchesAtStart(option.label, searchQuery)
-      );
+      const normalizedQuery = removeDiacritics(searchQuery.toLowerCase());
+      const filtered = options.filter(option => {
+        const normalizedLabel = removeDiacritics(option.label.toLowerCase());
+        // For counties and cities, prefer exact start match, but also allow partial match
+        return normalizedLabel.startsWith(normalizedQuery) || normalizedLabel.includes(normalizedQuery);
+      });
       setFilteredOptions(filtered);
     }
   }, [searchQuery, options]);
@@ -90,8 +100,8 @@ const SearchableSelect = ({
         className={`
           w-full px-3 py-2.5 text-left border border-gray-300 rounded-md
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-          ${disabled 
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+          ${disabled
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'bg-white text-gray-900 hover:border-gray-400 cursor-pointer'
           }
           flex items-center justify-between
@@ -100,10 +110,10 @@ const SearchableSelect = ({
         <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown 
+        <ChevronDown
           className={`h-4 w-4 text-gray-400 transition-transform ${
             isOpen ? 'rotate-180' : ''
-          }`} 
+          }`}
         />
       </button>
 

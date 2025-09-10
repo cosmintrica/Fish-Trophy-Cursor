@@ -1,0 +1,21 @@
+name: Update Daily Analytics
+
+on:
+  schedule:
+    # Run daily at 1:00 AM UTC
+    - cron: '0 1 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Daily Analytics Stats
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            https://cckytfxrigzkpfkrrqbv.supabase.co/functions/v1/update-daily-stats
+
+          echo "Daily analytics update completed at $(date)"

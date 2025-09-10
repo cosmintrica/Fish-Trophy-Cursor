@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
 import SearchableSelect from '@/components/SearchableSelect';
+import EditRecordModal from '@/components/EditRecordModal';
 // import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations'; // Now using database
 
 const Profile = () => {
@@ -60,10 +61,12 @@ const Profile = () => {
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingEmailLoading, setIsChangingEmailLoading] = useState(false);
-  
+
   // Modal states
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
 
   // State pentru echipamente
   const [userGear, setUserGear] = useState<Array<{
@@ -97,7 +100,7 @@ const Profile = () => {
   // Load user's records from database
   const loadUserRecords = async () => {
     if (!user?.id) return;
-    
+
     setLoadingRecords(true);
     try {
       const { data, error } = await supabase
@@ -126,12 +129,12 @@ const Profile = () => {
         .from('counties')
         .select('id, name')
         .order('name');
-      
+
       if (error) {
         console.error('Error loading counties:', error);
         return;
       }
-      
+
       console.log('🔍 Counties loaded:', data?.length || 0, 'counties');
       setCounties(data || []);
     } catch (error) {
@@ -145,19 +148,19 @@ const Profile = () => {
       setCities([]);
       return;
     }
-    
+
     try {
       const { data, error } = await supabase
         .from('cities')
         .select('id, name')
         .eq('county_id', countyId)
         .order('name');
-      
+
       if (error) {
         console.error('Error loading cities:', error);
         return;
       }
-      
+
       console.log('🔍 Cities loaded for county', countyId, ':', data?.length || 0, 'cities');
       setCities(data || []);
     } catch (error) {
@@ -172,7 +175,7 @@ const Profile = () => {
     try {
       // Încarcă judetele PRIMUL
       await loadCounties();
-      
+
       // Încearcă să încarce din tabela profiles
       const result = await supabaseApi.getProfile(user.id);
 
@@ -182,7 +185,7 @@ const Profile = () => {
           city_id: result.data.city_id,
           displayName: result.data.displayName
         });
-        
+
         setProfileData({
           displayName: result.data.displayName || user.user_metadata?.display_name || '',
           email: result.data.email || user.email || '',
@@ -191,7 +194,7 @@ const Profile = () => {
         });
         setSelectedCounty(result.data.county_id || '');
         setSelectedCity(result.data.city_id || '');
-        
+
         // Load cities for the selected county
         if (result.data.county_id) {
           console.log('🔍 Loading cities for county:', result.data.county_id);
@@ -225,13 +228,13 @@ const Profile = () => {
   // Încarcă datele de locație separat pentru afișare
   const loadLocationData = useCallback(async () => {
     if (!selectedCounty && !selectedCity) return;
-    
+
     try {
       // Reload counties if not loaded
       if (counties.length === 0) {
         await loadCounties();
       }
-      
+
       // Load cities if county is selected but cities not loaded
       if (selectedCounty && cities.length === 0) {
         await loadCities(selectedCounty);
@@ -243,12 +246,12 @@ const Profile = () => {
 
   const checkGoogleAuthStatus = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
-      const hasGoogleProvider = user.app_metadata?.provider === 'google' || 
+      const hasGoogleProvider = user.app_metadata?.provider === 'google' ||
                                user.app_metadata?.providers?.includes('google') ||
                                user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
-      
+
       setIsGoogleUser(hasGoogleProvider);
       setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
     } catch (error) {
@@ -259,7 +262,7 @@ const Profile = () => {
   // Încarcă echipamentele utilizatorului
   const loadUserGear = useCallback(async () => {
     if (!user?.id) return;
-    
+
     setIsLoadingGear(true);
     try {
       const { data, error } = await supabase
@@ -287,7 +290,7 @@ const Profile = () => {
   useEffect(() => {
     const loadDataSequentially = async () => {
       if (!user) return;
-      
+
       try {
         await loadProfileData();
         await checkGoogleAuthStatus();
@@ -297,7 +300,7 @@ const Profile = () => {
         console.error('Error loading profile data:', error);
       }
     };
-    
+
     loadDataSequentially();
   }, [user]);
 
@@ -384,7 +387,7 @@ const Profile = () => {
     try {
       console.log('Deleting gear with ID:', gearId);
       console.log('Current user ID:', user?.id);
-      
+
       const { error } = await supabase
         .from('user_gear')
         .delete()
@@ -418,13 +421,13 @@ const Profile = () => {
     try {
       // Actualizeaza Supabase Auth cu toate datele
       const { error: authError } = await supabase.auth.updateUser({
-        data: { 
+        data: {
           display_name: profileData.displayName,
           phone: profileData.phone,
           bio: profileData.bio
         }
       });
-      
+
       if (authError) {
         toast.error('Eroare la actualizarea profilului: ' + authError.message, { id: 'profile-update' });
         return;
@@ -458,7 +461,7 @@ const Profile = () => {
 
       if (updateError) {
         console.error('Update error, trying insert:', updateError);
-        
+
         // If update fails, try insert
         const { data: insertData, error: insertError } = await supabase
           .from('profiles')
@@ -480,7 +483,7 @@ const Profile = () => {
           toast.error('Eroare la actualizarea bazei de date: ' + insertError.message, { id: 'profile-update' });
           return;
         }
-        
+
         console.log('Profile inserted successfully:', insertData);
       } else {
         console.log('Profile updated successfully:', updateData);
@@ -488,11 +491,11 @@ const Profile = () => {
 
       console.log('Profile update/insert completed successfully');
       toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
-      
+
       // Reload profile data to get updated county_id and city_id
       await loadProfileData();
       setIsEditing(false);
-      
+
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('A apărut o eroare la actualizarea profilului', { id: 'profile-update' });
@@ -543,7 +546,7 @@ const Profile = () => {
       } else {
         // Actualizeaza state-ul local cu noul email
         setProfileData(prev => ({ ...prev, email: emailData.newEmail }));
-        
+
         toast.success('Email-ul a fost schimbat! Verifică-ți noul email pentru confirmare.', { id: 'email-change' });
         setIsChangingEmail(false);
         setEmailData({ newEmail: '', confirmEmail: '' });
@@ -603,7 +606,7 @@ const Profile = () => {
 
     const hasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
     const hasNumber = /[0-9]/.test(passwordData.newPassword);
-    
+
     if (!hasLetter || !hasNumber) {
       setPasswordErrors(prev => ({ ...prev, newPassword: 'Parola trebuie sa con?ina cel pu?in o litera ?i o cifra' }));
       toast.error('Parola trebuie sa con?ina cel pu?in o litera ?i o cifra');
@@ -630,63 +633,63 @@ const Profile = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
-    
+
     if (!deletePassword) {
       toast.error('Introdu parola pentru a confirma ștergerea contului');
       return;
     }
-    
+
     setIsDeletingAccount(true);
     toast.loading('Se șterge contul...', { id: 'delete-account' });
-    
+
     try {
       // Verify password first
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email || '',
         password: deletePassword
       });
-      
+
       if (signInError) {
         toast.error('Parola introdusă este incorectă', { id: 'delete-account' });
         return;
       }
-      
+
       // Delete user data from profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('id', user.id);
-      
+
       if (profileError) {
         console.error('Error deleting profile:', profileError);
       }
-      
+
       // Delete user gear
       const { error: gearError } = await supabase
         .from('user_gear')
         .delete()
         .eq('user_id', user.id);
-      
+
       if (gearError) {
         console.error('Error deleting gear:', gearError);
       }
-      
+
       // Delete user records
       const { error: recordsError } = await supabase
         .from('records')
         .delete()
         .eq('angler', user.id);
-      
+
       if (recordsError) {
         console.error('Error deleting records:', recordsError);
       }
-      
+
       // Success - all data deleted
       toast.success('Cont șters cu succes! Toate datele au fost eliminate.', { id: 'delete-account' });
-      
+
       // Sign out
       await supabase.auth.signOut();
-      
+
     } catch (error) {
       console.error('Error deleting account:', error);
       toast.error('Eroare la ștergerea contului. Contactează suportul.', { id: 'delete-account' });
@@ -774,7 +777,7 @@ const Profile = () => {
           newPassword: '',
           confirmPassword: ''
         });
-        
+
         // Note: Supabase automatically signs out the user after password change
         // No need to manually redirect
       }
@@ -830,12 +833,12 @@ const Profile = () => {
     }
 
     try {
-      toast.info('Se încarcă imaginea...');
+      toast.loading('Se încarcă imaginea...', { id: 'profile-image-upload' });
 
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
+
       const { error } = await supabase.storage
         .from('avatars')
         .upload(fileName, file);
@@ -858,13 +861,13 @@ const Profile = () => {
         throw updateError;
       }
 
-      toast.success('Imaginea de profil a fost actualizata cu succes!');
+      toast.success('Imaginea de profil a fost actualizata cu succes!', { id: 'profile-image-upload' });
 
       // Actualizeaza UI-ul imediat
       window.location.reload();
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Eroare la upload-ul imaginii. Te rog încearcă din nou.');
+      toast.error('Eroare la upload-ul imaginii. Te rog încearcă din nou.', { id: 'profile-image-upload' });
     }
   };
 
@@ -872,7 +875,7 @@ const Profile = () => {
     const statusConfig = {
       verified: { label: 'Verificat', className: 'bg-green-100 text-green-800' },
       pending: { label: 'În așteptare', className: 'bg-yellow-100 text-yellow-800' },
-      rejected: { label: 'Respins', className: 'bg-red-100 text-red-800' }
+      rejected: { label: 'Respins - Editează și trimite din nou', className: 'bg-red-100 text-red-800' }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -887,6 +890,11 @@ const Profile = () => {
   const openRecordModal = (record: any) => {
     setSelectedRecord(record);
     setIsModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    // Reload user records after successful edit
+    loadUserRecords();
   };
 
   const closeRecordModal = () => {
@@ -989,7 +997,7 @@ const Profile = () => {
               <TabsContent value="records" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Recordurile mele</h2>
-                  <Button 
+                  <Button
                     className="bg-blue-600 hover:bg-blue-700"
                     onClick={() => {
                       // Navigate to records page or open modal
@@ -1014,7 +1022,7 @@ const Profile = () => {
                       <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă recorduri</h3>
                       <p className="text-gray-600 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
-                      <Button 
+                      <Button
                         onClick={() => {
                           window.location.href = '/records';
                         }}
@@ -1062,35 +1070,48 @@ const Profile = () => {
                           </div>
 
                           <div className="mt-3 flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="flex-1"
                               onClick={() => openRecordModal(record)}
                             >
                               Vezi detalii
                             </Button>
                             {record.status === 'pending' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="flex-1"
                                 onClick={() => {
-                                  // TODO: Implement edit functionality
-                                  alert(`Editare record: ${record.fish_species?.name}`);
+                                  setEditingRecord(record);
+                                  setIsEditModalOpen(true);
                                 }}
                               >
                                 Editează
                               </Button>
                             )}
+                            {record.status === 'rejected' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-red-600 border-red-300"
+                                onClick={() => {
+                                  setEditingRecord(record);
+                                  setIsEditModalOpen(true);
+                                }}
+                              >
+                                Editează și trimite din nou
+                              </Button>
+                            )}
                             {isAdmin && record.status === 'verified' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="flex-1 text-orange-600 border-orange-300"
                                 onClick={() => {
-                                  // Open admin edit modal
-                                  alert(`Editare admin record: ${record.fish_species?.name}`);
+                                  setEditingRecord(record);
+                                  setIsEditModalOpen(true);
                                 }}
                               >
                                 Editează (Admin)
@@ -1108,7 +1129,7 @@ const Profile = () => {
               <TabsContent value="gear" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Echipamentele mele</h2>
-                  <Button 
+                  <Button
                     onClick={() => setShowAddGearModal(true)}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
@@ -1313,8 +1334,8 @@ const Profile = () => {
                     <div className="flex space-x-2">
                       {isEditing ? (
                         <>
-                          <Button 
-                            onClick={handleProfileUpdate} 
+                          <Button
+                            onClick={handleProfileUpdate}
                             disabled={isUpdatingProfile}
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -1562,8 +1583,8 @@ const Profile = () => {
                           )}
                         </div>
                         {!user?.email_confirmed_at && (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={handleSendEmailVerification}
                             className="text-blue-600 border-blue-300"
@@ -1597,8 +1618,8 @@ const Profile = () => {
                           />
                         </div>
                         <div className="flex space-x-2">
-                          <Button 
-                            onClick={handleEmailChange} 
+                          <Button
+                            onClick={handleEmailChange}
                             disabled={isChangingEmailLoading}
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -1647,8 +1668,8 @@ const Profile = () => {
                           <div>
                             <p className="font-medium text-gray-900">Google</p>
                             <p className="text-sm text-gray-600">
-                              {isGoogleUser 
-                                ? 'Cont conectat' 
+                              {isGoogleUser
+                                ? 'Cont conectat'
                                 : 'Nu este conectat'
                               }
                             </p>
@@ -1742,8 +1763,8 @@ const Profile = () => {
                     </div>
 
                     {!showDeleteConfirm ? (
-                      <Button 
-                        variant="destructive" 
+                      <Button
+                        variant="destructive"
                         onClick={() => setShowDeleteConfirm(true)}
                         className="w-full"
                       >
@@ -1766,8 +1787,8 @@ const Profile = () => {
                           />
                         </div>
                         <div className="flex space-x-3">
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             onClick={handleDeleteAccount}
                             disabled={isDeletingAccount || !deletePassword}
                             className="flex-1"
@@ -1784,8 +1805,8 @@ const Profile = () => {
                               </>
                             )}
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             onClick={() => {
                               setShowDeleteConfirm(false);
                               setDeletePassword('');
@@ -1939,6 +1960,17 @@ const Profile = () => {
         onClose={closeRecordModal}
         isAdmin={isAdmin}
         canEdit={selectedRecord?.status === 'pending'}
+      />
+
+      {/* Edit Record Modal */}
+      <EditRecordModal
+        record={editingRecord}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingRecord(null);
+        }}
+        onSuccess={handleEditSuccess}
       />
     </div>
   );

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Target, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 interface Record {
@@ -35,6 +37,8 @@ interface Record {
 }
 
 const Records = () => {
+  const { user } = useAuth();
+  const { trackSearch } = useAnalytics();
   // Real data states
   const [records, setRecords] = useState<Record[]>([]);
   const [species, setSpecies] = useState<{id: string; name: string}[]>([]);
@@ -45,18 +49,18 @@ const Records = () => {
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [activeTab, setActiveTab] = useState('overall');
-  
+
   // Modal states
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [minWeight, setMinWeight] = useState('');
   const [maxWeight, setMaxWeight] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  
+
   // Search filters
   const [speciesSearchTerm, setSpeciesSearchTerm] = useState('');
   const [locationSearchTerm, setLocationSearchTerm] = useState('');
@@ -66,13 +70,14 @@ const Records = () => {
   // Load real data from database
   const loadRecords = async () => {
     try {
-      // First load records
+      // First load records with profiles
       const { data: recordsData, error: recordsError } = await supabase
         .from('records')
         .select(`
           *,
           fish_species:species_id(name),
-          fishing_locations:location_id(name, type, county)
+          fishing_locations:location_id(name, type, county),
+          profiles!records_user_id_fkey(id, display_name, email)
         `)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
@@ -88,39 +93,9 @@ const Records = () => {
         return;
       }
 
-      // Get unique user IDs
-      const userIds = [...new Set(recordsData.map(record => record.user_id))];
-      console.log('User IDs for profiles:', userIds);
-
-      // Load profiles separately - try with public access first
-      console.log('Attempting to load profiles for user IDs:', userIds);
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, email')
-        .in('id', userIds);
-
-      if (profilesError) {
-        console.error('Error loading profiles:', profilesError);
-        // If profiles fail, still show records but without names
-        const recordsWithoutProfiles = recordsData.map(record => ({
-          ...record,
-          profiles: null
-        }));
-        setRecords(recordsWithoutProfiles);
-        return;
-      }
-
-      console.log('Profiles loaded:', profilesData);
-      console.log('First profile:', profilesData?.[0]);
-
-      // Merge records with profiles
-      const recordsWithProfiles = recordsData.map(record => ({
-        ...record,
-        profiles: profilesData?.find(profile => profile.id === record.user_id) || null
-      }));
-
-      console.log('Records with profiles:', recordsWithProfiles);
-      setRecords(recordsWithProfiles);
+      console.log('Records loaded with profiles:', recordsData);
+      console.log('First record with profile:', recordsData?.[0]);
+      setRecords(recordsData);
     } catch (error) {
       console.error('Error loading records:', error);
       setRecords([]);
@@ -177,15 +152,23 @@ const Records = () => {
     loadAllData();
   }, []);
 
+  // Remove diacritics for better search
+  const removeDiacritics = (str: string) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
+  const safeLower = (v?: string | null) => removeDiacritics((v || '').toLowerCase());
+
   const getFilteredRecords = () => {
     let filtered = records;
 
     // Filter by search term
     if (searchTerm.trim()) {
-      filtered = filtered.filter(record => 
-        record.fish_species?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.fishing_locations?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.profiles?.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      const searchLower = safeLower(searchTerm);
+      filtered = filtered.filter(record =>
+        safeLower(record.fish_species?.name).includes(searchLower) ||
+        safeLower(record.fishing_locations?.name).includes(searchLower) ||
+        safeLower(record.profiles?.display_name).includes(searchLower)
       );
     }
 
@@ -251,16 +234,23 @@ const Records = () => {
     setSelectedRecord(null);
   };
 
+  const handleEditRecord = (record: Record) => {
+    // For now, just open the record details modal
+    // In the future, this could open an edit modal
+    setSelectedRecord(record);
+    setIsModalOpen(true);
+  };
+
   const getFilteredSpecies = () => {
     if (!speciesSearchTerm.trim()) return species;
-    return species.filter(s => 
+    return species.filter(s =>
       s.name.toLowerCase().includes(speciesSearchTerm.toLowerCase())
     );
   };
 
   const getFilteredLocations = () => {
     if (!locationSearchTerm.trim()) return locations;
-    return locations.filter(l => 
+    return locations.filter(l =>
       l.name.toLowerCase().includes(locationSearchTerm.toLowerCase()) ||
       l.type.toLowerCase().includes(locationSearchTerm.toLowerCase()) ||
       l.county.toLowerCase().includes(locationSearchTerm.toLowerCase())
@@ -350,7 +340,12 @@ const Records = () => {
                   type="text"
                   placeholder="Caută recorduri, specii, locații, pescari..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    if (e.target.value.length > 2) {
+                      trackSearch(e.target.value, records.length);
+                    }
+                  }}
                   className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
                 {searchTerm && (
@@ -384,7 +379,7 @@ const Records = () => {
                     />
                     {showSpeciesDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                        <div 
+                        <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                           onClick={() => {
                             setSelectedSpecies('all');
@@ -427,7 +422,7 @@ const Records = () => {
                     />
                     {showLocationDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                        <div 
+                        <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                           onClick={() => {
                             setSelectedLocation('all');
@@ -578,13 +573,13 @@ const Records = () => {
                 <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all' || selectedStatus !== 'all'
-                    ? 'Nu s-au găsit recorduri' 
+                    ? 'Nu s-au găsit recorduri'
                     : 'Nu există recorduri încă'
                   }
                 </h3>
                 <p className="text-gray-600 mb-6">
                   {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all' || selectedStatus !== 'all'
-                    ? 'Încearcă să modifici criteriile de căutare.' 
+                    ? 'Încearcă să modifici criteriile de căutare.'
                     : 'Fii primul care adaugă un record!'
                   }
                 </p>
@@ -601,7 +596,7 @@ const Records = () => {
                         {/* Record Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                            <h3 
+                            <h3
                               className="text-base sm:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
                               onClick={() => openUserProfile(record.user_id)}
                               title="Vezi profilul utilizatorului"
@@ -635,15 +630,18 @@ const Records = () => {
                           </div>
                         </div>
                         <div className="flex gap-2 justify-center sm:justify-end">
-                          <button 
+                          <button
                             onClick={() => openRecordModal(record)}
                             className="px-2 sm:px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
                           >
                             <Eye className="w-3 h-3 mr-1" />
                             Vezi
                           </button>
-                          {(record.status === 'pending' || record.status === 'verified') && (
-                            <button className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center">
+                          {user?.email === 'cosmin.trica@outlook.com' && (record.status === 'pending' || record.status === 'verified') && (
+                            <button
+                              onClick={() => handleEditRecord(record)}
+                              className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center"
+                            >
                               <Edit className="w-3 h-3 mr-1" />
                               Editează
                             </button>

@@ -61,21 +61,21 @@ class ApiService {
 
   // Profile methods
   async updateProfile(userId: string, profileData: ProfileData): Promise<ApiResponse<ProfileData>> {
-    return this.request<ProfileData>(`/users/${userId}/profile`, {
+    return this.request<ProfileData>(`/profiles/${userId}/profile`, {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
   }
 
   async getProfile(userId: string): Promise<ApiResponse<ProfileData>> {
-    return this.request<ProfileData>(`/users/${userId}/profile`);
+    return this.request<ProfileData>(`/profiles/${userId}/profile`);
   }
 
   async uploadProfileImage(userId: string, file: File): Promise<ApiResponse<{ imageUrl: string }>> {
     const formData = new FormData();
     formData.append('image', file);
 
-    return this.request<{ imageUrl: string }>(`/users/${userId}/profile-image`, {
+    return this.request<{ imageUrl: string }>(`/profiles/${userId}/profile-image`, {
       method: 'POST',
       body: formData,
       headers: {
@@ -86,7 +86,7 @@ class ApiService {
 
   // Records methods
   async getUserRecords(userId: string): Promise<ApiResponse<FishingRecord[]>> {
-    return this.request<FishingRecord[]>(`/users/${userId}/records`);
+    return this.request<FishingRecord[]>(`/profiles/${userId}/records`);
   }
 
   async createRecord(recordData: FishingRecord): Promise<ApiResponse<FishingRecord>> {
