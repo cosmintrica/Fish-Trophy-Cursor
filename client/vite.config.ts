@@ -13,7 +13,6 @@ export default defineConfig({
       overlay: false, // Disable error overlay to reduce console noise
     },
   },
-  assetsInclude: ['**/*.html'],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

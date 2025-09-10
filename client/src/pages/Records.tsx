@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
-interface Record {
+interface FishRecord {
   id: string;
   user_id: string;
   species_id: string;
@@ -40,7 +40,7 @@ const Records = () => {
   const { user } = useAuth();
   const { trackSearch } = useAnalytics();
   // Real data states
-  const [records, setRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<FishRecord[]>([]);
   const [species, setSpecies] = useState<{id: string; name: string}[]>([]);
   const [locations, setLocations] = useState<{id: string; name: string; type: string; county: string}[]>([]);
   const [loading, setLoading] = useState(true);

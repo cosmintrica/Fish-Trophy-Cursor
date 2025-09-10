@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-interface Record {
+interface FishRecord {
   id: string;
   user_id: string;
   species_id: string;
@@ -36,10 +36,10 @@ interface Record {
 }
 
 interface RecordDetailsModalProps {
-  record: Record | null;
+  record: FishRecord | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit?: (record: Record) => void;
+  onEdit?: (record: FishRecord) => void;
   onDelete?: (recordId: string) => void;
   isAdmin?: boolean;
   canEdit?: boolean;
