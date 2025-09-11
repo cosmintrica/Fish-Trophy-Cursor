@@ -138,7 +138,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-200/50 shadow-lg">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-b border-blue-200/50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
@@ -240,12 +240,15 @@ export default function Layout({ children }: { children: ReactNode }) {
               {/* Mobile Menu Button */}
               <button
                 onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
-                className="lg:hidden inline-flex items-center justify-center p-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                className={`lg:hidden inline-flex items-center justify-center p-3 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300 active:scale-95 ${
+                  isMobileMenuOpen ? 'rotate-90' : 'rotate-0'
+                }`}
+                aria-label={isMobileMenuOpen ? 'Închide meniul' : 'Deschide meniul'}
               >
                 {isMobileMenuOpen ? (
-                  <X className="w-6 h-6" />
+                  <X className="w-6 h-6 transition-transform duration-300" />
                 ) : (
-                  <Menu className="w-6 h-6" />
+                  <Menu className="w-6 h-6 transition-transform duration-300" />
                 )}
               </button>
             </div>
@@ -254,21 +257,25 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile Menu Overlay */}
-      <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
+      <div className={`lg:hidden fixed inset-0 z-50 transition-all duration-500 ease-out ${
         isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       }`}>
         {/* Backdrop */}
         <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-500 ease-out ${
+            isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
+          }`}
           onClick={closeMobileMenu}
         />
 
         {/* Menu Panel */}
-        <div className={`absolute right-0 top-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ${
-          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] sm:w-80 md:w-96 bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+          isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
         }`}>
           {/* Menu Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className={`flex items-center justify-between p-6 border-b border-gray-200 transition-all duration-600 ease-out ${
+            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
             <div className="flex items-center space-x-3">
               <img
                 src="/icon_free.png"
@@ -279,20 +286,23 @@ export default function Layout({ children }: { children: ReactNode }) {
             </div>
             <button
               onClick={closeMobileMenu}
-              className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-300 active:scale-95 hover:rotate-90"
+              aria-label="Închide meniul"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 transition-transform duration-300" />
             </button>
           </div>
 
           {/* Menu Items */}
-          <nav className="p-6 space-y-2">
+          <nav className={`p-6 space-y-2 transition-all duration-700 ease-out ${
+            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
             <Link
               to="/"
-              className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+              className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
                 location.pathname === '/'
                   ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  : 'text-gray-700 hover:bg-gray-50 active:scale-95'
               }`}
               onClick={closeMobileMenu}
             >
@@ -302,7 +312,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/species"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
               onClick={closeMobileMenu}
             >
               <Fish className="w-5 h-5" />
@@ -311,7 +321,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/records"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
               onClick={closeMobileMenu}
             >
               <Trophy className="w-5 h-5" />
@@ -320,7 +330,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/submission-guide"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
               onClick={closeMobileMenu}
             >
               <FileText className="w-5 h-5" />
@@ -330,10 +340,10 @@ export default function Layout({ children }: { children: ReactNode }) {
             {isAdmin ? (
               <Link
                 to="/black-sea"
-                className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
                   location.pathname === '/black-sea'
                     ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    : 'text-gray-700 hover:bg-gray-50 active:scale-95'
                 }`}
                 onClick={closeMobileMenu}
               >
@@ -343,7 +353,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             ) : (
               <Link
                 to="/black-sea"
-                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
                 onClick={closeMobileMenu}
               >
                 <MapPin className="w-5 h-5" />
@@ -354,7 +364,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
                 onClick={closeMobileMenu}
               >
                 <User className="w-5 h-5" />
@@ -365,7 +375,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           {/* User Section in Mobile Menu */}
           {user ? (
-            <div className="p-6 border-t border-gray-200 space-y-3">
+            <div className={`p-6 border-t border-gray-200 space-y-3 transition-all duration-800 ease-out ${
+              isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}>
               <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
@@ -379,7 +391,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
               <Link
                 to="/profile"
-                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95"
                 onClick={closeMobileMenu}
               >
                 <User className="w-4 h-4 mr-2" />
@@ -392,20 +404,22 @@ export default function Layout({ children }: { children: ReactNode }) {
                   logout();
                   closeMobileMenu();
                 }}
-                className="flex items-center justify-center w-full px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                className="flex items-center justify-center w-full px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all duration-200 active:scale-95"
               >
                 <X className="w-4 h-4 mr-2" />
                                  Ieșire
               </button>
             </div>
           ) : (
-            <div className="p-6 border-t border-gray-200">
+            <div className={`p-6 border-t border-gray-200 transition-all duration-800 ease-out ${
+              isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}>
               <button
                 onClick={() => {
                   setIsAuthModalOpen(true);
                   closeMobileMenu();
                 }}
-                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95"
               >
                 <User className="w-4 h-4 mr-2" />
                 Autentificare
@@ -414,7 +428,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           )}
 
           {/* Social Links */}
-          <div className="p-6 border-t border-gray-200">
+          <div className={`p-6 border-t border-gray-200 transition-all duration-900 ease-out ${
+            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Urmărește-ne</h3>
             <div className="flex space-x-4">
               <a
@@ -472,7 +488,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 -mt-4">
+      <main className="flex-1 pt-16">
         {children}
       </main>
 

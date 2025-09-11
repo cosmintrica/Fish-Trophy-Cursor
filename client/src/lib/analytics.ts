@@ -204,7 +204,9 @@ class AnalyticsTracker {
     if (userAgent.includes('Red Hat')) return 'Red Hat';
     if (userAgent.includes('Linux')) return 'Linux';
 
-    // Mobile OS
+    // Mobile OS - check mobile first for better detection
+    if (userAgent.includes('iPhone')) return 'iOS';
+    if (userAgent.includes('iPad')) return 'iPadOS';
     if (userAgent.includes('Android')) return 'Android';
     if (userAgent.includes('iPhone OS') || userAgent.includes('iOS')) return 'iOS';
     if (userAgent.includes('iPad OS')) return 'iPadOS';
