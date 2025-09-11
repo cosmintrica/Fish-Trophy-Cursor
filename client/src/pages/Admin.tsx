@@ -154,7 +154,7 @@ const Admin: React.FC = () => {
       await loadTrafficGraphData();
     };
     loadAllData();
-  }, [loadTrafficGraphData]);
+  }, []);
 
   // Load traffic data when period changes
   useEffect(() => {

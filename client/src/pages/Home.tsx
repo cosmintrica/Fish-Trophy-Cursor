@@ -864,7 +864,7 @@ export default function Home() {
   }, [user, activeFilter, addLocationsToMap, databaseLocations.length]); // Added missing dependencies
 
   // Funcție pentru filtrarea locațiilor
-  const filterLocations = (type: string) => {
+  const filterLocations = useCallback((type: string) => {
     setActiveFilter(type);
 
     // Track filter interaction
@@ -880,10 +880,10 @@ export default function Home() {
         });
       });
     }
-  };
+  }, [trackMapInteraction, addLocationsToMap, databaseLocations.length]);
 
   // Funcție pentru centrarea pe locația utilizatorului cu watchPosition
-  const centerOnUserLocation = async () => {
+  const centerOnUserLocation = useCallback(async () => {
     try {
       setIsLocating(true);
 
@@ -951,7 +951,7 @@ export default function Home() {
       console.error('Eroare la obținerea locației:', error);
       setIsLocating(false);
     }
-  };
+  }, []);
 
   // Funcție pentru adăugarea markerului pentru locația userului
   const addUserLocationMarker = async (latitude: number, longitude: number) => {
