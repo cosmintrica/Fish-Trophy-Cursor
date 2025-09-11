@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ const Admin: React.FC = () => {
   } | null>(null);
 
   // Load traffic graph data based on selected period
-  const loadTrafficGraphData = async () => {
+  const loadTrafficGraphData = useCallback(async () => {
     try {
       let data: any[] = [];
 
@@ -144,14 +144,16 @@ const Admin: React.FC = () => {
       console.error('Error loading traffic graph data:', error);
       // Don't reset data on error - keep existing data
     }
-  };
+  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
 
   // Load real data from database
   useEffect(() => {
     const loadAllData = async () => {
+      console.log('🔄 Starting to load admin data...');
       await loadRealData();
       await loadDetailedAnalytics();
       await loadTrafficGraphData();
+      console.log('✅ Admin data loading completed');
     };
     loadAllData();
   }, []);
@@ -161,7 +163,7 @@ const Admin: React.FC = () => {
     if (trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
+  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate, loadTrafficGraphData]);
 
   // Ensure chart loads data on first render
   useEffect(() => {
@@ -175,6 +177,7 @@ const Admin: React.FC = () => {
 
   // Load detailed analytics data
   const loadDetailedAnalytics = async () => {
+    console.log('🔄 Loading detailed analytics...');
     try {
       // Load device stats
       const { data: deviceStats } = await supabase.rpc('get_device_stats');
@@ -240,6 +243,7 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error loading detailed analytics:', error);
     }
+    console.log('✅ Detailed analytics loading completed');
   };
 
   // Handle period change
@@ -334,6 +338,7 @@ const Admin: React.FC = () => {
   };
 
   const loadRealData = async () => {
+    console.log('🔄 Loading real data...');
     setIsLoading(true);
     try {
       // Load pending records with correct column names
@@ -520,6 +525,7 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
+      console.log('✅ Real data loading completed');
       setIsLoading(false);
     }
   };
