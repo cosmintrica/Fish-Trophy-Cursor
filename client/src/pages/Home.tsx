@@ -462,7 +462,7 @@ export default function Home() {
         });
       });
     }
-  }, [databaseLocations.length, isLoadingLocations, activeFilter, addLocationsToMap]); // Added addLocationsToMap back
+  }, [databaseLocations.length, isLoadingLocations, activeFilter]); // Removed addLocationsToMap to prevent circular dependency
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -861,7 +861,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, activeFilter, addLocationsToMap, databaseLocations.length]); // Added missing dependencies
+  }, [user, activeFilter, databaseLocations.length]); // Removed addLocationsToMap to prevent circular dependency
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

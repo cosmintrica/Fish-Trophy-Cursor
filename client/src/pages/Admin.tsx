@@ -161,14 +161,14 @@ const Admin: React.FC = () => {
     if (trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate, loadTrafficGraphData]);
+  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
 
   // Ensure chart loads data on first render
   useEffect(() => {
     if (trafficData.timelineData.length === 0 && trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.timelineData.length, trafficData.selectedPeriod, loadTrafficGraphData]);
+  }, [trafficData.timelineData.length, trafficData.selectedPeriod]);
 
   // Use traffic data directly to prevent memoization issues
   const memoizedTrafficData = trafficData.timelineData || [];

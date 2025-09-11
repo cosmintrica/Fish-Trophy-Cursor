@@ -1,5 +1,24 @@
 # 📝 Change History - Fish Trophy Project
 
+## [2025-01-27] - 22:30 - CRITICAL LESSON: useCallback Misuse & Current Issues
+
+### 🚨 CRITICAL LESSON LEARNED: useCallback Misuse
+- **MISTAKE**: Applied useCallback to functions that change frequently (loadTrafficGraphData, loadDetailedAnalytics, loadRealData)
+- **RESULT**: Created circular dependencies and infinite loops
+- **ROOT CAUSE**: Functions depended on state that changed often, making useCallback counterproductive
+- **LESSON**: Don't use useCallback on functions that change frequently due to dependencies
+
+### 🔧 CURRENT ISSUES TO FIX:
+- **Map still flickers** on filter changes despite reverting useCallback
+- **Admin panel statistics not loading** - need to investigate data loading
+- **Need to check useEffect dependencies** for proper data loading sequence
+
+### 📚 useCallback Best Practices Learned:
+- ✅ Use useCallback when function is passed as prop to child components
+- ✅ Use useCallback when function is used in useEffect with stable dependencies
+- ❌ DON'T use useCallback when function depends on frequently changing state
+- ❌ DON'T use useCallback when it creates circular dependencies
+
 ## [2025-09-10] - 18:40 - Map Flickering Resolution & Critical Bug Fixes
 
 ### 🗺️ MAP FLICKERING COMPLETELY RESOLVED
