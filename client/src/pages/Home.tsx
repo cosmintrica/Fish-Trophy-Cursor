@@ -146,6 +146,7 @@ export default function Home() {
   const [mapError, setMapError] = useState(false);
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
   const [isAddingMarkers, setIsAddingMarkers] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
   const addLocationsToMap = (_map: maplibregl.Map, filterType: string) => {
@@ -462,14 +463,8 @@ export default function Home() {
   // Reîncarcă markerele când se actualizează locațiile din baza de date
   useEffect(() => {
     if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
-      // Use double requestAnimationFrame for smoother transitions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (mapInstanceRef.current) {
-            addLocationsToMap(mapInstanceRef.current, activeFilter);
-          }
-        });
-      });
+      // Markers will be loaded in map.once('load') - no need to call here
+      console.log('📍 Locations updated, markers will be loaded on map load');
     }
   }, [databaseLocations.length, isLoadingLocations, activeFilter]);
 
@@ -823,7 +818,8 @@ export default function Home() {
 
     // Load locations after map is ready
     map.once('load', () => {
-      if (databaseLocations.length > 0) {
+      if (!mapLoaded && databaseLocations.length > 0) {
+        setMapLoaded(true);
         addLocationsToMap(map, activeFilter);
       }
     });

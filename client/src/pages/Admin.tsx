@@ -425,43 +425,57 @@ const Admin: React.FC = () => {
           console.log('📊 Stats data:', stats);
           console.log('⚠️ PROBLEMA: Toate valorile sunt 0! API-ul funcționează dar nu are date pentru azi!');
           // Load detailed analytics data
-          const { data: deviceStats } = await supabase.rpc('get_device_stats');
+          console.log('🔍 Loading device stats...');
+          const { data: deviceStats, error: deviceError } = await supabase.rpc('get_device_stats');
+          console.log('📱 Device stats:', { deviceStats, deviceError });
           const deviceStatsObj = deviceStats?.reduce((acc: any, item: any) => {
             acc[item.device_type] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: browserStats } = await supabase.rpc('get_browser_stats');
+          console.log('🔍 Loading browser stats...');
+          const { data: browserStats, error: browserError } = await supabase.rpc('get_browser_stats');
+          console.log('🌐 Browser stats:', { browserStats, browserError });
           const browserStatsObj = browserStats?.reduce((acc: any, item: any) => {
             acc[item.browser] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: osStats } = await supabase.rpc('get_os_stats');
+          console.log('🔍 Loading OS stats...');
+          const { data: osStats, error: osError } = await supabase.rpc('get_os_stats');
+          console.log('💻 OS stats:', { osStats, osError });
           const osStatsObj = osStats?.reduce((acc: any, item: any) => {
             acc[item.os] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: countryStats } = await supabase.rpc('get_country_stats');
+          console.log('🔍 Loading country stats...');
+          const { data: countryStats, error: countryError } = await supabase.rpc('get_country_stats');
+          console.log('🌍 Country stats:', { countryStats, countryError });
           const countryStatsObj = countryStats?.reduce((acc: any, item: any) => {
             acc[item.country] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: cityStats } = await supabase.rpc('get_romanian_city_stats');
+          console.log('🔍 Loading city stats...');
+          const { data: cityStats, error: cityError } = await supabase.rpc('get_romanian_city_stats');
+          console.log('🏙️ City stats:', { cityStats, cityError });
           const cityStatsObj = cityStats?.reduce((acc: any, item: any) => {
             acc[item.city] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: referrerStats } = await supabase.rpc('get_referrer_stats');
+          console.log('🔍 Loading referrer stats...');
+          const { data: referrerStats, error: referrerError } = await supabase.rpc('get_referrer_stats');
+          console.log('🔗 Referrer stats:', { referrerStats, referrerError });
           const referrerStatsObj = referrerStats?.reduce((acc: any, item: any) => {
             acc[item.referrer] = item.count;
             return acc;
           }, {}) || {};
 
-          const { data: pageViewsStats } = await supabase.rpc('get_page_views_stats');
+          console.log('🔍 Loading page views stats...');
+          const { data: pageViewsStats, error: pageViewsError } = await supabase.rpc('get_page_views_stats');
+          console.log('📄 Page views stats:', { pageViewsStats, pageViewsError });
           const pageViewsStatsObj = pageViewsStats?.reduce((acc: any, item: any) => {
             acc[item.page_url] = item.count;
             return acc;
