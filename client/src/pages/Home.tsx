@@ -4,7 +4,6 @@ import { MapPin, Navigation, X } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { loadFishingLocations, FishingLocation } from '@/services/fishingLocations';
-
 import { geocodingService } from '@/services/geocoding';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -764,25 +763,9 @@ export default function Home() {
 
     // Load locations after map is ready
     map.once('load', () => {
-      // Adaugă mai întâi markerul userului (pentru a fi deasupra)
-      const savedLocation = localStorage.getItem('userLocation');
-      if (savedLocation) {
-        try {
-          const { latitude, longitude } = JSON.parse(savedLocation);
-          // Delay mic pentru a se asigura că se adaugă corect
-          setTimeout(() => {
-            addUserLocationMarker(latitude, longitude, true);
-          }, 100);
-        } catch (error) {
-          console.error('Error loading saved location:', error);
-        }
-      }
-
-      // Apoi adaugă markerii de pește (cu delay pentru a nu interfera cu markerul userului)
+      // Adaugă doar markerii de pește (fără markerul userului)
       if (databaseLocations.length > 0) {
-        setTimeout(() => {
-          addLocationsToMap(map, activeFilter);
-        }, 300);
+        addLocationsToMap(map, activeFilter);
       }
     });
 
@@ -812,12 +795,12 @@ export default function Home() {
   // Separate effect for updating markers when data changes
   useEffect(() => {
     if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
-      // Delay mic pentru a nu interfera cu markerul userului
+      // Delay mai mare pentru a nu interfera cu markerul userului
       setTimeout(() => {
         if (mapInstanceRef.current) {
           addLocationsToMap(mapInstanceRef.current, activeFilter);
         }
-      }, 200);
+      }, 1000);
     }
   }, [databaseLocations.length, isLoadingLocations, activeFilter]);
 
@@ -830,6 +813,14 @@ export default function Home() {
 
     if (mapInstanceRef.current && databaseLocations.length > 0) {
       const map = mapInstanceRef.current;
+
+      // Reset zoom to Romania view
+      const isMobile = window.innerWidth <= 768;
+      map.flyTo({
+        center: [25.0094, 45.9432] as [number, number], // Centru România
+        zoom: isMobile ? 5.5 : 6,
+        duration: 1000
+      });
 
       // Use double requestAnimationFrame for smoother transitions
       requestAnimationFrame(() => {
@@ -868,8 +859,8 @@ export default function Home() {
                 duration: 1000
               });
 
-              // Adaugă marker pentru locația userului
-              addUserLocationMarker(latitude, longitude);
+              // Adaugă marker pentru locația userului cu popup automat
+              addUserLocationMarker(latitude, longitude, false);
             }
             setIsLocating(false);
           },
@@ -920,7 +911,7 @@ export default function Home() {
       userLocationMarkerRef.current.remove();
     }
 
-    // Creează markerul pentru locația userului cu dimensiune fixă
+    // Creează marker personalizat pentru locația userului
     const userMarkerEl = document.createElement('div');
     userMarkerEl.className = 'user-location-marker';
     userMarkerEl.innerHTML = `
@@ -935,8 +926,8 @@ export default function Home() {
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 999999 !important;
         position: relative;
+        z-index: 999999 !important;
         will-change: transform;
       ">
         <div style="
@@ -957,89 +948,86 @@ export default function Home() {
       userMarkerEl.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15)';
     });
 
+    const userMarker = new maplibregl.Marker({
+      element: userMarkerEl,
+      anchor: 'center'
+    })
+      .setLngLat([longitude, latitude])
+      .addTo(mapInstanceRef.current);
+
+    userLocationMarkerRef.current = userMarker;
+
     console.log('🎣 User marker added at:', [longitude, latitude], 'silent:', silent);
 
-    if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-      const userMarker = new maplibregl.Marker({
-        element: userMarkerEl,
-        anchor: 'center'
-      })
-        .setLngLat([longitude, latitude])
-        .addTo(mapInstanceRef.current);
+    // Adaugă popup cu design original
+    const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+    const userPhoto = user?.user_metadata?.avatar_url || '';
 
-      userLocationMarkerRef.current = userMarker;
+    // Obține adresa prin reverse geocoding
+    let address = 'Adresa nu a putut fi determinată';
+    try {
+      address = await geocodingService.reverseGeocode(latitude, longitude);
+    } catch (error) {
+      console.error('Eroare la reverse geocoding:', error);
+    }
 
-      // Adaugă popup cu informații despre locația userului
-      const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
-      const userPhoto = user?.user_metadata?.avatar_url || '';
+    const popup = new maplibregl.Popup({
+      maxWidth: '250px',
+      closeButton: false,
+      closeOnClick: false,
+      className: 'custom-popup',
+      offset: [0, -10] // Popup deasupra markerului
+    }).setHTML(`
+      <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+        <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
 
-      // Obține adresa prin reverse geocoding
-      try {
-        const address = await geocodingService.reverseGeocode(latitude, longitude);
-
-        const popup = new maplibregl.Popup({
-          maxWidth: '250px',
-          closeButton: false,
-          closeOnClick: false,
-          className: 'custom-popup'
-        }).setHTML(`
-          <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-            <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-
-            <div class="text-center mb-3">
-              <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
-                ${userPhoto ?
-                  `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                  `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
-                }
-              </div>
-              <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
-              <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
-            </div>
-
-            <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
-              <div class="text-center">
-                <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
-              <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-            </div>
-              <div class="text-center">
-                <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
-                <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
-              </div>
-            </div>
-          </div>
-        `);
-
-        userMarker.setPopup(popup);
-
-        // Salvează locația în localStorage
-        localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
-
-        // Deschide popup-ul automat și centrează harta doar dacă nu este silent
-        if (!silent) {
-          setTimeout(() => {
-            if (userMarker) {
-              userMarker.togglePopup();
-              // Centrează harta pe locația utilizatorului
-              if (mapInstanceRef.current) {
-                mapInstanceRef.current.flyTo({
-                  center: [longitude, latitude],
-                  zoom: 15,
-                  duration: 1000
-                });
-              }
+        <div class="text-center mb-3">
+          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
+            ${userPhoto ?
+              `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
+              `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
             }
-          }, 500);
+          </div>
+          <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
+          <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
+        </div>
+
+        <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
+          <div class="text-center">
+            <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
+            <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
+            <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
+          </div>
+        </div>
+      </div>
+    `);
+
+    userMarker.setPopup(popup);
+
+    // Salvează locația în localStorage
+    localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
+
+    // Deschide popup-ul automat și centrează harta doar dacă nu este silent
+    if (!silent) {
+      setTimeout(() => {
+        if (userMarker) {
+          userMarker.togglePopup();
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.flyTo({
+              center: [longitude, latitude],
+              zoom: 15,
+              duration: 1000
+            });
+          }
         }
-      } catch (error) {
-        console.error('Eroare la reverse geocoding:', error);
-      }
-    } else {
-      console.error('Map not ready for user marker');
+      }, 500);
     }
   };
 
@@ -1073,105 +1061,8 @@ export default function Home() {
               duration: 1000
             });
 
-            // Obține adresa prin reverse geocoding
-            const address = await geocodingService.reverseGeocode(latitude, longitude);
-
-            // Creează marker cu fundal alb și design îmbunătățit cu SVG fishing_pole
-            const userMarkerEl = document.createElement('div');
-            userMarkerEl.className = 'user-location-marker';
-            userMarkerEl.innerHTML = `
-              <div style="
-                width: 50px;
-                height: 50px;
-                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-                border: 3px solid #3B82F6;
-                border-radius: 50%;
-                box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15);
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-                position: relative;
-                will-change: transform;
-              ">
-                <div style="
-          font-size: 20px;
-          line-height: 1;
-        ">🎣</div>
-              </div>
-            `;
-
-            let userMarker: maplibregl.Marker | null = null;
-
-            userMarker = new maplibregl.Marker({
-              element: userMarkerEl,
-              anchor: 'center'
-            })
-              .setLngLat([longitude, latitude])
-              .addTo(mapInstanceRef.current);
-            userLocationMarkerRef.current = userMarker;
-
-
-            // Adaugă popup cu design îmbunătățit
-            const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
-            const userPhoto = user?.user_metadata?.avatar_url || '';
-
-            const popup = new maplibregl.Popup({
-              maxWidth: '250px',
-              closeButton: false,
-              closeOnClick: false,
-              className: 'custom-popup',
-              offset: [0, -10] // Popup deasupra markerului
-            }).setHTML(`
-              <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-                <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
-
-                <div class="text-center mb-3">
-                  <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
-                    ${userPhoto ?
-                      `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-                      `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
-                    }
-                  </div>
-                  <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
-                  <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
-                </div>
-
-                <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
-                  <div class="text-center">
-                    <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
-                  <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
-                </div>
-                  <div class="text-center">
-                    <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
-                    <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
-              </div>
-                </div>
-              </div>
-            `);
-
-            if (userMarker) {
-              userMarker.setPopup(popup);
-              // Deschide popup-ul automat și centrează harta
-              setTimeout(() => {
-                if (userMarker) {
-                  userMarker.togglePopup();
-                  // Centrează harta pe locația utilizatorului
-                  if (mapInstanceRef.current) {
-                    mapInstanceRef.current.flyTo({
-                      center: [longitude, latitude],
-                      zoom: 15,
-                      duration: 1000
-                    });
-                  }
-                }
-              }, 500);
-            }
+            // Adaugă marker pentru locația userului cu popup automat
+            addUserLocationMarker(latitude, longitude, false);
 
             // Salvează că utilizatorul a acceptat locația
             localStorage.setItem('locationAccepted', 'true');
