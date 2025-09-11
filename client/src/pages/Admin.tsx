@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ const Admin: React.FC = () => {
   } | null>(null);
 
   // Load traffic graph data based on selected period
-  const loadTrafficGraphData = useCallback(async () => {
+  const loadTrafficGraphData = async () => {
     try {
       let data: any[] = [];
 
@@ -144,7 +144,7 @@ const Admin: React.FC = () => {
       console.error('Error loading traffic graph data:', error);
       // Don't reset data on error - keep existing data
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
+  };
 
   // Load real data from database
   useEffect(() => {
@@ -174,7 +174,7 @@ const Admin: React.FC = () => {
   const memoizedTrafficData = trafficData.timelineData || [];
 
   // Load detailed analytics data
-  const loadDetailedAnalytics = useCallback(async () => {
+  const loadDetailedAnalytics = async () => {
     try {
       // Load device stats
       const { data: deviceStats } = await supabase.rpc('get_device_stats');
@@ -240,7 +240,7 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error loading detailed analytics:', error);
     }
-  }, []);
+  };
 
   // Handle period change
   const handlePeriodChange = (period: string) => {
@@ -333,7 +333,7 @@ const Admin: React.FC = () => {
     }
   };
 
-  const loadRealData = useCallback(async () => {
+  const loadRealData = async () => {
     setIsLoading(true);
     try {
       // Load pending records with correct column names
@@ -522,7 +522,7 @@ const Admin: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   const handleApproveRecord = async (recordId: string) => {
     try {

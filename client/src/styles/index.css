@@ -2,11 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Simplified GPU Acceleration - only for essential elements */
+/* Comprehensive GPU Acceleration for all interactive elements */
 .maplibregl-map,
 .maplibregl-marker,
-.custom-marker {
+.custom-marker,
+.maplibregl-popup,
+.maplibregl-popup-content,
+.maplibregl-popup-tip,
+.maplibregl-canvas,
+.leaflet-marker-icon,
+.leaflet-popup,
+.leaflet-popup-content,
+.leaflet-popup-tip {
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Custom popup styles - MapLibre */
@@ -126,6 +136,27 @@ body.mobile-menu-open {
 /* Marker optimization - no transitions to prevent floating */
 .custom-marker {
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* GPU Acceleration for all interactive UI elements */
+button,
+.btn,
+[role="button"],
+.maplibregl-ctrl,
+.maplibregl-ctrl-group,
+.maplibregl-ctrl-zoom,
+.maplibregl-ctrl-compass,
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-scale,
+.maplibregl-ctrl-fullscreen,
+.maplibregl-ctrl-geolocate,
+.maplibregl-ctrl-navigation,
+.maplibregl-ctrl-scale {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Map container optimizations to prevent flicker */
