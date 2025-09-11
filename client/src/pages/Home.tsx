@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Navigation, X } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
@@ -162,20 +162,19 @@ export default function Home() {
     setIsAddingMarkers(true);
 
     try {
+      // Clear existing markers with better performance (NU șterge markerul userului)
+      const markersToRemove = [...markersRef.current];
+      markersRef.current = [];
+      markerIndexRef.current.clear();
 
-    // Clear existing markers with better performance
-    const markersToRemove = [...markersRef.current];
-    markersRef.current = [];
-    markerIndexRef.current.clear();
-
-    // Remove markers in batches to prevent flickering
-    markersToRemove.forEach(marker => {
-      try {
-        marker.remove();
-      } catch (e) {
-        // Ignore errors when removing markers
-      }
-    });
+      // Remove markers in batches to prevent flickering
+      markersToRemove.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          // Ignore errors when removing markers
+        }
+      });
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -276,7 +275,7 @@ export default function Home() {
         !Number.isNaN(lng) &&
         !Number.isNaN(lat)
       ) {
-        // marker ca în designul anterior: cerc colorat cu border alb
+        // marker personalizat: cerc alb cu border albastru și emoji fishing_pole
         marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
           .setLngLat([lng, lat])
           .addTo(_map);
@@ -444,7 +443,7 @@ export default function Home() {
   } finally {
     setIsAddingMarkers(false);
   }
-  };
+};
 
   // Încarcă locațiile din baza de date
   useEffect(() => {
@@ -463,19 +462,6 @@ export default function Home() {
     loadLocations();
   }, []);
 
-  // Reîncarcă markerele când se actualizează locațiile din baza de date
-  useEffect(() => {
-    if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
-      // Use double requestAnimationFrame for smoother transitions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (mapInstanceRef.current) {
-            addLocationsToMap(mapInstanceRef.current, activeFilter);
-          }
-        });
-      });
-    }
-  }, [databaseLocations.length, isLoadingLocations, activeFilter]);
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -492,7 +478,7 @@ export default function Home() {
 
 
   // Funcția de căutare
-  const handleSearch = useCallback((query: string) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (query.trim() === '') {
       setSearchResults([]);
@@ -596,9 +582,9 @@ export default function Home() {
         console.log('No valid coordinates found for county');
       }
     }
-  }, [databaseLocations, trackMapInteraction]);
+  };
 
-  // Debounce pentru căutare – mai fluid și fără „salturi”
+  // Debounce pentru căutare – mai fluid și fără „salturi"
   useEffect(() => {
     const id = setTimeout(() => {
       if (searchQuery.trim() === '') {
@@ -609,7 +595,7 @@ export default function Home() {
       }
     }, 150);
     return () => clearTimeout(id);
-  }, [searchQuery, handleSearch]);
+  }, [searchQuery]); // Removed handleSearch dependency to prevent circular dependencies
 
   // Funcția pentru Enter în căutare
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
@@ -699,97 +685,65 @@ export default function Home() {
     setShowSearchResults(false);
   };
 
+  // Map initialization - runs only once with empty dependency array
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return; // Previne reîncărcarea
-
-    // Previne reîncărcarea la focus change - COMPLET DEZACTIVAT
-    const handleVisibilityChange = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    const handleFocus = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    // Previne reîncărcarea la resize
-    const handleResize = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    const handleBlur = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    // Adaugă event listeners cu capture: true pentru a preveni propagarea
-    document.addEventListener('visibilitychange', handleVisibilityChange, { capture: true, passive: false });
-    window.addEventListener('focus', handleFocus, { capture: true, passive: false });
-    window.addEventListener('blur', handleBlur, { capture: true, passive: false });
-    window.addEventListener('resize', handleResize, { capture: true, passive: false });
 
     // Detect if mobile device - more accurate detection
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-
-          // CRITICAL: Optimized config to prevent flicker and size changes
-      const mapConfig: maplibregl.MapOptions = {
-        container: mapContainerRef.current,
-        style: {
-          version: 8,
-          sources: {
-            'osm': {
-              type: 'raster',
-              tiles: [
-                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-              ],
-              tileSize: 256,
-              attribution: '© OpenStreetMap contributors'
-            }
-          },
-          layers: [
-            {
-              id: 'osm',
-              type: 'raster',
-              source: 'osm'
-            }
-          ]
-        },
-        center: [25.0094, 45.9432] as [number, number], // Centru România
-        zoom: isMobile ? 5.5 : 6,
-        minZoom: 3,
-        maxZoom: 18,
-        pitch: 0,
-        bearing: 0,
-        renderWorldCopies: false,
-        // Anti-flicker optimizations
-        refreshExpiredTiles: false, // Disabled to prevent flicker
-        fadeDuration: 0,
-        crossSourceCollisions: false,
-        attributionControl: false,
-        localIdeographFontFamily: false,
-        // Prevent size changes during loading
-        transformRequest: (url, resourceType) => {
-          if (resourceType === 'Tile' && url.includes('openstreetmap.org')) {
-            return {
-              url,
-              headers: {
-                'Cache-Control': 'max-age=31536000'
-              }
-            };
+    // CRITICAL: Optimized config to prevent flicker and size changes
+    const mapConfig: maplibregl.MapOptions = {
+      container: mapContainerRef.current,
+      style: {
+        version: 8,
+        sources: {
+          'osm': {
+            type: 'raster',
+            tiles: [
+              'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            ],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
           }
-          return { url };
         },
-        logoPosition: 'bottom-right'
-      };
+        layers: [
+          {
+            id: 'osm',
+            type: 'raster',
+            source: 'osm'
+          }
+        ]
+      },
+      center: [25.0094, 45.9432] as [number, number], // Centru România
+      zoom: isMobile ? 5.5 : 6,
+      minZoom: 3,
+      maxZoom: 18,
+      pitch: 0,
+      bearing: 0,
+      renderWorldCopies: false,
+      // Anti-flicker optimizations
+      refreshExpiredTiles: false, // Disabled to prevent flicker
+      fadeDuration: 0,
+      crossSourceCollisions: false,
+      attributionControl: false,
+      localIdeographFontFamily: false,
+      // Prevent size changes during loading
+      transformRequest: (url, resourceType) => {
+        if (resourceType === 'Tile' && url.includes('openstreetmap.org')) {
+          return {
+            url,
+            headers: {
+              'Cache-Control': 'max-age=31536000'
+            }
+          };
+        }
+        return { url };
+      },
+      logoPosition: 'bottom-right'
+    };
 
     const map = new maplibregl.Map(mapConfig);
     mapInstanceRef.current = map;
@@ -808,59 +762,38 @@ export default function Home() {
       setMapError(true);
     });
 
-    // Custom navigation controls (no native controls)
-    // map.addControl(new maplibregl.NavigationControl({
-    //   showCompass: !isMobile,
-    //   showZoom: true,
-    //   visualizePitch: false
-    // }), 'top-right');
-
-    // Custom geolocation control (no native controls)
-    // map.addControl(new maplibregl.GeolocateControl({
-    //   positionOptions: {
-    //     enableHighAccuracy: true
-    //   },
-    //   trackUserLocation: true,
-    //   showUserHeading: true,
-    //   showUserLocation: true
-    // }), 'top-right');
-
     // Load locations after map is ready
     map.once('load', () => {
+      // Adaugă mai întâi markerul userului (pentru a fi deasupra)
+      const savedLocation = localStorage.getItem('userLocation');
+      if (savedLocation) {
+        try {
+          const { latitude, longitude } = JSON.parse(savedLocation);
+          // Delay mic pentru a se asigura că se adaugă corect
+          setTimeout(() => {
+            addUserLocationMarker(latitude, longitude, true);
+          }, 100);
+        } catch (error) {
+          console.error('Error loading saved location:', error);
+        }
+      }
+
+      // Apoi adaugă markerii de pește (cu delay pentru a nu interfera cu markerul userului)
       if (databaseLocations.length > 0) {
-        addLocationsToMap(map, activeFilter);
+        setTimeout(() => {
+          addLocationsToMap(map, activeFilter);
+        }, 300);
       }
     });
 
     // CRITICAL: Optimized event listeners to prevent reload issues
-      map.on('click', () => {
-        setShowShopPopup(false);
-        setShowLocationRequest(false);
+    map.on('click', () => {
+      setShowShopPopup(false);
+      setShowLocationRequest(false);
       setShowSearchResults(false);
     });
 
-    // Previne reîncărcarea la focus change
-    map.on('blur', () => {
-      // Nu face nimic - previne reîncărcarea
-    });
-
-    map.on('focus', () => {
-      // Nu face nimic - previne reîncărcarea
-    });
-
-    // Nu mai cerem geolocația automat - doar când userul apasă pe săgeată
-    // const locationAccepted = localStorage.getItem('locationAccepted');
-    // if (locationAccepted === 'true' && navigator.geolocation) {
-    // navigator.geolocation.getCurrentPosition(...) - comentat pentru a nu cere automat
-    // }
-
     return () => {
-      // Cleanup event listeners
-      document.removeEventListener('visibilitychange', handleVisibilityChange, { capture: true });
-      window.removeEventListener('focus', handleFocus, { capture: true });
-      window.removeEventListener('blur', handleBlur, { capture: true });
-      window.removeEventListener('resize', handleResize, { capture: true });
-
       // Cleanup doar dacă componenta se unmount complet
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -874,7 +807,19 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, activeFilter, databaseLocations.length]);
+  }, []); // Empty dependency array - initialize only once
+
+  // Separate effect for updating markers when data changes
+  useEffect(() => {
+    if (mapInstanceRef.current && databaseLocations.length > 0 && !isLoadingLocations) {
+      // Delay mic pentru a nu interfera cu markerul userului
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          addLocationsToMap(mapInstanceRef.current, activeFilter);
+        }
+      }, 200);
+    }
+  }, [databaseLocations.length, isLoadingLocations, activeFilter]);
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {
@@ -967,7 +912,7 @@ export default function Home() {
   };
 
   // Funcție pentru adăugarea markerului pentru locația userului
-  const addUserLocationMarker = async (latitude: number, longitude: number) => {
+  const addUserLocationMarker = async (latitude: number, longitude: number, silent: boolean = false) => {
     if (!mapInstanceRef.current) return;
 
     // Șterge markerul anterior dacă există
@@ -975,41 +920,50 @@ export default function Home() {
       userLocationMarkerRef.current.remove();
     }
 
-    // Creează markerul pentru locația userului - MEREU MARE
+    // Creează markerul pentru locația userului cu dimensiune fixă
     const userMarkerEl = document.createElement('div');
     userMarkerEl.className = 'user-location-marker';
-          userMarkerEl.style.cssText = `
-        width: 50px !important;
-        height: 50px !important;
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-        border: 3px solid #3B82F6 !important;
-        border-radius: 50% !important;
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15) !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 24px !important;
-        z-index: 1000 !important;
-        position: relative !important;
-        will-change: transform !important;
-      `;
-      userMarkerEl.innerHTML = '🎣';
+    userMarkerEl.innerHTML = `
+      <div style="
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 3px solid #3B82F6;
+        border-radius: 50%;
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999 !important;
+        position: relative;
+        will-change: transform;
+      ">
+        <div style="
+          font-size: 20px;
+          line-height: 1;
+        ">🎣</div>
+      </div>
+    `;
 
+    // Add hover effect
+    userMarkerEl.addEventListener('mouseenter', () => {
+      userMarkerEl.style.transform = 'scale(1.1)';
+      userMarkerEl.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4), 0 6px 16px rgba(0,0,0,0.2)';
+    });
 
-      // Add hover effect
-      userMarkerEl.addEventListener('mouseenter', () => {
-        userMarkerEl.style.transform = 'scale(1.1)';
-        userMarkerEl.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4), 0 6px 16px rgba(0,0,0,0.2)';
-      });
+    userMarkerEl.addEventListener('mouseleave', () => {
+      userMarkerEl.style.transform = 'scale(1)';
+      userMarkerEl.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15)';
+    });
 
-      userMarkerEl.addEventListener('mouseleave', () => {
-        userMarkerEl.style.transform = 'scale(1)';
-        userMarkerEl.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15)';
-      });
+    console.log('🎣 User marker added at:', [longitude, latitude], 'silent:', silent);
 
-        if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-      const userMarker = new maplibregl.Marker(userMarkerEl)
+    if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
+      const userMarker = new maplibregl.Marker({
+        element: userMarkerEl,
+        anchor: 'center'
+      })
         .setLngLat([longitude, latitude])
         .addTo(mapInstanceRef.current);
 
@@ -1061,6 +1015,26 @@ export default function Home() {
         `);
 
         userMarker.setPopup(popup);
+
+        // Salvează locația în localStorage
+        localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
+
+        // Deschide popup-ul automat și centrează harta doar dacă nu este silent
+        if (!silent) {
+          setTimeout(() => {
+            if (userMarker) {
+              userMarker.togglePopup();
+              // Centrează harta pe locația utilizatorului
+              if (mapInstanceRef.current) {
+                mapInstanceRef.current.flyTo({
+                  center: [longitude, latitude],
+                  zoom: 15,
+                  duration: 1000
+                });
+              }
+            }
+          }, 500);
+        }
       } catch (error) {
         console.error('Eroare la reverse geocoding:', error);
       }
@@ -1102,31 +1076,38 @@ export default function Home() {
             // Obține adresa prin reverse geocoding
             const address = await geocodingService.reverseGeocode(latitude, longitude);
 
-            // Creează marker cu fundal alb și design îmbunătățit
+            // Creează marker cu fundal alb și design îmbunătățit cu SVG fishing_pole
             const userMarkerEl = document.createElement('div');
             userMarkerEl.className = 'user-location-marker';
-            userMarkerEl.style.cssText = `
-              width: 50px !important;
-              height: 50px !important;
-              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-              border: 3px solid #3B82F6 !important;
-              border-radius: 50% !important;
-              box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15) !important;
-              cursor: pointer !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-              font-size: 24px !important;
-              z-index: 1000 !important;
-              position: relative !important;
-              will-change: transform !important;
+            userMarkerEl.innerHTML = `
+              <div style="
+                width: 50px;
+                height: 50px;
+                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+                border: 3px solid #3B82F6;
+                border-radius: 50%;
+                box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                position: relative;
+                will-change: transform;
+              ">
+                <div style="
+          font-size: 20px;
+          line-height: 1;
+        ">🎣</div>
+              </div>
             `;
-            userMarkerEl.innerHTML = '🎣';
-
 
             let userMarker: maplibregl.Marker | null = null;
 
-            userMarker = new maplibregl.Marker(userMarkerEl)
+            userMarker = new maplibregl.Marker({
+              element: userMarkerEl,
+              anchor: 'center'
+            })
               .setLngLat([longitude, latitude])
               .addTo(mapInstanceRef.current);
             userLocationMarkerRef.current = userMarker;
@@ -1176,16 +1157,25 @@ export default function Home() {
 
             if (userMarker) {
               userMarker.setPopup(popup);
-              // Deschide popup-ul automat
+              // Deschide popup-ul automat și centrează harta
               setTimeout(() => {
                 if (userMarker) {
                   userMarker.togglePopup();
+                  // Centrează harta pe locația utilizatorului
+                  if (mapInstanceRef.current) {
+                    mapInstanceRef.current.flyTo({
+                      center: [longitude, latitude],
+                      zoom: 15,
+                      duration: 1000
+                    });
+                  }
                 }
               }, 500);
             }
 
             // Salvează că utilizatorul a acceptat locația
             localStorage.setItem('locationAccepted', 'true');
+            localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
           }
         },
         (error) => {

@@ -14,7 +14,9 @@ RETURNS TABLE (
     new_records_today INTEGER,
     page_views_today INTEGER,
     today_unique_visitors INTEGER,
-    today_sessions INTEGER
+    today_sessions INTEGER,
+    bounce_rate NUMERIC,
+    avg_session_time NUMERIC
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -26,7 +28,9 @@ BEGIN
         (SELECT COUNT(*)::INTEGER FROM records WHERE DATE(created_at) = CURRENT_DATE) as new_records_today,
         (SELECT COUNT(*)::INTEGER FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as page_views_today,
         (SELECT COUNT(DISTINCT user_id)::INTEGER FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as today_unique_visitors,
-        (SELECT COUNT(DISTINCT session_id)::INTEGER FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as today_sessions;
+        (SELECT COUNT(DISTINCT session_id)::INTEGER FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as today_sessions,
+        (SELECT COALESCE(AVG(bounce_rate), 0)::NUMERIC FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as bounce_rate,
+        (SELECT COALESCE(AVG(session_duration), 0)::NUMERIC FROM analytics_events WHERE DATE(created_at) = CURRENT_DATE) as avg_session_time;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

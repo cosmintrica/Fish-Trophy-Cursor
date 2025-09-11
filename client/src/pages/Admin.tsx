@@ -146,14 +146,520 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Function to normalize text (remove diacritics)
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+      .replace(/ă/g, 'a')
+      .replace(/â/g, 'a')
+      .replace(/î/g, 'i')
+      .replace(/ș/g, 's')
+      .replace(/ț/g, 't');
+  };
+
+  // Function to translate city names from English to Romanian
+  const translateCityName = (cityName: string) => {
+    const cityTranslations: Record<string, string> = {
+      'bucharest': 'București',
+      'bucharesti': 'București',
+      'bucuresti': 'București',
+      'cluj': 'Cluj-Napoca',
+      'cluj-napoca': 'Cluj-Napoca',
+      'timisoara': 'Timișoara',
+      'timis': 'Timișoara',
+      'iasi': 'Iași',
+      'constanta': 'Constanța',
+      'craiova': 'Craiova',
+      'galati': 'Galați',
+      'ploiesti': 'Ploiești',
+      'brasov': 'Brașov',
+      'braila': 'Brăila',
+      'pitesti': 'Pitești',
+      'arad': 'Arad',
+      'sibiu': 'Sibiu',
+      'bacau': 'Bacău',
+      'targu-mures': 'Târgu Mureș',
+      'targu mures': 'Târgu Mureș',
+      'baia-mare': 'Baia Mare',
+      'baia mare': 'Baia Mare',
+      'buzau': 'Buzău',
+      'satu-mare': 'Satu Mare',
+      'satu mare': 'Satu Mare',
+      'botosani': 'Botoșani',
+      'piatra-neamt': 'Piatra Neamț',
+      'piatra neamt': 'Piatra Neamț',
+      'ramnicu-valcea': 'Râmnicu Vâlcea',
+      'ramnicu valcea': 'Râmnicu Vâlcea',
+      'suceava': 'Suceava',
+      'drobeta-turnu-severin': 'Drobeta-Turnu Severin',
+      'drobeta turnu severin': 'Drobeta-Turnu Severin',
+      'tulcea': 'Tulcea',
+      'targoviste': 'Târgoviște',
+      'focsani': 'Focșani',
+      'bistrita': 'Bistrița',
+      'resita': 'Reșița',
+      'calarasi': 'Călărași',
+      'giurgiu': 'Giurgiu',
+      'deva': 'Deva',
+      'slobozia': 'Slobozia',
+      'alba-iulia': 'Alba Iulia',
+      'alba iulia': 'Alba Iulia',
+      'hunedoara': 'Hunedoara',
+      'zalau': 'Zalău',
+      'sfantu-gheorghe': 'Sfântu Gheorghe',
+      'sfantu gheorghe': 'Sfântu Gheorghe',
+      'targu-jiu': 'Târgu Jiu',
+      'targu jiu': 'Târgu Jiu',
+      'vaslui': 'Vaslui',
+      'ramnicu-sarat': 'Râmnicu Sărat',
+      'ramnicu sarat': 'Râmnicu Sărat',
+      'barlad': 'Bârlad',
+      'turnu-magurele': 'Turnu Măgurele',
+      'turnu magurele': 'Turnu Măgurele',
+      'caracal': 'Caracal',
+      'fagaras': 'Făgăraș',
+      'sighetu-marmatiei': 'Sighetu Marmației',
+      'sighetu marmatiei': 'Sighetu Marmației',
+      'mangalia': 'Mangalia',
+      'campina': 'Câmpina',
+      'petrosani': 'Petroșani',
+      'lugoj': 'Lugoj',
+      'medgidia': 'Medgidia',
+      'tecuci': 'Tecuci',
+      'slatina': 'Slatina',
+      'onesti': 'Onești',
+      'oradea': 'Oradea',
+      'sighisoara': 'Sighișoara',
+      'curtea-de-arges': 'Curtea de Argeș',
+      'curtea de arges': 'Curtea de Argeș',
+      'dorohoi': 'Dorohoi',
+      'campulung': 'Câmpulung',
+      'caransebes': 'Caransebeș',
+      'targu-secuiesc': 'Târgu Secuiesc',
+      'targu secuiesc': 'Târgu Secuiesc'
+    };
+
+    const normalizedCity = normalizeText(cityName);
+    return cityTranslations[normalizedCity] || cityName;
+  };
+
+  // Function to generate random color for cities
+  const generateRandomColor = (cityName: string) => {
+    const colors = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500',
+      'bg-indigo-500', 'bg-yellow-500', 'bg-red-500', 'bg-teal-500',
+      'bg-orange-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500',
+      'bg-emerald-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'
+    ];
+
+    // Use city name as seed for consistent colors
+    let hash = 0;
+    for (let i = 0; i < cityName.length; i++) {
+      const char = cityName.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Load detailed analytics data
+  const loadDetailedAnalytics = async () => {
+    try {
+      console.log('Loading detailed analytics (direct query)...');
+
+      // Get all analytics events for page views
+      const { data: analyticsEvents, error: analyticsError } = await supabase
+        .from('analytics_events')
+        .select('device_type, browser, os, country, city, referrer, page_path')
+        .eq('event_type', 'page_view');
+
+      if (analyticsError) {
+        console.error('Error loading analytics events:', analyticsError);
+        return;
+      }
+
+      // Get Romanian cities from database
+      const { data: romanianCities, error: citiesError } = await supabase
+        .from('cities')
+        .select('name');
+
+      if (citiesError) {
+        console.error('Error loading Romanian cities:', citiesError);
+        return;
+      }
+
+      // Create a set of normalized Romanian city names for fast lookup
+      const romanianCityNames = new Set(
+        romanianCities?.map(city => normalizeText(city.name)) || []
+      );
+
+      console.log('Analytics Events Count:', analyticsEvents?.length || 0);
+      console.log('Romanian Cities Count:', romanianCities?.length || 0);
+      console.log('Romanian Cities from DB:', romanianCities?.map(c => c.name).slice(0, 10)); // First 10 cities
+      console.log('Normalized Romanian Cities:', Array.from(romanianCityNames).slice(0, 10)); // First 10 normalized
+
+      // Calculate device stats
+      const deviceStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const device = event.device_type || 'Unknown';
+        deviceStatsObj[device] = (deviceStatsObj[device] || 0) + 1;
+      });
+
+      // Calculate browser stats
+      const browserStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const browser = event.browser || 'Unknown';
+        browserStatsObj[browser] = (browserStatsObj[browser] || 0) + 1;
+      });
+
+      // Calculate OS stats
+      const osStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const os = event.os || 'Unknown';
+        osStatsObj[os] = (osStatsObj[os] || 0) + 1;
+      });
+
+      // Calculate country stats
+      const countryStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const country = event.country || 'Unknown';
+        countryStatsObj[country] = (countryStatsObj[country] || 0) + 1;
+      });
+
+      // Calculate city stats - Romanian cities (from DB + common Romanian city names)
+      const cityStatsObj: Record<string, number> = {};
+      const allCitiesFromAnalytics = new Set<string>();
+
+      // Common Romanian city names that might not be in DB
+      const commonRomanianCities = new Set([
+        'slatina', 'bucuresti', 'bucharest', 'cluj', 'timisoara', 'iasi', 'constanta',
+        'craiova', 'galati', 'ploiesti', 'brasov', 'braila', 'pitesti', 'arad',
+        'sibiu', 'bacau', 'targu mures', 'baia mare', 'buzau', 'satu mare',
+        'botosani', 'piatra neamt', 'ramnicu valcea', 'suceava', 'drobeta turnu severin',
+        'tulcea', 'targoviste', 'focsani', 'bistrita', 'resita', 'calarasi',
+        'giurgiu', 'deva', 'slobozia', 'alba iulia', 'hunedoara', 'zalau',
+        'sfantu gheorghe', 'targu jiu', 'vaslui', 'ramnicu sarat', 'barlad',
+        'turnu magurele', 'caracal', 'fagaras', 'sighetu marmatiei', 'mangalia',
+        'campina', 'petrosani', 'lugoj', 'medgidia', 'tecuci', 'onesti',
+        'oradea', 'sighisoara', 'curtea de arges', 'dorohoi', 'campulung',
+        'caransebes', 'targu secuiesc'
+      ]);
+
+      analyticsEvents?.forEach(event => {
+        const city = event.city || 'Unknown';
+        allCitiesFromAnalytics.add(city);
+        const normalizedCity = normalizeText(city);
+
+        // Include if it's in Romanian cities DB OR in common Romanian cities
+        if (romanianCityNames.has(normalizedCity) || commonRomanianCities.has(normalizedCity)) {
+          // Translate city name to Romanian for display
+          const translatedCity = translateCityName(city);
+          cityStatsObj[translatedCity] = (cityStatsObj[translatedCity] || 0) + 1;
+        }
+      });
+
+      console.log('All cities from analytics:', Array.from(allCitiesFromAnalytics));
+      console.log('Cities that matched Romanian cities:', Object.keys(cityStatsObj));
+
+      // Debug specific cities
+      const slatinaVariants = Array.from(allCitiesFromAnalytics).filter(city =>
+        normalizeText(city).includes('slatina')
+      );
+      console.log('Slatina variants found:', slatinaVariants);
+
+      // Check if Slatina is in common Romanian cities
+      console.log('Is slatina in commonRomanianCities?', commonRomanianCities.has('slatina'));
+      console.log('Is slatina in romanianCityNames?', romanianCityNames.has('slatina'));
+
+      // Debug: Check what cities are being processed
+      console.log('Processing cities:');
+      Array.from(allCitiesFromAnalytics).forEach(city => {
+        const normalized = normalizeText(city);
+        const inCommon = commonRomanianCities.has(normalized);
+        const inDB = romanianCityNames.has(normalized);
+        console.log(`  ${city} -> ${normalized} (common: ${inCommon}, db: ${inDB})`);
+      });
+
+      // Debug: Check if we're missing any Romanian cities that should be there
+      console.log('Missing Romanian cities that should appear:');
+      const missingCities = ['slatina', 'cluj', 'timisoara', 'iasi', 'constanta', 'brasov'];
+      missingCities.forEach(city => {
+        const found = Array.from(allCitiesFromAnalytics).some(analyticsCity =>
+          normalizeText(analyticsCity) === city
+        );
+        console.log(`  ${city}: ${found ? 'FOUND' : 'MISSING'}`);
+      });
+
+      // Calculate referrer stats
+      const referrerStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const referrer = event.referrer || 'Direct';
+        referrerStatsObj[referrer] = (referrerStatsObj[referrer] || 0) + 1;
+      });
+
+      // Calculate page views stats
+      const pageViewsStatsObj: Record<string, number> = {};
+      analyticsEvents?.forEach(event => {
+        const page = event.page_path || '/';
+        pageViewsStatsObj[page] = (pageViewsStatsObj[page] || 0) + 1;
+      });
+
+      console.log('Calculated Stats:', {
+        deviceStatsObj, browserStatsObj, osStatsObj, countryStatsObj,
+        cityStatsObj, referrerStatsObj, pageViewsStatsObj
+      });
+
+      // Update traffic data with calculated statistics
+      setTrafficData(prev => ({
+        ...prev,
+        deviceStats: deviceStatsObj,
+        browserStats: browserStatsObj,
+        osStats: osStatsObj,
+        countryStats: countryStatsObj,
+        cityStats: cityStatsObj,
+        referrerStats: referrerStatsObj,
+        pageViewsStats: pageViewsStatsObj
+      }));
+
+    } catch (error) {
+      console.error('Error loading detailed analytics:', error);
+    }
+  };
+
+  const loadRealData = async () => {
+    setIsLoading(true);
+    try {
+      // Load pending records with correct column names
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('records')
+        .select(`
+          *,
+          fish_species!inner(name, scientific_name),
+          profiles!records_user_id_fkey(display_name, email),
+          fishing_locations!inner(name, type, county)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (pendingError) {
+        console.error('Error loading pending records:', pendingError);
+      } else {
+        setPendingRecords(pendingData || []);
+      }
+
+      // Load rejected records
+      const { data: rejectedData, error: rejectedError } = await supabase
+        .from('records')
+        .select(`
+          *,
+          fish_species!inner(name, scientific_name),
+          profiles!records_user_id_fkey(display_name, email),
+          fishing_locations!inner(name, type, county)
+        `)
+        .eq('status', 'rejected')
+        .order('created_at', { ascending: false });
+
+      if (rejectedError) {
+        console.error('Error loading rejected records:', rejectedError);
+      } else {
+        setRejectedRecords(rejectedData || []);
+      }
+
+      // Load all users
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          records!records_user_id_fkey(count)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (usersError) {
+        console.error('Error loading users:', usersError);
+      } else {
+        setUsers(usersData || []);
+      }
+
+      // Load analytics data directly from database
+      const { data: allUsers, error: analyticsUsersError } = await supabase
+        .from('profiles')
+        .select('id, created_at');
+
+      const { error: allRecordsError } = await supabase
+        .from('records')
+        .select('id');
+
+      if (!analyticsUsersError && !allRecordsError) {
+        const totalUsers = allUsers?.length || 0;
+
+        // Calculate today's data
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStart = today.toISOString();
+        const todayEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+        // Get today's page views
+        const { data: todayPageViews } = await supabase
+          .from('analytics_events')
+          .select('*', { count: 'exact' })
+          .eq('event_type', 'page_view')
+          .gte('timestamp', todayStart)
+          .lt('timestamp', todayEnd);
+
+        // Get today's unique visitors
+        const { data: todayUniqueVisitors } = await supabase
+          .from('analytics_events')
+          .select('user_id')
+          .eq('event_type', 'page_view')
+          .gte('timestamp', todayStart)
+          .lt('timestamp', todayEnd)
+          .not('user_id', 'is', null);
+
+        // Get today's sessions
+        const { data: todaySessions } = await supabase
+          .from('analytics_events')
+          .select('session_id')
+          .eq('event_type', 'page_view')
+          .gte('timestamp', todayStart)
+          .lt('timestamp', todayEnd);
+
+        // Get total page views count
+        const { count: totalPageViewsCount } = await supabase
+          .from('analytics_events')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'page_view');
+
+        // Get total records count
+        const { count: totalRecordsCount } = await supabase
+          .from('records')
+          .select('*', { count: 'exact', head: true });
+
+        // Get today's new records
+        const { data: todayRecords } = await supabase
+          .from('records')
+          .select('*', { count: 'exact' })
+          .gte('created_at', todayStart)
+          .lt('created_at', todayEnd);
+
+        // Get today's new users
+        const { data: todayUsers } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact' })
+          .gte('created_at', todayStart)
+          .lt('created_at', todayEnd);
+
+        // Calculate unique visitors and sessions
+        const uniqueVisitorsToday = new Set(todayUniqueVisitors?.map(v => v.user_id)).size || 0;
+        const sessionsToday = new Set(todaySessions?.map(s => s.session_id)).size || 0;
+
+        // Debug logging
+        console.log('Analytics Data:', {
+          todayPageViews: todayPageViews?.length || 0,
+          uniqueVisitorsToday,
+          sessionsToday,
+          totalPageViews: totalPageViewsCount || 0,
+          totalRecords: totalRecordsCount || 0,
+          todayRecords: todayRecords?.length || 0,
+          todayUsers: todayUsers?.length || 0
+        });
+
+        // Detailed analytics will be loaded by loadDetailedAnalytics function
+
+        // Calculate bounce rate and session time directly from analytics_events
+        const { data: allEvents, error: _eventsError } = await supabase
+          .from('analytics_events')
+          .select('session_id, event_type, timestamp')
+          .eq('event_type', 'page_view')
+          .order('timestamp', { ascending: true });
+
+        let bounceRate = 0;
+        let avgSessionTime = 0;
+
+        if (allEvents && allEvents.length > 0) {
+          // Group events by session
+          const sessionData: { [key: string]: any[] } = {};
+          allEvents.forEach(event => {
+            if (!sessionData[event.session_id]) {
+              sessionData[event.session_id] = [];
+            }
+            sessionData[event.session_id].push(event);
+          });
+
+          // Calculate bounce rate (sessions with only 1 page view)
+          const sessions = Object.values(sessionData);
+          const singlePageSessions = sessions.filter(session => session.length === 1);
+          bounceRate = sessions.length > 0 ? (singlePageSessions.length / sessions.length) * 100 : 0;
+
+          // Calculate average session time
+          let totalSessionTime = 0;
+          let validSessions = 0;
+
+          sessions.forEach(session => {
+            if (session.length > 1) {
+              const firstEvent = session[0];
+              const lastEvent = session[session.length - 1];
+              const sessionTime = new Date(lastEvent.timestamp).getTime() - new Date(firstEvent.timestamp).getTime();
+              totalSessionTime += sessionTime;
+              validSessions++;
+            }
+          });
+
+          avgSessionTime = validSessions > 0 ? totalSessionTime / validSessions / 1000 : 0; // Convert to seconds
+        }
+
+        console.log('Calculated Analytics:', {
+          totalEvents: allEvents?.length || 0,
+          bounceRate,
+          avgSessionTime: Math.round(avgSessionTime)
+        });
+
+        setTrafficData(prev => ({
+          ...prev,
+          uniqueVisitors: uniqueVisitorsToday || totalUsers,
+          pageViews: totalPageViewsCount || 0, // Use total page views instead of today's
+          sessions: sessionsToday || 0,
+          bounceRate: bounceRate,
+          avgSessionTime: avgSessionTime,
+          dailyStats: [{
+            date: today.toISOString().split('T')[0],
+            users: todayUsers?.length || 0,
+            records: todayRecords?.length || 0,
+            pageViews: todayPageViews?.length || 0
+          }],
+          monthlyStats: [{
+            month: today.toISOString().split('T')[0],
+            users: totalUsers || 0,
+            records: totalRecordsCount || 0,
+            pageViews: totalPageViewsCount || 0
+          }],
+          yearlyStats: [{
+            year: today.getFullYear().toString(),
+            users: totalUsers || 0,
+            records: totalRecordsCount || 0,
+            pageViews: totalPageViewsCount || 0
+          }],
+          // Detailed analytics will be set by loadDetailedAnalytics function
+          timelineData: []
+        }));
+      } else {
+        console.error('Analytics errors:', { analyticsUsersError, allRecordsError });
+      }
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load real data from database
   useEffect(() => {
     const loadAllData = async () => {
-      console.log('🔄 Starting to load admin data...');
       await loadRealData();
       await loadDetailedAnalytics();
       await loadTrafficGraphData();
-      console.log('✅ Admin data loading completed');
     };
     loadAllData();
   }, []);
@@ -174,77 +680,6 @@ const Admin: React.FC = () => {
 
   // Use traffic data directly to prevent memoization issues
   const memoizedTrafficData = trafficData.timelineData || [];
-
-  // Load detailed analytics data
-  const loadDetailedAnalytics = async () => {
-    console.log('🔄 Loading detailed analytics...');
-    try {
-      // Load device stats
-      const { data: deviceStats } = await supabase.rpc('get_device_stats');
-      const deviceStatsObj = deviceStats?.reduce((acc: any, item: any) => {
-        acc[item.device_type] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load browser stats
-      const { data: browserStats } = await supabase.rpc('get_browser_stats');
-      const browserStatsObj = browserStats?.reduce((acc: any, item: any) => {
-        acc[item.browser] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load OS stats
-      const { data: osStats } = await supabase.rpc('get_os_stats');
-      const osStatsObj = osStats?.reduce((acc: any, item: any) => {
-        acc[item.os] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load country stats
-      const { data: countryStats } = await supabase.rpc('get_country_stats');
-      const countryStatsObj = countryStats?.reduce((acc: any, item: any) => {
-        acc[item.country] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load Romanian city stats
-      const { data: cityStats } = await supabase.rpc('get_romanian_city_stats');
-      const cityStatsObj = cityStats?.reduce((acc: any, item: any) => {
-        acc[item.city] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load referrer stats
-      const { data: referrerStats } = await supabase.rpc('get_referrer_stats');
-      const referrerStatsObj = referrerStats?.reduce((acc: any, item: any) => {
-        acc[item.referrer] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Load page views stats
-      const { data: pageViewsStats } = await supabase.rpc('get_page_views_stats');
-      const pageViewsStatsObj = pageViewsStats?.reduce((acc: any, item: any) => {
-        acc[item.page_url] = item.count;
-        return acc;
-      }, {}) || {};
-
-      // Update traffic data with real statistics
-      setTrafficData(prev => ({
-        ...prev,
-        deviceStats: deviceStatsObj,
-        browserStats: browserStatsObj,
-        osStats: osStatsObj,
-        countryStats: countryStatsObj,
-        cityStats: cityStatsObj,
-        referrerStats: referrerStatsObj,
-        pageViewsStats: pageViewsStatsObj
-      }));
-
-    } catch (error) {
-      console.error('Error loading detailed analytics:', error);
-    }
-    console.log('✅ Detailed analytics loading completed');
-  };
 
   // Handle period change
   const handlePeriodChange = (period: string) => {
@@ -334,218 +769,6 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error updating analytics stats:', error);
       toast.error('Eroare la actualizarea statisticilor', { id: 'update-stats' });
-    }
-  };
-
-  const loadRealData = async () => {
-    console.log('🔄 Loading real data...');
-    setIsLoading(true);
-    try {
-      // Load pending records with correct column names
-      const { data: pendingData, error: pendingError } = await supabase
-        .from('records')
-        .select(`
-          *,
-          fish_species!inner(name, scientific_name),
-          profiles!records_user_id_fkey(display_name, email),
-          fishing_locations!inner(name, type, county)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (pendingError) {
-        console.error('Error loading pending records:', pendingError);
-      } else {
-        setPendingRecords(pendingData || []);
-      }
-
-      // Load rejected records
-      const { data: rejectedData, error: rejectedError } = await supabase
-        .from('records')
-        .select(`
-          *,
-          fish_species!inner(name, scientific_name),
-          profiles!records_user_id_fkey(display_name, email),
-          fishing_locations!inner(name, type, county)
-        `)
-        .eq('status', 'rejected')
-        .order('created_at', { ascending: false });
-
-      if (rejectedError) {
-        console.error('Error loading rejected records:', rejectedError);
-      } else {
-        setRejectedRecords(rejectedData || []);
-      }
-
-      // Load all users
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          records!records_user_id_fkey(count)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (usersError) {
-        console.error('Error loading users:', usersError);
-        console.error('Users error details:', {
-          message: usersError.message,
-          details: usersError.details,
-          hint: usersError.hint,
-          code: usersError.code
-        });
-      } else {
-        setUsers(usersData || []);
-      }
-
-      // Load analytics data directly from database
-      const { data: allUsers, error: analyticsUsersError } = await supabase
-        .from('profiles')
-        .select('id, created_at');
-
-      const { error: allRecordsError } = await supabase
-        .from('records')
-        .select('id');
-
-      if (!analyticsUsersError && !allRecordsError) {
-        const totalUsers = allUsers?.length || 0;
-
-        // Calculate today's data
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Load real analytics data
-        const { data: realTimeStats, error: realTimeError } = await supabase
-          .rpc('get_current_analytics_stats');
-
-
-        console.log('🔍 Real time stats result:', { realTimeError, realTimeStats });
-        if (!realTimeError && realTimeStats && realTimeStats.length > 0) {
-          const stats = realTimeStats[0]; // Get first row from result
-          console.log('📊 Stats data:', stats);
-          console.log('⚠️ PROBLEMA: Toate valorile sunt 0! API-ul funcționează dar nu are date pentru azi!');
-          // Load detailed analytics data
-          console.log('🔍 Loading device stats...');
-          const { data: deviceStats, error: deviceError } = await supabase.rpc('get_device_stats');
-          console.log('📱 Device stats:', { deviceStats, deviceError });
-          const deviceStatsObj = deviceStats?.reduce((acc: any, item: any) => {
-            acc[item.device_type] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading browser stats...');
-          const { data: browserStats, error: browserError } = await supabase.rpc('get_browser_stats');
-          console.log('🌐 Browser stats:', { browserStats, browserError });
-          const browserStatsObj = browserStats?.reduce((acc: any, item: any) => {
-            acc[item.browser] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading OS stats...');
-          const { data: osStats, error: osError } = await supabase.rpc('get_os_stats');
-          console.log('💻 OS stats:', { osStats, osError });
-          const osStatsObj = osStats?.reduce((acc: any, item: any) => {
-            acc[item.os] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading country stats...');
-          const { data: countryStats, error: countryError } = await supabase.rpc('get_country_stats');
-          console.log('🌍 Country stats:', { countryStats, countryError });
-          const countryStatsObj = countryStats?.reduce((acc: any, item: any) => {
-            acc[item.country] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading city stats...');
-          const { data: cityStats, error: cityError } = await supabase.rpc('get_romanian_city_stats');
-          console.log('🏙️ City stats:', { cityStats, cityError });
-          const cityStatsObj = cityStats?.reduce((acc: any, item: any) => {
-            acc[item.city] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading referrer stats...');
-          const { data: referrerStats, error: referrerError } = await supabase.rpc('get_referrer_stats');
-          console.log('🔗 Referrer stats:', { referrerStats, referrerError });
-          const referrerStatsObj = referrerStats?.reduce((acc: any, item: any) => {
-            acc[item.referrer] = item.count;
-            return acc;
-          }, {}) || {};
-
-          console.log('🔍 Loading page views stats...');
-          const { data: pageViewsStats, error: pageViewsError } = await supabase.rpc('get_page_views_stats');
-          console.log('📄 Page views stats:', { pageViewsStats, pageViewsError });
-          const pageViewsStatsObj = pageViewsStats?.reduce((acc: any, item: any) => {
-            acc[item.page_url] = item.count;
-            return acc;
-          }, {}) || {};
-
-        const newTrafficData = {
-          ...trafficData,
-            uniqueVisitors: stats.today_unique_visitors || stats.total_users || 0,
-            pageViews: stats.page_views_today || stats.total_page_views || 0,
-            sessions: stats.today_sessions || Math.floor((stats.total_page_views || 0) / 3) || 0,
-            bounceRate: stats.bounce_rate || 0,
-            avgSessionTime: stats.avg_session_time || 0,
-          dailyStats: [{
-            date: today.toISOString().split('T')[0],
-              users: stats.new_users_today || stats.total_users || 0,
-              records: stats.new_records_today || stats.total_records || 0,
-              pageViews: stats.page_views_today || stats.total_page_views || 0
-          }],
-          monthlyStats: [{
-            month: today.toISOString().split('T')[0],
-              users: stats.total_users || 0,
-              records: stats.total_records || 0,
-              pageViews: stats.total_page_views || 0
-          }],
-          yearlyStats: [{
-            year: today.getFullYear().toString(),
-            users: stats.total_users || 0,
-            records: stats.total_records || 0,
-            pageViews: stats.total_page_views || 0
-          }],
-          // Use real detailed data
-          deviceStats: deviceStatsObj,
-          browserStats: browserStatsObj,
-          osStats: osStatsObj,
-          countryStats: countryStatsObj,
-          cityStats: cityStatsObj,
-          referrerStats: referrerStatsObj,
-          pageViewsStats: pageViewsStatsObj,
-          timelineData: []
-        };
-        console.log('📈 Setting traffic data:', newTrafficData);
-        setTrafficData(newTrafficData);
-        } else {
-          // Fallback to estimated data - but try to get some real data
-
-          // Try to get page views directly
-          const { data: directPageViews } = await supabase
-            .from('analytics_events')
-            .select('*', { count: 'exact' })
-            .eq('event_type', 'page_view')
-            .gte('timestamp', new Date().toISOString().split('T')[0]);
-
-          const todayPageViews = directPageViews?.length || 0;
-
-          setTrafficData(prev => ({
-            ...prev,
-            uniqueVisitors: totalUsers,
-            pageViews: todayPageViews,
-            bounceRate: 0,
-            avgSessionTime: 0
-          }));
-        }
-      } else {
-        console.error('Analytics errors:', { analyticsUsersError, allRecordsError });
-      }
-    } catch (error) {
-      console.error('Error loading admin data:', error);
-    } finally {
-      console.log('✅ Real data loading completed');
-      setIsLoading(false);
     }
   };
 
@@ -711,7 +934,9 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.deviceStats).map(([device, count]) => {
+                    {Object.entries(trafficData.deviceStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([device, count]) => {
                       const total = Object.values(trafficData.deviceStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
@@ -746,7 +971,9 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.browserStats).map(([browser, count]) => {
+                    {Object.entries(trafficData.browserStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([browser, count]) => {
                       const total = Object.values(trafficData.browserStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
@@ -781,7 +1008,9 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.osStats).map(([os, count]) => {
+                    {Object.entries(trafficData.osStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([os, count]) => {
                       const total = Object.values(trafficData.osStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
@@ -816,16 +1045,19 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.cityStats).map(([city, count]) => {
+                    {Object.entries(trafficData.cityStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([city, count]) => {
                       const total = Object.values(trafficData.cityStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                      const cityColor = generateRandomColor(city);
                       return (
                         <div key={city} className="flex items-center justify-between">
                           <span className="text-sm">{city}</span>
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-muted rounded-full h-2">
                               <div
-                                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                                className={`${cityColor} h-2 rounded-full transition-all duration-300`}
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
@@ -851,7 +1083,9 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.referrerStats).map(([referrer, count]) => {
+                    {Object.entries(trafficData.referrerStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([referrer, count]) => {
                       const total = Object.values(trafficData.referrerStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
@@ -886,7 +1120,9 @@ const Admin: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(trafficData.pageViewsStats || {}).map(([page, count]) => {
+                    {Object.entries(trafficData.pageViewsStats || {})
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([page, count]) => {
                       const total = Object.values(trafficData.pageViewsStats || {}).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
@@ -1382,9 +1618,9 @@ const Admin: React.FC = () => {
                     <p className="text-muted-foreground">Harta interactivă va fi implementată aici</p>
                     <p className="text-sm text-muted-foreground mt-2">
                       Funcționalități: drag & drop, adăugare locații noi, editare poziții
-            </p>
-          </div>
-        </div>
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

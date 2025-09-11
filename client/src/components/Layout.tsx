@@ -22,6 +22,34 @@ export default function Layout({ children }: { children: ReactNode }) {
   // Check if user is admin - use environment variable for security
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
   const isAdmin = user?.email === adminEmail;
+
+  // Generate color from user name for dynamic border
+  const generateUserColor = (name: string) => {
+    const colors = [
+      'from-blue-500 to-blue-600',
+      'from-green-500 to-green-600',
+      'from-purple-500 to-purple-600',
+      'from-pink-500 to-pink-600',
+      'from-indigo-500 to-indigo-600',
+      'from-teal-500 to-teal-600',
+      'from-orange-500 to-orange-600',
+      'from-cyan-500 to-cyan-600'
+    ];
+    const hash = name.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return '';
+    return user.user_metadata?.display_name ||
+           user.user_metadata?.full_name ||
+           user.email?.split('@')[0] ||
+           'Utilizator';
+  };
   // Removed Black Sea popup - now direct link
 
   // PWA Install Prompt Logic
@@ -216,9 +244,11 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div className="flex items-center space-x-4">
               {user ? (
                 <>
-                  <span className="hidden sm:block text-sm text-gray-700">
-                    {user.email}
-                  </span>
+                  <div className="hidden sm:flex items-center space-x-3">
+                    <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm`}>
+                      {getUserDisplayName()}
+                    </div>
+                  </div>
                   <Link
                     to="/profile"
                     className="hidden sm:inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
@@ -257,145 +287,151 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile Menu Overlay */}
-      <div className={`lg:hidden fixed inset-0 z-50 transition-all duration-500 ease-out ${
+      <div className={`lg:hidden fixed inset-0 z-50 transition-all duration-300 ease-out ${
         isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       }`}>
         {/* Backdrop */}
         <div
-          className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-500 ease-out ${
+          className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ease-out ${
             isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
           }`}
           onClick={closeMobileMenu}
         />
 
-        {/* Menu Panel */}
-        <div className={`absolute right-0 top-0 h-full w-96 max-w-[90vw] sm:w-[400px] md:w-[450px] bg-white shadow-2xl transform transition-all duration-500 ease-out overflow-y-auto ${
-          isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-        }`}>
+        {/* Menu Card */}
+        <div
+          className={`mobile-menu-card absolute right-0 top-0 bottom-0 bg-white rounded-l-2xl shadow-2xl overflow-y-auto ${
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          style={{
+            width: '300px',
+            maxWidth: 'none'
+          }}
+        >
           {/* Menu Header */}
-          <div className={`flex items-center justify-between p-6 border-b border-gray-200 transition-all duration-600 ease-out ${
-            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}>
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <div className="flex items-center space-x-3">
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy"
-                className="w-8 h-8 rounded-xl"
+                className="w-8 h-8 rounded-lg"
               />
-              <span className="text-lg font-bold text-gray-900">Meniu</span>
+              <span className="text-lg font-semibold text-gray-900">Meniu</span>
             </div>
             <button
               onClick={closeMobileMenu}
-              className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-300 active:scale-95 hover:rotate-90"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               aria-label="Închide meniul"
             >
-              <X className="w-5 h-5 transition-transform duration-300" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Menu Items */}
-          <nav className={`p-6 space-y-2 transition-all duration-700 ease-out ${
-            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}>
+          <nav className="p-4 space-y-1">
             <Link
               to="/"
-              className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
-                location.pathname === '/'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-50 active:scale-95'
+              className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${
+                location.pathname === '/' ? 'text-blue-600' : ''
               }`}
               onClick={closeMobileMenu}
             >
               <Home className="w-5 h-5" />
-              <span className="font-medium">Acasă</span>
+              <span className="font-medium text-base">Acasă</span>
             </Link>
 
             <Link
               to="/species"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
               onClick={closeMobileMenu}
             >
               <Fish className="w-5 h-5" />
-              <span className="font-medium">Specii</span>
+              <span className="font-medium text-base">Specii</span>
             </Link>
 
             <Link
               to="/records"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
               onClick={closeMobileMenu}
             >
               <Trophy className="w-5 h-5" />
-              <span className="font-medium">Recorduri</span>
+              <span className="font-medium text-base">Recorduri</span>
             </Link>
 
             <Link
               to="/submission-guide"
-              className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
               onClick={closeMobileMenu}
             >
               <FileText className="w-5 h-5" />
-              <span className="font-medium">Ghid Submisie</span>
+              <span className="font-medium text-base">Ghid Submisie</span>
             </Link>
 
-            {isAdmin ? (
-              <Link
-                to="/black-sea"
-                className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
-                  location.pathname === '/black-sea'
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50 active:scale-95'
-                }`}
-                onClick={closeMobileMenu}
-              >
-                <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagră</span>
-              </Link>
-            ) : (
-              <Link
-                to="/black-sea"
-                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
-                onClick={closeMobileMenu}
-              >
-                <MapPin className="w-5 h-5" />
-                <span className="font-medium">Marea Neagră</span>
-              </Link>
-            )}
+            <Link
+              to="/black-sea"
+              className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${
+                location.pathname === '/black-sea' ? 'text-blue-600' : ''
+              }`}
+              onClick={closeMobileMenu}
+            >
+              <MapPin className="w-5 h-5" />
+              <span className="font-medium text-base">Marea Neagră</span>
+            </Link>
 
             {isAdmin && (
               <Link
                 to="/admin"
-                className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
                 onClick={closeMobileMenu}
               >
                 <User className="w-5 h-5" />
-                <span className="font-medium">Admin</span>
+                <span className="font-medium text-base">Admin</span>
               </Link>
             )}
           </nav>
 
           {/* User Section in Mobile Menu */}
           {user ? (
-            <div className={`p-6 border-t border-gray-200 space-y-3 transition-all duration-800 ease-out ${
-              isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
+            <div className="p-4 border-t border-gray-100 space-y-1">
+              <div className="flex items-center space-x-3 px-4 py-3">
+                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                  {user.user_metadata?.avatar_url ? (
+                    <img
+                      src={user.user_metadata.avatar_url}
+                      alt={getUserDisplayName()}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default icon if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-full h-full bg-blue-600 rounded-full flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg></div>';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-semibold">
+                        {getUserDisplayName().charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.email}
+                    {getUserDisplayName()}
                   </p>
                 </div>
               </div>
 
               <Link
                 to="/profile"
-                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
                 onClick={closeMobileMenu}
               >
-                <User className="w-4 h-4 mr-2" />
-                Profilul meu
+                <User className="w-5 h-5" />
+                <span className="font-medium text-base">Profilul meu</span>
               </Link>
 
               <button
@@ -404,68 +440,55 @@ export default function Layout({ children }: { children: ReactNode }) {
                   logout();
                   closeMobileMenu();
                 }}
-                className="flex items-center justify-center w-full px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all duration-200 active:scale-95"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-red-600 transition-colors w-full text-left"
               >
-                <X className="w-4 h-4 mr-2" />
-                                 Ieșire
+                <X className="w-5 h-5" />
+                <span className="font-medium text-base">Ieșire</span>
               </button>
             </div>
           ) : (
-            <div className={`p-6 border-t border-gray-200 transition-all duration-800 ease-out ${
-              isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
+            <div className="p-4 border-t border-gray-100">
               <button
                 onClick={() => {
                   setIsAuthModalOpen(true);
                   closeMobileMenu();
                 }}
-                className="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors w-full text-left"
               >
-                <User className="w-4 h-4 mr-2" />
-                Autentificare
+                <User className="w-5 h-5" />
+                <span className="font-medium text-base">Autentificare</span>
               </button>
             </div>
           )}
 
-          {/* Social Links */}
-          <div className={`p-6 border-t border-gray-200 transition-all duration-900 ease-out ${
-            isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Urmărește-ne</h3>
-            <div className="flex space-x-4">
-              <a
-                href="https://facebook.com/fishtrophy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          {/* Social Links - Centrat în meniul hamburger */}
+          <div className="p-4 border-t border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3 text-center">Urmărește-ne</h4>
+            <div className="flex justify-center space-x-2">
+              <a href="https://www.facebook.com/fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-[#1877F2] rounded-md flex items-center justify-center text-white hover:bg-[#166FE5] transition-colors" onClick={closeMobileMenu}>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
               </a>
-              <a
-                href="https://instagram.com/fishtrophy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-10 h-10 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987s11.987-5.367 11.987-11.987C24.014 5.367 18.647.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323c-.875.807-2.026 1.297-3.323 1.297zm7.83-9.281c-.49 0-.98-.49-.98-.98s.49-.98.98-.98.98.49.98.98-.49.98-.98.98z"/>
+              <a href="https://www.instagram.com/fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-gradient-to-r from-[#E4405F] to-[#C13584] rounded-md flex items-center justify-center text-white hover:from-[#D7356A] hover:to-[#B02A73] transition-colors" onClick={closeMobileMenu}>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                 </svg>
               </a>
-              <a
-                href="https://youtube.com/fishtrophy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              <a href="https://x.com/fishtrophy_ro" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-black rounded-md flex items-center justify-center text-white hover:bg-gray-800 transition-colors" onClick={closeMobileMenu}>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
               </a>
+            </div>
+
+            {/* Textul "Făcut cu ❤️ în România" - Centrat */}
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
+                <span>Făcut cu</span>
+                <span className="text-red-500">❤️</span>
+                <span>în România</span>
+              </div>
             </div>
           </div>
 

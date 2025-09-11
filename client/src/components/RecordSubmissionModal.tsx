@@ -144,13 +144,51 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       return name.includes(searchTerm) || type.includes(searchTerm) || county.includes(searchTerm);
     });
 
-    // Prioritize rivers (râuri) - sort them first
+    // Smart prioritization based on search term
     filtered.sort((a, b) => {
-      const aIsRiver = a.type?.toLowerCase() === 'râu' || a.type?.toLowerCase() === 'river';
-      const bIsRiver = b.type?.toLowerCase() === 'râu' || b.type?.toLowerCase() === 'river';
+      const aName = removeDiacritics(a.name?.toLowerCase() || '');
+      const bName = removeDiacritics(b.name?.toLowerCase() || '');
+      const aType = removeDiacritics(a.type?.toLowerCase() || '');
+      const bType = removeDiacritics(b.type?.toLowerCase() || '');
 
-      if (aIsRiver && !bIsRiver) return -1;
-      if (!aIsRiver && bIsRiver) return 1;
+      // If searching for river names (Olt, Mures, etc.), prioritize rivers
+      const riverNames = ['olt', 'mures', 'dunare', 'siret', 'prut', 'arges', 'jijia', 'buzau', 'ialomita', 'teleorman'];
+      const isSearchingForRiver = riverNames.some(riverName => searchTerm.includes(riverName));
+
+      if (isSearchingForRiver) {
+        const aIsRiver = aType === 'rau' || aType === 'river';
+        const bIsRiver = bType === 'rau' || bType === 'river';
+
+        if (aIsRiver && !bIsRiver) return -1;
+        if (!aIsRiver && bIsRiver) return 1;
+      }
+
+      // If searching for lake names, prioritize lakes
+      const lakeNames = ['snagov', 'herastrau', 'cernica', 'tei', 'floreasca', 'morii', 'chitila', 'bucuresti'];
+      const isSearchingForLake = lakeNames.some(lakeName => searchTerm.includes(lakeName));
+
+      if (isSearchingForLake) {
+        const aIsLake = aType === 'lac' || aType === 'lake';
+        const bIsLake = bType === 'lac' || bType === 'lake';
+
+        if (aIsLake && !bIsLake) return -1;
+        if (!aIsLake && bIsLake) return 1;
+      }
+
+      // Default: prioritize exact name matches
+      const aExactMatch = aName === searchTerm;
+      const bExactMatch = bName === searchTerm;
+
+      if (aExactMatch && !bExactMatch) return -1;
+      if (!aExactMatch && bExactMatch) return 1;
+
+      // Then prioritize name starts with search term
+      const aStartsWith = aName.startsWith(searchTerm);
+      const bStartsWith = bName.startsWith(searchTerm);
+
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+
       return 0;
     });
 
@@ -309,39 +347,32 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
               {/* Search Input */}
               <div className="space-y-2">
-                <Input
-                  type="text"
-                  placeholder={formData.species_id ? "Specia selectată" : "Caută specia..."}
-                  value={speciesSearchTerm}
-                  onChange={(e) => setSpeciesSearchTerm(e.target.value)}
-                  className={`w-full ${formData.species_id ? 'bg-green-50 border-green-300' : ''}`}
-                />
-                {formData.species_id && (
-                  <div className="text-sm text-green-600 font-medium flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      Specia selectată: {species.find(s => s.id === formData.species_id)?.name}
-                    </div>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={formData.species_id ? "Specia selectată" : "Caută specia..."}
+                    value={speciesSearchTerm}
+                    onChange={(e) => setSpeciesSearchTerm(e.target.value)}
+                    className={`w-full pr-10 ${formData.species_id ? 'bg-green-50 border-green-300' : ''}`}
+                  />
+                  {formData.species_id && (
                     <button
                       type="button"
                       onClick={() => {
                         handleInputChange('species_id', '');
                         setSpeciesSearchTerm('');
                       }}
-                      className="text-red-500 hover:text-red-700 text-xs"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
                     >
                       Șterge
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Species List */}
-                                  <div className="max-h-48 overflow-y-auto border rounded-lg">
-                    {!speciesSearchTerm.trim() ? (
-                      <div className="p-4 text-center text-gray-500">
-                        <div className="text-sm">Caută o specie de pește...</div>
-                      </div>
-                    ) : getFilteredSpecies().length === 0 ? (
+                {speciesSearchTerm.trim() && !formData.species_id && (
+                  <div className="max-h-48 overflow-y-auto border rounded-lg">
+                    {getFilteredSpecies().length === 0 ? (
                       <div className="p-4 text-center text-gray-500">
                         <div className="text-sm">Nu s-au găsit specii pentru "{speciesSearchTerm}"</div>
                       </div>
@@ -349,9 +380,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       getFilteredSpecies().map((s) => (
                         <div
                           key={s.id}
-                          className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 ${
-                            formData.species_id === s.id ? 'bg-blue-50 border-blue-200' : ''
-                          }`}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                           onClick={() => {
                             handleInputChange('species_id', s.id);
                             setSpeciesSearchTerm(s.name);
@@ -363,32 +392,33 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       ))
                     )}
 
-                  {/* Show More Button */}
-                  {!showAllSpecies && speciesSearchTerm && getFilteredSpecies().length > 10 && (
-                    <div className="p-3 text-center border-t">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllSpecies(true)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Arată toate ({getFilteredSpecies().length} rezultate)
-                      </button>
-                    </div>
-                  )}
+                    {/* Show More Button */}
+                    {!showAllSpecies && getFilteredSpecies().length > 10 && (
+                      <div className="p-3 text-center border-t">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllSpecies(true)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Arată toate ({getFilteredSpecies().length} rezultate)
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Show Less Button */}
-                  {showAllSpecies && speciesSearchTerm && (
-                    <div className="p-3 text-center border-t">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllSpecies(false)}
-                        className="text-gray-600 hover:text-gray-800 text-sm font-medium"
-                      >
-                        Arată mai puține
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    {/* Show Less Button */}
+                    {showAllSpecies && (
+                      <div className="p-3 text-center border-t">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllSpecies(false)}
+                          className="text-gray-600 hover:text-gray-800 text-sm font-medium"
+                        >
+                          Arată mai puține
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -400,39 +430,32 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
               {/* Search Input */}
               <div className="space-y-2">
-                <Input
-                  type="text"
-                  placeholder={selectedLocation ? "Locația selectată" : "Caută locația..."}
-                  value={locationSearchTerm}
-                  onChange={(e) => setLocationSearchTerm(e.target.value)}
-                  className={`w-full ${selectedLocation ? 'bg-green-50 border-green-300' : ''}`}
-                />
-                {selectedLocation && (
-                  <div className="text-sm text-green-600 font-medium flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      Locația selectată: {locations.find(l => l.id === selectedLocation)?.name}
-                    </div>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={selectedLocation ? "Locația selectată" : "Caută locația..."}
+                    value={locationSearchTerm}
+                    onChange={(e) => setLocationSearchTerm(e.target.value)}
+                    className={`w-full pr-10 ${selectedLocation ? 'bg-green-50 border-green-300' : ''}`}
+                  />
+                  {selectedLocation && (
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedLocation('');
                         setLocationSearchTerm('');
                       }}
-                      className="text-red-500 hover:text-red-700 text-xs"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
                     >
                       Șterge
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Location List */}
-                                  <div className="max-h-48 overflow-y-auto border rounded-lg">
-                    {!locationSearchTerm.trim() ? (
-                      <div className="p-4 text-center text-gray-500">
-                        <div className="text-sm">Caută o locație de pescuit...</div>
-                      </div>
-                    ) : getFilteredLocations().length === 0 ? (
+                {locationSearchTerm.trim() && !selectedLocation && (
+                  <div className="max-h-48 overflow-y-auto border rounded-lg">
+                    {getFilteredLocations().length === 0 ? (
                       <div className="p-4 text-center text-gray-500">
                         <div className="text-sm">Nu s-au găsit locații pentru "{locationSearchTerm}"</div>
                       </div>
@@ -440,9 +463,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       getFilteredLocations().map((l) => (
                         <div
                           key={l.id}
-                          className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 ${
-                            selectedLocation === l.id ? 'bg-blue-50 border-blue-200' : ''
-                          }`}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                           onClick={() => {
                             setSelectedLocation(l.id);
                             setLocationSearchTerm(l.name);
@@ -456,32 +477,33 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       ))
                     )}
 
-                  {/* Show More Button */}
-                  {!showAllLocations && locationSearchTerm && getFilteredLocations().length > 10 && (
-                    <div className="p-3 text-center border-t">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllLocations(true)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Arată toate ({getFilteredLocations().length} rezultate)
-                      </button>
-                    </div>
-                  )}
+                    {/* Show More Button */}
+                    {!showAllLocations && getFilteredLocations().length > 10 && (
+                      <div className="p-3 text-center border-t">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllLocations(true)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Arată toate ({getFilteredLocations().length} rezultate)
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Show Less Button */}
-                  {showAllLocations && locationSearchTerm && (
-                    <div className="p-3 text-center border-t">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllLocations(false)}
-                        className="text-gray-600 hover:text-gray-800 text-sm font-medium"
-                      >
-                        Arată mai puține
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    {/* Show Less Button */}
+                    {showAllLocations && (
+                      <div className="p-3 text-center border-t">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllLocations(false)}
+                          className="text-gray-600 hover:text-gray-800 text-sm font-medium"
+                        >
+                          Arată mai puține
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

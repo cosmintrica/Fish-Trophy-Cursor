@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import SearchableSelect from '@/components/SearchableSelect';
 import EditRecordModal from '@/components/EditRecordModal';
+import RecordSubmissionModal from '@/components/RecordSubmissionModal';
 // import { ROMANIA_COUNTIES, searchCities, getCountyById } from '@/data/romania-locations'; // Now using database
 
 const Profile = () => {
@@ -67,6 +68,7 @@ const Profile = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [showRecordModal, setShowRecordModal] = useState(false);
 
   // State pentru echipamente
   const [userGear, setUserGear] = useState<Array<{
@@ -98,7 +100,7 @@ const Profile = () => {
   const [loadingRecords, setLoadingRecords] = useState(false);
 
   // Load user's records from database
-  const loadUserRecords = async () => {
+  const loadUserRecords = useCallback(async () => {
     if (!user?.id) return;
 
     setLoadingRecords(true);
@@ -120,10 +122,10 @@ const Profile = () => {
     } finally {
       setLoadingRecords(false);
     }
-  };
+  }, [user?.id]);
 
   // Încarcă judetele din baza de date
-  const loadCounties = async () => {
+  const loadCounties = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('counties')
@@ -140,10 +142,10 @@ const Profile = () => {
     } catch (error) {
       console.error('Error loading counties:', error);
     }
-  };
+  }, []);
 
   // Încarcă orașele pentru un județ
-  const loadCities = async (countyId: string) => {
+  const loadCities = useCallback(async (countyId: string) => {
     if (!countyId) {
       setCities([]);
       return;
@@ -166,7 +168,7 @@ const Profile = () => {
     } catch (error) {
       console.error('Error loading cities:', error);
     }
-  };
+  }, []);
 
   // Încarcă datele profilului din Supabase
   const loadProfileData = useCallback(async () => {
@@ -223,7 +225,7 @@ const Profile = () => {
       setSelectedCounty(user.user_metadata?.county_id || '');
       setSelectedCity(user.user_metadata?.city_id || '');
     }
-  }, [user]);
+  }, [user, loadCounties, loadCities]);
 
   // Încarcă datele de locație separat pentru afișare
   const loadLocationData = useCallback(async () => {
@@ -242,7 +244,7 @@ const Profile = () => {
     } catch (error) {
       console.error('Error loading location data:', error);
     }
-  }, [selectedCounty, selectedCity, counties.length, cities.length]);
+  }, [selectedCounty, selectedCity]); // Removed counties.length and cities.length to prevent infinite loop
 
   const checkGoogleAuthStatus = useCallback(async () => {
     if (!user?.id) return;
@@ -302,7 +304,7 @@ const Profile = () => {
     };
 
     loadDataSequentially();
-  }, [user, checkGoogleAuthStatus, loadProfileData, loadUserGear, loadUserRecords]);
+  }, [user, checkGoogleAuthStatus, loadProfileData, loadUserGear]);
 
   // Load location data when county/city changes
   useEffect(() => {
@@ -997,16 +999,15 @@ const Profile = () => {
               <TabsContent value="records" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Recordurile mele</h2>
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={() => {
-                      // Navigate to records page or open modal
-                      window.location.href = '/records';
-                    }}
-                  >
-                    <Trophy className="w-4 h-4 mr-2" />
-                    Adaugă Record
-                  </Button>
+                  {records.length > 0 && (
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => setShowRecordModal(true)}
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Adaugă Record
+                    </Button>
+                  )}
                 </div>
 
                 {loadingRecords ? (
@@ -1023,9 +1024,7 @@ const Profile = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă recorduri</h3>
                       <p className="text-gray-600 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
                       <Button
-                        onClick={() => {
-                          window.location.href = '/records';
-                        }}
+                        onClick={() => setShowRecordModal(true)}
                       >
                         Adaugă primul record
                       </Button>
@@ -1971,6 +1970,12 @@ const Profile = () => {
           setEditingRecord(null);
         }}
         onSuccess={handleEditSuccess}
+      />
+
+      {/* Record Submission Modal */}
+      <RecordSubmissionModal
+        isOpen={showRecordModal}
+        onClose={() => setShowRecordModal(false)}
       />
     </div>
   );
