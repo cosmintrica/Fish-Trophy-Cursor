@@ -145,6 +145,7 @@ export default function Home() {
   const [isLocating, setIsLocating] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
+  const [isAddingMarkers, setIsAddingMarkers] = useState(false);
 
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
   const addLocationsToMap = (_map: maplibregl.Map, filterType: string) => {
@@ -152,6 +153,13 @@ export default function Home() {
       console.error('❌ Map instance is null or not ready');
       return;
     }
+
+    if (isAddingMarkers) {
+      console.log('⏳ Already adding markers, skipping...');
+      return;
+    }
+
+    setIsAddingMarkers(true);
 
     // Clear existing markers with better performance
     const markersToRemove = [...markersRef.current];
@@ -431,6 +439,7 @@ export default function Home() {
 
     // Add markers directly - no batching needed
     markersRef.current = markers.filter(marker => marker !== null);
+    setIsAddingMarkers(false);
   };
 
   // Încarcă locațiile din baza de date
