@@ -269,7 +269,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         />
 
         {/* Menu Panel */}
-        <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] sm:w-80 md:w-96 bg-white shadow-2xl transform transition-all duration-500 ease-out ${
+        <div className={`absolute right-0 top-0 h-full w-96 max-w-[90vw] sm:w-[400px] md:w-[450px] bg-white shadow-2xl transform transition-all duration-500 ease-out overflow-y-auto ${
           isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
         }`}>
           {/* Menu Header */}
