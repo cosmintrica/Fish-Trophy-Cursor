@@ -147,7 +147,7 @@ export default function Home() {
   const [openFAQIndex, setOpenFAQIndex] = useState<number | null>(null);
 
   // Funcție pentru adăugarea locațiilor pe hartă - OPTIMIZATĂ PENTRU MOBIL
-  const addLocationsToMap = useCallback((_map: maplibregl.Map, filterType: string) => {
+  const addLocationsToMap = (_map: maplibregl.Map, filterType: string) => {
     if (!_map || !_map.getContainer()) {
       console.error('❌ Map instance is null or not ready');
       return;
@@ -431,7 +431,7 @@ export default function Home() {
 
     // Add markers directly - no batching needed
     markersRef.current = markers.filter(marker => marker !== null);
-  }, [databaseLocations]);
+  };
 
   // Încarcă locațiile din baza de date
   useEffect(() => {
@@ -462,7 +462,7 @@ export default function Home() {
         });
       });
     }
-  }, [databaseLocations.length, isLoadingLocations, activeFilter, addLocationsToMap]);
+  }, [databaseLocations.length, isLoadingLocations, activeFilter]);
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -861,7 +861,7 @@ export default function Home() {
         userLocationMarkerRef.current = null;
       }
     };
-  }, [user, activeFilter, databaseLocations.length, addLocationsToMap]);
+  }, [user, activeFilter, databaseLocations.length]);
 
   // Funcție pentru filtrarea locațiilor
   const filterLocations = (type: string) => {

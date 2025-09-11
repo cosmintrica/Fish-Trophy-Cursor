@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ const Admin: React.FC = () => {
   } | null>(null);
 
   // Load traffic graph data based on selected period
-  const loadTrafficGraphData = useCallback(async () => {
+  const loadTrafficGraphData = async () => {
     try {
       let data: any[] = [];
 
@@ -144,7 +144,7 @@ const Admin: React.FC = () => {
       console.error('Error loading traffic graph data:', error);
       // Don't reset data on error - keep existing data
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
+  };
 
   // Load real data from database
   useEffect(() => {
@@ -163,7 +163,7 @@ const Admin: React.FC = () => {
     if (trafficData.selectedPeriod) {
       loadTrafficGraphData();
     }
-  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate, loadTrafficGraphData]);
+  }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
 
   // Ensure chart loads data on first render
   useEffect(() => {
@@ -419,8 +419,10 @@ const Admin: React.FC = () => {
           .rpc('get_current_analytics_stats');
 
 
+        console.log('🔍 Real time stats result:', { realTimeError, realTimeStats });
         if (!realTimeError && realTimeStats && realTimeStats.length > 0) {
           const stats = realTimeStats[0]; // Get first row from result
+          console.log('📊 Stats data:', stats);
           // Load detailed analytics data
           const { data: deviceStats } = await supabase.rpc('get_device_stats');
           const deviceStatsObj = deviceStats?.reduce((acc: any, item: any) => {
@@ -464,8 +466,8 @@ const Admin: React.FC = () => {
             return acc;
           }, {}) || {};
 
-        setTrafficData(prev => ({
-          ...prev,
+        const newTrafficData = {
+          ...trafficData,
             uniqueVisitors: stats.today_unique_visitors || 0,
             pageViews: stats.page_views_today || 0,
             sessions: stats.today_sessions || 0,
@@ -498,7 +500,9 @@ const Admin: React.FC = () => {
           referrerStats: referrerStatsObj,
           pageViewsStats: pageViewsStatsObj,
           timelineData: []
-        }));
+        };
+        console.log('📈 Setting traffic data:', newTrafficData);
+        setTrafficData(newTrafficData);
         } else {
           // Fallback to estimated data - but try to get some real data
 
