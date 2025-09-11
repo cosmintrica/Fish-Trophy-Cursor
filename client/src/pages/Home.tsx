@@ -161,6 +161,8 @@ export default function Home() {
 
     setIsAddingMarkers(true);
 
+    try {
+
     // Clear existing markers with better performance
     const markersToRemove = [...markersRef.current];
     markersRef.current = [];
@@ -439,7 +441,9 @@ export default function Home() {
 
     // Add markers directly - no batching needed
     markersRef.current = markers.filter(marker => marker !== null);
+  } finally {
     setIsAddingMarkers(false);
+  }
   };
 
   // Încarcă locațiile din baza de date
