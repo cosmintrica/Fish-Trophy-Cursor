@@ -231,12 +231,20 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </Link>
               )}
               {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Admin
-                </Link>
+                <>
+                  <Link
+                    to="/map-test"
+                    className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                  >
+                    Test Harta
+                  </Link>
+                  <Link
+                    to="/admin"
+                    className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                  >
+                    Admin
+                  </Link>
+                </>
               )}
             </nav>
 
@@ -379,14 +387,24 @@ export default function Layout({ children }: { children: ReactNode }) {
             </Link>
 
             {isAdmin && (
-              <Link
-                to="/admin"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <User className="w-5 h-5" />
-                <span className="font-medium text-base">Admin</span>
-              </Link>
+              <>
+                <Link
+                  to="/map-test"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+                  onClick={closeMobileMenu}
+                >
+                  <MapPin className="w-5 h-5" />
+                  <span className="font-medium text-base">Test Harta</span>
+                </Link>
+                <Link
+                  to="/admin"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+                  onClick={closeMobileMenu}
+                >
+                  <User className="w-5 h-5" />
+                  <span className="font-medium text-base">Admin</span>
+                </Link>
+              </>
             )}
           </nav>
 

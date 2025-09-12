@@ -28,6 +28,7 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import ConstructionPage from '@/pages/ConstructionPage';
+import MapTest from '@/pages/MapTest';
 
 // Analytics wrapper component that uses useAnalytics inside Router
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
@@ -43,10 +44,12 @@ function AppContent() {
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
   const isAdmin = user?.email === adminEmail;
 
-  // Debug logging
-  console.log('AppContent - User:', user?.email);
-  console.log('AppContent - Admin Email:', adminEmail);
-  console.log('AppContent - Is Admin:', isAdmin);
+  // Debug logging (only when user changes)
+  if (user?.email) {
+    console.log('AppContent - User:', user?.email);
+    console.log('AppContent - Admin Email:', adminEmail);
+    console.log('AppContent - Is Admin:', isAdmin);
+  }
 
   // Show loading while checking authentication
   if (loading) {
@@ -80,6 +83,7 @@ function AppContent() {
         <Route path="/submission-guide" element={<SubmissionGuide />} />
         <Route path="/fishing-shops" element={<FishingShops />} />
         <Route path="/og-generator" element={<OgGenerator />} />
+        <Route path="/map-test" element={<MapTest />} />
         <Route
           path="/profile"
           element={
