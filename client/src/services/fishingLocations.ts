@@ -55,7 +55,7 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
   // Verifică dacă coordonatele sunt valide
   const lat = Number(dbLocation.latitude);
   const lng = Number(dbLocation.longitude);
-  
+
   if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
     console.error('❌ Invalid coordinates for location:', dbLocation.name, 'lat:', lat, 'lng:', lng);
     // Returnează coordonatele default pentru România
@@ -78,7 +78,7 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
       imageUrl: dbLocation.image_url
     };
   }
-  
+
   return {
     id: dbLocation.id,
     name: dbLocation.name,
@@ -102,7 +102,7 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
 // Încarcă toate locațiile din baza de date
 export const loadFishingLocations = async (): Promise<FishingLocation[]> => {
   try {
-    
+
     const { data, error } = await supabase
       .from('fishing_locations')
       .select('*')
@@ -117,10 +117,10 @@ export const loadFishingLocations = async (): Promise<FishingLocation[]> => {
       return [];
     }
 
-    
+
     // Convertește locațiile la formatul aplicației
     const locations = data.map(convertLocation);
-    
+
     return locations;
   } catch (error) {
     console.error('❌ Error in loadFishingLocations:', error);
