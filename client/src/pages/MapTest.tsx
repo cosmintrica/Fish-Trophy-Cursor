@@ -1,12 +1,26 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Search, Filter, MapPin, Clock, Fish, X, Navigation } from 'lucide-react';
+import { Search, MapPin, Fish, X, Navigation } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { FishingLocation } from '@/types/fishing';
 import { useAuth } from '@/hooks/useAuth';
 import { geocodingService } from '@/services/geocoding';
 import RecordSubmissionModal from '@/components/RecordSubmissionModal';
+
+// Define FishingLocation interface locally
+interface FishingLocation {
+  id: string;
+  name: string;
+  subtitle?: string;
+  type: string;
+  county: string;
+  city: string;
+  region?: string;
+  administrare?: string;
+  latitude: number;
+  longitude: number;
+  coords?: [number, number];
+}
 
 // OpenLayers imports
 import Map from 'ol/Map';
@@ -19,7 +33,7 @@ import Cluster from 'ol/source/Cluster';
 import { fromLonLat } from 'ol/proj';
 import { Point } from 'ol/geom';
 import Feature from 'ol/Feature';
-import { Style, Icon, Text, Fill, Stroke } from 'ol/style';
+import { Style, Icon } from 'ol/style';
 import { Overlay } from 'ol';
 import 'ol/ol.css';
 
@@ -30,10 +44,6 @@ const MapTest: React.FC = () => {
   const [locations, setLocations] = useState<FishingLocation[]>([]);
   const [filteredLocations, setFilteredLocations] = useState<FishingLocation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedCounty, setSelectedCounty] = useState<string>('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -441,8 +451,10 @@ const MapTest: React.FC = () => {
     // Add click handler for clusters with smart unclustering
     map.on('click', (event) => {
       // Remove any existing popups first
-      const existingPopups = mapInstanceRef.current.getTargetElement().querySelectorAll('.custom-popup');
-      existingPopups.forEach(popup => popup.remove());
+      if (mapInstanceRef.current) {
+        const existingPopups = mapInstanceRef.current.getTargetElement().querySelectorAll('.custom-popup');
+        existingPopups.forEach(popup => popup.remove());
+      }
 
       const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
       if (feature) {
@@ -489,8 +501,8 @@ const MapTest: React.FC = () => {
 
       if (feature !== hoveredFeature) {
         if (hoveredFeature) {
-          // Reset previous hover
-          hoveredFeature.setStyle(undefined);
+          // Reset previous hover - don't call setStyle on FeatureLike
+          hoveredFeature = null;
         }
 
         if (feature) {
@@ -590,12 +602,14 @@ const MapTest: React.FC = () => {
     if (!mapInstanceRef.current || !mapLoaded || !userLocation) return;
 
     // Remove existing user location overlay
-    const existingOverlays = mapInstanceRef.current.getOverlays().getArray();
-    existingOverlays.forEach(overlay => {
-      if (overlay.getElement()?.classList.contains('user-location-marker')) {
-        mapInstanceRef.current.removeOverlay(overlay);
-      }
-    });
+    if (mapInstanceRef.current) {
+      const existingOverlays = mapInstanceRef.current.getOverlays().getArray();
+      existingOverlays.forEach(overlay => {
+        if (overlay.getElement()?.classList.contains('user-location-marker')) {
+          mapInstanceRef.current?.removeOverlay(overlay);
+        }
+      });
+    }
 
     // Create custom marker element exactly like in Home.tsx
     const userMarkerEl = document.createElement('div');
@@ -627,8 +641,10 @@ const MapTest: React.FC = () => {
     userMarkerEl.addEventListener('click', async (e) => {
       e.stopPropagation();
       // Remove any existing popups first
-      const existingPopups = mapInstanceRef.current.getTargetElement().querySelectorAll('.custom-popup');
-      existingPopups.forEach(popup => popup.remove());
+      if (mapInstanceRef.current) {
+        const existingPopups = mapInstanceRef.current.getTargetElement().querySelectorAll('.custom-popup');
+        existingPopups.forEach(popup => popup.remove());
+      }
 
       // Show user location popup with real user info
       const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
@@ -654,6 +670,8 @@ const MapTest: React.FC = () => {
         console.error('Eroare la reverse geocoding:', error);
       }
 
+      if (!mapInstanceRef.current) return;
+      
       const pixel = mapInstanceRef.current.getPixelFromCoordinate(fromLonLat([userLocation.lng, userLocation.lat]));
       const popupEl = document.createElement('div');
       popupEl.className = 'custom-popup';
@@ -697,7 +715,9 @@ const MapTest: React.FC = () => {
       popupEl.style.top = (pixel[1] - 200) + 'px';
 
       // Add to map container
-      mapInstanceRef.current.getTargetElement().appendChild(popupEl);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.getTargetElement().appendChild(popupEl);
+      }
     });
 
     // Add hover effect like in Home.tsx
@@ -950,17 +970,16 @@ const MapTest: React.FC = () => {
     popupEl.style.left = (pixel[0] - 160) + 'px';
     popupEl.style.top = (pixel[1] - 200) + 'px'; // Higher to account for popup height
 
-    // Ensure popup stays within map bounds
-    const popupRect = popupEl.getBoundingClientRect();
-    if (pixel[0] - 160 < 0) {
-      popupEl.style.left = '10px';
-    }
-    if (pixel[0] + 160 > mapRect.width) {
-      popupEl.style.left = (mapRect.width - 320) + 'px';
-    }
-    if (pixel[1] - 200 < 0) {
-      popupEl.style.top = '10px';
-    }
+      // Ensure popup stays within map bounds
+      if (pixel[0] - 160 < 0) {
+        popupEl.style.left = '10px';
+      }
+      if (pixel[0] + 160 > mapRect.width) {
+        popupEl.style.left = (mapRect.width - 320) + 'px';
+      }
+      if (pixel[1] - 200 < 0) {
+        popupEl.style.top = '10px';
+      }
 
     // Add to map container
     mapInstanceRef.current.getTargetElement().appendChild(popupEl);
@@ -996,8 +1015,6 @@ const MapTest: React.FC = () => {
     }, 100);
   }, [isMobile]);
 
-  // Get unique counties for filter
-  const counties = Array.from(new Set(locations.map(loc => loc.county))).sort();
 
   return (
     <>
@@ -1260,7 +1277,8 @@ const MapTest: React.FC = () => {
             setShowRecordModal(false);
             setSelectedLocationForRecord(null);
           }}
-          selectedLocation={selectedLocationForRecord}
+          locationId={selectedLocationForRecord.id}
+          locationName={selectedLocationForRecord.name}
         />
       )}
     </>
