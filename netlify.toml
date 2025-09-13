@@ -12,7 +12,7 @@
 
   # Supabase Configuration - Use Environment Variables from Netlify Dashboard
   # VITE_SUPABASE_URL = "set in Netlify Dashboard"
-  # VITE_SUPABASE_ANON_KEY = "set in Netlify Dashboard" 
+  # VITE_SUPABASE_ANON_KEY = "set in Netlify Dashboard"
   # VITE_ADMIN_EMAIL = "set in Netlify Dashboard"
 
   # Map Configuration (MapLibre doesn't need token)
