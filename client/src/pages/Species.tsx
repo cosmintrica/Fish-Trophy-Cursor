@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Calendar, Trophy, Loader2, Fish, Waves, Shield, Star, Zap, Target } from 'lucide-react';
+import { Search, MapPin, Calendar, Trophy, Loader2, Fish, Waves, Shield, Star, Zap, Target, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface FishSpecies {
@@ -42,14 +42,14 @@ const Species = () => {
   const [species, setSpecies] = useState<FishSpecies[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleSpecies, setVisibleSpecies] = useState(20);
+  const [showAllSpecies, setShowAllSpecies] = useState(false);
   const [expandedBaits, setExpandedBaits] = useState<{ [key: string]: boolean }>({});
   const [expandedMethods, setExpandedMethods] = useState<{ [key: string]: boolean }>({});
 
   const categories = [
-    'Toate', 
-    'Pești de apă dulce', 
-    'Pești de apă sărată', 
+    'Toate',
+    'Pești de apă dulce',
+    'Pești de apă sărată',
     'Pești migratori',
     'Lacuri',
     'Râuri',
@@ -130,19 +130,19 @@ const Species = () => {
 
   const formatSpawningSeason = (season: string | null) => {
     if (!season) return 'N/A';
-    
+
     const monthMap: { [key: string]: string } = {
       'ian': 'Ianuarie', 'feb': 'Februarie', 'mar': 'Martie', 'apr': 'Aprilie',
       'mai': 'Mai', 'iun': 'Iunie', 'iul': 'Iulie', 'aug': 'August',
       'sep': 'Septembrie', 'oct': 'Octombrie', 'noi': 'Noiembrie', 'dec': 'Decembrie'
     };
-    
+
     // Handle ranges like "apr-iun" -> "Aprilie - Iunie"
     if (season.includes('-')) {
       const [start, end] = season.split('-');
       return `${monthMap[start] || start} - ${monthMap[end] || end}`;
     }
-    
+
     // Handle single months
     return monthMap[season] || season;
   };
@@ -153,14 +153,14 @@ const Species = () => {
   };
 
   const safeLower = (v?: string | null) => removeDiacritics((v || '').toLowerCase());
-  
+
   // Category and water type mappings
   const categoryMap: { [key: string]: string } = {
     'Pești de apă dulce': 'dulce',
     'Pești de apă sărată': 'sarat',
     'Pești migratori': 'amestec'
   };
-  
+
   const waterTypeMap: { [key: string]: string } = {
     'Lacuri': 'lac',
     'Râuri': 'rau',
@@ -178,17 +178,17 @@ const Species = () => {
       const waterTypeMatch = safeLower(speciesItem.water_type).includes(searchLower);
       const categoryMatch = safeLower(speciesItem.category).includes(searchLower);
       const feedingMatch = safeLower(speciesItem.feeding_habits).includes(searchLower);
-      const baitMatch = speciesItem.fish_bait?.some(bait => 
+      const baitMatch = speciesItem.fish_bait?.some(bait =>
         safeLower(bait.name).includes(searchLower)
       ) || false;
-      const methodMatch = speciesItem.fish_method?.some(method => 
+      const methodMatch = speciesItem.fish_method?.some(method =>
         safeLower(method.name).includes(searchLower)
       ) || false;
-      
-      matchesSearch = nameMatch || scientificMatch || waterTypeMatch || 
+
+      matchesSearch = nameMatch || scientificMatch || waterTypeMatch ||
                      categoryMatch || feedingMatch || baitMatch || methodMatch;
     }
-    
+
     // Category filtering
     let matchesCategory = true;
     if (selectedCategory !== 'Toate') {
@@ -198,16 +198,16 @@ const Species = () => {
         matchesCategory = speciesItem.water_type === waterTypeMap[selectedCategory];
       }
     }
-    
+
     return matchesSearch && matchesCategory;
   });
 
   // Sort search results by priority
   const sortedSpecies = [...filteredSpecies].sort((a, b) => {
     if (!searchTerm) return 0; // No sorting when no search term
-    
+
     const searchLower = safeLower(searchTerm);
-    
+
     // Priority scoring
     const getScore = (species: FishSpecies) => {
       let score = 0;
@@ -220,14 +220,14 @@ const Species = () => {
       if (species.fish_method?.some(method => safeLower(method.name).includes(searchLower))) score += 10;
       return score;
     };
-    
+
     return getScore(b) - getScore(a);
   });
 
-  // Get species to display (pagination)
-  const displayedSpecies = sortedSpecies.slice(0, visibleSpecies);
-  const hasMoreSpecies = !searchTerm && sortedSpecies.length > visibleSpecies;
-  
+  // Get species to display (show all or limited)
+  const displayedSpecies = showAllSpecies ? sortedSpecies : sortedSpecies.slice(0, 20);
+  const hasMoreSpecies = !searchTerm && !showAllSpecies && sortedSpecies.length > 20;
+
   // Debug selectedCategory changes
   useEffect(() => {
     // console.log('🎯 selectedCategory changed to:', selectedCategory);
@@ -250,39 +250,62 @@ const Species = () => {
     }));
   };
 
-  const loadMoreSpecies = () => {
-    setVisibleSpecies(prev => prev + 20);
+  const loadAllSpecies = () => {
+    setShowAllSpecies(true);
   };
 
   return (
-    <div className="min-h-screen py-12">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+    <div className="min-h-screen py-4 sm:py-6 md:py-12">
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
             Catalog de Specii
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Descoperă toate speciile de pești din România cu informații detaliate 
-            despre habitat, comportament și tehnici de pescuit.
+          <p className="text-sm sm:text-base text-muted-foreground max-w-4xl mx-auto px-2 mb-3">
+            Descoperă toate speciile de pești din România cu informații detaliate despre habitat și tehnici de pescuit.
           </p>
+
+          {/* Species Count and Search - Close Together */}
+          {!loading && !error && (
+            <div className="flex flex-col items-center justify-center gap-2 mb-3">
+              {/* Species Count */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                <Fish className="w-4 h-4" />
+                <span>
+                  {filteredSpecies.length === species.length
+                    ? `${species.length} specii`
+                    : `${filteredSpecies.length} din ${species.length} specii`
+                  }
+                </span>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Caută specii..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Filter Buttons - Mobile Optimized */}
+        <div className="mb-6">
 
-
-        {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
-          <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Caută specii..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <div className="flex flex-wrap justify-center gap-2 relative z-10">
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 relative z-10">
             {categories.map((category, index) => (
               <button
                 key={`category-${index}-${category}`}
@@ -290,7 +313,7 @@ const Species = () => {
                   // console.log('🔥 BUTTON CLICKED:', category);
                   setSelectedCategory(category);
                 }}
-                className={`px-4 py-2 rounded-full text-sm transition-colors cursor-pointer pointer-events-auto select-none ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition-colors cursor-pointer pointer-events-auto select-none ${
                   selectedCategory === category
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -320,19 +343,28 @@ const Species = () => {
           </div>
         )}
 
-        {/* Species Grid */}
+        {/* Species Grid - Mobile Optimized */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+          <div className="flex justify-center">
+            <div className={`grid gap-4 sm:gap-6 justify-items-center ${
+              displayedSpecies.length === 1
+                ? 'grid-cols-1 max-w-sm'
+                : displayedSpecies.length <= 2
+                  ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl'
+                  : displayedSpecies.length <= 4
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+            }`}>
             {displayedSpecies.map(speciesItem => {
               const difficulty = getDifficultyLevel(speciesItem);
               const difficultyColor = getDifficultyColor(difficulty);
-              
+
               return (
                 <div key={speciesItem.id} className="group relative bg-gradient-to-br from-card via-card to-card/95 border border-border/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-2 hover:border-primary/30 hover:scale-[1.02]" style={{ willChange: 'transform, box-shadow' }}>
                   {/* Image Header with Gradient Overlay */}
                   <div className="relative h-32 overflow-hidden">
-                    <img 
-                      src={speciesItem.image_url || '/icon_free.png'} 
+                    <img
+                      src={speciesItem.image_url || '/icon_free.png'}
                       alt={speciesItem.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       loading="lazy"
@@ -340,7 +372,7 @@ const Species = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                     <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    
+
                     {/* Floating Info */}
                     <div className="absolute top-3 right-3 flex gap-2">
                       {speciesItem.is_native && (
@@ -356,7 +388,7 @@ const Species = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Title Overlay */}
                     <div className="absolute bottom-3 left-3 right-3">
                       <h3 className="text-lg font-bold text-white mb-1 line-clamp-1 group-hover:text-primary-foreground transition-colors">
@@ -372,7 +404,7 @@ const Species = () => {
                   <div className="p-4 flex flex-col justify-between min-h-[320px]">
                     <div className="space-y-4 flex-1 flex flex-col justify-center">
                       {/* Key Stats with Icons */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
                         <div className="flex items-start gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
                           <Waves className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                           <div className="min-w-0 flex-1">
@@ -395,7 +427,7 @@ const Species = () => {
                         <Fish className="w-5 h-5 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Dimensiune</div>
                         <div className="text-sm font-bold text-blue-800 dark:text-blue-200">
-                          {speciesItem.min_length && speciesItem.max_length 
+                          {speciesItem.min_length && speciesItem.max_length
                             ? `${speciesItem.min_length}-${speciesItem.max_length} cm`
                             : 'N/A'
                           }
@@ -405,7 +437,7 @@ const Species = () => {
                         <Target className="w-5 h-5 text-green-600 dark:text-green-400 mx-auto mb-1" />
                         <div className="text-xs text-green-600 dark:text-green-400 font-medium">Greutate</div>
                         <div className="text-sm font-bold text-green-800 dark:text-green-200">
-                          {speciesItem.min_weight && speciesItem.max_weight 
+                          {speciesItem.min_weight && speciesItem.max_weight
                             ? `${speciesItem.min_weight}-${speciesItem.max_weight} kg`
                             : 'N/A'
                           }
@@ -423,7 +455,7 @@ const Species = () => {
                         <div className="text-sm text-amber-700 dark:text-amber-300 line-clamp-2">{speciesItem.feeding_habits}</div>
                       </div>
                     )}
-                    
+
                     {/* Baits - Beautiful Tags */}
                     {speciesItem.fish_bait && speciesItem.fish_bait.length > 0 && (
                       <div className="mb-4">
@@ -436,7 +468,7 @@ const Species = () => {
                             const isExpanded = expandedBaits[speciesItem.id];
                             const displayBaits = isExpanded ? speciesItem.fish_bait : speciesItem.fish_bait.slice(0, 3);
                             const hasMore = speciesItem.fish_bait.length > 3;
-                            
+
                             return (
                               <>
                                 {displayBaits.map((bait) => {
@@ -482,7 +514,7 @@ const Species = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Methods - Beautiful Tags */}
                     {speciesItem.fish_method && speciesItem.fish_method.length > 0 && (
                       <div className="mb-4">
@@ -495,7 +527,7 @@ const Species = () => {
                             const isExpanded = expandedMethods[speciesItem.id];
                             const displayMethods = isExpanded ? speciesItem.fish_method : speciesItem.fish_method.slice(0, 3);
                             const hasMore = speciesItem.fish_method.length > 3;
-                            
+
                             return (
                               <>
                                 {displayMethods.map((method) => (
@@ -521,12 +553,12 @@ const Species = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     </div>
-                    
+
                     {/* Difficulty Badge - Clear Explanation */}
                     <div className="flex items-center justify-center mt-auto pt-4">
-                      <div 
+                      <div
                         className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold shadow-lg ${difficultyColor} border-2 border-current/20`}
                         title={getDifficultyExplanation(difficulty)}
                       >
@@ -542,20 +574,34 @@ const Species = () => {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
-        {/* Load More Button */}
-        {!loading && !error && hasMoreSpecies && (
-          <div className="flex justify-center mt-12">
+        {/* Load All/Show Less Button - Mobile Optimized */}
+        {!loading && !error && (
+          <div className="flex justify-center mt-8 sm:mt-12">
+            {hasMoreSpecies ? (
+              <button
+                onClick={loadAllSpecies}
+                className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
+                style={{ willChange: 'transform, box-shadow, background-color' }}
+              >
+                <Fish className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Vezi toate speciile ({species.length})</span>
+                <span className="sm:hidden">Toate ({species.length})</span>
+              </button>
+            ) : showAllSpecies && sortedSpecies.length > 20 ? (
             <button
-              onClick={loadMoreSpecies}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-colors shadow-lg hover:shadow-xl"
+                onClick={() => setShowAllSpecies(false)}
+                className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-muted text-muted-foreground rounded-full font-semibold hover:bg-muted/80 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
               style={{ willChange: 'transform, box-shadow, background-color' }}
             >
-              <Fish className="w-5 h-5" />
-              Vezi mai multe specii
+                <Fish className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Arată primele 20</span>
+                <span className="sm:hidden">Primele 20</span>
             </button>
+            ) : null}
           </div>
         )}
 
@@ -571,13 +617,13 @@ const Species = () => {
           </div>
         )}
 
-        {/* Development Note */}
-        <div className="mt-16 text-center">
-          <div className="bg-muted/50 p-6 rounded-2xl max-w-2xl mx-auto">
-            <h3 className="text-lg font-bold mb-2">🚧 Schiță de Dezvoltare</h3>
-            <p className="text-muted-foreground text-sm">
-              Această pagină este o schiță funcțională care demonstrează design-ul și structura 
-              pentru catalogul de specii și recorduri. Funcționalitatea completă va fi implementată 
+        {/* Development Note - Mobile Optimized */}
+        <div className="mt-12 sm:mt-16 text-center">
+          <div className="bg-muted/50 p-4 sm:p-6 rounded-2xl max-w-2xl mx-auto">
+            <h3 className="text-base sm:text-lg font-bold mb-2">🚧 Schiță de Dezvoltare</h3>
+            <p className="text-muted-foreground text-xs sm:text-sm">
+              Această pagină este o schiță funcțională care demonstrează design-ul și structura
+              pentru catalogul de specii și recorduri. Funcționalitatea completă va fi implementată
               în următoarele faze de dezvoltare.
             </p>
           </div>

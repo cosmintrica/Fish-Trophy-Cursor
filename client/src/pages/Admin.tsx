@@ -533,7 +533,7 @@ const Admin: React.FC = () => {
         // Detailed analytics will be loaded by loadDetailedAnalytics function
 
         // Calculate bounce rate and session time directly from analytics_events
-        const { data: allEvents, error: _eventsError } = await supabase
+        const { data: allEvents } = await supabase
           .from('analytics_events')
           .select('session_id, event_type, timestamp')
           .eq('event_type', 'page_view')
@@ -790,45 +790,50 @@ const Admin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen py-12">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+    <div className="min-h-screen py-4 sm:py-6 md:py-12">
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 sm:mb-4">
             Panou de Administrare
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
             Gestionarea recordurilor, moderarea conținutului și administrarea
             utilizatorilor pentru Fish Trophy.
           </p>
         </div>
 
         <Tabs defaultValue="analytics" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Analytics & Status
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+            <TabsTrigger value="analytics" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Analytics & Status</span>
+              <span className="sm:hidden">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="records" className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              Moderare Recorduri
+            <TabsTrigger value="records" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Moderare Recorduri</span>
+              <span className="sm:hidden">Recorduri</span>
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center gap-2">
-              <XCircle className="w-4 h-4" />
-              Recorduri Respinse
+            <TabsTrigger value="rejected" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Recorduri Respinse</span>
+              <span className="sm:hidden">Respinse</span>
             </TabsTrigger>
-            <TabsTrigger value="locations" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Gestionare Locații
+            <TabsTrigger value="locations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Gestionare Locații</span>
+              <span className="sm:hidden">Locații</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Utilizatori
+            <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Utilizatori</span>
+              <span className="sm:hidden">Users</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Analytics & Status Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid gap-6">
+            <div className="grid gap-4 sm:gap-6">
               {/* Traffic Analytics */}
               <Card>
                 <CardHeader>
@@ -851,31 +856,31 @@ const Admin: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
-                      <div className="text-sm text-muted-foreground">Page Views</div>
-                      <div className="text-xs text-muted-foreground mt-1">Total vizualizări pagini</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2 md:gap-4">
+                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Page Views</div>
+                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Total vizualizări pagini</div>
                     </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
-                      <div className="text-sm text-muted-foreground">Vizitatori Unici</div>
-                      <div className="text-xs text-muted-foreground mt-1">Utilizatori diferiți</div>
+                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Vizitatori Unici</div>
+                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Utilizatori diferiți</div>
                     </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
-                      <div className="text-sm text-muted-foreground">Sesiuni</div>
-                      <div className="text-xs text-muted-foreground mt-1">Sesiuni active</div>
+                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Sesiuni</div>
+                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Sesiuni active</div>
                     </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
-                      <div className="text-sm text-muted-foreground">Bounce Rate</div>
-                      <div className="text-xs text-muted-foreground mt-1">% care pleacă rapid</div>
+                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Bounce Rate</div>
+                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">% care pleacă rapid</div>
                     </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
-                      <div className="text-sm text-muted-foreground">Timp Mediu</div>
-                      <div className="text-xs text-muted-foreground mt-1">Timp pe sesiune</div>
+                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Timp Mediu</div>
+                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Timp pe sesiune</div>
                     </div>
                   </div>
                 </CardContent>
@@ -884,7 +889,7 @@ const Admin: React.FC = () => {
             </div>
 
             {/* Detailed Analytics */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
               {/* Device Statistics */}
               <Card>
                 <CardHeader>
@@ -1034,35 +1039,35 @@ const Admin: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Referrers */}
+              {/* Referrers - Mobile Optimized */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3 sm:pb-6">
                   <CardTitle className="flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5" />
-                    Surse de Trafic
+                    <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-base sm:text-lg">Surse de Trafic</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     De unde vin vizitatorii
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="pt-0">
+                  <div className="space-y-2 sm:space-y-3">
                     {Object.entries(trafficData.referrerStats)
                       .sort(([,a], [,b]) => b - a)
                       .map(([referrer, count]) => {
                       const total = Object.values(trafficData.referrerStats).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
-                        <div key={referrer} className="flex items-center justify-between">
-                          <span className="text-sm">{referrer}</span>
+                        <div key={referrer} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                          <span className="text-xs sm:text-sm truncate">{referrer}</span>
                           <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
+                            <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                               <div
-                                className="bg-red-500 h-2 rounded-full transition-all duration-300"
+                                className="bg-red-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
-                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                            <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
                           </div>
                         </div>
                       );
@@ -1071,62 +1076,62 @@ const Admin: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Most Visited Pages */}
+              {/* Most Visited Pages - Mobile Optimized */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3 sm:pb-6">
                   <CardTitle className="flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5" />
-                    Cele mai vizitate pagini
+                    <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-base sm:text-lg">Cele mai vizitate pagini</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Top 10 pagini cu cele mai multe vizite
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="pt-0">
+                  <div className="space-y-2 sm:space-y-3">
                     {Object.entries(trafficData.pageViewsStats || {})
                       .sort(([,a], [,b]) => b - a)
                       .map(([page, count]) => {
                       const total = Object.values(trafficData.pageViewsStats || {}).reduce((a, b) => a + b, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
-                        <div key={page} className="flex items-center justify-between">
-                          <span className="text-sm font-mono">{page}</span>
+                        <div key={page} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                          <span className="text-xs sm:text-sm font-mono truncate">{page}</span>
                           <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
+                            <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                               <div
-                                className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                                className="bg-indigo-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
-                            <span className="text-sm font-medium w-12 text-right">{count}</span>
+                            <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{count}</span>
                           </div>
                         </div>
                       );
                     })}
                     {Object.keys(trafficData.pageViewsStats || {}).length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <ExternalLink className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p>Nu există date de trafic încă</p>
+                      <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                        <ExternalLink className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-xs sm:text-sm">Nu există date de trafic încă</p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Timeline Chart */}
+              {/* Timeline Chart - Mobile Optimized */}
               <Card className="md:col-span-2 lg:col-span-3">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                     <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Evoluția Traficului
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-lg sm:text-xl">Evoluția Traficului</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select
                         value={trafficData.selectedPeriod}
                         onChange={(e) => handlePeriodChange(e.target.value)}
-                        className="px-3 py-1 text-sm border rounded-md bg-background"
+                        className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
                       >
                         <option value="1h">Ultima oră</option>
                         <option value="24h">Ultimele 24 ore</option>
@@ -1136,70 +1141,73 @@ const Admin: React.FC = () => {
                         <option value="custom">Perioadă custom</option>
                       </select>
                       {trafficData.selectedPeriod === 'custom' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2">
                           <input
                             type="date"
                             value={trafficData.customStartDate}
                             onChange={(e) => setTrafficData(prev => ({ ...prev, customStartDate: e.target.value }))}
-                            className="px-2 py-1 text-sm border rounded-md bg-background"
+                            className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
                           />
                           <input
                             type="date"
                             value={trafficData.customEndDate}
                             onChange={(e) => setTrafficData(prev => ({ ...prev, customEndDate: e.target.value }))}
-                            className="px-2 py-1 text-sm border rounded-md bg-background"
+                            className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
                           />
                         </div>
                       )}
                     </div>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     {getPeriodDescription(trafficData.selectedPeriod)}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-96">
+                <CardContent className="pt-0">
+                  <div className="h-64 sm:h-80 md:h-96">
                     {memoizedTrafficData.length > 0 ? (
                       <div className="h-full flex flex-col">
-                        {/* Metric Filters */}
-                        <div className="flex justify-center gap-6 mb-4 text-sm">
+                        {/* Metric Filters - Mobile Optimized */}
+                        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-4 text-xs sm:text-sm">
                           <button
                             onClick={() => setShowPageViews(!showPageViews)}
-                            className={`flex items-center gap-2 px-3 py-1 rounded-md transition-colors ${
+                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
                               showPageViews
                                 ? 'bg-blue-100 text-blue-700 border border-blue-300'
                                 : 'bg-gray-100 text-gray-500 border border-gray-300'
                             }`}
                           >
-                            <div className={`w-3 h-3 rounded ${showPageViews ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-                            <span>Page Views</span>
+                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showPageViews ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                            <span className="hidden sm:inline">Page Views</span>
+                            <span className="sm:hidden">Views</span>
                           </button>
                           <button
                             onClick={() => setShowUniqueVisitors(!showUniqueVisitors)}
-                            className={`flex items-center gap-2 px-3 py-1 rounded-md transition-colors ${
+                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
                               showUniqueVisitors
                                 ? 'bg-green-100 text-green-700 border border-green-300'
                                 : 'bg-gray-100 text-gray-500 border border-gray-300'
                             }`}
                           >
-                            <div className={`w-3 h-3 rounded ${showUniqueVisitors ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                            <span>Vizitatori Unici</span>
+                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showUniqueVisitors ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                            <span className="hidden sm:inline">Vizitatori Unici</span>
+                            <span className="sm:hidden">Unici</span>
                           </button>
                           <button
                             onClick={() => setShowSessions(!showSessions)}
-                            className={`flex items-center gap-2 px-3 py-1 rounded-md transition-colors ${
+                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
                               showSessions
                                 ? 'bg-orange-100 text-orange-700 border border-orange-300'
                                 : 'bg-gray-100 text-gray-500 border border-gray-300'
                             }`}
                           >
-                            <div className={`w-3 h-3 rounded ${showSessions ? 'bg-orange-500' : 'bg-gray-400'}`}></div>
-                            <span>Sesiuni</span>
+                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showSessions ? 'bg-orange-500' : 'bg-gray-400'}`}></div>
+                            <span className="hidden sm:inline">Sesiuni</span>
+                            <span className="sm:hidden">Ses</span>
                           </button>
                         </div>
 
-                        {/* Line Chart */}
-                        <div className="flex-1 relative px-6 py-4">
+                        {/* Line Chart - Mobile Optimized */}
+                        <div className="flex-1 relative px-2 sm:px-4 md:px-6 py-2 sm:py-4">
                           <svg className="w-full h-full" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
                             {/* Y-axis grid lines */}
                             {[0, 20, 40, 60, 80, 100].map((percent, i) => (

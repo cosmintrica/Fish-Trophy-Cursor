@@ -128,7 +128,7 @@ const RecordDetailsModal = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content w-full max-w-2xl">
+      <div className="modal-content w-full max-w-4xl">
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
           <CardContent className="p-0">
             {/* Header */}
@@ -197,7 +197,7 @@ const RecordDetailsModal = ({
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <User className="w-5 h-5 text-gray-600" />
                     <div>
-                      <p className="text-sm text-gray-600">Pescător</p>
+                      <p className="text-sm text-gray-600">Pescar</p>
                       <p className="font-medium">{record.profiles?.display_name || 'Utilizator'}</p>
                     </div>
                   </div>

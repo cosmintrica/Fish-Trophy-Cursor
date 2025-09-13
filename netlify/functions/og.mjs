@@ -55,34 +55,23 @@ export const handler = async (event) => {
         <!-- Main container with shadow -->
         <rect x="100" y="80" width="1000" height="470" rx="24" fill="url(#cardGradient)" filter="url(#shadow)"/>
         
-        <!-- Icon centered at top -->
-        <g transform="translate(600, 150)">
-          <circle cx="0" cy="0" r="50" fill="url(#iconGradient)"/>
-          <!-- Trophy icon -->
-          <g transform="translate(0, 0)">
-            <path d="M-12 -15 L-8 -18 L-4 -15 L0 -18 L4 -15 L8 -18 L12 -15 L10 -8 L6 0 L3 3 L0 5 L-3 3 L-6 0 L-10 -8 Z" fill="#ffffff"/>
-            <circle cx="0" cy="-3" r="2" fill="#ffffff"/>
-            <path d="M-6 -3 L-4 -1 L-6 1 M6 -3 L4 -1 L6 1" stroke="#ffffff" stroke-width="1.5" fill="none"/>
-          </g>
-        </g>
-        
         <!-- Title centered -->
-        <text x="600" y="250" text-anchor="middle" fill="url(#titleGradient)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="64" font-weight="800" letter-spacing="-0.02em" filter="url(#glow)">
+        <text x="600" y="200" text-anchor="middle" fill="url(#titleGradient)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" letter-spacing="-0.02em" filter="url(#glow)">
           ${title}
         </text>
         
         <!-- Subtitle centered -->
-        <text x="600" y="320" text-anchor="middle" fill="#374151" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="600">
+        <text x="600" y="280" text-anchor="middle" fill="#374151" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="600">
           ${subtitle}
         </text>
         
         <!-- Domain centered -->
-        <text x="600" y="370" text-anchor="middle" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="500">
+        <text x="600" y="330" text-anchor="middle" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="500">
           ${domain}
         </text>
         
         <!-- Footer text centered -->
-        <text x="600" y="500" text-anchor="middle" fill="#9ca3af" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="400">
+        <text x="600" y="500" text-anchor="middle" fill="#9ca3af" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="400">
           Făcut cu <tspan fill="#ef4444">❤️</tspan> în România
         </text>
       </svg>

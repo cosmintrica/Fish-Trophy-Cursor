@@ -916,11 +916,11 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Profilul meu</h1>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Profilul meu</h1>
           <p className="text-gray-600">Gestionează-ți contul și recordurile</p>
         </div>
 
@@ -1031,7 +1031,7 @@ const Profile = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     {records.map((record) => (
                       <Card key={record.id} className="overflow-hidden">
                         <div className="aspect-video bg-gray-200 relative">
