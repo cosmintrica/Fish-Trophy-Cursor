@@ -25,3 +25,9 @@ netlify/functions/*.zip
 # Misc
 client/DockerDesktopInstaller.exe
 *.exe
+
+# Backup files with sensitive data - keep local but don't upload to GitHub
+docs/backup/backup-system/backups/*.sql
+docs/backup/backup-system/backups/*.json
+docs/backup/backup-system/backups/*.md
+!docs/backup/backup-system/backups/README.md
