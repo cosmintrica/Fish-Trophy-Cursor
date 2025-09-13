@@ -123,7 +123,7 @@ async function main() {
     console.log('\n✅ INSTALARE COMPLETĂ!');
     console.log('\n📋 Următorii pași:');
     console.log('1. Setează variabilele de mediu:');
-    console.log('   set VITE_SUPABASE_URL=https://cckytfxrigzkpfkrrqbv.supabase.co');
+    console.log('   set VITE_SUPABASE_URL=https://your-project.supabase.co');
     console.log('   set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here');
     console.log('\n2. Testează backup-ul:');
     console.log('   node backup-database.js test');

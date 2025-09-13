@@ -121,7 +121,7 @@ function createConfigFile() {
       }
     },
     supabase: {
-      url: process.env.VITE_SUPABASE_URL || 'https://cckytfxrigzkpfkrrqbv.supabase.co',
+      url: process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co',
       service_key_set: !!process.env.SUPABASE_SERVICE_ROLE_KEY
     },
     created_at: new Date().toISOString(),

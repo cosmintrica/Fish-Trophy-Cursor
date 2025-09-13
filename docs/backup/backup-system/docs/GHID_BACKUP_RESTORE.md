@@ -31,11 +31,11 @@ npm install @supabase/supabase-js
 ### 2. Setează variabilele de mediu
 ```bash
 # Windows
-set VITE_SUPABASE_URL=https://cckytfxrigzkpfkrrqbv.supabase.co
+set VITE_SUPABASE_URL=https://your-project.supabase.co
 set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Linux/Mac
-export VITE_SUPABASE_URL=https://cckytfxrigzkpfkrrqbv.supabase.co
+export VITE_SUPABASE_URL=https://your-project.supabase.co
 export SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 

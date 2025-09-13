@@ -80,7 +80,7 @@ backup-system/backups/backup-complete-20250911-020300.sql
 Pentru a restaura backup-ul:
 ```bash
 npx supabase db reset
-psql -h db.ixqjqjqjqjqjqjqjqjqj.supabase.co -p 5432 -U postgres -d postgres -f backup-complete-20250911-020300.sql
+psql -h db.YOUR_PROJECT_ID.supabase.co -p 5432 -U postgres -d postgres -f backup-complete-20250911-020300.sql
 ```
 
 ## ✅ **CONCLUZIE**

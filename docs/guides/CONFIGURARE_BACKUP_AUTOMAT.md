@@ -3,7 +3,7 @@
 ## 🚨 PENTRU A PREVENI PĂRTEREA DATELOR
 
 ### 1. Activează Point-in-Time Recovery
-1. Mergi la: https://supabase.com/dashboard/project/cckytfxrigzkpfkrrqbv/settings/database
+1. Mergi la: https://supabase.com/dashboard/project/YOUR_PROJECT_ID/settings/database
 2. **Database** → **Backups**
 3. **Point-in-time recovery** → **Enable**
 4. **Retention period**: 7 zile (minimum)

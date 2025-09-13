@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Configurare Supabase
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://cckytfxrigzkpfkrrqbv.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 console.log('🧪 TEST SISTEM BACKUP');

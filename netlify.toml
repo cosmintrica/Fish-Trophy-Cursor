@@ -10,10 +10,10 @@
   SECRETS_SCAN_ENABLED = "false"
   CI = "false"
   
-  # Supabase Configuration
-  VITE_SUPABASE_URL = "https://cckytfxrigzkpfkrrqbv.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNja3l0ZnhyaWd6a3Bma3JycWJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NDE4MDgsImV4cCI6MjA3MjQxNzgwOH0.-QGnkH6omx0V1FNZrbKA2LNI90ZMe6RRAa5ct25U65M"
-  VITE_ADMIN_EMAIL = "cosmin.trica@outlook.com"
+  # Supabase Configuration - Use environment variables
+  # VITE_SUPABASE_URL = "your_supabase_url"
+  # VITE_SUPABASE_ANON_KEY = "your_supabase_anon_key"
+  # VITE_ADMIN_EMAIL = "your_admin_email"
   
   # Map Configuration (MapLibre doesn't need token)
   VITE_MAP_TILES_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

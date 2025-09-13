@@ -5,7 +5,7 @@
 ### 1. BACKUP-URI AUTOMATE ÎN SUPABASE
 
 #### **A. Point-in-Time Recovery (PITR)**
-1. Mergi la: https://supabase.com/dashboard/project/cckytfxrigzkpfkrrqbv/settings/database
+1. Mergi la: https://supabase.com/dashboard/project/YOUR_PROJECT_ID/settings/database
 2. **Database** → **Backups**
 3. **Point-in-time recovery** → **Enable**
 4. **Retention period**: 7 zile (minimum recomandat)
@@ -127,7 +127,7 @@ crontab -e
 # Verifică dacă backup-ul este valid
 supabase db reset --linked
 # Apoi restaurează din backup
-psql -h aws-1-eu-central-2.pooler.supabase.com -U postgres.cckytfxrigzkpfkrrqbv -d postgres -f backup_complet_20240907_140000.sql
+psql -h aws-1-eu-central-2.pooler.supabase.com -U postgres.YOUR_PROJECT_ID -d postgres -f backup_complet_20240907_140000.sql
 ```
 
 #### **B. Verificare Manuală**
@@ -172,7 +172,7 @@ setInterval(async () => {
 ```bash
 # Restaurează din backup
 supabase db reset --linked
-psql -h aws-1-eu-central-2.pooler.supabase.com -U postgres.cckytfxrigzkpfkrrqbv -d postgres -f backup_complet_20240907_140000.sql
+psql -h aws-1-eu-central-2.pooler.supabase.com -U postgres.YOUR_PROJECT_ID -d postgres -f backup_complet_20240907_140000.sql
 ```
 
 ### 8. COSTURI ESTIMATE
