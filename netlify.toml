@@ -37,6 +37,12 @@
 # Order is CRITICAL - most specific routes first!
 
 [[redirects]]
+  from = "/api/og.png"
+  to = "/.netlify/functions/og"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
