@@ -6,7 +6,6 @@ import './styles/index.css';
 // Check if root element exists
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  console.error('Root element not found!');
   document.body.innerHTML = '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;"><h1>Eroare de încărcare</h1><p>Elementul root nu a fost găsit. Te rugăm să reîmprospătezi pagina.</p></div>';
 } else {
   try {
@@ -16,7 +15,6 @@ if (!rootElement) {
       </StrictMode>
     );
   } catch (error) {
-    console.error('Error rendering React app:', error);
     rootElement.innerHTML = '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;"><h1>Eroare de încărcare</h1><p>Aplicația nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p></div>';
   }
 }

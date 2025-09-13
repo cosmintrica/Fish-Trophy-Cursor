@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/" replace />;
   }
 
-  // TODO: Implement role-based access control in future
+  // Role-based access control will be implemented in future
   return <>{children}</>;
 };
 

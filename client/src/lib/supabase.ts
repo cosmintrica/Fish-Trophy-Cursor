@@ -6,12 +6,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
 function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
   const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val) || val === 'https://your-project.supabase.co'
-  
+
   if (supabaseUrl && supabaseAnonKey && !looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
     return createClient(supabaseUrl, supabaseAnonKey)
   }
   // Lightweight stub for local development without real credentials
-  console.warn('[Supabase] Missing or placeholder VITE_SUPABASE_URL/ANON_KEY. Using no-op stub client.')
   return {
     auth: {
       getSession: async () => ({ data: { session: null }, error: null }),

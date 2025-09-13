@@ -16,8 +16,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <meta http-equiv="Last-Modified" content="0" />
-    <!-- PWA features temporarily disabled to fix mobile reload issue -->
-    <!--
+    <!-- PWA features -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Fish Trophy" />
@@ -31,7 +30,6 @@
     <link rel="apple-touch-icon" sizes="152x152" href="/icon_free.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icon_free.png" />
     <link rel="apple-touch-icon" sizes="167x167" href="/icon_free.png" />
-    -->
 
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Fish Trophy - Platforma Pescarilor din România" />
@@ -63,12 +61,16 @@
   <body>
     <div id="root"></div>
     <script>
-      // Force cache busting for Service Worker
+      // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-          }
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
         });
       }
     </script>

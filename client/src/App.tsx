@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth-supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { analytics } from '@/lib/analytics';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
@@ -38,18 +38,8 @@ function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
 
 // Component to check if user is admin and show construction page if not
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { isAdmin, loading } = useAdmin();
 
-  // Check if user is admin - use environment variable for security
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const isAdmin = user?.email === adminEmail;
-
-  // Debug logging (only when user changes)
-  if (user?.email) {
-    console.log('AppContent - User:', user?.email);
-    console.log('AppContent - Admin Email:', adminEmail);
-    console.log('AppContent - Is Admin:', isAdmin);
-  }
 
   // Show loading while checking authentication
   if (loading) {

@@ -18,7 +18,7 @@ export const useWebVitals = () => {
       const { onCLS, onINP, onFCP, onLCP, onTTFB } = webVitals;
       // Cumulative Layout Shift (CLS)
       onCLS((metric: WebVitalsMetric) => {
-        console.log('CLS:', metric);
+        // // console.log('CLS:', metric);
         // Send to analytics
         if ((window as any).gtag) {
           (window as any).gtag('event', 'web_vitals', {
@@ -36,7 +36,7 @@ export const useWebVitals = () => {
 
       // Interaction to Next Paint (INP) - replaces FID in Core Web Vitals
       onINP((metric: WebVitalsMetric) => {
-        console.log('INP:', metric);
+        // console.log('INP:', metric);
         if ((window as any).gtag) {
           (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
@@ -53,7 +53,7 @@ export const useWebVitals = () => {
 
       // First Contentful Paint (FCP)
       onFCP((metric: WebVitalsMetric) => {
-        console.log('FCP:', metric);
+        // console.log('FCP:', metric);
         if ((window as any).gtag) {
           (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
@@ -70,7 +70,7 @@ export const useWebVitals = () => {
 
       // Largest Contentful Paint (LCP)
       onLCP((metric: WebVitalsMetric) => {
-        console.log('LCP:', metric);
+        // console.log('LCP:', metric);
         if ((window as any).gtag) {
           (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
@@ -87,7 +87,7 @@ export const useWebVitals = () => {
 
       // Time to First Byte (TTFB)
       onTTFB((metric: WebVitalsMetric) => {
-        console.log('TTFB:', metric);
+        // console.log('TTFB:', metric);
         if ((window as any).gtag) {
           (window as any).gtag('event', 'web_vitals', {
             event_category: 'Performance',
@@ -112,7 +112,7 @@ export const performanceUtils = {
   // Preload critical resources
   preloadResource: (href: string, as: string) => {
     if (typeof document === 'undefined') return;
-    
+
     const link = document.createElement('link');
     link.rel = 'preload';
     link.href = href;
@@ -123,7 +123,7 @@ export const performanceUtils = {
   // Preconnect to external domains
   preconnect: (href: string) => {
     if (typeof document === 'undefined') return;
-    
+
     const link = document.createElement('link');
     link.rel = 'preconnect';
     link.href = href;
@@ -158,12 +158,12 @@ export const performanceUtils = {
   // Optimize font loading
   optimizeFonts: () => {
     if (typeof document === 'undefined') return;
-    
+
     // Preload critical fonts
     const criticalFonts = [
       'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
     ];
-    
+
     criticalFonts.forEach(font => {
       const link = document.createElement('link');
       link.rel = 'preload';
@@ -179,6 +179,6 @@ export const performanceUtils = {
   // Service Worker registration for caching
   registerServiceWorker: () => {
     // Service worker registration moved to main.tsx to avoid conflicts
-    console.log('Service worker registration handled in main.tsx');
+    // console.log('Service worker registration handled in main.tsx');
   }
 };

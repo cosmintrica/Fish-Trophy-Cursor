@@ -81,6 +81,13 @@ export const usePWAInstall = () => {
 
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+      // Dacă nu există beforeinstallprompt, afișează prompt-ul manual
+      setTimeout(() => {
+        if (!deferredPrompt) {
+          setIsInstallable(true);
+        }
+      }, 2000);
+
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       };

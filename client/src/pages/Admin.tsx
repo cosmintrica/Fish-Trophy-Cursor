@@ -73,7 +73,7 @@ const Admin: React.FC = () => {
         case '1h': {
           const { data: hourData, error: hourError } = await supabase.rpc('get_traffic_last_hour');
           if (hourError) {
-            console.error('Error loading hour data:', hourError);
+            // console.error('Error loading hour data:', hourError);
           }
           data = hourData || [];
           break;
@@ -81,7 +81,7 @@ const Admin: React.FC = () => {
         case '24h': {
           const { data: dayData, error: dayError } = await supabase.rpc('get_traffic_last_24h');
           if (dayError) {
-            console.error('Error loading day data:', dayError);
+            // console.error('Error loading day data:', dayError);
           }
           data = dayData || [];
           break;
@@ -89,7 +89,7 @@ const Admin: React.FC = () => {
         case '7d': {
           const { data: weekData, error: weekError } = await supabase.rpc('get_traffic_last_week');
           if (weekError) {
-            console.error('Error loading week data:', weekError);
+            // console.error('Error loading week data:', weekError);
           }
           data = weekData || [];
           break;
@@ -97,7 +97,7 @@ const Admin: React.FC = () => {
         case '30d': {
           const { data: monthData, error: monthError } = await supabase.rpc('get_traffic_last_month');
           if (monthError) {
-            console.error('Error loading month data:', monthError);
+            // console.error('Error loading month data:', monthError);
           }
           data = monthData || [];
           break;
@@ -105,7 +105,7 @@ const Admin: React.FC = () => {
         case '1y': {
           const { data: yearData, error: yearError } = await supabase.rpc('get_traffic_last_year');
           if (yearError) {
-            console.error('Error loading year data:', yearError);
+            // console.error('Error loading year data:', yearError);
           }
           data = yearData || [];
           break;
@@ -119,7 +119,7 @@ const Admin: React.FC = () => {
               end_date: endDate.toISOString()
             });
             if (customError) {
-              console.error('Error loading custom data:', customError);
+              // console.error('Error loading custom data:', customError);
             }
             data = customData || [];
           }
@@ -141,7 +141,7 @@ const Admin: React.FC = () => {
         timelineData: processedData
       }));
     } catch (error) {
-      console.error('Error loading traffic graph data:', error);
+      // console.error('Error loading traffic graph data:', error);
       // Don't reset data on error - keep existing data
     }
   };
@@ -268,7 +268,7 @@ const Admin: React.FC = () => {
   // Load detailed analytics data
   const loadDetailedAnalytics = async () => {
     try {
-      console.log('Loading detailed analytics (direct query)...');
+      // console.log('Loading detailed analytics (direct query)...');
 
       // Get all analytics events for page views
       const { data: analyticsEvents, error: analyticsError } = await supabase
@@ -277,7 +277,7 @@ const Admin: React.FC = () => {
         .eq('event_type', 'page_view');
 
       if (analyticsError) {
-        console.error('Error loading analytics events:', analyticsError);
+        // console.error('Error loading analytics events:', analyticsError);
         return;
       }
 
@@ -287,7 +287,7 @@ const Admin: React.FC = () => {
         .select('name');
 
       if (citiesError) {
-        console.error('Error loading Romanian cities:', citiesError);
+        // console.error('Error loading Romanian cities:', citiesError);
         return;
       }
 
@@ -296,10 +296,10 @@ const Admin: React.FC = () => {
         romanianCities?.map(city => normalizeText(city.name)) || []
       );
 
-      console.log('Analytics Events Count:', analyticsEvents?.length || 0);
-      console.log('Romanian Cities Count:', romanianCities?.length || 0);
-      console.log('Romanian Cities from DB:', romanianCities?.map(c => c.name).slice(0, 10)); // First 10 cities
-      console.log('Normalized Romanian Cities:', Array.from(romanianCityNames).slice(0, 10)); // First 10 normalized
+      // console.log('Analytics Events Count:', analyticsEvents?.length || 0);
+      // console.log('Romanian Cities Count:', romanianCities?.length || 0);
+      // console.log('Romanian Cities from DB:', romanianCities?.map(c => c.name).slice(0, 10)); // First 10 cities
+      // console.log('Normalized Romanian Cities:', Array.from(romanianCityNames).slice(0, 10)); // First 10 normalized
 
       // Calculate device stats
       const deviceStatsObj: Record<string, number> = {};
@@ -361,37 +361,7 @@ const Admin: React.FC = () => {
         }
       });
 
-      console.log('All cities from analytics:', Array.from(allCitiesFromAnalytics));
-      console.log('Cities that matched Romanian cities:', Object.keys(cityStatsObj));
 
-      // Debug specific cities
-      const slatinaVariants = Array.from(allCitiesFromAnalytics).filter(city =>
-        normalizeText(city).includes('slatina')
-      );
-      console.log('Slatina variants found:', slatinaVariants);
-
-      // Check if Slatina is in common Romanian cities
-      console.log('Is slatina in commonRomanianCities?', commonRomanianCities.has('slatina'));
-      console.log('Is slatina in romanianCityNames?', romanianCityNames.has('slatina'));
-
-      // Debug: Check what cities are being processed
-      console.log('Processing cities:');
-      Array.from(allCitiesFromAnalytics).forEach(city => {
-        const normalized = normalizeText(city);
-        const inCommon = commonRomanianCities.has(normalized);
-        const inDB = romanianCityNames.has(normalized);
-        console.log(`  ${city} -> ${normalized} (common: ${inCommon}, db: ${inDB})`);
-      });
-
-      // Debug: Check if we're missing any Romanian cities that should be there
-      console.log('Missing Romanian cities that should appear:');
-      const missingCities = ['slatina', 'cluj', 'timisoara', 'iasi', 'constanta', 'brasov'];
-      missingCities.forEach(city => {
-        const found = Array.from(allCitiesFromAnalytics).some(analyticsCity =>
-          normalizeText(analyticsCity) === city
-        );
-        console.log(`  ${city}: ${found ? 'FOUND' : 'MISSING'}`);
-      });
 
       // Calculate referrer stats
       const referrerStatsObj: Record<string, number> = {};
@@ -407,11 +377,6 @@ const Admin: React.FC = () => {
         pageViewsStatsObj[page] = (pageViewsStatsObj[page] || 0) + 1;
       });
 
-      console.log('Calculated Stats:', {
-        deviceStatsObj, browserStatsObj, osStatsObj, countryStatsObj,
-        cityStatsObj, referrerStatsObj, pageViewsStatsObj
-      });
-
       // Update traffic data with calculated statistics
       setTrafficData(prev => ({
         ...prev,
@@ -425,7 +390,7 @@ const Admin: React.FC = () => {
       }));
 
     } catch (error) {
-      console.error('Error loading detailed analytics:', error);
+      // console.error('Error loading detailed analytics:', error);
     }
   };
 
@@ -445,7 +410,7 @@ const Admin: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (pendingError) {
-        console.error('Error loading pending records:', pendingError);
+        // console.error('Error loading pending records:', pendingError);
       } else {
         setPendingRecords(pendingData || []);
       }
@@ -463,7 +428,7 @@ const Admin: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (rejectedError) {
-        console.error('Error loading rejected records:', rejectedError);
+        // console.error('Error loading rejected records:', rejectedError);
       } else {
         setRejectedRecords(rejectedData || []);
       }
@@ -478,7 +443,7 @@ const Admin: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (usersError) {
-        console.error('Error loading users:', usersError);
+        // console.error('Error loading users:', usersError);
       } else {
         setUsers(usersData || []);
       }
@@ -555,16 +520,15 @@ const Admin: React.FC = () => {
         const uniqueVisitorsToday = new Set(todayUniqueVisitors?.map(v => v.user_id)).size || 0;
         const sessionsToday = new Set(todaySessions?.map(s => s.session_id)).size || 0;
 
-        // Debug logging
-        console.log('Analytics Data:', {
-          todayPageViews: todayPageViews?.length || 0,
+        setTrafficData(prev => ({
+          ...prev,
           uniqueVisitorsToday,
           sessionsToday,
           totalPageViews: totalPageViewsCount || 0,
           totalRecords: totalRecordsCount || 0,
           todayRecords: todayRecords?.length || 0,
           todayUsers: todayUsers?.length || 0
-        });
+        }));
 
         // Detailed analytics will be loaded by loadDetailedAnalytics function
 
@@ -610,11 +574,11 @@ const Admin: React.FC = () => {
           avgSessionTime = validSessions > 0 ? totalSessionTime / validSessions / 1000 : 0; // Convert to seconds
         }
 
-        console.log('Calculated Analytics:', {
-          totalEvents: allEvents?.length || 0,
-          bounceRate,
-          avgSessionTime: Math.round(avgSessionTime)
-        });
+        // console.log('Calculated Analytics:', {
+        //   totalEvents: allEvents?.length || 0,
+        //   bounceRate,
+        //   avgSessionTime: Math.round(avgSessionTime)
+        // });
 
         setTrafficData(prev => ({
           ...prev,
@@ -645,10 +609,10 @@ const Admin: React.FC = () => {
           timelineData: []
         }));
       } else {
-        console.error('Analytics errors:', { analyticsUsersError, allRecordsError });
+        // console.error('Analytics errors:', { analyticsUsersError, allRecordsError });
       }
     } catch (error) {
-      console.error('Error loading admin data:', error);
+      // console.error('Error loading admin data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -721,7 +685,7 @@ const Admin: React.FC = () => {
       // If it's a date format (YYYY-MM-DD), return as is
       return timeString;
     } catch (error) {
-      console.error('Error converting time:', error);
+      // console.error('Error converting time:', error);
       return timeString;
     }
   };
@@ -760,14 +724,14 @@ const Admin: React.FC = () => {
 
       const { error } = await supabase.rpc('update_daily_analytics_stats');
       if (error) {
-        console.error('Error updating analytics stats:', error);
+        // console.error('Error updating analytics stats:', error);
         toast.error('Eroare la actualizarea statisticilor', { id: 'update-stats' });
       } else {
         toast.success('Statisticile au fost actualizate cu succes!', { id: 'update-stats' });
         loadRealData(); // Reload data
       }
     } catch (error) {
-      console.error('Error updating analytics stats:', error);
+      // console.error('Error updating analytics stats:', error);
       toast.error('Eroare la actualizarea statisticilor', { id: 'update-stats' });
     }
   };
@@ -786,7 +750,7 @@ const Admin: React.FC = () => {
         .eq('id', recordId);
 
       if (error) {
-        console.error('Error approving record:', error);
+        // console.error('Error approving record:', error);
         return;
       }
 
@@ -794,7 +758,7 @@ const Admin: React.FC = () => {
       setPendingRecords(prev => prev.filter(record => record.id !== recordId));
       loadRealData(); // Reload to get updated data
     } catch (error) {
-      console.error('Error approving record:', error);
+      // console.error('Error approving record:', error);
     }
   };
 
@@ -813,7 +777,7 @@ const Admin: React.FC = () => {
         .eq('id', recordId);
 
       if (error) {
-        console.error('Error rejecting record:', error);
+        // console.error('Error rejecting record:', error);
         return;
       }
 
@@ -821,7 +785,7 @@ const Admin: React.FC = () => {
       setPendingRecords(prev => prev.filter(record => record.id !== recordId));
       loadRealData(); // Reload to get updated data
     } catch (error) {
-      console.error('Error rejecting record:', error);
+      // console.error('Error rejecting record:', error);
     }
   };
 

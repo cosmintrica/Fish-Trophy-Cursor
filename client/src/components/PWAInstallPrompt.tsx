@@ -22,11 +22,19 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
 
     setIsIOS(checkIOS());
 
+    // Verifică dacă este dispozitiv mobil
+    const isMobile = () => {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+
     // Afișează notificarea jos dacă este instalabil și nu a fost respinsă
-    if (isInstallable && !isInstalled) {
+    if (isInstallable && !isInstalled && isMobile()) {
       const notificationDismissed = localStorage.getItem('pwa-notification-dismissed') === 'true';
       if (!notificationDismissed) {
-        setShowNotification(true);
+        // Delay pentru a permite aplicației să se încarce
+        setTimeout(() => {
+          setShowNotification(true);
+        }, 3000);
       }
     }
   }, [isInstallable, isInstalled]);

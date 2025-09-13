@@ -230,9 +230,9 @@ const Species = () => {
   
   // Debug selectedCategory changes
   useEffect(() => {
-    console.log('🎯 selectedCategory changed to:', selectedCategory);
-    console.log('🎯 Filtered species count:', filteredSpecies.length);
-    console.log('🎯 Displayed species count:', displayedSpecies.length);
+    // console.log('🎯 selectedCategory changed to:', selectedCategory);
+    // console.log('🎯 Filtered species count:', filteredSpecies.length);
+    // console.log('🎯 Displayed species count:', displayedSpecies.length);
   }, [selectedCategory, filteredSpecies.length, displayedSpecies.length]);
 
   // Functions for expanding baits and methods
@@ -287,7 +287,7 @@ const Species = () => {
               <button
                 key={`category-${index}-${category}`}
                 onClick={() => {
-                  console.log('🔥 BUTTON CLICKED:', category);
+                  // console.log('🔥 BUTTON CLICKED:', category);
                   setSelectedCategory(category);
                 }}
                 className={`px-4 py-2 rounded-full text-sm transition-colors cursor-pointer pointer-events-auto select-none ${

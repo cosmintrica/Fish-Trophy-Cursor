@@ -2,14 +2,11 @@ import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
@@ -19,9 +16,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
 
-  // Check if user is admin - use environment variable for security
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const isAdmin = user?.email === adminEmail;
+  // Check if user is admin using the admin hook
+  const { isAdmin: userIsAdmin } = useAdmin();
+  const isAdmin = userIsAdmin;
 
   // Generate color from user name for dynamic border
   const generateUserColor = (name: string) => {
@@ -52,78 +49,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   };
   // Removed Black Sea popup - now direct link
 
-  // PWA Install Prompt Logic
-  const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
-  useEffect(() => {
-    const isStandalone = ((): boolean => {
-      try {
-        // PWA already installed
-        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
-        // iOS Safari
-        // @ts-ignore - iOS Safari standalone property
-        if (typeof navigator !== 'undefined' && (navigator as { standalone?: boolean }).standalone) return true;
-      } catch {
-        // Ignore errors
-      }
-      return false;
-    })();
 
-    const isMobile = ((): boolean => {
-      try {
-        // Prefer UA hints when available
-        // @ts-ignore - User Agent Client Hints API
-        if ((navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile) return true;
-      } catch {
-        // Ignore errors
-      }
-      const ua = navigator.userAgent || '';
-      const maxTouchPoints = (navigator as { maxTouchPoints?: number }).maxTouchPoints ?? 0;
-      const touchIpad = navigator.platform === 'MacIntel' && maxTouchPoints > 1;
-      return /Android|iPhone|iPad|iPod|Windows Phone/i.test(ua) || touchIpad;
-    })();
-
-    if (isStandalone || !isMobile) {
-      // Never show install prompt on desktop or if already installed
-      setShowPWAInstallPrompt(false);
-      setDeferredPrompt(null);
-      return;
-    }
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPWAInstallPrompt(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
-  }, []);
-
-  // Hide PWA prompt after 10 seconds
-  useEffect(() => {
-    if (showPWAInstallPrompt) {
-      const timer = setTimeout(() => {
-        setShowPWAInstallPrompt(false);
-      }, 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [showPWAInstallPrompt]);
-
-  const handleInstallPWA = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setShowPWAInstallPrompt(false);
-      }
-    }
-  };
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
@@ -166,11 +93,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-b border-blue-200/50 shadow-lg">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-b border-blue-200/50 shadow-lg" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
-            <Link to="/" className="flex items-center space-x-3 group">
+            <Link to="/" className="flex items-center space-x-3 group" aria-label="Acasă">
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy"
@@ -182,7 +109,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
+            <nav className="hidden lg:flex items-center space-x-8" role="navigation" aria-label="Navigația principală">
               <Link
                 to="/"
                 className={`text-sm font-medium transition-colors ${
@@ -190,6 +117,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     ? 'text-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
                 }`}
+                aria-current={location.pathname === '/' ? 'page' : undefined}
               >
                 Acasă
               </Link>
@@ -533,8 +461,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* PWA Install Prompt - temporarily disabled for mobile stability */}
-      {/* <PWAInstallPrompt /> */}
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt
+        onInstall={() => {}}
+        onDismiss={() => {}}
+      />
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200">
@@ -573,6 +504,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <li><Link to="/records" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Recorduri</Link></li>
                 <li><Link to="/black-sea" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Marea Neagră</Link></li>
                 <li><Link to="/submission-guide" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Ghid Submisie</Link></li>
+                <li><Link to="/og-generator" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Generator Banner</Link></li>
               </ul>
             </div>
 
@@ -634,13 +566,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Black Sea popup removed - now direct link */}
 
-      {/* PWA Install Prompt */}
-      {showPWAInstallPrompt && (
-        <PWAInstallPrompt
-          onInstall={handleInstallPWA}
-          onDismiss={() => setShowPWAInstallPrompt(false)}
-        />
-      )}
       {/* Global toast renderer (bottom-right, default styling) */}
     </div>
   );

@@ -137,7 +137,7 @@ const Profile = () => {
         return;
       }
 
-      console.log('🔍 Counties loaded:', data?.length || 0, 'counties');
+      // console.log('🔍 Counties loaded:', data?.length || 0, 'counties');
       setCounties(data || []);
     } catch (error) {
       console.error('Error loading counties:', error);
@@ -163,7 +163,7 @@ const Profile = () => {
         return;
       }
 
-      console.log('🔍 Cities loaded for county', countyId, ':', data?.length || 0, 'cities');
+      // console.log('🔍 Cities loaded for county', countyId, ':', data?.length || 0, 'cities');
       setCities(data || []);
     } catch (error) {
       console.error('Error loading cities:', error);
@@ -182,11 +182,11 @@ const Profile = () => {
       const result = await supabaseApi.getProfile(user.id);
 
       if (result.success && result.data) {
-        console.log('🔍 Profile data loaded:', {
-          county_id: result.data.county_id,
-          city_id: result.data.city_id,
-          displayName: result.data.displayName
-        });
+        // console.log('🔍 Profile data loaded:', {
+        //   county_id: result.data.county_id,
+        //   city_id: result.data.city_id,
+        //   displayName: result.data.displayName
+        // });
 
         setProfileData({
           displayName: result.data.displayName || user.user_metadata?.display_name || '',
@@ -199,7 +199,7 @@ const Profile = () => {
 
         // Load cities for the selected county
         if (result.data.county_id) {
-          console.log('🔍 Loading cities for county:', result.data.county_id);
+          // console.log('🔍 Loading cities for county:', result.data.county_id);
           await loadCities(result.data.county_id);
         }
       } else {
@@ -331,18 +331,18 @@ const Profile = () => {
 
     setIsAddingGear(true);
     try {
-      console.log('Adding gear with data:', {
-        user_id: user.id,
-        gear_type: newGear.gear_type,
-        brand: newGear.brand,
-        model: newGear.model,
-        description: newGear.description,
-        quantity: newGear.quantity,
-        purchase_date: newGear.purchase_date || null,
-        price: newGear.price
-      });
+      // console.log('Adding gear with data:', {
+      //   user_id: user.id,
+      //   gear_type: newGear.gear_type,
+      //   brand: newGear.brand,
+      //   model: newGear.model,
+      //   description: newGear.description,
+      //   quantity: newGear.quantity,
+      //   purchase_date: newGear.purchase_date || null,
+      //   price: newGear.price
+      // });
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('user_gear')
         .insert({
           user_id: user.id,
@@ -356,7 +356,7 @@ const Profile = () => {
         })
         .select();
 
-      console.log('Gear insert result:', { data, error });
+      // console.log('Gear insert result:', { data, error });
 
       if (error) {
         console.error('Error adding gear:', error);
@@ -387,8 +387,8 @@ const Profile = () => {
   // Șterge echipament
   const deleteGear = async (gearId: string) => {
     try {
-      console.log('Deleting gear with ID:', gearId);
-      console.log('Current user ID:', user?.id);
+      // console.log('Deleting gear with ID:', gearId);
+      // console.log('Current user ID:', user?.id);
 
       const { error } = await supabase
         .from('user_gear')
@@ -402,7 +402,7 @@ const Profile = () => {
         return;
       }
 
-      console.log('Gear deleted successfully');
+      // console.log('Gear deleted successfully');
       toast.success('Echipamentul a fost șters cu succes!');
       loadUserGear();
     } catch (error) {
@@ -436,18 +436,18 @@ const Profile = () => {
       }
 
       // Actualizează și în tabela profiles din baza de date
-      console.log('Updating profile in database:', {
-        id: user.id,
-        email: user.email,
-        display_name: profileData.displayName,
-        phone: profileData.phone,
-        bio: profileData.bio,
-        selectedCounty: selectedCounty,
-        selectedCity: selectedCity
-      });
+      // console.log('Updating profile in database:', {
+      //   id: user.id,
+      //   email: user.email,
+      //   display_name: profileData.displayName,
+      //   phone: profileData.phone,
+      //   bio: profileData.bio,
+      //   selectedCounty: selectedCounty,
+      //   selectedCity: selectedCity
+      // });
 
       // Try update first, then insert if not exists
-      const { data: updateData, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           email: user.email,
@@ -465,7 +465,7 @@ const Profile = () => {
         console.error('Update error, trying insert:', updateError);
 
         // If update fails, try insert
-        const { data: insertData, error: insertError } = await supabase
+        const { error: insertError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
@@ -486,12 +486,12 @@ const Profile = () => {
           return;
         }
 
-        console.log('Profile inserted successfully:', insertData);
+        // console.log('Profile inserted successfully:', insertData);
       } else {
-        console.log('Profile updated successfully:', updateData);
+        // console.log('Profile updated successfully:', updateData);
       }
 
-      console.log('Profile update/insert completed successfully');
+      // console.log('Profile update/insert completed successfully');
       toast.success('Profilul a fost actualizat cu succes!', { id: 'profile-update' });
 
       // Reload profile data to get updated county_id and city_id
