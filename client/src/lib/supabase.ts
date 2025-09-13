@@ -1,8 +1,16 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import './debug-env'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// Debug in development
+if (import.meta.env.DEV) {
+  console.log('=== ENVIRONMENT VARIABLES DEBUG ===')
+  console.log('VITE_SUPABASE_URL:', supabaseUrl)
+  console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'NOT SET')
+  console.log('VITE_ADMIN_EMAIL:', import.meta.env.VITE_ADMIN_EMAIL)
+  console.log('================================')
+}
 
 // Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
 function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
