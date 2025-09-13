@@ -3,63 +3,86 @@ export const handler = async (event) => {
     // Extract parameters from both /api/og and /api/og.png
     const { title = 'Fish Trophy', subtitle = 'Platforma Pescarilor din România', domain = 'fishtrophy.ro' } = event.queryStringParameters || {};
 
-    // Generate SVG-based Open Graph image matching header and footer design
+    // Generate beautiful centered Open Graph image
     const svgContent = `
       <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Title gradient matching header -->
+          <!-- Beautiful gradient background -->
+          <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#f1f5f9;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+          </linearGradient>
+          
+          <!-- Title gradient -->
           <linearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
             <stop offset="50%" style="stop-color:#4f46e5;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
           </linearGradient>
           
-          <!-- Card background -->
+          <!-- Card gradient -->
           <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
           </linearGradient>
           
-          <!-- Drop shadow for cards -->
-          <filter id="cardShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="0.1"/>
+          <!-- Icon gradient -->
+          <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#4f46e5;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+          </linearGradient>
+          
+          <!-- Shadow filter -->
+          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.1"/>
+          </filter>
+          
+          <!-- Glow effect -->
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
           </filter>
         </defs>
         
-        <!-- White background -->
-        <rect width="1200" height="630" fill="#ffffff"/>
+        <!-- Background -->
+        <rect width="1200" height="630" fill="url(#bgGradient)"/>
         
-        <!-- Icon (matching header) -->
-        <g transform="translate(100, 80)">
-          <!-- Icon background with gradient -->
-          <rect x="0" y="0" width="80" height="80" rx="12" fill="url(#titleGradient)"/>
-          <!-- Trophy icon inside -->
-          <g transform="translate(40, 40)">
-            <path d="M-15 -20 L-10 -25 L-5 -20 L0 -25 L5 -20 L10 -25 L15 -20 L12 -10 L8 0 L4 5 L0 8 L-4 5 L-8 0 L-12 -10 Z" fill="#ffffff"/>
-            <circle cx="0" cy="-5" r="3" fill="#ffffff"/>
-            <path d="M-8 -5 L-5 -2 L-8 1 M8 -5 L5 -2 L8 1" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+        <!-- Main container with shadow -->
+        <rect x="100" y="80" width="1000" height="470" rx="24" fill="url(#cardGradient)" filter="url(#shadow)"/>
+        
+        <!-- Icon centered at top -->
+        <g transform="translate(600, 150)">
+          <circle cx="0" cy="0" r="50" fill="url(#iconGradient)"/>
+          <!-- Trophy icon -->
+          <g transform="translate(0, 0)">
+            <path d="M-12 -15 L-8 -18 L-4 -15 L0 -18 L4 -15 L8 -18 L12 -15 L10 -8 L6 0 L3 3 L0 5 L-3 3 L-6 0 L-10 -8 Z" fill="#ffffff"/>
+            <circle cx="0" cy="-3" r="2" fill="#ffffff"/>
+            <path d="M-6 -3 L-4 -1 L-6 1 M6 -3 L4 -1 L6 1" stroke="#ffffff" stroke-width="1.5" fill="none"/>
           </g>
         </g>
         
-        <!-- Title (matching header style) -->
-        <text x="200" y="130" fill="url(#titleGradient)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" letter-spacing="-0.02em">
+        <!-- Title centered -->
+        <text x="600" y="250" text-anchor="middle" fill="url(#titleGradient)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="64" font-weight="800" letter-spacing="-0.02em" filter="url(#glow)">
           ${title}
         </text>
         
-        <!-- Subtitle in card (matching user profile style) -->
-        <rect x="100" y="180" width="1000" height="80" rx="12" fill="url(#cardGradient)" filter="url(#cardShadow)"/>
-        <text x="600" y="220" text-anchor="middle" fill="#374151" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="600">
+        <!-- Subtitle centered -->
+        <text x="600" y="320" text-anchor="middle" fill="#374151" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="600">
           ${subtitle}
         </text>
         
-        <!-- Domain in card (matching user profile style) -->
-        <rect x="100" y="300" width="1000" height="60" rx="12" fill="url(#cardGradient)" filter="url(#cardShadow)"/>
-        <text x="600" y="330" text-anchor="middle" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="500">
+        <!-- Domain centered -->
+        <text x="600" y="370" text-anchor="middle" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="500">
           ${domain}
         </text>
         
-        <!-- Footer text (matching footer style) -->
-        <text x="600" y="550" text-anchor="middle" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="400">
+        <!-- Footer text centered -->
+        <text x="600" y="500" text-anchor="middle" fill="#9ca3af" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="400">
           Făcut cu <tspan fill="#ef4444">❤️</tspan> în România
         </text>
       </svg>
