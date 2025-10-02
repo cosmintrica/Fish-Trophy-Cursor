@@ -178,25 +178,6 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
           </div>
         ))}
 
-        {/* Mobile Coming Soon */}
-        <div style={{
-          backgroundColor: theme.background,
-          padding: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          opacity: 0.6
-        }}>
-          <div style={{ fontSize: '1.25rem' }}>🌊</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.textSecondary }}>
-              Marea Neagră
-            </div>
-            <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-              Coming Soon 🔒
-            </div>
-          </div>
-        </div>
       </div>
     );
   }
@@ -368,35 +349,6 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
         </div>
       ))}
 
-      {/* Coming Soon */}
-      <div style={{
-        backgroundColor: theme.background,
-        borderTop: `1px solid ${theme.border}`,
-        padding: '0.75rem 1rem',
-        display: 'grid',
-        gridTemplateColumns: '1fr 100px 100px 220px',
-        gap: '0.75rem',
-        alignItems: 'center',
-        opacity: 0.6
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <ChevronRight style={{ width: '1rem', height: '1rem', color: theme.textSecondary }} />
-          <div style={{ fontSize: '1.25rem' }}>🌊</div>
-          <div>
-            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.textSecondary, marginBottom: '0.125rem' }}>
-              Marea Neagră
-            </div>
-            <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-              Pescuit marin și de coastă - Coming Soon 🔒
-            </div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'center', fontSize: '0.875rem', color: theme.textSecondary }}>-</div>
-        <div style={{ textAlign: 'center', fontSize: '0.875rem', color: theme.textSecondary }}>-</div>
-        <div style={{ fontSize: '0.75rem', color: theme.textSecondary, textAlign: 'center' }}>
-          În curând...
-        </div>
-      </div>
     </div>
   );
 }

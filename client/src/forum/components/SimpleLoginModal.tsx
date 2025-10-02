@@ -100,97 +100,80 @@ export default function SimpleLoginModal({ isOpen, onClose }: SimpleLoginModalPr
           </p>
         </div>
 
-        {/* Admin Quick Login */}
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          padding: '1rem',
-          borderRadius: '8px',
-          marginBottom: '1.5rem',
-          textAlign: 'center'
-        }}>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('cosmin.trica@outlook.com');
-              setPassword('admin123');
-            }}
-            style={{
-              width: '100%',
-              backgroundColor: '#0ea5e9',
-              color: 'white',
-              padding: '0.75rem',
-              borderRadius: '6px',
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            🔧 Login Admin (Test)
-          </button>
-        </div>
-
-        {/* Error */}
+        {/* Error Message */}
         {error && (
           <div style={{
-            marginBottom: '1rem',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
             padding: '0.75rem',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            textAlign: 'center'
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            border: '1px solid #fecaca'
           }}>
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#dc2626',
-              margin: 0
-            }}>{error}</p>
+            {error}
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#333',
+              marginBottom: '0.5rem'
+            }}>
+              Email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
               required
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.5rem',
+                fontSize: '0.875rem',
                 outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
+                transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#0ea5e9'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              placeholder="Introdu email-ul tău"
             />
           </div>
 
-          <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#333',
+              marginBottom: '0.5rem'
+            }}>
+              Parolă
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Parolă"
               required
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.5rem',
+                fontSize: '0.875rem',
                 outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
+                transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#0ea5e9'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              placeholder="Introdu parola"
             />
           </div>
 
@@ -199,20 +182,36 @@ export default function SimpleLoginModal({ isOpen, onClose }: SimpleLoginModalPr
             disabled={loading}
             style={{
               width: '100%',
-              backgroundColor: loading ? '#94a3b8' : '#0ea5e9',
+              padding: '0.75rem',
+              backgroundColor: loading ? '#9ca3af' : '#3b82f6',
               color: 'white',
-              padding: '0.875rem',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              fontWeight: '600',
               border: 'none',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer',
-              marginTop: '0.5rem'
+              transition: 'background-color 0.2s'
             }}
           >
-            {loading ? 'Se conectează...' : '🎣 Conectare'}
+            {loading ? 'Se conectează...' : 'Conectare'}
           </button>
         </form>
+
+        {/* Footer */}
+        <div style={{
+          textAlign: 'center',
+          marginTop: '1.5rem',
+          paddingTop: '1.5rem',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <p style={{
+            color: '#666',
+            fontSize: '0.75rem',
+            margin: 0
+          }}>
+            Nu ai cont? Contactează administratorul pentru a fi adăugat în forum.
+          </p>
+        </div>
       </div>
     </div>
   );

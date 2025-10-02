@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Menu, User, X, MessageSquare, TrendingUp, Users, Clock } from 'lucide-react';
+import { Menu, User, X, MessageSquare, Users, Clock } from 'lucide-react';
 
 interface SimpleForumLayoutProps {
   user?: {
@@ -14,12 +14,6 @@ interface SimpleForumLayoutProps {
 
 export default function SimpleForumLayout({ user, onLogin, onLogout }: SimpleForumLayoutProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Searching:', searchQuery);
-  };
 
   const generateUserColor = (name: string) => {
     const colors = [
