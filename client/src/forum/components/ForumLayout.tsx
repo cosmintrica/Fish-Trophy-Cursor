@@ -47,8 +47,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
         {/* Top Navigation */}
         <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem' }}>
-            {/* Logo */}
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+                    {/* Logo */}
+                    <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy Forum"
