@@ -33,7 +33,7 @@ export default function ForumHome() {
   };
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '' } : null} onLogin={handleLogin} onLogout={handleLogout}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } : null} onLogin={handleLogin} onLogout={handleLogout}>
       {/* Main Content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Mobile Optimized Forum Categories */}

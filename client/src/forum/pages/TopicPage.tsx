@@ -102,7 +102,7 @@ export default function TopicPage() {
   }
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '' } : null} onLogin={() => {}} onLogout={() => {}}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } : null} onLogin={() => {}} onLogout={() => {}}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
