@@ -10,6 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 export default function TopicPage() {
   const { topicId } = useParams();
   const { forumUser } = useAuth();
+  
+  console.log('[TopicPage] Component rendered with topicId:', topicId);
   const [topic, setTopic] = useState<ForumTopic | null>(null);
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export default function TopicPage() {
 
   const loadTopicData = async () => {
     if (topicId) {
-      // Loading instant - fără delay
+      // LOADING ABSOLUT INSTANT - FĂRĂ DELAY
       const topicData = forumStorage.getTopicById(topicId);
       const topicPosts = forumStorage.getPostsByTopic(topicId);
 
@@ -30,10 +32,10 @@ export default function TopicPage() {
 
       setTopic(topicData);
       setPosts(topicPosts);
-
+      setLoading(false); // Set loading false imediat
+      
       console.log('[TopicPage] State updated - posts length:', topicPosts.length);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
