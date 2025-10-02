@@ -33,6 +33,14 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
   });
 
   useEffect(() => {
+    // Dacă utilizatorul se deloghează, îl elimin din vizitatori
+    if (!forumUser) {
+      setViewers(prev => prev.filter(v => !v.name || v.isAnonymous));
+      return;
+    }
+  }, [forumUser]);
+
+  useEffect(() => {
     const storageKey = `forum-viewers-${topicId}`;
     const statsKey = `forum-stats-${topicId}`;
 
@@ -72,7 +80,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
         setViewers(prev => {
           const filtered = prev.filter(v => v.id !== newViewer.id);
           const updated = [...filtered, newViewer];
-          
+
           // Salvează în localStorage
           localStorage.setItem(storageKey, JSON.stringify(updated));
           return updated;
@@ -81,7 +89,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
         // Pentru utilizatori anonimi, folosim un ID persistent per sesiune
         const sessionKey = `anon-session-${topicId}`;
         let sessionId = sessionStorage.getItem(sessionKey);
-        
+
         if (!sessionId) {
           sessionId = `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           sessionStorage.setItem(sessionKey, sessionId);
@@ -106,14 +114,14 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
     const incrementStats = () => {
       const sessionStatsKey = `stats-incremented-${topicId}`;
       const hasIncremented = sessionStorage.getItem(sessionStatsKey);
-      
+
       if (!hasIncremented) {
         const newStats = {
           totalViews: stats.totalViews + 1,
           uniqueUsers: stats.uniqueUsers + (forumUser ? 1 : 0),
           lastUpdate: Date.now()
         };
-        
+
         setStats(newStats);
         localStorage.setItem(statsKey, JSON.stringify(newStats));
         sessionStorage.setItem(sessionStatsKey, 'true');

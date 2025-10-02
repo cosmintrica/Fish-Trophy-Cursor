@@ -17,8 +17,6 @@ export default function TopicPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadTopicData = async () => {
-    setLoading(true);
-
     if (topicId) {
       // Loading instant - fără delay
       const topicData = forumStorage.getTopicById(topicId);
@@ -33,7 +31,6 @@ export default function TopicPage() {
       setTopic(topicData);
       setPosts(topicPosts);
     }
-
     setLoading(false);
   };
 

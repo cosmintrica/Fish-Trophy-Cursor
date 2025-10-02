@@ -41,14 +41,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease', overflowY: 'auto' }}>
       {/* Header */}
       <header style={{ backgroundColor: theme.surface, borderBottom: `1px solid ${theme.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
         {/* Top Navigation */}
         <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem' }}>
             {/* Logo */}
-            <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy Forum"
@@ -160,8 +160,24 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                       </div>
                     )}
 
-                    <Bell style={{ width: '1.25rem', height: '1.25rem', color: '#6b7280', cursor: 'pointer' }} />
+                    <Bell 
+                      onClick={() => alert('Notificări - în dezvoltare')}
+                      style={{ 
+                        width: '1.25rem', 
+                        height: '1.25rem', 
+                        color: '#6b7280', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = theme.primary;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#6b7280';
+                      }}
+                    />
                     <div
+                      onClick={() => alert(`Profil utilizator: ${user.username} - în dezvoltare`)}
                       style={{
                         width: '2rem',
                         height: '2rem',
@@ -174,7 +190,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                         fontSize: '0.875rem',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        border: user.isAdmin ? '2px solid #fbbf24' : 'none'
+                        border: user.isAdmin ? '2px solid #fbbf24' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
                       {user.username.charAt(0).toUpperCase()}
