@@ -59,7 +59,7 @@ export default function SimpleForumLayout({ user, onLogin, onLogout }: SimpleFor
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem' }}>
             {/* Logo */}
             <a
-              href="/forum"
+              href="/"
               style={{
                 display: 'flex',
                 alignItems: 'center',

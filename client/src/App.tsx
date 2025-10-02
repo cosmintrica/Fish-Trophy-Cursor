@@ -53,43 +53,50 @@ function AppContent() {
 
   // Show construction page if user is not admin or not logged in
   // Temporarily allow forum access for testing
-  if (!isAdmin && !window.location.pathname.startsWith('/forum')) {
-    return <ConstructionPage />;
-  }
+  // if (!isAdmin && !window.location.pathname.startsWith('/forum')) {
+  //   return <ConstructionPage />;
+  // }
 
   // Show full app for admin users
   return (
-    <Layout>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/email-confirmation" element={<EmailConfirmation />} />
-        <Route path="/species" element={<Species />} />
-        <Route path="/leaderboards" element={<Leaderboards />} />
-        <Route path="/records" element={<Records />} />
-        <Route path="/profile/:userId" element={<PublicProfile />} />
-        <Route path="/submission-guide" element={<SubmissionGuide />} />
-        <Route path="/fishing-shops" element={<FishingShops />} />
-        <Route path="/og-generator" element={<OgGenerator />} />
-        <Route path="/forum/*" element={<ForumRoutes />} />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute>
-              <Admin />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Layout>
+    <Routes>
+      {/* Forum routes - independent layout */}
+      <Route path="/forum/*" element={<ForumRoutes />} />
+      
+      {/* Main site routes - with Layout */}
+      <Route path="/*" element={
+        <Layout>
+          <ScrollToTop />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/email-confirmation" element={<EmailConfirmation />} />
+            <Route path="/species" element={<Species />} />
+            <Route path="/leaderboards" element={<Leaderboards />} />
+            <Route path="/records" element={<Records />} />
+            <Route path="/profile/:userId" element={<PublicProfile />} />
+            <Route path="/submission-guide" element={<SubmissionGuide />} />
+            <Route path="/fishing-shops" element={<FishingShops />} />
+            <Route path="/og-generator" element={<OgGenerator />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Layout>
+      } />
+    </Routes>
   );
 }
 
