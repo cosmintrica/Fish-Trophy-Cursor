@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { forumStorage } from '../services/forumService';
-import ForumLayout from '../components/ForumLayout';
+import ForumLayout, { ForumUser } from '../components/ForumLayout';
 import MobileOptimizedCategories from '../components/MobileOptimizedCategories';
 
 export default function ForumHome() {
@@ -33,7 +33,7 @@ export default function ForumHome() {
   };
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } : null} onLogin={handleLogin} onLogout={handleLogout}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } as ForumUser : null} onLogin={handleLogin} onLogout={handleLogout}>
       {/* Main Content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Mobile Optimized Forum Categories */}

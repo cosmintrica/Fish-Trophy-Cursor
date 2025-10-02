@@ -4,13 +4,16 @@ import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare } from 'lu
 import { useTheme } from '../contexts/ThemeContext';
 import SimpleLoginModal from './SimpleLoginModal';
 
+export interface ForumUser {
+  id: string;
+  username: string;
+  email: string;
+  isAdmin?: boolean;
+}
+
 interface ForumLayoutProps {
   children: React.ReactNode;
-  user?: {
-    id: string;
-    username: string;
-    email: string;
-  } | null;
+  user?: ForumUser | null;
   onLogin: () => void;
   onLogout: () => void;
 }
@@ -46,8 +49,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem' }}>
             {/* Logo */}
             <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-              <img 
-                src="/icon_free.png" 
+              <img
+                src="/icon_free.png"
                 alt="Fish Trophy Forum"
                 style={{
                   width: '2.5rem',
@@ -56,8 +59,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 }}
               />
               <div>
-              <div style={{ 
-                fontSize: '1.25rem', 
+              <div style={{
+                fontSize: '1.25rem',
                 fontWeight: '700',
                 color: theme.text
               }}>
@@ -72,14 +75,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
             {/* Search Bar */}
             <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
               <div style={{ position: 'relative' }}>
-                <Search style={{ 
-                  position: 'absolute', 
-                  left: '0.75rem', 
-                  top: '50%', 
+                <Search style={{
+                  position: 'absolute',
+                  left: '0.75rem',
+                  top: '50%',
                   transform: 'translateY(-50%)',
-                  width: '1rem', 
-                  height: '1rem', 
-                  color: '#9ca3af' 
+                  width: '1rem',
+                  height: '1rem',
+                  color: '#9ca3af'
                 }} />
                 <input
                   type="text"
@@ -156,9 +159,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                         🔧 ADMIN
                       </div>
                     )}
-                    
+
                     <Bell style={{ width: '1.25rem', height: '1.25rem', color: '#6b7280', cursor: 'pointer' }} />
-                    <div 
+                    <div
                       style={{
                         width: '2rem',
                         height: '2rem',
@@ -222,24 +225,24 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
         </nav>
 
         {/* Hero Section */}
-        <div style={{ 
-          background: isDarkMode 
+        <div style={{
+          background: isDarkMode
             ? 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)'
             : 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #e0e7ff 100%)',
           borderTop: `1px solid ${theme.border}`
         }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', textAlign: 'left' }}>
-            <h1 style={{ 
-              fontSize: '2rem', 
-              fontWeight: '700', 
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
               color: theme.text,
               marginBottom: '0.5rem'
             }}>
               Bine ai venit pe Forumul Fish Trophy
             </h1>
-            <p style={{ 
-              fontSize: '1.125rem', 
-              color: theme.textSecondary, 
+            <p style={{
+              fontSize: '1.125rem',
+              color: theme.textSecondary,
               maxWidth: '800px'
             }}>
               Împărtășește experiențe, găsește sfaturi și conectează-te cu alți pescari pasionați din România.
@@ -250,67 +253,67 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
       </header>
 
       {/* Navigation Bar */}
-      <div style={{ 
-        backgroundColor: theme.background, 
+      <div style={{
+        backgroundColor: theme.background,
         borderBottom: `1px solid ${theme.border}`,
         padding: '0.75rem 0'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '2rem',
             fontSize: '0.875rem'
           }}>
-            <Link 
-              to="/forum" 
-              style={{ 
-                color: theme.primary, 
-                textDecoration: 'none', 
+            <Link
+              to="/forum"
+              style={{
+                color: theme.primary,
+                textDecoration: 'none',
                 fontWeight: '500',
                 transition: 'color 0.2s'
               }}
             >
               🏠 Acasă Forum
             </Link>
-            <Link 
-              to="/forum/recent" 
-              style={{ 
-                color: theme.text, 
-                textDecoration: 'none', 
+            <Link
+              to="/forum/recent"
+              style={{
+                color: theme.text,
+                textDecoration: 'none',
                 fontWeight: '500',
                 transition: 'color 0.2s'
               }}
             >
               📝 Postări Recente
             </Link>
-            <Link 
-              to="/forum/members" 
-              style={{ 
-                color: theme.text, 
-                textDecoration: 'none', 
+            <Link
+              to="/forum/members"
+              style={{
+                color: theme.text,
+                textDecoration: 'none',
                 fontWeight: '500',
                 transition: 'color 0.2s'
               }}
             >
               👥 Membri Activi
             </Link>
-            <a 
-              href="https://fishtrophy.ro" 
-              style={{ 
-                color: theme.secondary, 
-                textDecoration: 'none', 
+            <a
+              href="https://fishtrophy.ro"
+              style={{
+                color: theme.secondary,
+                textDecoration: 'none',
                 fontWeight: '500',
                 transition: 'color 0.2s'
               }}
             >
               🎣 Fish Trophy
             </a>
-            <div 
+            <div
               className="mobile-hidden"
-              style={{ 
-                marginLeft: 'auto', 
-                fontSize: '0.75rem', 
+              style={{
+                marginLeft: 'auto',
+                fontSize: '0.75rem',
                 color: theme.textSecondary
               }}
             >
@@ -326,24 +329,24 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
       </main>
 
       {/* Footer */}
-      <footer style={{ 
-        backgroundColor: theme.surface, 
+      <footer style={{
+        backgroundColor: theme.surface,
         borderTop: `1px solid ${theme.border}`,
         marginTop: '4rem',
         transition: 'all 0.3s ease'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 1rem 2rem' }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
             gap: '2rem',
             marginBottom: '2rem'
           }}>
             {/* Logo și descriere */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <img 
-                  src="/icon_free.png" 
+                <img
+                  src="/icon_free.png"
                   alt="Fish Trophy Forum"
                   style={{
                     width: '2rem',
@@ -356,7 +359,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 </span>
               </div>
               <p style={{ color: theme.textSecondary, fontSize: '0.875rem', lineHeight: '1.5' }}>
-                Comunitatea pescarilor pasionați din România. Împărtășim experiențe, 
+                Comunitatea pescarilor pasionați din România. Împărtășim experiențe,
                 sfaturi și pasiunea pentru pescuit.
               </p>
             </div>
@@ -409,8 +412,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 Urmărește-ne
               </h3>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <a 
-                  href="https://facebook.com/fishtrophy" 
+                <a
+                  href="https://facebook.com/fishtrophy"
                   style={{
                     width: '2.25rem',
                     height: '2.25rem',
@@ -427,8 +430,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 >
                   📘
                 </a>
-                <a 
-                  href="https://instagram.com/fishtrophy" 
+                <a
+                  href="https://instagram.com/fishtrophy"
                   style={{
                     width: '2.25rem',
                     height: '2.25rem',
@@ -445,8 +448,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 >
                   📷
                 </a>
-                <a 
-                  href="https://youtube.com/fishtrophy" 
+                <a
+                  href="https://youtube.com/fishtrophy"
                   style={{
                     width: '2.25rem',
                     height: '2.25rem',
@@ -468,8 +471,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
           </div>
 
           {/* Copyright */}
-          <div style={{ 
-            borderTop: `1px solid ${theme.border}`, 
+          <div style={{
+            borderTop: `1px solid ${theme.border}`,
             paddingTop: '2rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -477,8 +480,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
             flexWrap: 'wrap',
             gap: '1rem'
           }}>
-            <div style={{ 
-              fontSize: '0.875rem', 
+            <div style={{
+              fontSize: '0.875rem',
               color: theme.textSecondary,
               display: 'flex',
               alignItems: 'center',
@@ -494,9 +497,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
       </footer>
 
       {/* Login Modal */}
-      <SimpleLoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
+      <SimpleLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );

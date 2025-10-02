@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
 import { forumStorage, ForumTopic, ForumPost } from '../services/forumService';
-import ForumLayout from '../components/ForumLayout';
+import ForumLayout, { ForumUser } from '../components/ForumLayout';
 import MessageContainer from '../components/MessageContainer';
 import ActiveViewers from '../components/ActiveViewers';
 import { useAuth } from '../hooks/useAuth';
@@ -18,16 +18,16 @@ export default function TopicPage() {
 
   const loadTopicData = async () => {
     setLoading(true);
-    
+
     if (topicId) {
       // Loading instant - fără delay
       const topicData = forumStorage.getTopicById(topicId);
       const topicPosts = forumStorage.getPostsByTopic(topicId);
-      
+
       setTopic(topicData);
       setPosts(topicPosts);
     }
-    
+
     setLoading(false);
   };
 
@@ -37,21 +37,21 @@ export default function TopicPage() {
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!replyContent.trim() || !forumUser || !topicId) {
       alert('Te rog să te conectezi și să scrii un răspuns!');
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Postare instant - fără delay
       forumStorage.createPost(topicId, replyContent.trim(), forumUser.username, forumUser.rank);
-      
+
       setReplyContent('');
       await loadTopicData(); // Reîncarcă datele
-      
+
       alert('Răspuns postat cu succes!');
     } catch (error) {
       console.error('Error posting reply:', error);
@@ -65,7 +65,7 @@ export default function TopicPage() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'acum';
     if (diffInMinutes < 60) return `acum ${diffInMinutes}m`;
     if (diffInMinutes < 1440) return `acum ${Math.floor(diffInMinutes / 60)}h`;
@@ -102,7 +102,7 @@ export default function TopicPage() {
   }
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } : null} onLogin={() => {}} onLogout={() => {}}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } as ForumUser : null} onLogin={() => {}} onLogout={() => {}}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -136,7 +136,7 @@ export default function TopicPage() {
         </nav>
 
         {/* Topic Header */}
-        <div 
+        <div
           style={{
             backgroundColor: 'white',
             borderRadius: '1rem',
@@ -146,7 +146,7 @@ export default function TopicPage() {
             overflow: 'hidden'
           }}
         >
-          <div 
+          <div
             style={{
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: 'white',
@@ -156,7 +156,7 @@ export default function TopicPage() {
               gap: '1rem'
             }}
           >
-            <Link 
+            <Link
               to={`/forum/category/${topic.categoryId}`}
               style={{
                 display: 'flex',
@@ -231,7 +231,7 @@ export default function TopicPage() {
 
         {/* Reply Form */}
         {forumUser ? (
-          <div 
+          <div
             style={{
               backgroundColor: 'white',
               borderRadius: '1rem',
@@ -240,7 +240,7 @@ export default function TopicPage() {
               overflow: 'hidden'
             }}
           >
-            <div 
+            <div
               style={{
                 background: 'linear-gradient(135deg, #059669, #047857)',
                 color: 'white',
@@ -259,7 +259,7 @@ export default function TopicPage() {
             <form onSubmit={handleReplySubmit} style={{ padding: '1.5rem' }}>
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                 {/* Avatar utilizator */}
-                <div 
+                <div
                   style={{
                     width: '2.5rem',
                     height: '2.5rem',
@@ -276,13 +276,13 @@ export default function TopicPage() {
                 >
                   {forumUser.username.charAt(0).toUpperCase()}
                 </div>
-                
+
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     <span style={{ fontWeight: '600', color: '#111827' }}>{forumUser.username}</span>
                     <span className={`user-rank rank-${forumUser.rank}`}>{forumUser.rank}</span>
                   </div>
-                  
+
                   <textarea
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
@@ -317,8 +317,8 @@ export default function TopicPage() {
                     alignItems: 'center',
                     gap: '0.5rem',
                     padding: '0.75rem 1.5rem',
-                    background: isSubmitting || !replyContent.trim() 
-                      ? '#9ca3af' 
+                    background: isSubmitting || !replyContent.trim()
+                      ? '#9ca3af'
                       : 'linear-gradient(135deg, #059669, #047857)',
                     color: 'white',
                     border: 'none',
@@ -331,7 +331,7 @@ export default function TopicPage() {
                 >
                   {isSubmitting ? (
                     <>
-                      <div 
+                      <div
                         style={{
                           width: '1rem',
                           height: '1rem',
@@ -354,7 +354,7 @@ export default function TopicPage() {
             </form>
           </div>
         ) : (
-          <div 
+          <div
             style={{
               backgroundColor: 'white',
               borderRadius: '1rem',
