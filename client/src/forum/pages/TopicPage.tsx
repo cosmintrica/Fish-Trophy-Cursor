@@ -42,7 +42,10 @@ export default function TopicPage() {
 
   // Debug logging pentru posts
   useEffect(() => {
-    console.log('[TopicPage] Posts updated:', posts.length, posts.map(p => p.id));
+    console.log('[TopicPage] Posts updated:', {
+      length: posts.length,
+      posts: posts.map(p => ({ id: p.id, author: p.author, content: p.content.substring(0, 30) + '...' }))
+    });
   }, [posts]);
 
   const handleReplySubmit = async (e: React.FormEvent) => {
