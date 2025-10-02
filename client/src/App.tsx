@@ -25,7 +25,6 @@ import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
-import ConstructionPage from '@/pages/ConstructionPage';
 import ForumRoutes from '@/forum/routes';
 
 // Analytics wrapper component that uses useAnalytics inside Router
@@ -36,7 +35,7 @@ function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
 
 // Component to check if user is admin and show construction page if not
 function AppContent() {
-  const { isAdmin, loading } = useAdmin();
+  const { loading } = useAdmin();
 
 
   // Show loading while checking authentication
@@ -62,7 +61,7 @@ function AppContent() {
     <Routes>
       {/* Forum routes - independent layout */}
       <Route path="/forum/*" element={<ForumRoutes />} />
-      
+
       {/* Main site routes - with Layout */}
       <Route path="/*" element={
         <Layout>

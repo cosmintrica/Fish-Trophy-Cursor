@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Heart, ThumbsDown, Quote, Send, User } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
 import { forumStorage, ForumTopic, ForumPost } from '../services/forumService';
 import ForumLayout from '../components/ForumLayout';
 import MessageContainer from '../components/MessageContainer';
@@ -102,7 +102,7 @@ export default function TopicPage() {
   }
 
   return (
-    <ForumLayout user={forumUser} onLogin={() => {}} onLogout={() => {}}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '' } : null} onLogin={() => {}} onLogout={() => {}}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -213,7 +213,7 @@ export default function TopicPage() {
         />
 
         {/* Posts/Replies cu MessageContainer */}
-        {posts.map((post, index) => (
+        {posts.map((post) => (
           <MessageContainer
             key={post.id}
             post={{

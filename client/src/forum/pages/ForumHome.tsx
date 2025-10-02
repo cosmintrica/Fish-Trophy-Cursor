@@ -6,9 +6,8 @@ import ForumLayout from '../components/ForumLayout';
 import MobileOptimizedCategories from '../components/MobileOptimizedCategories';
 
 export default function ForumHome() {
-  const { user, forumUser, signOut } = useAuth();
+  const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
-  const [categories, setCategories] = useState<any[]>([]);
   const [forumStats, setForumStats] = useState({
     totalTopics: 0,
     totalPosts: 0,
@@ -18,9 +17,7 @@ export default function ForumHome() {
 
   useEffect(() => {
     const stats = forumStorage.getForumStats();
-    const cats = forumStorage.getCategories();
     setForumStats(stats);
-    setCategories(cats);
   }, []);
 
   const handleLogin = () => {
@@ -36,7 +33,7 @@ export default function ForumHome() {
   };
 
   return (
-    <ForumLayout user={forumUser} onLogin={handleLogin} onLogout={handleLogout}>
+    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '' } : null} onLogin={handleLogin} onLogout={handleLogout}>
       {/* Main Content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Mobile Optimized Forum Categories */}
@@ -83,32 +80,32 @@ export default function ForumHome() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
                   {forumStats.totalTopics}
-                </div>
+              </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Topicuri</div>
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.accent, marginBottom: '0.25rem' }}>
                   {forumStats.totalPosts}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Postări</div>
               </div>
+                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Postări</div>
+            </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
                   {forumStats.onlineUsers + 3}
-                </div>
+          </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
-              </div>
+            </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#7c3aed', marginBottom: '0.25rem' }}>
                   2,847
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Record Online</div>
-              </div>
             </div>
+                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Record Online</div>
+          </div>
+        </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
               {/* Utilizatori Online */}
-              <div>
+                <div>
                 <h4 style={{
                   fontSize: '0.875rem',
                   fontWeight: '600',
@@ -165,16 +162,16 @@ export default function ForumHome() {
                       <span className={`user-rank rank-${user.rank}`} style={{ fontSize: '0.625rem' }}>
                         {user.rank}
                       </span>
-                    </div>
-                  ))}
                 </div>
+                  ))}
+              </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
                   Cei mai mulți utilizatori online: <strong>2,847</strong> (15 Aug 2024, 14:23)
-                </div>
               </div>
+            </div>
 
               {/* Legendă Ranguri și Informații */}
-              <div>
+            <div>
                 <h4 style={{
                   fontSize: '0.875rem',
                   fontWeight: '600',
@@ -220,7 +217,7 @@ export default function ForumHome() {
                       </span>
                     </div>
                   ))}
-                </div>
+            </div>
 
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, lineHeight: '1.4' }}>
                   <div style={{ marginBottom: '0.5rem' }}>
@@ -232,15 +229,15 @@ export default function ForumHome() {
                   <div style={{ marginBottom: '0.5rem' }}>
                     <strong>Staff online:</strong> 2 (Admin + Moderator)
                   </div>
-                  <div>
+            <div>
                     <strong>Membri VIP activi:</strong> 1
-                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+              </div>
+            </div>
+          </div>
     </ForumLayout>
   );
 }
