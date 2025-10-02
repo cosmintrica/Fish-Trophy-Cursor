@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { ForumUser } from '../types/forum';
+import { useAuth as useMainAuth } from '../../hooks/useAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -25,15 +26,42 @@ export const useAuth = () => {
 };
 
 export const useAuthProvider = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const mainAuth = useMainAuth();
   const [forumUser, setForumUser] = useState<ForumUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(false); // Setez false pentru dezvoltare
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Pentru dezvoltare fără baza de date - nu facem nimic
-    // Toate funcțiile de auth sunt dezactivate temporar
-  }, []);
+    // Când utilizatorul principal se schimbă, actualizează forumUser
+    if (mainAuth.user) {
+      const displayName = mainAuth.user.user_metadata?.display_name ||
+                         mainAuth.user.user_metadata?.full_name ||
+                         mainAuth.user.email?.split('@')[0] ||
+                         'Utilizator';
+
+      const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+
+      const newForumUser: ForumUser = {
+        id: mainAuth.user.id,
+        username: displayName,
+        email: mainAuth.user.email,
+        avatar_url: mainAuth.user.user_metadata?.avatar_url || null,
+        rank: isAdmin ? 'vip' : 'pescar',
+        post_count: 0,
+        topic_count: 0,
+        reputation_points: isAdmin ? 999 : 100,
+        badges: isAdmin ? ['Administrator', 'Expert Pescuit', 'VIP Member'] : ['Pescar Nou'],
+        isAdmin: isAdmin,
+        canModerateRespect: isAdmin,
+        canDeletePosts: isAdmin,
+        canBanUsers: isAdmin,
+        canEditAnyPost: isAdmin
+      };
+
+      setForumUser(newForumUser);
+    } else {
+      setForumUser(null);
+    }
+  }, [mainAuth.user]);
 
   const loadForumUser = async (userId: string) => {
     try {
@@ -63,7 +91,7 @@ export const useAuthProvider = () => {
     try {
       // Get user metadata
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError || !user) {
         console.error('Error getting user for forum profile creation:', userError);
         return;
@@ -73,18 +101,18 @@ export const useAuthProvider = () => {
       const email = user.email || '';
       const baseUsername = email.split('@')[0] || 'pescar';
       let username = baseUsername;
-      
+
       // Check if username exists and make it unique
       let counter = 1;
       let usernameExists = true;
-      
+
       while (usernameExists) {
         const { data, error } = await supabase
           .from('forum_users')
           .select('id')
           .eq('username', username)
           .single();
-          
+
         if (error && error.code === 'PGRST116') {
           // Username doesn't exist, we can use it
           usernameExists = false;
@@ -124,98 +152,45 @@ export const useAuthProvider = () => {
   };
 
   const signIn = async (email: string, password: string) => {
-    // Mock sign in pentru dezvoltare
-    
-    // Verificare admin
-    if (email === 'cosmin.trica@outlook.com') {
-      
-      const adminUser = {
-        id: 'admin-cosmin-123',
-        email,
-        created_at: new Date().toISOString(),
-      };
-      
-      const adminForumUser = {
-        id: 'forum-admin-cosmin',
-        user_id: 'admin-cosmin-123',
-        username: 'CosminAdmin',
-        avatar_url: '/icon_free.png',
-        signature: '🏆 Fondator Fish Trophy | Administrator Forum',
-        post_count: 1250,
-        topic_count: 89,
-        reputation_points: 999,
-        rank: 'vip' as const, // Folosesc vip pentru admin în sistem actual
-        badges: ['Fondator', 'Administrator', 'Expert Pescuit', 'VIP Member', 'Top Contributor'],
-        is_online: true,
-        last_seen_at: new Date().toISOString(),
-        created_at: new Date('2023-01-15').toISOString(),
-        updated_at: new Date().toISOString(),
-        // Proprietăți admin
-        isAdmin: true,
-        canModerateRespect: true,
-        canDeletePosts: true,
-        canBanUsers: true,
-        canEditAnyPost: true
-      };
-      
-      setUser(adminUser as any);
-      setForumUser(adminForumUser as any);
-      
+    try {
+      await mainAuth.signIn(email, password);
       return { error: null };
+    } catch (error) {
+      return { error };
     }
-    
-    // Simulez un utilizator normal conectat
-    const mockUser = {
-      id: 'mock-user-123',
-      email,
-      created_at: new Date().toISOString(),
-    };
-    
-    const mockForumUser = {
-      id: 'forum-mock-123',
-      user_id: 'mock-user-123',
-      username: email.split('@')[0] || 'pescar123',
-      avatar_url: null,
-      signature: null,
-      post_count: 42,
-      topic_count: 8,
-      reputation_points: 156,
-      rank: 'pescar' as const,
-      badges: ['Primul Post', 'Sociabil'],
-      is_online: true,
-      last_seen_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    setUser(mockUser as any);
-    setForumUser(mockForumUser);
-    
-    return { error: null };
   };
 
   const signUp = async (email: string, password: string, username: string) => {
-    // Mock sign up pentru dezvoltare
-    return { error: null };
+    try {
+      await mainAuth.signUp(email, password, username);
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   };
 
   const signInWithGoogle = async () => {
-    // Mock Google sign in
-    return { error: null };
+    try {
+      await mainAuth.signInWithGoogle();
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   };
 
   const signOut = async () => {
-    // Mock sign out
-    setUser(null);
-    setForumUser(null);
-    setSession(null);
+    try {
+      await mainAuth.logout();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return {
-    user,
+    user: mainAuth.user,
     forumUser,
-    session,
-    loading,
+    session: mainAuth.session,
+    loading: mainAuth.loading,
     signIn,
     signUp,
     signInWithGoogle,
