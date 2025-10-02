@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, MapPin, User, Trophy, FileText, Mail } from 'lucide-react';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -47,7 +47,6 @@ export default function Layout({ children }: { children: ReactNode }) {
            user.email?.split('@')[0] ||
            'Utilizator';
   };
-  // Removed Black Sea popup - now direct link
 
 
 
@@ -139,40 +138,13 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 Ghid Submisie
               </Link>
-              {isAdmin ? (
+              {isAdmin && (
                 <Link
-                  to="/black-sea"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname === '/black-sea'
-                      ? 'text-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Marea Neagră
-                </Link>
-              ) : (
-                <Link
-                  to="/black-sea"
+                  to="/admin"
                   className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
                 >
-                  Marea Neagră
+                  Admin
                 </Link>
-              )}
-              {isAdmin && (
-                <>
-                  <Link
-                    to="/map-test"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                  >
-                    Test Harta
-                  </Link>
-                  <Link
-                    to="/admin"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                  >
-                    Admin
-                  </Link>
-                </>
               )}
             </nav>
 
@@ -303,36 +275,16 @@ export default function Layout({ children }: { children: ReactNode }) {
               <span className="font-medium text-base">Ghid Submisie</span>
             </Link>
 
-            <Link
-              to="/black-sea"
-              className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${
-                location.pathname === '/black-sea' ? 'text-blue-600' : ''
-              }`}
-              onClick={closeMobileMenu}
-            >
-              <MapPin className="w-5 h-5" />
-              <span className="font-medium text-base">Marea Neagră</span>
-            </Link>
 
             {isAdmin && (
-              <>
-                <Link
-                  to="/map-test"
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                  onClick={closeMobileMenu}
-                >
-                  <MapPin className="w-5 h-5" />
-                  <span className="font-medium text-base">Test Harta</span>
-                </Link>
-                <Link
-                  to="/admin"
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                  onClick={closeMobileMenu}
-                >
-                  <User className="w-5 h-5" />
-                  <span className="font-medium text-base">Admin</span>
-                </Link>
-              </>
+              <Link
+                to="/admin"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                <User className="w-5 h-5" />
+                <span className="font-medium text-base">Admin</span>
+              </Link>
             )}
           </nav>
 
@@ -503,7 +455,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <li><Link to="/" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Acasă</Link></li>
                 <li><Link to="/species" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Specii</Link></li>
                 <li><Link to="/records" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Recorduri</Link></li>
-                <li><Link to="/black-sea" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Marea Neagră</Link></li>
                 <li><Link to="/submission-guide" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Ghid Submisie</Link></li>
                 <li><Link to="/og-generator" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Generator Banner</Link></li>
               </ul>
@@ -565,7 +516,6 @@ export default function Layout({ children }: { children: ReactNode }) {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Black Sea popup removed - now direct link */}
 
       {/* Global toast renderer (bottom-right, default styling) */}
     </div>

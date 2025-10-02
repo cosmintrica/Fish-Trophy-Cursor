@@ -11,12 +11,10 @@ import Layout from '@/components/Layout';
 // Initialize analytics
 analytics;
 import ProtectedRoute from '@/components/ProtectedRoute';
-// AdminRoute removed - Black Sea now public
 import ScrollToTop from '@/components/ScrollToTop';
 
 // Pages
 import Home from '@/pages/Home';
-import BlackSeaComingSoon from '@/pages/BlackSeaComingSoon';
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Records from '@/pages/Records';
@@ -28,7 +26,6 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import ConstructionPage from '@/pages/ConstructionPage';
-import MapTest from '@/pages/MapTest';
 
 // Analytics wrapper component that uses useAnalytics inside Router
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
@@ -65,7 +62,6 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/email-confirmation" element={<EmailConfirmation />} />
-        <Route path="/black-sea" element={<BlackSeaComingSoon />} />
         <Route path="/species" element={<Species />} />
         <Route path="/leaderboards" element={<Leaderboards />} />
         <Route path="/records" element={<Records />} />
@@ -73,7 +69,6 @@ function AppContent() {
         <Route path="/submission-guide" element={<SubmissionGuide />} />
         <Route path="/fishing-shops" element={<FishingShops />} />
         <Route path="/og-generator" element={<OgGenerator />} />
-        <Route path="/map-test" element={<MapTest />} />
         <Route
           path="/profile"
           element={

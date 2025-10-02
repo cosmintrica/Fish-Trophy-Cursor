@@ -44,7 +44,6 @@ const convertType = (dbType: string): FishingLocation['type'] => {
     case 'fluviu': return 'river';       // Fluviuri (Dunărea) = râuri
     case 'balti_private': return 'private_pond'; // Bălți private (administrate privat)
     case 'balti_salbatic': return 'balti_salbatic'; // Bălți sălbatice (ANPA, ape necontractate)
-    case 'mare': return 'lake';          // Marea Neagră = lacuri
     case 'delta': return 'lake';         // Delta Dunării = lacuri
     default: return 'lake';
   }

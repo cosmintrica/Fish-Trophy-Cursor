@@ -48,7 +48,6 @@ export const fishingShops: FishingShop[] = [
 
 // Zone de pescuit
 export const fishingZones: FishingZone[] = [
-  { id: '1', name: 'Zona Marea Neagră', coords: [[43.5, 27.5], [43.5, 29.5], [45.5, 29.5], [45.5, 27.5]], color: '#3B82F6', description: 'Zona de pescuit maritim de la granița cu Bulgaria până la Delta Dunării', protected: false },
   { id: '2', name: 'Zona Delta Dunării', coords: [[44.5, 28.5], [44.5, 30.5], [46.5, 30.5], [46.5, 28.5]], color: '#10B981', description: 'Rezervația biosferei Delta Dunării cu canale și lacuri', protected: true }
 ];
 

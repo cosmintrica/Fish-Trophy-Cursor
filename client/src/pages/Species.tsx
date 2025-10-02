@@ -53,7 +53,6 @@ const Species = () => {
     'Pești migratori',
     'Lacuri',
     'Râuri',
-    'Marea Neagră',
     'Delta Dunării'
   ];
 
@@ -164,7 +163,6 @@ const Species = () => {
   const waterTypeMap: { [key: string]: string } = {
     'Lacuri': 'lac',
     'Râuri': 'rau',
-    'Marea Neagră': 'mare',
     'Delta Dunării': 'delta'
   };
 
