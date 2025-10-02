@@ -40,6 +40,11 @@ export default function TopicPage() {
     loadTopicData();
   }, [topicId]);
 
+  // Debug logging pentru posts
+  useEffect(() => {
+    console.log('[TopicPage] Posts updated:', posts.length, posts.map(p => p.id));
+  }, [posts]);
+
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -218,7 +223,6 @@ export default function TopicPage() {
         />
 
         {/* Posts/Replies cu MessageContainer */}
-        {console.log('[TopicPage] Rendering - posts in state:', posts.length, posts.map(p => p.id))}
         {posts.map((post, index) => (
           <MessageContainer
             key={post.id}
