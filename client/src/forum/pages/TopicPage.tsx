@@ -25,11 +25,13 @@ export default function TopicPage() {
       console.log(`[TopicPage] Loading topic ${topicId}:`, {
         topicFound: !!topicData,
         postsFound: topicPosts.length,
-        posts: topicPosts
+        posts: topicPosts.map(p => ({ id: p.id, author: p.author, content: p.content.substring(0, 30) + '...' }))
       });
 
       setTopic(topicData);
       setPosts(topicPosts);
+      
+      console.log('[TopicPage] State updated - posts length:', topicPosts.length);
     }
     setLoading(false);
   };
@@ -216,6 +218,7 @@ export default function TopicPage() {
         />
 
         {/* Posts/Replies cu MessageContainer */}
+        {console.log('[TopicPage] Rendering - posts in state:', posts.length, posts.map(p => p.id))}
         {posts.length > 0 ? (
           posts.map((post) => (
             <MessageContainer

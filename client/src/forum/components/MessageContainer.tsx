@@ -22,23 +22,25 @@ interface MessageContainerProps {
   onQuote?: (postId: string) => void;
 }
 
-export default function MessageContainer({ 
-  post, 
-  isOriginalPost = false, 
-  onRespectChange, 
-  onReply, 
-  onQuote 
+export default function MessageContainer({
+  post,
+  isOriginalPost = false,
+  onRespectChange,
+  onReply,
+  onQuote
 }: MessageContainerProps) {
   const { theme } = useTheme();
   const { forumUser } = useAuth();
   const [showRespectModal, setShowRespectModal] = useState(false);
   const [respectComment, setRespectComment] = useState('');
 
+  console.log('[MessageContainer] Rendering post:', post.id, post.author, post.content.substring(0, 50) + '...');
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'acum';
     if (diffInMinutes < 60) return `acum ${diffInMinutes}m`;
     if (diffInMinutes < 1440) return `acum ${Math.floor(diffInMinutes / 60)}h`;
@@ -49,7 +51,7 @@ export default function MessageContainer({
     // Ranguri pe vechime, nu pe postări
     const seniorityRanks = {
       'incepator': '🆕 Pescar Nou',
-      'pescar': '🎣 Pescar Activ', 
+      'pescar': '🎣 Pescar Activ',
       'expert': '🐟 Pescar Experimentat',
       'maestru': '🏆 Pescar Veteran',
       'moderator': '🟣 Moderator',
@@ -67,7 +69,7 @@ export default function MessageContainer({
   };
 
   return (
-    <div 
+    <div
       style={{
         backgroundColor: theme.surface,
         border: `2px solid ${theme.border}`,
@@ -93,7 +95,7 @@ export default function MessageContainer({
           flexShrink: 0
         }}>
           {/* Avatar */}
-          <div 
+          <div
             style={{
               width: '4rem',
               height: '4rem',
@@ -112,27 +114,27 @@ export default function MessageContainer({
           >
             {post.author.charAt(0).toUpperCase()}
           </div>
-          
+
           {/* Nume utilizator */}
-          <div style={{ 
-            fontWeight: '600', 
-            color: theme.text, 
+          <div style={{
+            fontWeight: '600',
+            color: theme.text,
             fontSize: '0.875rem',
             marginBottom: '0.5rem',
             wordBreak: 'break-word'
           }}>
             {post.author}
           </div>
-          
+
           {/* Rang vechime */}
-          <div style={{ 
-            fontSize: '0.75rem', 
+          <div style={{
+            fontSize: '0.75rem',
             color: theme.textSecondary,
             marginBottom: '0.75rem'
           }}>
             {getSeniorityRank(post.authorRank)}
           </div>
-          
+
           {/* Respect */}
           <div style={{
             backgroundColor: theme.surface,
@@ -145,15 +147,15 @@ export default function MessageContainer({
             <div style={{ fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '0.25rem' }}>
               Respect Pescar
             </div>
-            <div style={{ 
-              fontWeight: '600', 
+            <div style={{
+              fontWeight: '600',
               fontSize: '1rem',
               color: getRespectColor(post.respect || 0)
             }}>
               {post.respect >= 0 ? '+' : ''}{post.respect || 0}
             </div>
           </div>
-          
+
           {/* Equipment preview */}
           <button
             style={{
@@ -214,8 +216,8 @@ export default function MessageContainer({
         {/* Content area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {/* Message content */}
-          <div style={{ 
-            flex: 1, 
+          <div style={{
+            flex: 1,
             padding: '1.5rem',
             fontSize: '0.875rem',
             color: theme.text,
@@ -335,13 +337,13 @@ export default function MessageContainer({
               {/* Admin Controls */}
               {forumUser?.isAdmin && (
                 <>
-                  <div style={{ 
-                    width: '1px', 
-                    height: '1.5rem', 
+                  <div style={{
+                    width: '1px',
+                    height: '1.5rem',
                     backgroundColor: theme.border,
                     margin: '0 0.5rem'
                   }} />
-                  
+
                   <button
                     onClick={() => {
                       if (window.confirm('Ești sigur că vrei să ștergi această postare?')) {
@@ -371,7 +373,7 @@ export default function MessageContainer({
                   >
                     🗑️ Șterge
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       const newContent = prompt('Editează conținutul postării:', post.content);

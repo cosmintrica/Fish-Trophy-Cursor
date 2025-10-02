@@ -72,12 +72,12 @@ class ForumStorage {
   getTopics(): ForumTopic[] {
     const stored = localStorage.getItem('forum-topics');
     const topics = stored ? JSON.parse(stored) : this.getDefaultTopics();
-    
+
     // Dacă localStorage e gol, salvează datele default
     if (!stored) {
       this.setTopics(topics);
     }
-    
+
     return topics;
   }
 
@@ -88,7 +88,7 @@ class ForumStorage {
   getPosts(): ForumPost[] {
     const stored = localStorage.getItem('forum-posts');
     const posts = stored ? JSON.parse(stored) : this.getDefaultPosts();
-    
+
     // Dacă localStorage e gol, salvează datele default
     if (!stored) {
       console.log('[ForumService] No stored posts, using default posts:', posts.length);
@@ -96,7 +96,7 @@ class ForumStorage {
     } else {
       console.log('[ForumService] Loaded posts from localStorage:', posts.length);
     }
-    
+
     return posts;
   }
 
@@ -691,13 +691,13 @@ class ForumStorage {
   getTopicById(topicId: string): ForumTopic | null {
     const topics = this.getTopics();
     const topic = topics.find(t => t.id === topicId) || null;
-    
+
     console.log(`[ForumService] getTopicById(${topicId}):`, {
       totalTopics: topics.length,
       foundTopic: !!topic,
       topicIds: topics.map(t => t.id)
     });
-    
+
     return topic;
   }
 
@@ -723,7 +723,7 @@ class ForumStorage {
         content: content.substring(0, 100) + '...'
       }
     };
-    
+
     topics.unshift(newTopic); // Adaugă la început
     this.setTopics(topics);
     return newTopic;
@@ -733,21 +733,21 @@ class ForumStorage {
   getPostsByTopic(topicId: string): ForumPost[] {
     const allPosts = this.getPosts();
     const filteredPosts = allPosts.filter(post => post.topicId === topicId);
-    
+
     console.log(`[ForumService] getPostsByTopic(${topicId}):`, {
       totalPosts: allPosts.length,
       filteredPosts: filteredPosts.length,
       allTopicIds: allPosts.map(p => p.topicId),
       filteredTopicIds: filteredPosts.map(p => p.topicId)
     });
-    
+
     return filteredPosts;
   }
 
   createPost(topicId: string, content: string, author: string, authorRank: string): ForumPost {
     const posts = this.getPosts();
     const topics = this.getTopics();
-    
+
     const newPost: ForumPost = {
       id: Date.now().toString(),
       topicId,
@@ -758,10 +758,10 @@ class ForumStorage {
       likes: 0,
       dislikes: 0
     };
-    
+
     posts.push(newPost);
     this.setPosts(posts);
-    
+
     // Actualizează statisticile topicului
     const topicIndex = topics.findIndex(t => t.id === topicId);
     if (topicIndex !== -1) {
@@ -775,7 +775,7 @@ class ForumStorage {
       };
       this.setTopics(topics);
     }
-    
+
     return newPost;
   }
 
@@ -813,7 +813,7 @@ class ForumStorage {
     const topics = this.getTopics();
     const posts = this.getPosts();
     const collapsed = this.getCollapsedState();
-    
+
     // Stats calculation complete
 
     return [
@@ -1011,7 +1011,7 @@ class ForumStorage {
   private getLastPostForCategory(categoryId: string): { topicId: string; topicTitle: string; author: string; time: string; } | undefined {
     const topics = this.getTopics().filter(t => t.categoryId === categoryId);
     if (topics.length === 0) return undefined;
-    
+
     const latestTopic = topics.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return {
       topicId: latestTopic.id,
@@ -1024,7 +1024,7 @@ class ForumStorage {
   private getLastPostForCategories(categoryIds: string[]): { topicId: string; topicTitle: string; author: string; time: string; } | undefined {
     const topics = this.getTopics().filter(t => categoryIds.includes(t.categoryId));
     if (topics.length === 0) return undefined;
-    
+
     const latestTopic = topics.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return {
       topicId: latestTopic.id,
@@ -1038,7 +1038,7 @@ class ForumStorage {
   getForumStats() {
     const topics = this.getTopics();
     const posts = this.getPosts();
-    
+
     return {
       totalTopics: topics.length,
       totalPosts: posts.length,
@@ -1057,10 +1057,12 @@ if (typeof window !== 'undefined') {
   // Clear old data și reinițializează
   localStorage.removeItem('forum-topics');
   localStorage.removeItem('forum-posts');
-  
+
   // Forțăm încărcarea datelor default
   storage.getTopics();
   storage.getPosts();
+  
+  console.log('[ForumService] Forced reload - topics:', storage.getTopics().length, 'posts:', storage.getPosts().length);
 }
 
 export const forumStorage = storage;
