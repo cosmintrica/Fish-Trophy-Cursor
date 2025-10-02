@@ -35,23 +35,23 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
   useEffect(() => {
     const storageKey = `forum-viewers-${topicId}`;
     const statsKey = `forum-stats-${topicId}`;
-    
+
     // Încarcă vizitatori existenți
     const loadViewers = () => {
       const stored = localStorage.getItem(storageKey);
       const storedStats = localStorage.getItem(statsKey);
-      
+
       if (stored) {
         const viewerData: Viewer[] = JSON.parse(stored);
         // Filtrează vizitatorii care au plecat (mai mult de 5 minute)
         const now = Date.now();
-        const activeViewers = viewerData.filter(viewer => 
+        const activeViewers = viewerData.filter(viewer =>
           now - viewer.joinedAt < 5 * 60 * 1000
         );
         setViewers(activeViewers);
         setAnonymousCount(Math.max(0, viewerData.length - activeViewers.length));
       }
-      
+
       if (storedStats) {
         const statsData: ViewerStats = JSON.parse(storedStats);
         setStats(statsData);
@@ -78,31 +78,46 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
           return updated;
         });
       } else {
-        // Utilizator anonim
+        // Pentru utilizatori anonimi, folosim un ID persistent per sesiune
+        const sessionKey = `anon-session-${topicId}`;
+        let sessionId = sessionStorage.getItem(sessionKey);
+        
+        if (!sessionId) {
+          sessionId = `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          sessionStorage.setItem(sessionKey, sessionId);
+        }
+
         const anonymousViewer: Viewer = {
-          id: `anon-${Date.now()}`,
+          id: sessionId,
           isAnonymous: true,
           joinedAt: Date.now()
         };
 
         setViewers(prev => {
-          const updated = [...prev, anonymousViewer];
+          const filtered = prev.filter(v => v.id !== sessionId);
+          const updated = [...filtered, anonymousViewer];
           localStorage.setItem(storageKey, JSON.stringify(updated));
           return updated;
         });
       }
     };
 
-    // Incrementează statisticile
+    // Incrementează statisticile doar o dată per sesiune
     const incrementStats = () => {
-      const newStats = {
-        totalViews: stats.totalViews + 1,
-        uniqueUsers: stats.uniqueUsers + (forumUser ? 1 : 0),
-        lastUpdate: Date.now()
-      };
+      const sessionStatsKey = `stats-incremented-${topicId}`;
+      const hasIncremented = sessionStorage.getItem(sessionStatsKey);
       
-      setStats(newStats);
-      localStorage.setItem(statsKey, JSON.stringify(newStats));
+      if (!hasIncremented) {
+        const newStats = {
+          totalViews: stats.totalViews + 1,
+          uniqueUsers: stats.uniqueUsers + (forumUser ? 1 : 0),
+          lastUpdate: Date.now()
+        };
+        
+        setStats(newStats);
+        localStorage.setItem(statsKey, JSON.stringify(newStats));
+        sessionStorage.setItem(sessionStatsKey, 'true');
+      }
     };
 
     // Inițializare
@@ -118,7 +133,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
     // Cleanup la unmount
     return () => {
       clearInterval(interval);
-      
+
       // Marchează utilizatorul ca plecat
       if (forumUser) {
         const storageKey = `forum-viewers-${topicId}`;
