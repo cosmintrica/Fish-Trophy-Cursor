@@ -69,7 +69,7 @@ export interface ForumCategory {
 
 // Mock storage în localStorage
 class ForumStorage {
-  private getTopics(): ForumTopic[] {
+  getTopics(): ForumTopic[] {
     const stored = localStorage.getItem('forum-topics');
     const topics = stored ? JSON.parse(stored) : this.getDefaultTopics();
     
@@ -85,7 +85,7 @@ class ForumStorage {
     localStorage.setItem('forum-topics', JSON.stringify(topics));
   }
 
-  private getPosts(): ForumPost[] {
+  getPosts(): ForumPost[] {
     const stored = localStorage.getItem('forum-posts');
     const posts = stored ? JSON.parse(stored) : this.getDefaultPosts();
     
@@ -1036,9 +1036,9 @@ if (typeof window !== 'undefined') {
   localStorage.removeItem('forum-topics');
   localStorage.removeItem('forum-posts');
   
-  // Forțăm încărcarea datelor default
-  storage.getTopics();
-  storage.getPosts();
+  // Forțăm încărcarea datelor default prin metode publice
+  storage.getCategories();
+  storage.getForumStats();
 }
 
 export const forumStorage = storage;
