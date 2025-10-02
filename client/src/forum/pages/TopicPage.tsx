@@ -219,36 +219,21 @@ export default function TopicPage() {
 
         {/* Posts/Replies cu MessageContainer */}
         {console.log('[TopicPage] Rendering - posts in state:', posts.length, posts.map(p => p.id))}
-        {posts.length > 0 ? (
-          posts.map((post) => (
-            <MessageContainer
-              key={post.id}
-              post={{
-                ...post,
-                respect: Math.floor(Math.random() * 30) + 1 // Mock respect
-              }}
-              onRespectChange={(postId, delta, comment) => {
-                console.log(`Respect ${delta > 0 ? 'oferit' : 'retras'} pentru ${post.author}: "${comment}"`);
-                alert(`Ai ${delta > 0 ? 'oferit' : 'retras'} respect pentru ${post.author}!`);
-              }}
-              onReply={() => console.log(`Reply to ${post.author}`)}
-              onQuote={() => console.log(`Quote ${post.author}`)}
-            />
-          ))
-        ) : (
-          <div style={{
-            padding: '2rem',
-            textAlign: 'center',
-            color: '#666',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            margin: '1rem 0'
-          }}>
-            <MessageSquare size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <h3>Nu există încă răspunsuri la acest topic</h3>
-            <p>Fii primul care comentează!</p>
-          </div>
-        )}
+        {posts.map((post, index) => (
+          <MessageContainer
+            key={post.id}
+            post={{
+              ...post,
+              respect: Math.floor(Math.random() * 30) + 1 // Mock respect
+            }}
+            onRespectChange={(postId, delta, comment) => {
+              console.log(`Respect ${delta > 0 ? 'oferit' : 'retras'} pentru ${post.author}: "${comment}"`);
+              alert(`Ai ${delta > 0 ? 'oferit' : 'retras'} respect pentru ${post.author}!`);
+            }}
+            onReply={() => console.log(`Reply to ${post.author}`)}
+            onQuote={() => console.log(`Quote ${post.author}`)}
+          />
+        ))}
 
         {/* Reply Form */}
         {forumUser ? (
