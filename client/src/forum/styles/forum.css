@@ -1,0 +1,302 @@
+/* Forum Pescuit - Stiluri principale */
+/* Stiluri specifice pentru secțiunea forum cu design tradițional românesc */
+
+/* Variabile CSS pentru culorile forum */
+:root {
+  --forum-primary: #1e3a8a;      /* Albastru pescuit */
+  --forum-secondary: #10b981;     /* Verde */
+  --forum-accent: #f59e0b;        /* Portocaliu */
+  --forum-background: #ffffff;    /* Fundal alb */
+  --forum-text: #1f2937;          /* Text principal */
+  --forum-text-light: #6b7280;    /* Text secundar */
+  --forum-border: #e5e7eb;        /* Borduri */
+  --forum-hover: #f3f4f6;         /* Hover state */
+}
+
+/* Layout principal forum */
+.forum-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: var(--forum-background);
+  min-height: 100vh;
+}
+
+/* Header forum */
+.forum-header {
+  background: linear-gradient(135deg, var(--forum-primary), var(--forum-secondary));
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.forum-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.forum-header p {
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+/* Sidebar forum */
+.forum-sidebar {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.forum-sidebar h3 {
+  color: var(--forum-primary);
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  border-bottom: 2px solid var(--forum-accent);
+  padding-bottom: 8px;
+}
+
+/* Categorii forum */
+.forum-categories {
+  display: grid;
+  gap: 15px;
+}
+
+.forum-category {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.forum-category:hover {
+  background: var(--forum-hover);
+  border-color: var(--forum-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.forum-category h3 {
+  color: var(--forum-primary);
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+}
+
+.forum-category p {
+  color: var(--forum-text-light);
+  margin: 0 0 15px 0;
+  line-height: 1.5;
+}
+
+.forum-category-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: var(--forum-text-light);
+}
+
+/* Topicuri forum */
+.forum-topics {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.forum-topic {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--forum-border);
+  transition: background-color 0.2s ease;
+}
+
+.forum-topic:hover {
+  background: var(--forum-hover);
+}
+
+.forum-topic:last-child {
+  border-bottom: none;
+}
+
+.forum-topic-info {
+  flex: 1;
+}
+
+.forum-topic-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--forum-text);
+  margin: 0 0 5px 0;
+  text-decoration: none;
+}
+
+.forum-topic-title:hover {
+  color: var(--forum-primary);
+}
+
+.forum-topic-meta {
+  font-size: 0.9rem;
+  color: var(--forum-text-light);
+}
+
+.forum-topic-stats {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: var(--forum-text-light);
+  min-width: 120px;
+  justify-content: flex-end;
+}
+
+/* Butoane forum */
+.forum-btn {
+  background: var(--forum-primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.forum-btn:hover {
+  background: var(--forum-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.forum-btn-secondary {
+  background: var(--forum-background);
+  color: var(--forum-primary);
+  border: 1px solid var(--forum-primary);
+}
+
+.forum-btn-secondary:hover {
+  background: var(--forum-primary);
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .forum-container {
+    padding: 10px;
+  }
+
+  .forum-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .forum-category {
+    padding: 15px;
+  }
+
+  .forum-topic {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .forum-topic-stats {
+    justify-content: flex-start;
+  }
+}
+
+/* Stiluri pentru editorul de postări */
+.forum-editor {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.forum-editor textarea {
+  width: 100%;
+  min-height: 200px;
+  border: 1px solid var(--forum-border);
+  border-radius: 6px;
+  padding: 15px;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.forum-editor textarea:focus {
+  outline: none;
+  border-color: var(--forum-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Stiluri pentru postări */
+.forum-post {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.forum-post-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--forum-border);
+}
+
+.forum-post-author {
+  font-weight: 600;
+  color: var(--forum-primary);
+}
+
+.forum-post-date {
+  color: var(--forum-text-light);
+  font-size: 0.9rem;
+}
+
+.forum-post-content {
+  line-height: 1.6;
+  color: var(--forum-text);
+}
+
+/* Stiluri pentru utilizatori online */
+.forum-online-users {
+  background: var(--forum-background);
+  border: 1px solid var(--forum-border);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.forum-online-users h4 {
+  color: var(--forum-primary);
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+}
+
+.forum-user-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forum-user-badge {
+  background: var(--forum-accent);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}

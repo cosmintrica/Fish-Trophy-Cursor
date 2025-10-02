@@ -26,6 +26,7 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import ConstructionPage from '@/pages/ConstructionPage';
+import ForumRoutes from '@/forum/routes';
 
 // Analytics wrapper component that uses useAnalytics inside Router
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
@@ -51,7 +52,8 @@ function AppContent() {
   }
 
   // Show construction page if user is not admin or not logged in
-  if (!isAdmin) {
+  // Temporarily allow forum access for testing
+  if (!isAdmin && !window.location.pathname.startsWith('/forum')) {
     return <ConstructionPage />;
   }
 
@@ -69,6 +71,7 @@ function AppContent() {
         <Route path="/submission-guide" element={<SubmissionGuide />} />
         <Route path="/fishing-shops" element={<FishingShops />} />
         <Route path="/og-generator" element={<OgGenerator />} />
+        <Route path="/forum/*" element={<ForumRoutes />} />
         <Route
           path="/profile"
           element={

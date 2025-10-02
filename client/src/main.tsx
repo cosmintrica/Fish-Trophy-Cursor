@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
+import './forum/styles/forum.css';
 
 // Check if root element exists
 const rootElement = document.getElementById('root');

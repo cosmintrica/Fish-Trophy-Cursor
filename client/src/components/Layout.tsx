@@ -138,6 +138,12 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 Ghid Submisie
               </Link>
+              <Link
+                to="/forum"
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                🎣 Forum
+              </Link>
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -275,6 +281,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               <span className="font-medium text-base">Ghid Submisie</span>
             </Link>
 
+            <Link
+              to="/forum"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              onClick={closeMobileMenu}
+            >
+              <Fish className="w-5 h-5" />
+              <span className="font-medium text-base">🎣 Forum</span>
+            </Link>
 
             {isAdmin && (
               <Link
