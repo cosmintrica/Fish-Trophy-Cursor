@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Eye, Users } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../hooks/useAuth';
 
 interface ActiveViewersProps {
   topicId: string;
@@ -11,31 +12,125 @@ interface Viewer {
   name?: string;
   rank?: string;
   isAnonymous: boolean;
+  joinedAt: number;
+}
+
+interface ViewerStats {
+  totalViews: number;
+  uniqueUsers: number;
+  lastUpdate: number;
 }
 
 export default function ActiveViewers({ topicId }: ActiveViewersProps) {
   const { theme } = useTheme();
+  const { forumUser } = useAuth();
   const [viewers, setViewers] = useState<Viewer[]>([]);
   const [anonymousCount, setAnonymousCount] = useState(0);
+  const [stats, setStats] = useState<ViewerStats>({
+    totalViews: 0,
+    uniqueUsers: 0,
+    lastUpdate: Date.now()
+  });
 
   useEffect(() => {
-    // Mock data pentru vizualizatori
-    const mockViewers: Viewer[] = [
-      { id: '1', name: 'PescarExpert', rank: 'expert', isAnonymous: false },
-      { id: '2', name: 'CrapMaster', rank: 'maestru', isAnonymous: false },
-      { id: '3', name: 'TroutHunter', rank: 'pescar', isAnonymous: false }
-    ];
+    const storageKey = `forum-viewers-${topicId}`;
+    const statsKey = `forum-stats-${topicId}`;
+    
+    // Încarcă vizitatori existenți
+    const loadViewers = () => {
+      const stored = localStorage.getItem(storageKey);
+      const storedStats = localStorage.getItem(statsKey);
+      
+      if (stored) {
+        const viewerData: Viewer[] = JSON.parse(stored);
+        // Filtrează vizitatorii care au plecat (mai mult de 5 minute)
+        const now = Date.now();
+        const activeViewers = viewerData.filter(viewer => 
+          now - viewer.joinedAt < 5 * 60 * 1000
+        );
+        setViewers(activeViewers);
+        setAnonymousCount(Math.max(0, viewerData.length - activeViewers.length));
+      }
+      
+      if (storedStats) {
+        const statsData: ViewerStats = JSON.parse(storedStats);
+        setStats(statsData);
+      }
+    };
 
-    setViewers(mockViewers);
-    setAnonymousCount(Math.floor(Math.random() * 5) + 2); // 2-6 vizitatori anonimi
+    // Adaugă utilizatorul curent dacă e logat
+    const addCurrentUser = () => {
+      if (forumUser) {
+        const newViewer: Viewer = {
+          id: `user-${forumUser.id}`,
+          name: forumUser.username,
+          rank: forumUser.rank,
+          isAnonymous: false,
+          joinedAt: Date.now()
+        };
 
-    // Simulăm actualizări în timp real
+        setViewers(prev => {
+          const filtered = prev.filter(v => v.id !== newViewer.id);
+          const updated = [...filtered, newViewer];
+          
+          // Salvează în localStorage
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        // Utilizator anonim
+        const anonymousViewer: Viewer = {
+          id: `anon-${Date.now()}`,
+          isAnonymous: true,
+          joinedAt: Date.now()
+        };
+
+        setViewers(prev => {
+          const updated = [...prev, anonymousViewer];
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+          return updated;
+        });
+      }
+    };
+
+    // Incrementează statisticile
+    const incrementStats = () => {
+      const newStats = {
+        totalViews: stats.totalViews + 1,
+        uniqueUsers: stats.uniqueUsers + (forumUser ? 1 : 0),
+        lastUpdate: Date.now()
+      };
+      
+      setStats(newStats);
+      localStorage.setItem(statsKey, JSON.stringify(newStats));
+    };
+
+    // Inițializare
+    loadViewers();
+    addCurrentUser();
+    incrementStats();
+
+    // Actualizare periodică
     const interval = setInterval(() => {
-      setAnonymousCount(Math.floor(Math.random() * 8) + 1);
-    }, 10000); // Update la 10 secunde
+      loadViewers();
+    }, 30000); // Update la 30 secunde
 
-    return () => clearInterval(interval);
-  }, [topicId]);
+    // Cleanup la unmount
+    return () => {
+      clearInterval(interval);
+      
+      // Marchează utilizatorul ca plecat
+      if (forumUser) {
+        const storageKey = `forum-viewers-${topicId}`;
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const viewerData: Viewer[] = JSON.parse(stored);
+          const updated = viewerData.filter(v => v.id !== `user-${forumUser.id}`);
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        }
+      }
+    };
+  }, [topicId, forumUser]);
 
   const getSeniorityRank = (rank: string) => {
     const seniorityRanks = {
@@ -178,13 +273,13 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
         alignItems: 'center'
       }}>
         <div>
-          <strong>Total vizualizări:</strong> {Math.floor(Math.random() * 500) + 100}
+          <strong>Total vizualizări:</strong> {stats.totalViews}
         </div>
         <div>
-          <strong>Utilizatori unici:</strong> {viewers.length + Math.floor(Math.random() * 10) + 5}
+          <strong>Utilizatori unici:</strong> {stats.uniqueUsers}
         </div>
         <div>
-          <strong>Ultima actualizare:</strong> acum {Math.floor(Math.random() * 30) + 1}s
+          <strong>Ultima actualizare:</strong> acum {Math.floor((Date.now() - stats.lastUpdate) / 1000)}s
         </div>
       </div>
     </div>
