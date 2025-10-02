@@ -8,6 +8,11 @@ export interface ForumUser {
   topic_count: number;
   reputation_points: number;
   badges: string[];
+  isAdmin?: boolean;
+  canModerateRespect?: boolean;
+  canDeletePosts?: boolean;
+  canBanUsers?: boolean;
+  canEditAnyPost?: boolean;
 }
 
 export interface ForumTopic {
