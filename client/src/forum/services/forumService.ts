@@ -69,7 +69,7 @@ export interface ForumCategory {
 
 // Mock storage în localStorage
 class ForumStorage {
-  private getTopics(): ForumTopic[] {
+  getTopics(): ForumTopic[] {
     const stored = localStorage.getItem('forum-topics');
     const topics = stored ? JSON.parse(stored) : this.getDefaultTopics();
     
@@ -85,13 +85,16 @@ class ForumStorage {
     localStorage.setItem('forum-topics', JSON.stringify(topics));
   }
 
-  private getPosts(): ForumPost[] {
+  getPosts(): ForumPost[] {
     const stored = localStorage.getItem('forum-posts');
     const posts = stored ? JSON.parse(stored) : this.getDefaultPosts();
     
     // Dacă localStorage e gol, salvează datele default
     if (!stored) {
+      console.log('[ForumService] No stored posts, using default posts:', posts.length);
       this.setPosts(posts);
+    } else {
+      console.log('[ForumService] Loaded posts from localStorage:', posts.length);
     }
     
     return posts;
@@ -686,7 +689,16 @@ class ForumStorage {
   }
 
   getTopicById(topicId: string): ForumTopic | null {
-    return this.getTopics().find(topic => topic.id === topicId) || null;
+    const topics = this.getTopics();
+    const topic = topics.find(t => t.id === topicId) || null;
+    
+    console.log(`[ForumService] getTopicById(${topicId}):`, {
+      totalTopics: topics.length,
+      foundTopic: !!topic,
+      topicIds: topics.map(t => t.id)
+    });
+    
+    return topic;
   }
 
   createTopic(categoryId: string, title: string, content: string, author: string, authorRank: string): ForumTopic {
@@ -719,7 +731,17 @@ class ForumStorage {
 
   // Metode pentru postări
   getPostsByTopic(topicId: string): ForumPost[] {
-    return this.getPosts().filter(post => post.topicId === topicId);
+    const allPosts = this.getPosts();
+    const filteredPosts = allPosts.filter(post => post.topicId === topicId);
+    
+    console.log(`[ForumService] getPostsByTopic(${topicId}):`, {
+      totalPosts: allPosts.length,
+      filteredPosts: filteredPosts.length,
+      allTopicIds: allPosts.map(p => p.topicId),
+      filteredTopicIds: filteredPosts.map(p => p.topicId)
+    });
+    
+    return filteredPosts;
   }
 
   createPost(topicId: string, content: string, author: string, authorRank: string): ForumPost {
