@@ -32,12 +32,12 @@ export default function CategoryPage() {
 
   const loadTopics = async () => {
     setLoading(true);
-    
+
     // Loading instant - fără delay artificial
     if (categoryId) {
       const categoryTopics = forumStorage.getTopicsByCategory(categoryId);
       setTopics(categoryTopics);
-      
+
       // Set category name cu toate categoriile posibile
       const categoryNames: { [key: string]: string } = {
         // Categorii principale
@@ -46,29 +46,29 @@ export default function CategoryPage() {
         'echipament': 'Echipament și Accesorii',
         'locatii': 'Locații de Pescuit',
         'comunitate': 'Comunitate și Evenimente',
-        
+
         // Sub-categorii Crap
         'tehnici-crap': 'Tehnici și Tactici Crap',
         'momeli-crap': 'Momeli și Arome Crap',
         'echipament-crap': 'Echipament pentru Crap',
-        
+
         // Sub-categorii Păstrăv
         'pastrav-munte': 'Păstrăv de Munte',
         'pastrav-iazuri': 'Iazuri de Păstrăv',
-        
+
         // Sub-categorii Echipament
         'lansete-mulinete': 'Lansete și Mulinete',
         'accesorii': 'Accesorii și Gadget-uri',
-        
+
         // Sub-categorii Locații
         'lacuri-balti': 'Lacuri și Bălți',
         'rauri': 'Râuri și Canale',
-        
+
         // Sub-categorii Comunitate
         'discutii-generale': 'Discuții Generale',
         'concursuri': 'Concursuri și Evenimente'
       };
-      
+
       // Dacă nu găsește categoria, încearcă să o găsească în categoriile disponibile
       let foundName = categoryNames[categoryId];
       if (!foundName) {
@@ -87,10 +87,10 @@ export default function CategoryPage() {
           }
         }
       }
-      
+
       setCategoryName(foundName || `Categorie ${categoryId}`);
     }
-    
+
     setLoading(false);
   };
 
@@ -133,7 +133,7 @@ export default function CategoryPage() {
         </nav>
 
         {/* Header categorie */}
-        <div 
+        <div
           style={{
             backgroundColor: 'white',
             borderRadius: '1rem',
@@ -143,7 +143,7 @@ export default function CategoryPage() {
             overflow: 'hidden'
           }}
         >
-          <div 
+          <div
             style={{
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: 'white',
@@ -153,7 +153,7 @@ export default function CategoryPage() {
               gap: '1rem'
             }}
           >
-            <Link 
+            <Link
               to="/forum"
               style={{
                 display: 'flex',
@@ -182,7 +182,7 @@ export default function CategoryPage() {
         </div>
 
         {/* Lista topicuri */}
-        <div 
+        <div
           style={{
             backgroundColor: 'white',
             borderRadius: '1rem',
@@ -192,7 +192,7 @@ export default function CategoryPage() {
           }}
         >
           {/* Header tabel */}
-          <div 
+          <div
             style={{
               backgroundColor: '#f8fafc',
               padding: '1rem 1.5rem',
@@ -213,8 +213,8 @@ export default function CategoryPage() {
           </div>
 
           {/* Header pentru topicuri */}
-          <div style={{ 
-            backgroundColor: '#f8fafc', 
+          <div style={{
+            backgroundColor: '#f8fafc',
             borderBottom: '1px solid #e5e7eb',
             padding: '0.75rem 1rem',
             display: 'grid',
@@ -271,12 +271,12 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Răspunsuri - perfect centrat */}
-                <div style={{ 
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
                   color: '#059669',
                   minHeight: '2rem'
                 }}>
@@ -284,12 +284,12 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Vizualizări - perfect centrat */}
-                <div style={{ 
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
                   color: '#6b7280',
                   minHeight: '2rem'
                 }}>
@@ -297,13 +297,13 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Ultima postare - perfect centrat */}
-                <div style={{ 
+                <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   textAlign: 'center',
-                  fontSize: '0.75rem', 
+                  fontSize: '0.75rem',
                   color: '#6b7280',
                   minHeight: '2rem'
                 }}>

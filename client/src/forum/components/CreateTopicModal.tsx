@@ -14,13 +14,13 @@ interface CreateTopicModalProps {
   onTopicCreated: () => void;
 }
 
-export default function CreateTopicModal({ 
-  isOpen, 
-  onClose, 
-  categoryId, 
-  categoryName, 
-  user, 
-  onTopicCreated 
+export default function CreateTopicModal({
+  isOpen,
+  onClose,
+  categoryId,
+  categoryName,
+  user,
+  onTopicCreated
 }: CreateTopicModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -28,29 +28,29 @@ export default function CreateTopicModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim() || !content.trim()) {
       alert('Te rog completează titlul și conținutul!');
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Creare instant - fără delay artificial
       forumStorage.createTopic(categoryId, title.trim(), content.trim(), user.username, user.rank);
-      
+
       // Reset form
       setTitle('');
       setContent('');
-      
+
       // Notify parent
       onTopicCreated();
       onClose();
-      
+
       // Show success message
       alert('Topic creat cu succes!');
-      
+
     } catch (error) {
       console.error('Error creating topic:', error);
       alert('A apărut o eroare la crearea topicului!');
@@ -62,7 +62,7 @@ export default function CreateTopicModal({
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       style={{
         position: 'fixed',
         inset: 0,
@@ -74,7 +74,7 @@ export default function CreateTopicModal({
         padding: '1rem'
       }}
     >
-      <div 
+      <div
         style={{
           backgroundColor: 'white',
           borderRadius: '1rem',
@@ -88,7 +88,7 @@ export default function CreateTopicModal({
         }}
       >
         {/* Header */}
-        <div 
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -130,14 +130,14 @@ export default function CreateTopicModal({
           <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Titlu */}
             <div>
-              <label 
-                htmlFor="topic-title" 
-                style={{ 
-                  display: 'block', 
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '0.5rem' 
+              <label
+                htmlFor="topic-title"
+                style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
                 }}
               >
                 Titlul topicului
@@ -169,14 +169,14 @@ export default function CreateTopicModal({
 
             {/* Conținut */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <label 
-                htmlFor="topic-content" 
-                style={{ 
-                  display: 'block', 
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '0.5rem' 
+              <label
+                htmlFor="topic-content"
+                style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
                 }}
               >
                 Conținutul postării
@@ -211,7 +211,7 @@ export default function CreateTopicModal({
           </div>
 
           {/* Footer cu butoane */}
-          <div 
+          <div
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -225,7 +225,7 @@ export default function CreateTopicModal({
               Postat ca: <span style={{ fontWeight: '600', color: '#2563eb' }}>{user.username}</span>
               <span className={`user-rank rank-${user.rank} ml-2`}>{user.rank}</span>
             </div>
-            
+
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 type="button"
@@ -252,8 +252,8 @@ export default function CreateTopicModal({
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.5rem 1rem',
-                  background: isSubmitting || !title.trim() || !content.trim() 
-                    ? '#9ca3af' 
+                  background: isSubmitting || !title.trim() || !content.trim()
+                    ? '#9ca3af'
                     : 'linear-gradient(135deg, #2563eb, #4f46e5)',
                   color: 'white',
                   border: 'none',
@@ -266,7 +266,7 @@ export default function CreateTopicModal({
               >
                 {isSubmitting ? (
                   <>
-                    <div 
+                    <div
                       style={{
                         width: '1rem',
                         height: '1rem',

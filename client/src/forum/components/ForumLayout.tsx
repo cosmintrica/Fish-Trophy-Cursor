@@ -160,12 +160,12 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                       </div>
                     )}
 
-                    <Bell 
+                    <Bell
                       onClick={() => alert('Notificări - în dezvoltare')}
-                      style={{ 
-                        width: '1.25rem', 
-                        height: '1.25rem', 
-                        color: '#6b7280', 
+                      style={{
+                        width: '1.25rem',
+                        height: '1.25rem',
+                        color: '#6b7280',
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}

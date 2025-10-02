@@ -30,7 +30,7 @@ export default function TopicPage() {
 
       setTopic(topicData);
       setPosts(topicPosts);
-      
+
       console.log('[TopicPage] State updated - posts length:', topicPosts.length);
     }
     setLoading(false);

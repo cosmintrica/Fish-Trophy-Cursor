@@ -17,10 +17,10 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 1024); // Măresc threshold-ul pentru mobile
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -43,10 +43,10 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
 
   if (loading) {
     return (
-      <div style={{ 
-        backgroundColor: theme.surface, 
-        borderRadius: '0.5rem', 
-        border: `1px solid ${theme.border}`, 
+      <div style={{
+        backgroundColor: theme.surface,
+        borderRadius: '0.5rem',
+        border: `1px solid ${theme.border}`,
         padding: '2rem',
         textAlign: 'center'
       }}>
@@ -59,16 +59,16 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
   if (isMobile) {
     // Mobile layout - simplified
     return (
-      <div style={{ 
-        backgroundColor: theme.surface, 
-        borderRadius: '0.5rem', 
-        border: `1px solid ${theme.border}`, 
+      <div style={{
+        backgroundColor: theme.surface,
+        borderRadius: '0.5rem',
+        border: `1px solid ${theme.border}`,
         overflow: 'hidden',
         transition: 'all 0.3s ease'
       }}>
         {/* Mobile Header */}
-        <div style={{ 
-          backgroundColor: theme.background, 
+        <div style={{
+          backgroundColor: theme.background,
           borderBottom: `1px solid ${theme.border}`,
           padding: '1rem',
           textAlign: 'center'
@@ -82,7 +82,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
         {categories.map((category) => (
           <div key={category.id}>
             {/* Category Card */}
-            <div 
+            <div
               style={{
                 backgroundColor: theme.surface,
                 borderBottom: `1px solid ${theme.border}`,
@@ -100,20 +100,20 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                 ) : (
                   <ChevronDown style={{ width: '0.875rem', height: '0.875rem', color: theme.textSecondary }} />
                 )}
-                
+
                 <div style={{ fontSize: '1rem' }}>{category.icon}</div>
-                
+
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: '600', color: theme.text, lineHeight: '1.2' }}>
                     {category.name}
                   </div>
                 </div>
 
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.25rem', 
-                  fontSize: '0.7rem', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.7rem',
                   color: theme.textSecondary,
                   backgroundColor: theme.background,
                   padding: '0.25rem 0.5rem',
@@ -133,7 +133,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
             {!category.isCollapsed && (
               <div style={{ backgroundColor: theme.background }}>
                 {category.subcategories.map((subcategory) => (
-                  <div 
+                  <div
                     key={subcategory.id}
                     style={{
                       padding: '0.75rem 0.5rem 0.75rem 2rem',
@@ -152,13 +152,13 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                         backgroundColor: theme.primary,
                         borderRadius: '50%'
                       }} />
-                      
+
                       <div style={{ fontSize: '0.75rem', fontWeight: '500', color: theme.text, flex: 1, lineHeight: '1.2' }}>
                         {subcategory.name}
                       </div>
-                      
-                      <div style={{ 
-                        fontSize: '0.65rem', 
+
+                      <div style={{
+                        fontSize: '0.65rem',
                         color: theme.textSecondary,
                         backgroundColor: theme.surface,
                         padding: '0.125rem 0.375rem',
@@ -167,7 +167,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                         {subcategory.topicCount}
                       </div>
                     </div>
-                    
+
                     <div style={{ fontSize: '0.65rem', color: theme.textSecondary, marginLeft: '0.75rem', lineHeight: '1.2' }}>
                       {subcategory.description}
                     </div>
@@ -184,17 +184,17 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
 
   // Desktop layout - same as before but with theme support
   return (
-    <div style={{ 
-      backgroundColor: theme.surface, 
-      borderRadius: '0.5rem', 
-      border: `1px solid ${theme.border}`, 
+    <div style={{
+      backgroundColor: theme.surface,
+      borderRadius: '0.5rem',
+      border: `1px solid ${theme.border}`,
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
       overflow: 'hidden',
       transition: 'all 0.3s ease'
     }}>
       {/* Header */}
-      <div style={{ 
-        backgroundColor: theme.background, 
+      <div style={{
+        backgroundColor: theme.background,
         borderBottom: `1px solid ${theme.border}`,
         padding: '0.75rem 1rem',
         display: 'grid',
@@ -216,7 +216,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
       {categories.map((category) => (
         <div key={category.id}>
           {/* Category Header */}
-          <div 
+          <div
             style={{
               backgroundColor: theme.background,
               borderBottom: `1px solid ${theme.border}`,
@@ -239,9 +239,9 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
               ) : (
                 <ChevronDown style={{ width: '1rem', height: '1rem', color: theme.textSecondary }} />
               )}
-              
+
               <div style={{ fontSize: '1.5rem' }}>{category.icon}</div>
-              
+
               <div>
                 <div style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '0.125rem' }}>
                   {category.name}
@@ -263,8 +263,8 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
               {category.lastPost ? (
                 <div>
                   <div style={{ fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
-                    {category.lastPost.topicTitle.length > 30 
-                      ? category.lastPost.topicTitle.substring(0, 30) + '...' 
+                    {category.lastPost.topicTitle.length > 30
+                      ? category.lastPost.topicTitle.substring(0, 30) + '...'
                       : category.lastPost.topicTitle}
                   </div>
                   <div>de <span style={{ fontWeight: '500' }}>{category.lastPost.author}</span></div>
@@ -280,7 +280,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
           {!category.isCollapsed && (
             <div>
               {category.subcategories.map((subcategory, index) => (
-                <div 
+                <div
                   key={subcategory.id}
                   style={{
                     backgroundColor: theme.surface,
@@ -306,7 +306,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                       backgroundColor: theme.primary,
                       borderRadius: '50%'
                     }} />
-                    
+
                     <div>
                       <div style={{ fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
                         {subcategory.name}
@@ -328,8 +328,8 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                     {subcategory.lastPost ? (
                       <div>
                         <div style={{ fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
-                          {subcategory.lastPost.topicTitle.length > 25 
-                            ? subcategory.lastPost.topicTitle.substring(0, 25) + '...' 
+                          {subcategory.lastPost.topicTitle.length > 25
+                            ? subcategory.lastPost.topicTitle.substring(0, 25) + '...'
                             : subcategory.lastPost.topicTitle}
                         </div>
                         <div>de <span style={{ fontWeight: '500' }}>{subcategory.lastPost.author}</span></div>
