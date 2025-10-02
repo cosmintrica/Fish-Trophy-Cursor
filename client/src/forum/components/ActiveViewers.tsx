@@ -40,7 +40,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
   const getSeniorityRank = (rank: string) => {
     const seniorityRanks = {
       'incepator': '🆕 Pescar Nou',
-      'pescar': '🎣 Pescar Activ', 
+      'pescar': '🎣 Pescar Activ',
       'expert': '🐟 Pescar Experimentat',
       'maestru': '🏆 Pescar Veteran',
       'moderator': '🟣 Moderator',
@@ -53,7 +53,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
   const totalViewers = viewers.length + anonymousCount;
 
   return (
-    <div 
+    <div
       style={{
         backgroundColor: theme.surface,
         border: `1px solid ${theme.border}`,
@@ -75,7 +75,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
       }}>
         <Eye style={{ width: '1rem', height: '1rem', color: theme.primary }} />
         <span>Vizualizează acest topic:</span>
-        <span style={{ 
+        <span style={{
           backgroundColor: theme.background,
           padding: '0.25rem 0.5rem',
           borderRadius: '0.25rem',
@@ -115,7 +115,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
             }}
           >
             {/* Avatar mic */}
-            <div 
+            <div
               style={{
                 width: '1.5rem',
                 height: '1.5rem',
@@ -131,7 +131,7 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
             >
               {viewer.name?.charAt(0).toUpperCase()}
             </div>
-            
+
             <div>
               <div style={{ fontWeight: '500', color: theme.text }}>
                 {viewer.name}
@@ -190,5 +190,3 @@ export default function ActiveViewers({ topicId }: ActiveViewersProps) {
     </div>
   );
 }
-
-
