@@ -109,43 +109,35 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-8" role="navigation" aria-label="Navigația principală">
-              {isAdmin && (
-                <Link
-                  to="/"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname === '/'
-                      ? 'text-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                  aria-current={location.pathname === '/' ? 'page' : undefined}
-                >
-                  Acasă
-                </Link>
-              )}
-              {isAdmin && (
-                <Link
-                  to="/species"
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Specii
-                </Link>
-              )}
-              {isAdmin && (
-                <Link
-                  to="/records"
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Recorduri
-                </Link>
-              )}
-              {isAdmin && (
-                <Link
-                  to="/submission-guide"
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Ghid Submisie
-                </Link>
-              )}
+              <Link
+                to="/"
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === '/'
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+                aria-current={location.pathname === '/' ? 'page' : undefined}
+              >
+                Acasă
+              </Link>
+              <Link
+                to="/species"
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Specii
+              </Link>
+              <Link
+                to="/records"
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Recorduri
+              </Link>
+              <Link
+                to="/submission-guide"
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Ghid Submisie
+              </Link>
               <Link
                 to="/forum"
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
@@ -257,51 +249,43 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           {/* Menu Items - Scrollable */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {isAdmin && (
-              <Link
-                to="/"
-                className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${
-                  location.pathname === '/' ? 'text-blue-600' : ''
-                }`}
-                onClick={closeMobileMenu}
-              >
-                <Home className="w-5 h-5" />
-                <span className="font-medium text-base">Acasă</span>
-              </Link>
-            )}
+            <Link
+              to="/"
+              className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${
+                location.pathname === '/' ? 'text-blue-600' : ''
+              }`}
+              onClick={closeMobileMenu}
+            >
+              <Home className="w-5 h-5" />
+              <span className="font-medium text-base">Acasă</span>
+            </Link>
 
-            {isAdmin && (
-              <Link
-                to="/species"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <Fish className="w-5 h-5" />
-                <span className="font-medium text-base">Specii</span>
-              </Link>
-            )}
+            <Link
+              to="/species"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              onClick={closeMobileMenu}
+            >
+              <Fish className="w-5 h-5" />
+              <span className="font-medium text-base">Specii</span>
+            </Link>
 
-            {isAdmin && (
-              <Link
-                to="/records"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <Trophy className="w-5 h-5" />
-                <span className="font-medium text-base">Recorduri</span>
-              </Link>
-            )}
+            <Link
+              to="/records"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              onClick={closeMobileMenu}
+            >
+              <Trophy className="w-5 h-5" />
+              <span className="font-medium text-base">Recorduri</span>
+            </Link>
 
-            {isAdmin && (
-              <Link
-                to="/submission-guide"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <FileText className="w-5 h-5" />
-                <span className="font-medium text-base">Ghid Submisie</span>
-              </Link>
-            )}
+            <Link
+              to="/submission-guide"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              onClick={closeMobileMenu}
+            >
+              <FileText className="w-5 h-5" />
+              <span className="font-medium text-base">Ghid Submisie</span>
+            </Link>
 
             <Link
               to="/forum"
