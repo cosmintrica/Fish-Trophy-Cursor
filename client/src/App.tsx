@@ -25,6 +25,7 @@ import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
+import MapcherryTest from '@/pages/MapcherryTest';
 import ForumRoutes from '@/forum/routes';
 
 // Analytics wrapper component that uses useAnalytics inside Router
@@ -76,6 +77,7 @@ function AppContent() {
             <Route path="/submission-guide" element={<SubmissionGuide />} />
             <Route path="/fishing-shops" element={<FishingShops />} />
             <Route path="/og-generator" element={<OgGenerator />} />
+            <Route path="/mapcherry-test" element={<MapcherryTest />} />
             <Route
               path="/profile"
               element={

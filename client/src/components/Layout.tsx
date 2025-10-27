@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, User, Trophy, FileText, Mail } from 'lucide-react';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, MapPin } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -143,6 +143,12 @@ export default function Layout({ children }: { children: ReactNode }) {
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
               >
                 🎣 Forum
+              </Link>
+              <Link
+                to="/mapcherry-test"
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                🗺️ Test Hartă
               </Link>
               {isAdmin && (
                 <Link
@@ -288,6 +294,15 @@ export default function Layout({ children }: { children: ReactNode }) {
             >
               <Fish className="w-5 h-5" />
               <span className="font-medium text-base">🎣 Forum</span>
+            </Link>
+
+            <Link
+              to="/mapcherry-test"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              onClick={closeMobileMenu}
+            >
+              <MapPin className="w-5 h-5" />
+              <span className="font-medium text-base">🗺️ Test Hartă</span>
             </Link>
 
             {isAdmin && (

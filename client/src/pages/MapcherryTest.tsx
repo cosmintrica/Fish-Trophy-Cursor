@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Navigation, Search, X } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
-import type { Geometry, GeometryCollection } from 'geojson';
+import type { Feature, FeatureCollection, Geometry, GeometryCollection } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import SEOHead from '@/components/SEOHead';
+import { useAuth } from '@/hooks/useAuth';
+import { geocodingService } from '@/services/geocoding';
 
 // Mapcherry configuration
 const MAPCHERRY_CONFIG = {
@@ -12,6 +14,13 @@ const MAPCHERRY_CONFIG = {
   username: 'cosmintrica',
   datasetKey: 'abp-ct-all'
 };
+
+const HIGHLIGHT_SOURCE_ID = 'selected-feature-highlight';
+const HIGHLIGHT_LAYER_IDS = {
+  polygonFill: 'selected-feature-highlight-polygon-fill',
+  outline: 'selected-feature-highlight-outline',
+  point: 'selected-feature-highlight-point'
+} as const;
 
 // Mobile-specific CSS optimizations
 const mobileCSS = `
@@ -63,10 +72,10 @@ const mobileCSS = `
 
   /* Customize popup close button */
   .maplibregl-popup-close-button {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 20px !important;
-    line-height: 24px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 22px !important;
+    line-height: 28px !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
@@ -94,9 +103,11 @@ export default function MapcherryTest() {
   const map = useRef<maplibregl.Map | null>(null);
   const currentPopup = useRef<maplibregl.Popup | null>(null);
   const previousSelectedId = useRef<string | number | null>(null);
+  const userLocationPopupRef = useRef<maplibregl.Popup | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
 
   type MapFeature = maplibregl.MapGeoJSONFeature;
 
@@ -115,7 +126,18 @@ export default function MapcherryTest() {
   const [, setUserLocation] = useState<[number, number] | null>(null);
   const [userMarker, setUserMarker] = useState<maplibregl.Marker | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<MapFeature | null>(null);
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string | number | null>(null);
+
+  const interactiveLayerIds = useMemo(
+    () => [
+      'point-magazin',
+      'point-ape-publice',
+      'polygon-ape-publice',
+      'line-ape-publice',
+      'polygon-balti-ro',
+      'point-balti-ro'
+    ],
+    []
+  );
 
   // Helper function to close previous popup and clear previous selection
   const closePreviousPopupAndClearSelection = () => {
@@ -125,16 +147,11 @@ export default function MapcherryTest() {
       currentPopup.current = null;
     }
 
+    clearHighlightGeometry();
+
     // Clear previous selection state
-    if (previousSelectedId.current !== null && map.current) {
-      try {
-        map.current.removeFeatureState(
-          { source: 'abp-locuri', sourceLayer: 'locuri', id: previousSelectedId.current },
-          'selected'
-        );
-      } catch (error) {
-        console.error('Error clearing feature state:', error);
-      }
+    if (previousSelectedId.current !== null) {
+      clearFeatureSelectionState(previousSelectedId.current);
       previousSelectedId.current = null;
     }
   };
@@ -161,24 +178,32 @@ export default function MapcherryTest() {
     });
   };
 
+  const formatCoordinate = (value: number, axis: 'lat' | 'lng') => {
+    const direction = axis === 'lat' ? (value >= 0 ? 'N' : 'S') : value >= 0 ? 'E' : 'W';
+    return `${Math.abs(value).toFixed(5)}&deg; ${direction}`;
+  };
+
   const toLngLatTuple = (lngLatLike: maplibregl.LngLatLike): [number, number] => {
     const lngLat = maplibregl.LngLat.convert(lngLatLike);
     return [lngLat.lng, lngLat.lat];
   };
 
-  const getFeatureId = (feature: MapFeature | null | undefined, fallback?: string | number | null): string | number | null => {
-    if (!feature) {
+  const getFeatureId = useCallback(
+    (feature: MapFeature | null | undefined, fallback?: string | number | null): string | number | null => {
+      if (!feature) {
+        return fallback ?? null;
+      }
+      if (feature.id !== undefined && feature.id !== null) {
+        return feature.id as string | number;
+      }
+      const rawId = (feature.properties as Record<string, unknown> | undefined)?.id;
+      if (typeof rawId === 'string' || typeof rawId === 'number') {
+        return rawId;
+      }
       return fallback ?? null;
-    }
-    if (feature.id !== undefined && feature.id !== null) {
-      return feature.id as string | number;
-    }
-    const rawId = (feature.properties as Record<string, unknown> | undefined)?.id;
-    if (typeof rawId === 'string' || typeof rawId === 'number') {
-      return rawId;
-    }
-    return fallback ?? null;
-  };
+    },
+    []
+  );
 
   const flattenPositions = (coords: unknown): [number, number][] => {
     if (!Array.isArray(coords)) {
@@ -200,7 +225,7 @@ export default function MapcherryTest() {
     return result;
   };
 
-  const deriveGeometryFromFeature = (feature: MapFeature): Geometry | undefined => {
+  const deriveGeometryFromFeature = useCallback((feature: MapFeature): Geometry | undefined => {
     const directGeometry = feature.geometry as Geometry | undefined;
     if (directGeometry && 'type' in directGeometry) {
       return directGeometry;
@@ -219,7 +244,7 @@ export default function MapcherryTest() {
     }
 
     return undefined;
-  };
+  }, []);
 
   const computeGeometryInfo = (geometry?: Geometry | null) => {
     if (!geometry) {
@@ -281,6 +306,166 @@ export default function MapcherryTest() {
     };
   };
 
+  const geometryToFeatureList = (geometry: Geometry): Feature[] => {
+    if (geometry.type === 'GeometryCollection') {
+      const collection = geometry as GeometryCollection;
+      return (collection.geometries || [])
+        .filter((geom): geom is Geometry => Boolean(geom) && typeof (geom as Geometry).type === 'string')
+        .flatMap((geom) => geometryToFeatureList(geom));
+    }
+
+    const feature: Feature = {
+      type: 'Feature',
+      geometry,
+      properties: {}
+    };
+
+    return [feature];
+  };
+
+  const ensureHighlightLayers = () => {
+    if (!map.current) {
+      return;
+    }
+
+    if (!map.current.getSource(HIGHLIGHT_SOURCE_ID)) {
+      map.current.addSource(HIGHLIGHT_SOURCE_ID, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: []
+        }
+      });
+    }
+
+    const beforeLayerId = map.current.getLayer('point-balti-ro-text') ? 'point-balti-ro-text' : undefined;
+    const addLayerIfMissing = (
+      layerId: string,
+      layer: Parameters<maplibregl.Map['addLayer']>[0]
+    ) => {
+      if (!map.current?.getLayer(layerId)) {
+        map.current?.addLayer(layer, beforeLayerId);
+      }
+    };
+
+    addLayerIfMissing(HIGHLIGHT_LAYER_IDS.polygonFill, {
+      id: HIGHLIGHT_LAYER_IDS.polygonFill,
+      type: 'fill',
+      source: HIGHLIGHT_SOURCE_ID,
+      filter: [
+        'any',
+        ['==', ['geometry-type'], 'Polygon'],
+        ['==', ['geometry-type'], 'MultiPolygon']
+      ],
+      paint: {
+        'fill-color': '#fca5a5',
+        'fill-opacity': 0.25
+      }
+    });
+
+    addLayerIfMissing(HIGHLIGHT_LAYER_IDS.outline, {
+      id: HIGHLIGHT_LAYER_IDS.outline,
+      type: 'line',
+      source: HIGHLIGHT_SOURCE_ID,
+      filter: [
+        'any',
+        ['==', ['geometry-type'], 'Polygon'],
+        ['==', ['geometry-type'], 'MultiPolygon'],
+        ['==', ['geometry-type'], 'LineString'],
+        ['==', ['geometry-type'], 'MultiLineString']
+      ],
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#ef4444',
+        'line-width': 3,
+        'line-opacity': 0.9
+      }
+    });
+
+    addLayerIfMissing(HIGHLIGHT_LAYER_IDS.point, {
+      id: HIGHLIGHT_LAYER_IDS.point,
+      type: 'circle',
+      source: HIGHLIGHT_SOURCE_ID,
+      filter: [
+        'any',
+        ['==', ['geometry-type'], 'Point'],
+        ['==', ['geometry-type'], 'MultiPoint']
+      ],
+      paint: {
+        'circle-color': '#ef4444',
+        'circle-radius': 11,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 3,
+        'circle-opacity': 0.95,
+        'circle-blur': 0.12
+      }
+    });
+  };
+
+  const setHighlightGeometry = (geometry?: Geometry | null) => {
+    if (!map.current) {
+      return;
+    }
+
+    const highlightSource = map.current.getSource(HIGHLIGHT_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+    if (!highlightSource) {
+      return;
+    }
+
+    if (!geometry) {
+      const emptyCollection: FeatureCollection = {
+        type: 'FeatureCollection',
+        features: []
+      };
+      highlightSource.setData(emptyCollection);
+      return;
+    }
+
+    const features = geometryToFeatureList(geometry);
+    const featureCollection: FeatureCollection = {
+      type: 'FeatureCollection',
+      features
+    };
+    highlightSource.setData(featureCollection);
+  };
+
+  const clearHighlightGeometry = () => {
+    setHighlightGeometry(null);
+  };
+
+  const updateFeatureSelectionState = (featureId: string | number | null, selected: boolean) => {
+    if (!map.current || featureId === null) {
+      return;
+    }
+
+    try {
+      map.current.setFeatureState(
+        { source: 'abp-locuri', sourceLayer: 'locuri', id: featureId },
+        { selected }
+      );
+    } catch (error) {
+      console.warn('Unable to update feature selection state', featureId, error);
+    }
+  };
+
+  const clearFeatureSelectionState = (featureId: string | number | null) => {
+    if (!map.current || featureId === null) {
+      return;
+    }
+
+    try {
+      map.current.removeFeatureState(
+        { source: 'abp-locuri', sourceLayer: 'locuri', id: featureId },
+        'selected'
+      );
+    } catch (error) {
+      console.warn('Unable to clear feature selection state', featureId, error);
+    }
+  };
+
   const scheduleFeatureHighlight = (featureId: string | number | null) => {
     if (featureId === null || !map.current) {
       return;
@@ -292,10 +477,7 @@ export default function MapcherryTest() {
       }
 
       try {
-        map.current.setFeatureState(
-          { source: 'abp-locuri', sourceLayer: 'locuri', id: featureId },
-          { selected: true }
-        );
+        updateFeatureSelectionState(featureId, true);
         previousSelectedId.current = featureId;
       } catch (error) {
         if (attempt < 3) {
@@ -357,6 +539,28 @@ export default function MapcherryTest() {
     return null;
   };
 
+  const collectFromPropertyMap = (propertyMap: Map<string, unknown>, keys: string[]) => {
+    const results: string[] = [];
+    const seen = new Set<string>();
+
+    keys.forEach((key) => {
+      const value = propertyMap.get(key.toLowerCase());
+      if (value === undefined || value === null) {
+        return;
+      }
+
+      const stringValue = String(value).trim();
+      if (!stringValue || seen.has(stringValue.toLowerCase())) {
+        return;
+      }
+
+      seen.add(stringValue.toLowerCase());
+      results.push(stringValue);
+    });
+
+    return results;
+  };
+
   const parseBoolean = (value: unknown): boolean | null => {
     if (value === null || value === undefined) return null;
     if (typeof value === 'boolean') return value;
@@ -378,156 +582,377 @@ export default function MapcherryTest() {
     const normalized = buildNormalizedPropertyMap(properties);
 
     const rawName =
-      getFromPropertyMap(normalized, ['nume', 'name', 'denumire', 'title']) ?? 'Locație de pescuit';
+      getFromPropertyMap(normalized, ['nume', 'name', 'denumire', 'title']) ?? 'Locatie de pescuit';
     const typeValue = String(
       getFromPropertyMap(normalized, ['tip', 'type', 'categorie']) ?? 'necunoscut'
     ).toLowerCase();
+    const typeLabel = typeValue ? typeValue.charAt(0).toUpperCase() + typeValue.slice(1) : 'Necunoscut';
 
     const visuals = (() => {
       switch (typeValue) {
         case 'magazin':
-          return {
-            titlePrefix: 'Magazin',
-            accentClass: 'text-orange-600',
-            badgeClass: 'bg-orange-100 text-orange-800'
-          };
+          return { prefix: 'Magazin', badgeClass: 'bg-amber-100 text-amber-800' };
         case 'balta':
-          return {
-            titlePrefix: 'Baltă',
-            accentClass: 'text-blue-600',
-            badgeClass: 'bg-blue-100 text-blue-800'
-          };
+          return { prefix: 'Balta', badgeClass: 'bg-sky-100 text-sky-700' };
         case 'apa':
-          return {
-            titlePrefix: 'Apă',
-            accentClass: 'text-blue-600',
-            badgeClass: 'bg-sky-100 text-sky-800'
-          };
+          return { prefix: 'Apa', badgeClass: 'bg-blue-100 text-blue-700' };
         default:
-          return {
-            titlePrefix: 'Locație',
-            accentClass: 'text-blue-600',
-            badgeClass: 'bg-gray-100 text-gray-800'
-          };
+          return { prefix: 'Locatie', badgeClass: 'bg-slate-100 text-slate-600' };
       }
     })();
 
+    const geometryLabel = geometryType ? geometryType.replace(/([a-z])([A-Z])/g, '$1 $2') : '';
+
     const administrator = getFromPropertyMap(normalized, [
       'administrator',
+      'administrator_baltii',
+      'administrator_baltei',
+      'administrator_lac',
       'admin',
       'gestion',
       'gestionare',
-      'administrator_unitate'
+      'gestion_unitate',
+      'coordonator'
+    ]);
+    const contactPerson = getFromPropertyMap(normalized, [
+      'persoana_contact',
+      'contact',
+      'contact_nume',
+      'responsabil',
+      'manager',
+      'contact_person'
     ]);
     const area = getFromPropertyMap(normalized, [
       'suprafata',
       'suprafata_ha',
       'surface',
       'area',
-      'arie'
+      'arie',
+      'suprafata_totala',
+      'suprafata_m2',
+      'suprafata_mp',
+      'suprafata_km2'
     ]);
-    const address = getFromPropertyMap(normalized, ['adresa', 'address', 'strada', 'localitate']);
-    const phone = getFromPropertyMap(normalized, ['telefon', 'phone', 'telefon_contact', 'mobil']);
+    const depth = getFromPropertyMap(normalized, [
+      'adancime',
+      'adancime_medie',
+      'adancime_maxima',
+      'depth'
+    ]);
+    const locality = getFromPropertyMap(normalized, [
+      'localitate',
+      'judet',
+      'county',
+      'oras',
+      'regiune',
+      'comuna',
+      'sat',
+      'zona'
+    ]);
+    const address = getFromPropertyMap(normalized, [
+      'adresa',
+      'address',
+      'strada',
+      'adresa_completa',
+      'locatie',
+      'localizare',
+      'address_full'
+    ]);
+    const species = getFromPropertyMap(normalized, [
+      'specii',
+      'species',
+      'pesti',
+      'fish',
+      'ichthyofauna',
+      'specii_pesti'
+    ]);
+    const facilities = getFromPropertyMap(normalized, [
+      'facilitati',
+      'amenajari',
+      'dotari',
+      'facilities',
+      'services',
+      'utilitati'
+    ]);
+
+    const phoneNumbers = collectFromPropertyMap(normalized, [
+      'telefon',
+      'telefon1',
+      'telefon2',
+      'telefon_contact',
+      'telefon_administrator',
+      'mobil',
+      'nr_telefon',
+      'phone',
+      'contact_phone',
+      'telefon_fix'
+    ]);
+    const emailAddresses = collectFromPropertyMap(normalized, [
+      'email',
+      'mail',
+      'contact_email',
+      'email_contact',
+      'email_admin'
+    ]);
+    const websiteLinks = collectFromPropertyMap(normalized, [
+      'website',
+      'site',
+      'url',
+      'link',
+      'pagina_web',
+      'url_site'
+    ]);
+    const program = getFromPropertyMap(normalized, [
+      'program',
+      'orar',
+      'schedule',
+      'orar_functionare',
+      'program_functionare',
+      'orar_pescuit',
+      'program_baltii'
+    ]);
+    const fees = getFromPropertyMap(normalized, [
+      'tarif',
+      'pret',
+      'taxa',
+      'cost',
+      'tarife',
+      'taxe',
+      'preturi',
+      'costuri',
+      'tarif_pescuit',
+      'taxa_pescuit',
+      'tarif_zi',
+      'tarif24h'
+    ]);
     const description = getFromPropertyMap(normalized, [
       'descriere',
       'description',
       'detalii',
-      'notes'
+      'notes',
+      'descriere_baltii',
+      'detalii_balti',
+      'observatii',
+      'informatii',
+      'description_ro'
     ]);
-    const email = getFromPropertyMap(normalized, ['email', 'mail', 'contact_email']);
-    const website = getFromPropertyMap(normalized, ['website', 'site', 'url']);
     const pescuitInterzis = parseBoolean(
       getFromPropertyMap(normalized, ['pescuit_interzis', 'interzis', 'pescuit_interzis_bool'])
     );
 
-    const lat = center[1].toFixed(5);
-    const lng = center[0].toFixed(5);
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${center[1]},${center[0]}`;
+    const appleMapsUrl = `https://maps.apple.com/?daddr=${center[1]},${center[0]}`;
 
-    const infoRows = [
-      administrator
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Administrator</span>
-            <span class="text-sm font-semibold text-gray-800">${sanitizeValue(administrator)}</span>
-          </div>`
-        : '',
-      area
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Suprafață</span>
-            <span class="text-sm font-semibold text-gray-800">${sanitizeValue(area)}</span>
-          </div>`
-        : '',
-      address
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Adresă</span>
-            <span class="text-sm text-gray-700">${sanitizeValue(address)}</span>
-          </div>`
-        : '',
-      phone
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Telefon</span>
-            <a href="tel:${sanitizeValue(phone)}" class="text-sm text-blue-600 hover:underline">${sanitizeValue(phone)}</a>
-          </div>`
-        : '',
-      email
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Email</span>
-            <a href="mailto:${sanitizeValue(email)}" class="text-sm text-blue-600 hover:underline">${sanitizeValue(email)}</a>
-          </div>`
-        : '',
-      website
-        ? `<div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Website</span>
-            <a href="${sanitizeValue(website)}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline">${sanitizeValue(website)}</a>
-          </div>`
-        : '',
-      `<div class="flex items-start gap-2">
-          <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Coordonate</span>
-          <span class="text-sm text-gray-700">${lat}° N, ${lng}° E</span>
-        </div>`
-    ].filter(Boolean);
+    const badges: string[] = [
+      `<span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${visuals.badgeClass}">${sanitizeValue(typeLabel)}</span>`
+    ];
+    if (geometryLabel) {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">${sanitizeValue(geometryLabel)}</span>`
+      );
+    }
+    if (pescuitInterzis === true) {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Pescuit interzis</span>`
+      );
+    }
+    if (pescuitInterzis === false) {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Pescuit permis</span>`
+      );
+    }
 
-    const statusRow =
-      pescuitInterzis === null
-        ? ''
-        : `<div class="mb-3 p-2 rounded ${pescuitInterzis ? 'bg-red-50' : 'bg-green-50'}">
-            <p class="text-sm font-semibold ${pescuitInterzis ? 'text-red-700' : 'text-green-700'}">
-              ${pescuitInterzis ? '⚠️ Pescuit interzis' : '✅ Pescuit permis'}
-            </p>
-          </div>`;
+    const createInfoRow = (
+      icon: string,
+      label: string,
+      value: string,
+      options: { allowHtml?: boolean } = {}
+    ) => {
+      const displayValue = options.allowHtml ? value : sanitizeValue(value);
+      return `
+        <div class="flex items-start gap-3">
+          <span class="text-lg leading-none">${icon}</span>
+          <div class="space-y-0.5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${sanitizeValue(label)}</p>
+            <p class="text-sm text-slate-700 leading-snug">${displayValue}</p>
+          </div>
+        </div>
+      `;
+    };
 
-    const descriptionBlock = description
-      ? `<div class="mb-3 border-t border-gray-200 pt-3">
-           <p class="text-sm text-gray-700 leading-relaxed">${sanitizeValue(description)}</p>
-         </div>`
+    const createLinkRow = (
+      icon: string,
+      label: string,
+      value: string,
+      href: string,
+      options: { newTab?: boolean } = {}
+    ) => {
+      const sanitizedHref = sanitizeValue(href);
+      const sanitizedLabel = sanitizeValue(label);
+      const sanitizedValue = sanitizeValue(value);
+      const targetAttributes = options.newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
+      return `
+        <div class="flex items-start gap-3">
+          <span class="text-lg leading-none">${icon}</span>
+          <div class="space-y-0.5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${sanitizedLabel}</p>
+            <a href="${sanitizedHref}" class="text-blue-600 font-semibold hover:underline"${targetAttributes}>${sanitizedValue}</a>
+          </div>
+        </div>
+      `;
+    };
+
+    const normalizeTelHref = (value: string) => {
+      const normalizedValue = value.replace(/[^0-9+]/g, '');
+      return `tel:${normalizedValue}`;
+    };
+
+    const normalizeMailHref = (value: string) => `mailto:${value.replace(/\s+/g, '')}`;
+
+    const normalizeWebsiteHref = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return '#';
+      }
+      if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+      }
+      return `https://${trimmed}`;
+    };
+
+    const coordinateValue = `${formatCoordinate(center[1], 'lat')} &bull; ${formatCoordinate(
+      center[0],
+      'lng'
+    )}`;
+
+    const infoItems: string[] = [
+      createInfoRow('🧭', 'Coordonate', coordinateValue, { allowHtml: true })
+    ];
+
+    if (locality) {
+      infoItems.push(createInfoRow('🏙️', 'Localitate', String(locality)));
+    }
+
+    if (address) {
+      infoItems.push(createInfoRow('📍', 'Adresa', String(address)));
+    }
+
+    if (administrator) {
+      infoItems.push(createInfoRow('🧑‍💼', 'Administrator', String(administrator)));
+    }
+
+    if (contactPerson) {
+      const adminString = administrator ? String(administrator).toLowerCase().trim() : '';
+      const contactString = String(contactPerson).toLowerCase().trim();
+      if (!adminString || adminString !== contactString) {
+        infoItems.push(createInfoRow('🤝', 'Persoana de contact', String(contactPerson)));
+      }
+    }
+
+    if (area) {
+      infoItems.push(createInfoRow('📐', 'Suprafata', String(area)));
+    }
+
+    if (depth) {
+      infoItems.push(createInfoRow('🌊', 'Adancime', String(depth)));
+    }
+
+    if (program) {
+      infoItems.push(createInfoRow('🕒', 'Program', String(program)));
+    }
+
+    if (fees) {
+      infoItems.push(createInfoRow('💶', 'Tarife', String(fees)));
+    }
+
+    if (species) {
+      infoItems.push(createInfoRow('🐟', 'Specii', String(species)));
+    }
+
+    if (facilities) {
+      infoItems.push(createInfoRow('🛠️', 'Facilitati', String(facilities)));
+    }
+
+    phoneNumbers.forEach((phoneValue) => {
+      const trimmed = phoneValue.trim();
+      if (!trimmed) {
+        return;
+      }
+      infoItems.push(createLinkRow('☎️', 'Telefon', trimmed, normalizeTelHref(trimmed)));
+    });
+
+    emailAddresses.forEach((emailValue) => {
+      const trimmed = emailValue.trim();
+      if (!trimmed) {
+        return;
+      }
+      infoItems.push(createLinkRow('✉️', 'Email', trimmed, normalizeMailHref(trimmed)));
+    });
+
+    websiteLinks.forEach((websiteValue) => {
+      const trimmed = websiteValue.trim();
+      if (!trimmed) {
+        return;
+      }
+      infoItems.push(
+        createLinkRow('🔗', 'Website', trimmed, normalizeWebsiteHref(trimmed), { newTab: true })
+      );
+    });
+
+    const infoSection = infoItems.length
+      ? `<div class="space-y-3">${infoItems.join('')}</div>`
       : '';
 
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    const appleMapsUrl = `https://maps.apple.com/?daddr=${lat},${lng}`;
+    const descriptionBlock = description
+      ? `<div class="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-600">${sanitizeValue(
+          String(description)
+        )}</div>`
+      : '';
+
+    const statusBlock =
+      pescuitInterzis === true
+        ? `<div class="flex items-start gap-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+            <span class="text-lg leading-none">&#9888;</span>
+            <span>Pescuitul este interzis in aceasta locatie.</span>
+          </div>`
+        : pescuitInterzis === false
+        ? `<div class="flex items-start gap-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+            <span class="text-lg leading-none">&#9989;</span>
+            <span>Pescuitul este permis in aceasta locatie.</span>
+          </div>`
+        : '';
 
     return `
-      <div class="p-4 bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-xs sm:max-w-sm ft-popup">
-        <h3 class="font-bold text-lg ${visuals.accentClass} mb-2">
-          ${visuals.titlePrefix}: ${sanitizeValue(rawName)}
-        </h3>
-        <div class="mb-3">
-          <span class="inline-block ${visuals.badgeClass} text-xs font-semibold px-3 py-1 rounded-full">
-            ${sanitizeValue(typeValue || 'necunoscut')}${geometryType ? ` · ${sanitizeValue(geometryType)}` : ''}
-          </span>
-        </div>
-        ${statusRow}
-        <div class="space-y-2">
-          ${infoRows.join('')}
-        </div>
-        ${descriptionBlock}
-        <div class="border-t border-gray-200 pt-3 mt-3 flex gap-2">
-          <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer"
-             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs text-center py-2 px-3 rounded-lg transition-colors">
-            Deschide Google Maps
-          </a>
-          <a href="${appleMapsUrl}" target="_blank" rel="noopener noreferrer"
-             class="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-xs text-center py-2 px-3 rounded-lg transition-colors">
-            Deschide Apple Maps
-          </a>
+      <div class="max-w-[340px] min-w-[240px]">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl px-4 py-4 md:px-5 md:py-5 space-y-4">
+          <div class="space-y-1">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">${visuals.prefix}</p>
+            <h3 class="text-lg font-bold text-slate-900">${sanitizeValue(rawName)}</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">${badges.join('')}</div>
+          ${statusBlock}
+          ${infoSection}
+          ${descriptionBlock}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <a
+              href="${sanitizeValue(googleMapsUrl)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700"
+            >
+              <span class="text-lg leading-none">🗺️</span>
+              <span>Google Maps</span>
+            </a>
+            <a
+              href="${sanitizeValue(appleMapsUrl)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow transition hover:bg-slate-800"
+            >
+              <span class="text-lg leading-none">&#63743;</span>
+              <span>Apple Maps</span>
+            </a>
+          </div>
         </div>
       </div>
     `;
@@ -549,13 +974,23 @@ export default function MapcherryTest() {
 
     const popup = new maplibregl.Popup({
       closeButton: true,
-      closeOnClick: false,
+      closeOnClick: true,
       maxWidth: '400px',
       className: 'ft-popup'
     })
       .setLngLat(center)
       .setHTML(buildPopupContent(feature, center, geometryType))
       .addTo(map.current);
+
+    popup.on('close', () => {
+      currentPopup.current = null;
+      clearHighlightGeometry();
+      setSelectedFeature(null);
+      if (previousSelectedId.current !== null) {
+        clearFeatureSelectionState(previousSelectedId.current);
+        previousSelectedId.current = null;
+      }
+    });
 
     currentPopup.current = popup;
   };
@@ -583,7 +1018,7 @@ export default function MapcherryTest() {
 
     if (!center) {
       console.warn('Missing coordinates for selected feature', feature);
-      alert('Nu s-au putut obține coordonatele pentru această locație.');
+      alert('Nu s-au putut obtine coordonatele pentru aceasta locatie.');
       return;
     }
 
@@ -591,7 +1026,7 @@ export default function MapcherryTest() {
 
     const featureId = getFeatureId(feature, options.idOverride ?? null);
     setSelectedFeature(feature);
-    setSelectedFeatureId(featureId);
+    setHighlightGeometry(geometry ?? null);
 
     if (featureId !== null) {
       scheduleFeatureHighlight(featureId);
@@ -621,7 +1056,6 @@ export default function MapcherryTest() {
   const clearSelection = () => {
     closePreviousPopupAndClearSelection();
     setSelectedFeature(null);
-    setSelectedFeatureId(null);
   };
   // Check if mobile
   useEffect(() => {
@@ -635,6 +1069,7 @@ export default function MapcherryTest() {
   }, []);
 
   // Initialize map
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -653,37 +1088,35 @@ export default function MapcherryTest() {
     const mapInstance = new maplibregl.Map(mapConfig);
     map.current = mapInstance;
 
-    const interactiveLayers = [
-      { id: 'point-magazin' },
-      { id: 'point-ape-publice' },
-      { id: 'polygon-ape-publice' },
-      { id: 'line-ape-publice' },
-      { id: 'polygon-balti-ro' },
-      { id: 'point-balti-ro' }
-    ];
-
-
     const registerInteractiveHandlers = () => {
-      interactiveLayers.forEach(({ id }) => {
-        mapInstance.on('click', id, (event) => {
-          const feature = event.features?.[0] as MapFeature | undefined;
-          if (!feature) {
-            return;
-          }
-
-          const geometry = deriveGeometryFromFeature(feature);
-          handleFeatureSelection(feature, {
-            geometryOverride: geometry,
-            clickedLngLat: event.lngLat
-          });
-        });
-
-        mapInstance.on('mouseenter', id, () => {
+      interactiveLayerIds.forEach((layerId) => {
+        mapInstance.on('mouseenter', layerId, () => {
           mapInstance.getCanvas().style.cursor = 'pointer';
         });
 
-        mapInstance.on('mouseleave', id, () => {
+        mapInstance.on('mouseleave', layerId, () => {
           mapInstance.getCanvas().style.cursor = '';
+        });
+      });
+
+      mapInstance.on('click', (event) => {
+        const featuresAtPoint = mapInstance.queryRenderedFeatures(event.point, {
+          layers: interactiveLayerIds
+        }) as MapFeature[];
+
+        if (!featuresAtPoint.length) {
+          clearSelection();
+          return;
+        }
+
+        const preferred = resolvePreferredFeature(featuresAtPoint);
+        if (!preferred) {
+          return;
+        }
+
+        handleFeatureSelection(preferred.feature, {
+          geometryOverride: preferred.geometry,
+          clickedLngLat: event.lngLat
         });
       });
     };
@@ -691,6 +1124,7 @@ export default function MapcherryTest() {
     mapInstance.once('load', () => {
       setIsMapLoaded(true);
       addFishingLayers();
+      ensureHighlightLayers();
       registerInteractiveHandlers();
     });
 
@@ -711,7 +1145,33 @@ export default function MapcherryTest() {
     };
   }, []);
 
-  // Funcție pentru normalizarea textului (elimină diacriticele)
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!currentPopup.current) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.maplibregl-popup')) {
+        return;
+      }
+
+      if (mapContainer.current && target && mapContainer.current.contains(target)) {
+        return;
+      }
+
+      closePreviousPopupAndClearSelection();
+      setSelectedFeature(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Functie pentru normalizarea textului (elimina diacriticele)
   const normalizeText = (text: string): string => {
     return text
       .toLowerCase()
@@ -722,6 +1182,53 @@ export default function MapcherryTest() {
       .replace(/[\u0219\u015F]/g, 's')
       .replace(/[\u021B\u0163]/g, 't');
   };
+
+  const getGeometryPriority = (geometryType?: Geometry['type'] | string | null): number => {
+    const type = (geometryType ?? '').toLowerCase();
+    if (type === 'polygon' || type === 'multipolygon') {
+      return 3;
+    }
+    if (type === 'linestring' || type === 'multilinestring') {
+      return 2;
+    }
+    if (type === 'point' || type === 'multipoint') {
+      return 1;
+    }
+    return 0;
+  };
+
+  const getLayerPriority = (layerId?: string): number => {
+    if (!layerId) return 0;
+    if (layerId.includes('polygon')) return 3;
+    if (layerId.includes('line')) return 2;
+    if (layerId.includes('point')) return 1;
+    return 0;
+  };
+
+  const resolvePreferredFeature = useCallback(
+    (features: MapFeature[]): { feature: MapFeature; geometry?: Geometry } | null => {
+      if (!features.length) return null;
+
+      let best: { feature: MapFeature; geometry?: Geometry } | null = null;
+      let bestScore = -Infinity;
+
+      for (const candidate of features) {
+        const geometry = deriveGeometryFromFeature(candidate);
+        const geometryType = geometry?.type ?? (candidate.geometry as Geometry | undefined)?.type;
+        const geometryPriority = getGeometryPriority(geometryType);
+        const layerPriority = getLayerPriority(candidate.layer?.id);
+        const score = geometryPriority * 100 + layerPriority * 10 + (candidate.id !== undefined ? 1 : 0);
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = { feature: candidate, geometry };
+        }
+      }
+
+      return best;
+    },
+    [deriveGeometryFromFeature]
+  );
 
   // Search function - local search in loaded features (intelligent with scoring)
   const handleSearch = useCallback((query: string) => {
@@ -747,62 +1254,117 @@ export default function MapcherryTest() {
       console.log('Found features:', features.length);
 
       const normalizedQuery = normalizeText(trimmedQuery);
-      const seenKeys = new Set<string>();
+      const candidates = new Map<
+        string,
+        SearchResult & { geometryPriority: number; normalizedName: string }
+      >();
+      let fallbackCounter = 0;
 
-      const filteredFeatures: SearchResult[] = features
-        .map((feature) => {
-          const properties = (feature.properties || {}) as Record<string, unknown>;
-          const nameValue =
-            (properties['nume'] as string | undefined) ??
-            (properties['name'] as string | undefined) ??
-            '';
-          const typeValue =
-            (properties['tip'] as string | undefined) ??
-            (properties['type'] as string | undefined) ??
-            '';
-          const normalizedName = normalizeText(String(nameValue));
-          const normalizedType = normalizeText(String(typeValue));
+      const maybeStoreCandidate = (
+        key: string,
+        candidate: SearchResult & { geometryPriority: number; normalizedName: string }
+      ) => {
+        const existing = candidates.get(key);
+        if (!existing) {
+          candidates.set(key, candidate);
+          return;
+        }
 
-          let score = 0;
+        if (candidate.score > existing.score) {
+          candidates.set(key, candidate);
+          return;
+        }
 
-          if (normalizedName === normalizedQuery) score += 100;
-          else if (normalizedName.startsWith(normalizedQuery)) score += 50;
-          else if (normalizedName.includes(normalizedQuery)) score += 25;
-          if (normalizedType.includes(normalizedQuery)) score += 10;
+        if (
+          candidate.score === existing.score &&
+          candidate.geometryPriority > existing.geometryPriority
+        ) {
+          candidates.set(key, candidate);
+        }
+      };
 
-          const geometry = deriveGeometryFromFeature(feature);
+      features.forEach((feature) => {
+        const properties = (feature.properties || {}) as Record<string, unknown>;
+        const nameValue =
+          (properties['nume'] as string | undefined) ??
+          (properties['name'] as string | undefined) ??
+          '';
+        const typeValue =
+          (properties['tip'] as string | undefined) ??
+          (properties['type'] as string | undefined) ??
+          '';
+        const countyValue =
+          (properties['judet'] as string | undefined) ??
+          (properties['county'] as string | undefined) ??
+          (properties['localitate'] as string | undefined) ??
+          '';
+        const addressValue =
+          (properties['adresa'] as string | undefined) ??
+          (properties['address'] as string | undefined) ??
+          (properties['strada'] as string | undefined) ??
+          '';
 
-          return {
-            feature,
-            geometry,
-            properties,
-            sourceLayer: feature.layer?.id,
-            id: getFeatureId(feature),
-            score
-          };
-        })
-        .filter((result) => {
-          if (result.score <= 0) {
-            return false;
+        const normalizedName = normalizeText(String(nameValue));
+        const normalizedType = normalizeText(String(typeValue));
+        const normalizedCounty = normalizeText(String(countyValue));
+        const normalizedAddress = normalizeText(String(addressValue));
+
+        let score = 0;
+
+        if (normalizedName === normalizedQuery) score += 120;
+        else if (normalizedName.startsWith(normalizedQuery)) score += 60;
+        else if (normalizedName.includes(normalizedQuery)) score += 35;
+
+        if (normalizedType && normalizedType.includes(normalizedQuery)) score += 15;
+        if (normalizedCounty && normalizedCounty.includes(normalizedQuery)) score += 15;
+        if (normalizedAddress && normalizedAddress.includes(normalizedQuery)) score += 10;
+
+        const geometry = deriveGeometryFromFeature(feature);
+        const geometryType = geometry?.type ?? (feature.geometry as Geometry | undefined)?.type;
+        const geometryPriority = getGeometryPriority(geometryType);
+        score += geometryPriority * 5;
+
+        if (score <= 0) {
+          return;
+        }
+
+        const candidate: SearchResult & { geometryPriority: number; normalizedName: string } = {
+          feature,
+          geometry,
+          properties,
+          sourceLayer: feature.layer?.id,
+          id: getFeatureId(feature),
+          score,
+          geometryPriority,
+          normalizedName
+        };
+
+        const key =
+          candidate.id !== undefined && candidate.id !== null
+            ? String(candidate.id)
+            : normalizedName
+            ? `${normalizedName}-${normalizedType || 'unknown'}`
+            : `${feature.layer?.id ?? 'feature'}-${fallbackCounter++}`;
+
+        maybeStoreCandidate(key, candidate);
+      });
+
+      const filteredFeatures: SearchResult[] = Array.from(candidates.values())
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.geometryPriority !== a.geometryPriority) {
+            return b.geometryPriority - a.geometryPriority;
           }
-
-          const nameValue =
-            (result.properties['nume'] as string | undefined) ??
-            (result.properties['name'] as string | undefined) ??
-            '';
-          const normalizedName = normalizeText(String(nameValue));
-
-          const geometryInfo = result.geometry ? computeGeometryInfo(result.geometry) : null;
-          const center = geometryInfo?.center;
-          const key = `${normalizedName}-${center?.[0] ?? 'x'}-${center?.[1] ?? 'y'}-${result.id ?? 'no-id'}`;
-
-          if (seenKeys.has(key)) {
-            return false;
-          }
-          seenKeys.add(key);
-          return true;
+          return a.normalizedName.localeCompare(b.normalizedName);
         })
-        .sort((a, b) => b.score - a.score);
+        .map((item) => ({
+          feature: item.feature,
+          geometry: item.geometry,
+          properties: item.properties,
+          sourceLayer: item.sourceLayer,
+          id: item.id,
+          score: item.score
+        }));
 
       console.log('Filtered features:', filteredFeatures.length);
       setSearchResults(filteredFeatures);
@@ -810,9 +1372,9 @@ export default function MapcherryTest() {
     } catch (error) {
       console.error('Search error:', error);
     }
-  }, [isMapLoaded]);
+  }, [deriveGeometryFromFeature, getFeatureId, isMapLoaded]);
 
-  // Debounce pentru căutare – instant și fluid
+  // Debounce pentru cautare – instant si fluid
   useEffect(() => {
     const id = setTimeout(() => {
       if (searchQuery.trim() === '') {
@@ -825,7 +1387,7 @@ export default function MapcherryTest() {
     return () => clearTimeout(id);
   }, [searchQuery, handleSearch]);
 
-  // Funcția pentru Enter în căutare
+  // Functia pentru Enter in cautare
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch(searchQuery);
@@ -851,67 +1413,141 @@ export default function MapcherryTest() {
     });
   };
 
-  // Funcția pentru localizarea utilizatorului
+  // Functia pentru localizarea utilizatorului
   const locateUser = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation nu este suportată de browser-ul tău.');
+      alert('Geolocation nu este suportata de browser.');
       return;
     }
 
     setIsLocating(true);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        console.log('Geolocation accuracy:', accuracy, 'meters');
         const userCoords: [number, number] = [longitude, latitude];
 
         setUserLocation(userCoords);
 
-        // Remove existing user marker
         if (userMarker) {
           userMarker.remove();
         }
 
-        // Create new user marker - mai mare și mai vizibil
+        if (userLocationPopupRef.current) {
+          userLocationPopupRef.current.remove();
+          userLocationPopupRef.current = null;
+        }
+
+        const mapInstance = map.current;
+        if (!mapInstance) {
+          setIsLocating(false);
+          return;
+        }
+
         const markerEl = document.createElement('div');
         markerEl.className = 'custom-marker';
         markerEl.style.cssText = `
-          width: 24px;
-          height: 24px;
-          background-color: #EF4444;
-          border: 3px solid white;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+          border: 3px solid #ffffff;
           border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+          color: #ffffff;
+          font-size: 18px;
+          pointer-events: auto;
           cursor: pointer;
-          z-index: 1000;
+        `;
+        markerEl.textContent = String.fromCodePoint(0x1F3A3);
+
+        const marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
+          .setLngLat(userCoords)
+          .addTo(mapInstance);
+
+        setUserMarker(marker);
+
+        const displayName =
+          (user?.user_metadata?.display_name as string | undefined) ||
+          user?.email?.split('@')[0] ||
+          'Utilizator';
+        const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) || '';
+        const userInitial = displayName.charAt(0).toUpperCase();
+
+        let resolvedAddress = '';
+        try {
+          resolvedAddress = await geocodingService.reverseGeocode(latitude, longitude);
+        } catch (geoError) {
+          console.error('Reverse geocoding failed:', geoError);
+        }
+        const popupHtml = `
+          <div class="min-w-[220px] max-w-[260px] rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-xl">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold flex items-center justify-center overflow-hidden">
+                ${
+                  avatarUrl
+                    ? `<img src="${sanitizeValue(avatarUrl)}" alt="${sanitizeValue(displayName)}" class="h-full w-full object-cover" />`
+                    : sanitizeValue(userInitial)
+                }
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${sanitizeValue(displayName)}</p>
+                <p class="text-xs text-slate-500">Pozitie curenta</p>
+              </div>
+            </div>
+            <div class="mt-3 space-y-2 text-xs text-slate-600">
+              <div class="flex items-start gap-2">
+                <span class="text-base leading-none">&#128205;</span>
+                <span class="font-mono">${formatCoordinate(latitude, 'lat')}, ${formatCoordinate(longitude, 'lng')}</span>
+              </div>
+              ${
+                resolvedAddress
+                  ? `<div class="flex items-start gap-2">
+                      <span class="text-base leading-none">&#127968;</span>
+                      <span>${sanitizeValue(resolvedAddress)}</span>
+                    </div>`
+                  : ''
+              }
+              <div class="flex items-start gap-2">
+                <span class="text-base leading-none">&#128200;</span>
+                <span>Acuratete aproximativa: ${Math.max(5, Math.round(accuracy))} m</span>
+              </div>
+            </div>
+          </div>
         `;
 
-        const newMarker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
+        const popup = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: [0, -22],
+          className: 'ft-user-popup'
+        })
           .setLngLat(userCoords)
-          .addTo(map.current);
+          .setHTML(popupHtml)
+          .addTo(mapInstance);
 
-        setUserMarker(newMarker);
+        userLocationPopupRef.current = popup;
+        marker.setPopup(popup);
+        marker.togglePopup();
 
-        // Fly to user location cu zoom mai mare pentru precizie
-        map.current?.flyTo({
+        mapInstance.flyTo({
           center: userCoords,
-          zoom: 16, // Zoom mai mare pentru precizie
-          duration: 2000
+          zoom: 15,
+          duration: 1500
         });
 
-        // Adaugă cercul de precizie
-        if (map.current?.getSource('user-location-circle')) {
-          map.current.removeLayer('user-location-circle-fill');
-          map.current.removeLayer('user-location-circle-stroke');
-          map.current.removeSource('user-location-circle');
+        if (mapInstance.getSource('user-location-circle')) {
+          mapInstance.removeLayer('user-location-circle-fill');
+          mapInstance.removeLayer('user-location-circle-stroke');
+          mapInstance.removeSource('user-location-circle');
         }
 
-        // Calculează raza în grade pentru cercul de precizie
         const radiusInMeters = Math.max(accuracy || 10, 5);
-        const radiusInDegrees = radiusInMeters / 111000; // Aproximativ 111km per grad
+        const radiusInDegrees = radiusInMeters / 111000;
 
-        map.current?.addSource('user-location-circle', {
+        mapInstance.addSource('user-location-circle', {
           type: 'geojson',
           data: {
             type: 'Feature',
@@ -925,24 +1561,24 @@ export default function MapcherryTest() {
           }
         });
 
-        map.current?.addLayer({
+        mapInstance.addLayer({
           id: 'user-location-circle-fill',
           type: 'fill',
           source: 'user-location-circle',
           paint: {
-            'fill-color': '#EF4444',
-            'fill-opacity': 0.1
+            'fill-color': '#3B82F6',
+            'fill-opacity': 0.12
           }
         });
 
-        map.current?.addLayer({
+        mapInstance.addLayer({
           id: 'user-location-circle-stroke',
           type: 'line',
           source: 'user-location-circle',
           paint: {
-            'line-color': '#EF4444',
+            'line-color': '#3B82F6',
             'line-width': 2,
-            'line-opacity': 0.5
+            'line-opacity': 0.35
           }
         });
 
@@ -952,16 +1588,16 @@ export default function MapcherryTest() {
         console.error('Error getting location:', error);
         setIsLocating(false);
 
-        let errorMessage = 'Nu s-a putut obține locația ta.';
-        switch(error.code) {
+        let errorMessage = 'Nu s-a putut obtine locatia ta.';
+        switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Permisiunea de geolocație a fost refuzată. Te rog să activezi geolocația în browser.';
+            errorMessage = 'Permisiunea de geolocatie a fost refuzata. Te rog sa activezi geolocatia in browser.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Informațiile de locație nu sunt disponibile.';
+            errorMessage = 'Informatiile de locatie nu sunt disponibile.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Cererea de geolocație a expirat. Te rog să încerci din nou.';
+            errorMessage = 'Cererea de geolocatie a expirat. Te rog sa incerci din nou.';
             break;
         }
 
@@ -969,8 +1605,8 @@ export default function MapcherryTest() {
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000, // Timeout mai mare
-        maximumAge: 60000 // Cache mai mic pentru precizie mai bună
+        timeout: 15000,
+        maximumAge: 60000
       }
     );
   };
@@ -1006,10 +1642,25 @@ export default function MapcherryTest() {
       "source-layer": DATA_LAYER,
       filter: magazinFilter,
       paint: {
-        "circle-color": "#F59E0B", // Orange pentru magazine
-        "circle-stroke-width": 3,
+        "circle-color": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          "#EF4444",
+          "#F59E0B"
+        ],
         "circle-stroke-color": "#ffffff",
-        "circle-radius": 8
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          4,
+          2.5
+        ],
+        "circle-radius": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          10,
+          8
+        ]
       }
     });
 
@@ -1025,9 +1676,9 @@ export default function MapcherryTest() {
         "fill-color": [
           "case",
           ["boolean", ["feature-state", "selected"], false],
-          "#EF4444", // Roșu pentru selecție
+          "#EF4444", // Rosu pentru selectie
           ["boolean", ["get", "pescuit_interzis"], false],
-          "#EF4444", // Roșu pentru pescuit interzis
+          "#EF4444", // Rosu pentru pescuit interzis
           "#3B82F6"  // Albastru pentru lacuri (ca pe homepage)
         ],
         "fill-opacity": [
@@ -1041,9 +1692,9 @@ export default function MapcherryTest() {
         "fill-outline-color": [
           "case",
           ["boolean", ["feature-state", "selected"], false],
-          "#EF4444", // Roșu pentru selecție
+          "#EF4444", // Rosu pentru selectie
           ["boolean", ["get", "pescuit_interzis"], false],
-          "#EF4444", // Roșu pentru pescuit interzis
+          "#EF4444", // Rosu pentru pescuit interzis
           "#3B82F6"  // Albastru pentru lacuri (ca pe homepage)
         ]
       }
@@ -1115,17 +1766,29 @@ export default function MapcherryTest() {
       paint: {
         "circle-color": [
           "case",
+          ["boolean", ["feature-state", "selected"], false],
+          "#EF4444",
           ["boolean", ["get", "pescuit_interzis"], false],
-          "#EF4444", // Roșu pentru pescuit interzis
-          "#10B981"  // Verde pentru râuri (ca pe homepage)
+          "#EF4444",
+          "#10B981"
         ],
-        "circle-stroke-width": 3,
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          4,
+          3
+        ],
         "circle-stroke-color": "#ffffff",
-        "circle-radius": 8
+        "circle-radius": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          10,
+          8
+        ]
       }
     });
 
-    // Add river labels
+// Add river labels
     map.current.addLayer({
       id: "linelabel-ape-publice",
       type: "symbol",
@@ -1154,7 +1817,7 @@ export default function MapcherryTest() {
       }
     });
 
-    // Add fishing spots (bălți) - polygons
+    // Add fishing spots (balti) - polygons
     map.current.addLayer({
       id: "polygon-balti-ro",
       type: "fill",
@@ -1173,7 +1836,7 @@ export default function MapcherryTest() {
       }
     }, "roads-track");
 
-    // Add fishing spots (bălți) - points
+    // Add fishing spots (balti) - points
     map.current.addLayer({
       id: "point-balti-ro",
       type: "circle",
@@ -1181,10 +1844,25 @@ export default function MapcherryTest() {
       "source-layer": DATA_LAYER,
       filter: baltiPointFilter,
       paint: {
-        "circle-color": "#0475c1",
-        "circle-stroke-width": 2,
+        "circle-color": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          "#EF4444",
+          "#0475c1"
+        ],
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          4,
+          2
+        ],
         "circle-stroke-color": "rgba(250, 247, 247, 1)",
-        "circle-radius": 6
+        "circle-radius": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          9,
+          6
+        ]
       }
     });
 
@@ -1222,9 +1900,9 @@ export default function MapcherryTest() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <SEOHead
-        title="Test Hartă Mapcherry - Fish Trophy"
-        description="Pagina de test pentru noua integrare Mapcherry cu hărți detaliate pentru pescuit"
-        keywords="test hartă, mapcherry, pescuit, bălți, ape"
+        title="Test Harta Mapcherry - Fish Trophy"
+        description="Pagina de test pentru noua integrare Mapcherry cu harti detaliate pentru pescuit"
+        keywords="test harta, mapcherry, pescuit, balti, ape"
       />
 
       {/* Header */}
@@ -1237,178 +1915,207 @@ export default function MapcherryTest() {
                 className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium">Înapoi la Home</span>
+                <span className="font-medium">Inapoi la Home</span>
               </Link>
             </div>
 
             <div className="flex items-center space-x-2">
               <MapPin className="w-5 h-5 text-blue-600" />
               <h1 className="text-lg font-semibold text-gray-900">
-                Test Hartă Mapcherry
+                Test Harta Mapcherry
               </h1>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Map Container - format frumos ca pe homepage */}
+      {/* Map Container */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 p-6">
-        <div
-          ref={mapContainer}
-          className="w-full rounded-lg overflow-hidden"
-          style={{
-            aspectRatio: '16/9',
-            minHeight: '400px',
-            maxHeight: '600px'
-          }}
-        />
-
-        {/* Loading overlay */}
-        {!isMapLoaded && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 font-medium">Se încarcă harta...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Search bar - deasupra hărții */}
-        <div className="absolute top-4 left-4 right-4 z-30">
-          <div className="relative max-w-md mx-auto">
-            <input
-              id="search-input"
-              name="search"
-              type="text"
-              placeholder="Caută locații, județe, râuri, lacuri..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleSearchKeyPress}
-              className="w-full px-4 py-3 pl-12 pr-4 bg-white border-2 border-gray-200 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              style={{ willChange: 'box-shadow, border-color' }}
-            />
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-              <Search className="w-5 h-5 text-gray-400" />
-            </div>
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setShowSearchResults(false);
-                }}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm border border-gray-200"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Search results - deasupra hărții */}
-        {showSearchResults && searchResults.length > 0 && (
-          <div className="absolute top-20 left-4 right-4 z-30">
-            <div className="max-w-md mx-auto">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto">
-
-              {searchResults.map((result, index) => {
-                const properties = result.properties;
-                const rawType = String((properties['tip'] as string | undefined) ?? (properties['type'] as string | undefined) ?? '');
-                const typeKey = rawType.toLowerCase();
-                const typeLabel = rawType || 'Tip necunoscut';
-                const nameLabel = String((properties['nume'] as string | undefined) ?? (properties['name'] as string | undefined) ?? 'Locatie necunoscuta');
-                const icon = typeKey === 'magazin' ? 'M' : typeKey === 'apa' ? 'A' : 'o';
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleSearchResultClick(result)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3"
-                  >
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-lg">{icon}</span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">{nameLabel}</div>
-                      <div className="text-xs text-gray-500">{typeLabel}</div>
-                    </div>
-                  </button>
-                );
-              })}
-
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showSearchResults && searchResults.length === 0 && searchQuery && (
-          <div className="absolute top-20 left-4 right-4 z-30">
-            <div className="max-w-md mx-auto">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-xl p-4 text-center text-gray-500">
-                Nu s-au găsit locații pentru "{searchQuery}"
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Map controls - exact ca pe homepage */}
-        {isMapLoaded && map.current && (
-          <div className="absolute bottom-4 right-4 z-30 space-y-2">
-            {selectedFeature && (
-              <button
-                onClick={clearSelection}
-                className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-lg shadow-lg border border-red-200 transition-all duration-200 hover:shadow-xl"
-                title="Deselecteaza selectia"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            {/* User location button */}
-            <button
-              onClick={locateUser}
-              disabled={isLocating}
-              className="bg-white hover:bg-gray-50 text-gray-700 hover:text-blue-600 p-3 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isLocating ? "Se localizează..." : "Locația mea"}
-            >
-              {isLocating ? (
-                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <MapPin className="w-5 h-5" />
+        <div className="space-y-6">
+          <div className="relative">
+            <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-3xl shadow-lg px-5 py-4 flex items-center gap-3">
+              <Search className="w-5 h-5 text-slate-400" />
+              <input
+                id="search-input"
+                name="search"
+                type="text"
+                placeholder="Cauta locatii, judete, rauri, lacuri..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                className="w-full bg-transparent text-sm md:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setShowSearchResults(false)
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               )}
-            </button>
+            </div>
 
-            {/* Center on Romania button */}
-            <button
-              onClick={() => {
-                if (map.current) {
-                  map.current.flyTo({
-                    center: [25.0094, 45.9432],
-                    zoom: 6,
-                    duration: 1000
-                  });
-                }
-              }}
-              className="bg-white hover:bg-gray-50 text-gray-700 hover:text-blue-600 p-3 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
-              title="Centrare pe România"
-            >
-              <Navigation className="w-5 h-5" />
-            </button>
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 mt-3 z-40">
+                <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto">
+                  {searchResults.map((result, index) => {
+                    const properties = result.properties
+                    const rawType = String(
+                      (properties['tip'] as string | undefined) ??
+                        (properties['type'] as string | undefined) ??
+                        ''
+                    )
+                    const typeKey = rawType.toLowerCase()
+                    const typeLabel = rawType || 'Tip necunoscut'
+                    const nameLabel = String(
+                      (properties['nume'] as string | undefined) ??
+                        (properties['name'] as string | undefined) ??
+                        'Locatie necunoscuta'
+                    )
+                    const geometryType =
+                      result.geometry?.type || result.feature.geometry?.type || ''
+                    const geometryLabel = geometryType
+                      ? geometryType.replace(/([a-z])([A-Z])/g, '$1 $2')
+                      : ''
+                    const county =
+                      (properties['judet'] as string | undefined) ||
+                      (properties['county'] as string | undefined) ||
+                      (properties['localitate'] as string | undefined) ||
+                      ''
+                    const icon =
+                      typeKey === 'magazin'
+                        ? String.fromCodePoint(0x1F6D2)
+                        : typeKey === 'apa'
+                        ? String.fromCodePoint(0x1F30A)
+                        : String.fromCodePoint(0x1F3A3)
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleSearchResultClick(result)}
+                        className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 flex items-center gap-3 transition-colors"
+                      >
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-lg">
+                            <span>{icon}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-900 truncate">{nameLabel}</div>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                              {typeLabel}
+                            </span>
+                            {geometryLabel && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                {geometryLabel}
+                              </span>
+                            )}
+                          </div>
+                          {county && (
+                            <div className="mt-1 text-xs text-slate-500 truncate">
+                              {String(county)}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {showSearchResults && searchResults.length === 0 && searchQuery && (
+              <div className="absolute left-0 right-0 mt-3 z-40">
+                <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl px-5 py-4 text-center text-slate-500">
+                  Nu s-au gasit locatii pentru "{searchQuery}"
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Info panel */}
-        <div className="absolute bottom-4 left-4 z-20">
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md border border-white/20 p-4 max-w-sm">
-            <h3 className="font-semibold text-gray-900 mb-2">Test Hartă Mapcherry</h3>
-            <div className="space-y-1 text-sm text-gray-600">
-              <p><strong>Token:</strong> {MAPCHERRY_CONFIG.mapToken.substring(0, 8)}...</p>
-              <p><strong>Dataset:</strong> {MAPCHERRY_CONFIG.datasetKey}</p>
-              <p><strong>Status:</strong> {isMapLoaded ? 'Încărcat' : 'Se încarcă...'}</p>
+          <div className="relative">
+            <div className="pointer-events-none absolute -inset-1 rounded-[32px] bg-gradient-to-br from-sky-200 via-emerald-200 to-blue-200 opacity-60 blur-lg" />
+            <div className="relative rounded-3xl border border-slate-200 shadow-2xl bg-white overflow-hidden">
+              <div
+                ref={mapContainer}
+                className="w-full"
+                style={{
+                  aspectRatio: isMobile ? '3/4' : '16/9',
+                  minHeight: isMobile ? '420px' : '560px'
+                }}
+              />
+
+              {!isMapLoaded && (
+                <div className="absolute inset-0 bg-white/85 backdrop-blur-sm flex items-center justify-center z-20">
+                  <div className="text-center space-y-3">
+                    <div className="mx-auto h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-slate-600 font-medium">Se incarca harta...</p>
+                  </div>
+                </div>
+              )}
+
+              {isMapLoaded && map.current && (
+                <div className="absolute bottom-5 right-5 z-30 flex flex-col items-end gap-2">
+                  {selectedFeature && (
+                    <button
+                      onClick={clearSelection}
+                      className="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-500 px-3 py-2 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-rose-600"
+                      title="Sterge selectia"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={locateUser}
+                    disabled={isLocating}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-lg transition hover:-translate-y-0.5 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    title={isLocating ? 'Se localizeaza...' : 'Locatia mea'}
+                  >
+                    {isLocating ? (
+                      <div className="h-5 w-5 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
+                    ) : (
+                      <span className="text-lg">{String.fromCodePoint(0x1F3A3)}</span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (map.current) {
+                        map.current.flyTo({
+                          center: [25.0094, 45.9432],
+                          zoom: 6,
+                          duration: 1000
+                        })
+                      }
+                    }}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-lg transition hover:-translate-y-0.5 hover:text-blue-600"
+                    title="Centreaza pe Romania"
+                  >
+                    <Navigation className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {isMapLoaded && (
+                <div className="absolute bottom-5 left-5 z-30 max-w-xs">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 px-5 py-4 text-sm text-slate-600">
+                    <h3 className="font-semibold text-slate-900 text-base mb-2">Test harta Mapcherry</h3>
+                    <div className="space-y-1">
+                      <p><span className="font-semibold text-slate-700">Token:</span> {MAPCHERRY_CONFIG.mapToken.substring(0, 8)}...</p>
+                      <p><span className="font-semibold text-slate-700">Dataset:</span> {MAPCHERRY_CONFIG.datasetKey}</p>
+                      <p><span className="font-semibold text-slate-700">Status:</span> {isMapLoaded ? 'Activ' : 'Se incarca...'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pointer-events-none absolute inset-0 rounded-3xl border border-white/40 shadow-inner" />
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

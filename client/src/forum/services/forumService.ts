@@ -688,13 +688,13 @@ class ForumStorage {
   getTopicById(topicId: string): ForumTopic | null {
     const topics = this.getTopics();
     const topic = topics.find(t => t.id === topicId) || null;
-    
+
     console.log(`[ForumService] getTopicById(${topicId}):`, {
       totalTopics: topics.length,
       foundTopic: !!topic,
       topicIds: topics.map(t => t.id)
     });
-    
+
     return topic;
   }
 
@@ -730,14 +730,14 @@ class ForumStorage {
   getPostsByTopic(topicId: string): ForumPost[] {
     const allPosts = this.getPosts();
     const filteredPosts = allPosts.filter(post => post.topicId === topicId);
-    
+
     console.log(`[ForumService] getPostsByTopic(${topicId}):`, {
       totalPosts: allPosts.length,
       filteredPosts: filteredPosts.length,
       allTopicIds: allPosts.map(p => p.topicId),
       filteredTopicIds: filteredPosts.map(p => p.topicId)
     });
-    
+
     return filteredPosts;
   }
 

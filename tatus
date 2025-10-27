@@ -1,0 +1,11 @@
+warning: in the working copy of 'client/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/Layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/forum/pages/TopicPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/forum/services/forumService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/pages/MapcherryTest.tsx', LF will be replaced by CRLF the next time Git touches it
+ client/src/App.tsx                        |    2 [32m+[m
+ client/src/components/Layout.tsx          |   17 [32m+[m[31m-[m
+ client/src/forum/pages/TopicPage.tsx      |    4 [32m+[m[31m-[m
+ client/src/forum/services/forumService.ts |    8 [32m+[m[31m-[m
+ client/src/pages/MapcherryTest.tsx        | 1520 [32m+++++++++++++++++++++[m[31m--------[m
+ 5 files changed, 1122 insertions(+), 429 deletions(-)
