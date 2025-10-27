@@ -2,22 +2,26 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-// Debug in development
-if (import.meta.env.DEV) {
-  console.log('=== ENVIRONMENT VARIABLES DEBUG ===')
-  console.log('VITE_SUPABASE_URL:', supabaseUrl)
-  console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'NOT SET')
-  console.log('VITE_ADMIN_EMAIL:', import.meta.env.VITE_ADMIN_EMAIL)
-  console.log('================================')
+const globalForSupabase = globalThis as typeof globalThis & {
+  __supabaseClient?: SupabaseClient
 }
+
+// Debug in development - REMOVED FOR SECURITY
 
 // Safe creation: if env missing, expose a minimal no-op client to avoid crashes in dev
 function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
   const looksLikePlaceholder = (val?: string) => !val || /your-project|your-anon-key|^https?:\/\/your-project\.supabase\.co$/i.test(val) || val === 'https://your-project.supabase.co'
 
-  if (supabaseUrl && supabaseAnonKey && !looksLikePlaceholder(supabaseUrl) && !looksLikePlaceholder(supabaseAnonKey)) {
-    return createClient(supabaseUrl, supabaseAnonKey)
+  if (
+    supabaseUrl &&
+    supabaseAnonKey &&
+    !looksLikePlaceholder(supabaseUrl) &&
+    !looksLikePlaceholder(supabaseAnonKey)
+  ) {
+    if (!globalForSupabase.__supabaseClient) {
+      globalForSupabase.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+    }
+    return globalForSupabase.__supabaseClient
   }
   // Lightweight stub for local development without real credentials
   return {
@@ -208,4 +212,3 @@ export interface Profile {
   county_id?: string
   city_id?: string
 }
-
