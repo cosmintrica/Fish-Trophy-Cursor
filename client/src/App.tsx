@@ -26,6 +26,7 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import MapcherryTest from '@/pages/MapcherryTest';
+import ConstructionPage from '@/pages/ConstructionPage';
 import ForumRoutes from '@/forum/routes';
 
 // Analytics wrapper component that uses useAnalytics inside Router
@@ -36,7 +37,7 @@ function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
 
 // Component to check if user is admin and show construction page if not
 function AppContent() {
-  const { loading } = useAdmin();
+  const { loading, isAdmin } = useAdmin();
 
 
   // Show loading while checking authentication
@@ -52,10 +53,10 @@ function AppContent() {
   }
 
   // Show construction page if user is not admin or not logged in
-  // Temporarily allow forum access for testing
-  // if (!isAdmin && !window.location.pathname.startsWith('/forum')) {
-  //   return <ConstructionPage />;
-  // }
+  // Allow access to forum and mapcherry-test pages
+  if (!isAdmin && !window.location.pathname.startsWith('/forum') && window.location.pathname !== '/mapcherry-test') {
+    return <ConstructionPage />;
+  }
 
   // Show full app for admin users
   return (
