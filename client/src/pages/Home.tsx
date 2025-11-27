@@ -852,12 +852,6 @@ export default function Home() {
             const { latitude, longitude } = position.coords;
 
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo({
-                center: [longitude, latitude],
-                zoom: 15,
-                duration: 1000
-              });
-
               // Adaugă marker pentru locația userului cu popup automat
               addUserLocationMarker(latitude, longitude, false);
             }
@@ -868,13 +862,13 @@ export default function Home() {
             let errorMessage = 'Nu s-a putut obține locația.';
 
             switch (error.code) {
-              case error.PERMISSION_DENIED:
+              case 1: // PERMISSION_DENIED
                 errorMessage = 'Permisiunea pentru locație a fost refuzată. Te rugăm să activezi locația în setările browser-ului.';
                 break;
-              case error.POSITION_UNAVAILABLE:
+              case 2: // POSITION_UNAVAILABLE
                 errorMessage = 'Locația nu este disponibilă. Verifică dacă GPS-ul este activat.';
                 break;
-              case error.TIMEOUT:
+              case 3: // TIMEOUT
                 errorMessage = 'Timeout la obținerea locației. Încearcă din nou.';
                 break;
             }
@@ -886,8 +880,7 @@ export default function Home() {
           {
             maximumAge: 0, // Nu folosește cache
             timeout: 30000, // Timeout și mai mare pentru mobil
-            enableHighAccuracy: true, // Precizie maximă
-            // watchPosition: false // Nu urmări poziția - not a valid option
+            enableHighAccuracy: true // Precizie maximă
           }
         );
       } else {
@@ -927,7 +920,6 @@ export default function Home() {
         justify-content: center;
         position: relative;
         z-index: 999999 !important;
-        will-change: transform;
       ">
         <div style="
           font-size: 20px;
@@ -1052,12 +1044,6 @@ export default function Home() {
 
           if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
             // Centrează harta pe locația utilizatorului cu animație smooth
-            mapInstanceRef.current.flyTo({
-              center: [longitude, latitude],
-              zoom: 12,
-              duration: 1000
-            });
-
             // Adaugă marker pentru locația userului cu popup automat
             addUserLocationMarker(latitude, longitude, false);
 
