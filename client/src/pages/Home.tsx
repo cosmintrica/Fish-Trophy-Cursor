@@ -90,7 +90,6 @@ const mobileCSS = `
   .custom-marker {
     pointer-events: auto !important;
     will-change: transform;
-    transform: translateZ(0);
   }
 
   /* Prevent size changes during loading - 4:3 aspect ratio */
@@ -134,7 +133,7 @@ export default function Home() {
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
-  const [selectedLocationForRecord, setSelectedLocationForRecord] = useState<{id: string, name: string} | null>(null);
+  const [selectedLocationForRecord, setSelectedLocationForRecord] = useState<{ id: string, name: string } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -175,61 +174,61 @@ export default function Home() {
         }
       });
 
-    // Detect if mobile device - more accurate detection
-    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      // Detect if mobile device - more accurate detection
+      const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Adaugă locațiile filtrate din baza de date
-    const allLocations = filterType === 'all' ? databaseLocations :
-      databaseLocations.filter(loc => {
-        if (filterType === 'river') {
-          // Include both 'river' and 'fluviu' types for rivers
-          return loc.type === 'river' || loc.type === 'fluviu';
+      // Adaugă locațiile filtrate din baza de date
+      const allLocations = filterType === 'all' ? databaseLocations :
+        databaseLocations.filter(loc => {
+          if (filterType === 'river') {
+            // Include both 'river' and 'fluviu' types for rivers
+            return loc.type === 'river' || loc.type === 'fluviu';
+          }
+          return loc.type === filterType;
+        });
+
+      // Show all locations - performance is handled by smaller markers and simplified popups
+      const locationsToShow = allLocations;
+
+
+      // Adaugă markerii în batch pentru performanță mai bună
+      const markers: maplibregl.Marker[] = [];
+
+      locationsToShow.forEach(location => {
+        // Debug: log location type for Dunărea - REMOVED TO PREVENT SPAM
+
+        // Determină culoarea în funcție de tipul locației
+        let markerColor = '#6B7280'; // default pentru 'all'
+
+        switch (location.type) {
+          case 'river':
+          case 'fluviu':
+            markerColor = '#10B981';
+            break;
+          case 'lake':
+            markerColor = '#3B82F6';
+            break;
+          case 'pond':
+            markerColor = '#EF4444';
+            break;
+          case 'private_pond':
+            markerColor = '#8B5CF6';
+            break;
+          case 'balti_salbatic':
+            markerColor = '#EF4444';
+            break;
+          case 'maritime':
+            markerColor = '#6366F1';
+            break;
         }
-        return loc.type === filterType;
-      });
 
-    // Show all locations - performance is handled by smaller markers and simplified popups
-    const locationsToShow = allLocations;
+        // CRITICAL: Optimized markers for mobile performance
+        const markerEl = document.createElement('div');
+        markerEl.className = 'custom-marker';
 
-
-    // Adaugă markerii în batch pentru performanță mai bună
-    const markers: maplibregl.Marker[] = [];
-
-    locationsToShow.forEach(location => {
-      // Debug: log location type for Dunărea - REMOVED TO PREVENT SPAM
-
-      // Determină culoarea în funcție de tipul locației
-      let markerColor = '#6B7280'; // default pentru 'all'
-
-      switch (location.type) {
-        case 'river':
-        case 'fluviu':
-          markerColor = '#10B981';
-          break;
-        case 'lake':
-          markerColor = '#3B82F6';
-          break;
-        case 'pond':
-          markerColor = '#EF4444';
-          break;
-        case 'private_pond':
-          markerColor = '#8B5CF6';
-          break;
-        case 'balti_salbatic':
-          markerColor = '#EF4444';
-          break;
-        case 'maritime':
-          markerColor = '#6366F1';
-          break;
-      }
-
-      // CRITICAL: Optimized markers for mobile performance
-      const markerEl = document.createElement('div');
-      markerEl.className = 'custom-marker';
-
-      if (isMobile) {
-        // Mobile: Simple circle marker
-        markerEl.style.cssText = `
+        if (isMobile) {
+          // Mobile: Simple circle marker
+          markerEl.style.cssText = `
           width: 18px;
           height: 18px;
           background-color: ${markerColor};
@@ -238,9 +237,9 @@ export default function Home() {
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           cursor: pointer;
         `;
-      } else {
-        // Desktop: Simple circle marker
-        markerEl.style.cssText = `
+        } else {
+          // Desktop: Simple circle marker
+          markerEl.style.cssText = `
           width: 24px;
           height: 24px;
           background-color: ${markerColor};
@@ -250,43 +249,43 @@ export default function Home() {
           cursor: pointer;
         `;
 
-        // Hover effects for desktop - disabled to prevent position shift
-        // markerEl.addEventListener('mouseenter', () => {
-        //   markerEl.style.transform = 'scale(1.2)';
-        //   markerEl.style.transformOrigin = 'center center';
-        // });
+          // Hover effects for desktop - disabled to prevent position shift
+          // markerEl.addEventListener('mouseenter', () => {
+          //   markerEl.style.transform = 'scale(1.2)';
+          //   markerEl.style.transformOrigin = 'center center';
+          // });
 
-        // markerEl.addEventListener('mouseleave', () => {
-        //   markerEl.style.transform = 'scale(1)';
-        //   markerEl.style.transformOrigin = 'center center';
-        // });
-      }
+          // markerEl.addEventListener('mouseleave', () => {
+          //   markerEl.style.transform = 'scale(1)';
+          //   markerEl.style.transformOrigin = 'center center';
+          // });
+        }
 
-      let marker: maplibregl.Marker | null = null;
+        let marker: maplibregl.Marker | null = null;
 
-      // Use coords [lng, lat] coming from service; validate before adding
-      const [lng, lat] = location.coords || [0, 0];
-      if (
-        _map &&
-        _map.getContainer() &&
-        typeof lng === 'number' &&
-        typeof lat === 'number' &&
-        !Number.isNaN(lng) &&
-        !Number.isNaN(lat)
-      ) {
-        // marker personalizat: cerc alb cu border albastru și emoji fishing_pole
-        marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
-          .setLngLat([lng, lat])
-          .addTo(_map);
+        // Use coords [lng, lat] coming from service; validate before adding
+        const [lng, lat] = location.coords || [0, 0];
+        if (
+          _map &&
+          _map.getContainer() &&
+          typeof lng === 'number' &&
+          typeof lat === 'number' &&
+          !Number.isNaN(lng) &&
+          !Number.isNaN(lat)
+        ) {
+          // marker personalizat: cerc alb cu border albastru și emoji fishing_pole
+          marker = new maplibregl.Marker({ element: markerEl, anchor: 'center' })
+            .setLngLat([lng, lat])
+            .addTo(_map);
 
-        markers.push(marker);
+          markers.push(marker);
 
-        // Add to index for quick access
-        const locationKey = `${location.name}:${lng}:${lat}`;
-        markerIndexRef.current.set(locationKey, marker);
+          // Add to index for quick access
+          const locationKey = `${location.name}:${lng}:${lat}`;
+          markerIndexRef.current.set(locationKey, marker);
 
-      // CRITICAL: Ultra-simplified popup for mobile performance
-      const popupContent = isMobile ? `
+          // CRITICAL: Ultra-simplified popup for mobile performance
+          const popupContent = isMobile ? `
         <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
           <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm border border-gray-200" onclick="this.closest('.maplibregl-popup').remove()">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -367,82 +366,82 @@ export default function Home() {
         </div>
       `;
 
-        const popup = new maplibregl.Popup({
-          maxWidth: isMobile ? '240px' : '400px',
-          closeButton: false, // Custom close button
-          className: 'custom-popup'
-        }).setHTML(popupContent);
+          const popup = new maplibregl.Popup({
+            maxWidth: isMobile ? '240px' : '400px',
+            closeButton: false, // Custom close button
+            className: 'custom-popup'
+          }).setHTML(popupContent);
 
-        marker.setPopup(popup);
+          marker.setPopup(popup);
 
-        // Add event listeners for popup buttons
-        popup.on('open', () => {
-          setTimeout(() => {
-            // Add record button
-            const addRecordButtons = document.querySelectorAll('[data-action="add-record"]');
-            addRecordButtons.forEach(button => {
-              button.addEventListener('click', (e) => {
-                e.preventDefault();
-                const locationId = button.getAttribute('data-location-id');
-                const locationName = button.getAttribute('data-location-name');
-                if (locationId && locationName) {
-                  setSelectedLocationForRecord({ id: locationId, name: locationName });
-                  setShowRecordModal(true);
-                }
+          // Add event listeners for popup buttons
+          popup.on('open', () => {
+            setTimeout(() => {
+              // Add record button
+              const addRecordButtons = document.querySelectorAll('[data-action="add-record"]');
+              addRecordButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  const locationId = button.getAttribute('data-location-id');
+                  const locationName = button.getAttribute('data-location-name');
+                  if (locationId && locationName) {
+                    setSelectedLocationForRecord({ id: locationId, name: locationName });
+                    setShowRecordModal(true);
+                  }
+                });
               });
-            });
 
-            // View records button
-            const viewRecordsButtons = document.querySelectorAll('[data-action="view-records"]');
-            viewRecordsButtons.forEach(button => {
-              button.addEventListener('click', (e) => {
-                e.preventDefault();
-                const locationId = button.getAttribute('data-location-id');
-                const locationName = button.getAttribute('data-location-name');
-                if (locationId && locationName) {
-                  // Navigate to records page with location filter
-                  window.location.href = `/records?location=${encodeURIComponent(locationId)}`;
-                }
+              // View records button
+              const viewRecordsButtons = document.querySelectorAll('[data-action="view-records"]');
+              viewRecordsButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  const locationId = button.getAttribute('data-location-id');
+                  const locationName = button.getAttribute('data-location-name');
+                  if (locationId && locationName) {
+                    // Navigate to records page with location filter
+                    window.location.href = `/records?location=${encodeURIComponent(locationId)}`;
+                  }
+                });
               });
-            });
-          }, 100);
-        });
-
-        // Add event listener to center popup when opened
-        marker.getElement().addEventListener('click', () => {
-          // Track marker click
-          trackMapInteraction('marker_click', {
-            location_id: location.id,
-            location_name: location.name,
-            location_type: location.type
+            }, 100);
           });
 
-          setTimeout(() => {
-            if (mapInstanceRef.current) {
-              const map = mapInstanceRef.current;
-              const offsetPx = 120; // deplasează centrul în sus pentru a vedea popupul
-              const center = map.project([lng, lat]);
-              const adjusted = { x: center.x, y: center.y - offsetPx };
-              const adjustedLngLat = map.unproject(adjusted as unknown as [number, number]);
-              map.easeTo({
-                center: [adjustedLngLat.lng, adjustedLngLat.lat],
-                duration: 800,
-                essential: true
-              });
-            }
-          }, 100); // Small delay to ensure popup is rendered
-        });
-      } else {
-        console.error('Map not ready for marker creation');
-      }
-    });
+          // Add event listener to center popup when opened
+          marker.getElement().addEventListener('click', () => {
+            // Track marker click
+            trackMapInteraction('marker_click', {
+              location_id: location.id,
+              location_name: location.name,
+              location_type: location.type
+            });
 
-    // Add markers directly - no batching needed
-    markersRef.current = markers.filter(marker => marker !== null);
-  } finally {
-    setIsAddingMarkers(false);
-  }
-};
+            setTimeout(() => {
+              if (mapInstanceRef.current) {
+                const map = mapInstanceRef.current;
+                const offsetPx = 120; // deplasează centrul în sus pentru a vedea popupul
+                const center = map.project([lng, lat]);
+                const adjusted = { x: center.x, y: center.y - offsetPx };
+                const adjustedLngLat = map.unproject(adjusted as unknown as [number, number]);
+                map.easeTo({
+                  center: [adjustedLngLat.lng, adjustedLngLat.lat],
+                  duration: 800,
+                  essential: true
+                });
+              }
+            }, 100); // Small delay to ensure popup is rendered
+          });
+        } else {
+          console.error('Map not ready for marker creation');
+        }
+      });
+
+      // Add markers directly - no batching needed
+      markersRef.current = markers.filter(marker => marker !== null);
+    } finally {
+      setIsAddingMarkers(false);
+    }
+  };
 
   // Încarcă locațiile din baza de date
   useEffect(() => {
@@ -868,7 +867,7 @@ export default function Home() {
             console.error('Eroare la obținerea locației:', error);
             let errorMessage = 'Nu s-a putut obține locația.';
 
-            switch(error.code) {
+            switch (error.code) {
               case error.PERMISSION_DENIED:
                 errorMessage = 'Permisiunea pentru locație a fost refuzată. Te rugăm să activezi locația în setările browser-ului.';
                 break;
@@ -988,9 +987,9 @@ export default function Home() {
         <div class="text-center mb-3">
           <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
             ${userPhoto ?
-              `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
-              `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
-            }
+        `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
+        `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
+      }
           </div>
           <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
           <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
@@ -1016,18 +1015,16 @@ export default function Home() {
 
     // Deschide popup-ul automat și centrează harta doar dacă nu este silent
     if (!silent) {
-      setTimeout(() => {
-        if (userMarker) {
-          userMarker.togglePopup();
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.flyTo({
-              center: [longitude, latitude],
-              zoom: 15,
-              duration: 1000
-            });
-          }
+      if (userMarker) {
+        userMarker.togglePopup();
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 15,
+            duration: 1000
+          });
         }
-      }, 500);
+      }
     }
   };
 
@@ -1088,19 +1085,15 @@ export default function Home() {
         },
         {
           enableHighAccuracy: true,
-          timeout: isMobile ? 30000 : 15000, // Timeout mai mare pentru mobil
-          maximumAge: isMobile ? 300000 : 60000 // Cache mai mare pentru mobil
+          timeout: isMobile ? 30000 : 15000,
+          maximumAge: 0
         }
       );
     } catch (error) {
       console.error('Eroare la obținerea locației:', error);
       alert('Eroare la obținerea locației.');
     }
-  };
-
-
-
-  // Funcție pentru deschiderea popup-ului magazin
+  };          // Funcție pentru deschiderea popup-ului magazin
   const openShopPopup = () => {
     setShowShopPopup(true);
   };
@@ -1117,373 +1110,371 @@ export default function Home() {
         structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
       />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden">
-          <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Meniu</h2>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <nav className="space-y-4">
-              <Link
-                to="/"
-                className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Acasă
-              </Link>
-              <Link
-                to="/submission-guide"
-                className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Ghid Submisie
-              </Link>
-              <Link
-                to="/profile"
-                className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Profilul meu
-              </Link>
-            </nav>
-          </div>
-        </div>
-      )}
-
-      {/* Hero Section - Small Banner */}
-      <section className="relative py-4 md:py-6 px-4 md:px-6 lg:px-8 mt-2 md:-mt-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-4 md:p-6 text-center shadow-lg">
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
-              Fish Trophy - Platforma pentru Recorduri de Pescuit
-            </h1>
-            <p className="text-sm md:text-base text-white">
-              Explorează harta interactivă, înregistrează recordurile tale și concurează în clasamentele naționale!
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Map Section - Mobile Optimized */}
-      <section className="px-4 md:px-6 lg:px-8 mb-16">
-        <div className="max-w-7xl mx-auto">
-          {/* Search Bar */}
-          <div className="relative mb-6 max-w-md mx-auto">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Caută locații, județe, râuri, lacuri..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleSearchKeyPress}
-                className="w-full px-4 py-3 pl-12 pr-4 bg-white border border-gray-200 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                style={{ willChange: 'box-shadow, border-color' }}
-              />
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              {searchQuery && (
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden">
+            <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Meniu</h2>
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setShowSearchResults(false);
-                  }}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-6 w-6" />
                 </button>
+              </div>
+              <nav className="space-y-4">
+                <Link
+                  to="/"
+                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Acasă
+                </Link>
+                <Link
+                  to="/submission-guide"
+                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Ghid Submisie
+                </Link>
+                <Link
+                  to="/profile"
+                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Profilul meu
+                </Link>
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Hero Section - Small Banner */}
+        <section className="relative py-4 md:py-6 px-4 md:px-6 lg:px-8 mt-2 md:-mt-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-4 md:p-6 text-center shadow-lg">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
+                Fish Trophy - Platforma pentru Recorduri de Pescuit
+              </h1>
+              <p className="text-sm md:text-base text-white">
+                Explorează harta interactivă, înregistrează recordurile tale și concurează în clasamentele naționale!
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Map Section - Mobile Optimized */}
+        <section className="px-4 md:px-6 lg:px-8 mb-16">
+          <div className="max-w-7xl mx-auto">
+            {/* Search Bar */}
+            <div className="relative mb-6 max-w-md mx-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Caută locații, județe, râuri, lacuri..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  className="w-full px-4 py-3 pl-12 pr-4 bg-white border border-gray-200 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  style={{ willChange: 'box-shadow, border-color' }}
+                />
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setShowSearchResults(false);
+                    }}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+                  {searchResults.map((location, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        selectLocation(location);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg">
+                          {location.type === 'river' || location.type === 'fluviu' ? '🌊' : location.type === 'lake' ? '🏞️' : location.type === 'balti_salbatic' ? '🌿' : location.type === 'private_pond' ? '🏡' : '💧'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{location.name}</p>
+                          <p className="text-sm text-gray-600 truncate">
+                            {location.subtitle && `${location.subtitle} • `}
+                            {location.county}, {location.region.charAt(0).toUpperCase() + location.region.slice(1)}
+                          </p>
+                        </div>
+                        <div className="text-xs text-gray-500 capitalize">
+                          {location.type === 'river' || location.type === 'fluviu' ? 'Ape curgătoare' :
+                            location.type === 'lake' ? 'Lac' :
+                              location.type === 'balti_salbatic' ? 'Bălți Sălbatice' :
+                                location.type === 'private_pond' ? 'Bălți Private' : location.type}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {showSearchResults && searchResults.length === 0 && searchQuery && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
+                  Nu s-au găsit locații pentru "{searchQuery}"
+                </div>
               )}
             </div>
 
-            {/* Search Results Dropdown */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
-                {searchResults.map((location, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      selectLocation(location);
-                    }}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg">
-                        {location.type === 'river' || location.type === 'fluviu' ? '🌊' : location.type === 'lake' ? '🏞️' : location.type === 'balti_salbatic' ? '🌿' : location.type === 'private_pond' ? '🏡' : '💧'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{location.name}</p>
-                        <p className="text-sm text-gray-600 truncate">
-                          {location.subtitle && `${location.subtitle} • `}
-                          {location.county}, {location.region.charAt(0).toUpperCase() + location.region.slice(1)}
-                        </p>
-                      </div>
-                      <div className="text-xs text-gray-500 capitalize">
-                        {location.type === 'river' || location.type === 'fluviu' ? 'Ape curgătoare' :
-                         location.type === 'lake' ? 'Lac' :
-                         location.type === 'balti_salbatic' ? 'Bălți Sălbatice' :
-                         location.type === 'private_pond' ? 'Bălți Private' : location.type}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Map Controls - Mobile Optimized */}
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
+                {[
+                  { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
+                  { type: 'river', label: 'Ape curgătoare', icon: MapPin, color: 'bg-emerald-500 hover:bg-emerald-600' },
+                  { type: 'lake', label: 'Lacuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
+                  { type: 'balti_salbatic', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
+                  { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
+                ].map(({ type, label, icon: Icon, color }) => {
+                  const count = type === 'all'
+                    ? databaseLocations.length
+                    : databaseLocations.filter(loc => {
+                      if (type === 'river') {
+                        return loc.type === 'river' || loc.type === 'fluviu';
+                      }
+                      return loc.type === type;
+                    }).length;
 
-            {showSearchResults && searchResults.length === 0 && searchQuery && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
-                Nu s-au găsit locații pentru "{searchQuery}"
-              </div>
-            )}
-          </div>
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => filterLocations(type)}
+                      className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${activeFilter === type ? 'ring-2 ring-blue-200' : ''
+                        }`}
+                      style={{ willChange: 'transform, box-shadow, background-color' }}
+                    >
+                      <Icon className="w-3 h-3 md:w-4 md:h-4" />
+                      <span className="text-xs md:text-sm">
+                        {label} {isLoadingLocations ? '...' : `(${count})`}
+                      </span>
+                    </button>
+                  );
+                })}
 
-          {/* Map Controls - Mobile Optimized */}
-          <div className="mb-6">
-            <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-              {[
-                { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
-                { type: 'river', label: 'Ape curgătoare', icon: MapPin, color: 'bg-emerald-500 hover:bg-emerald-600' },
-                { type: 'lake', label: 'Lacuri', icon: MapPin, color: 'bg-blue-500 hover:bg-blue-600' },
-                { type: 'balti_salbatic', label: 'Bălți Sălbatice', icon: MapPin, color: 'bg-red-500 hover:bg-red-600' },
-                { type: 'private_pond', label: 'Bălți Private', icon: MapPin, color: 'bg-purple-500 hover:bg-purple-600' }
-              ].map(({ type, label, icon: Icon, color }) => {
-                const count = type === 'all'
-                  ? databaseLocations.length
-                  : databaseLocations.filter(loc => {
-                    if (type === 'river') {
-                      return loc.type === 'river' || loc.type === 'fluviu';
-                    }
-                    return loc.type === type;
-                  }).length;
-
-                return (
                 <button
-                  key={type}
-                  onClick={() => filterLocations(type)}
-                  className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${
-                    activeFilter === type ? 'ring-2 ring-blue-200' : ''
-                  }`}
+                  onClick={openShopPopup}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105"
                   style={{ willChange: 'transform, box-shadow, background-color' }}
                 >
-                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="text-xs md:text-sm">
-                    {label} {isLoadingLocations ? '...' : `(${count})`}
-                  </span>
+                  <MapPin className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="text-xs md:text-sm">Magazine de Pescuit</span>
                 </button>
-                );
-              })}
-
-              <button
-                onClick={openShopPopup}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105"
-                style={{ willChange: 'transform, box-shadow, background-color' }}
-              >
-                <MapPin className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="text-xs md:text-sm">Magazine de Pescuit</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Map Container - Mobile Optimized */}
-          <div className="relative">
-            {mapError ? (
-              <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden bg-gray-100 flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Eroare la încărcarea hărții</h3>
-                  <p className="text-gray-600 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Reîmprospătează pagina
-                  </button>
-                </div>
               </div>
-            ) : (
-            <div
-              ref={mapContainerRef}
-              className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden"
-              style={{ zIndex: 1 }}
-            />
-            )}
-
-            {/* Map Controls - Top Left (Zoom) */}
-            <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
-              <button
-                onClick={() => mapInstanceRef.current?.zoomIn()}
-                className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
-                title="Zoom in"
-              >
-                <span className="text-lg font-bold">+</span>
-              </button>
-              <button
-                onClick={() => mapInstanceRef.current?.zoomOut()}
-                className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
-                title="Zoom out"
-              >
-                <span className="text-lg font-bold">−</span>
-              </button>
             </div>
 
-            {/* Geolocation Button - Top Right */}
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={centerOnUserLocation}
-                disabled={isLocating}
-                className={`bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl ${
-                  isLocating ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                title="Centrare pe locația mea"
-              >
-                {isLocating ? (
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                <Navigation className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+            {/* Map Container - Mobile Optimized */}
+            <div className="relative">
+              {mapError ? (
+                <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Eroare la încărcarea hărții</h3>
+                    <p className="text-gray-600 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Reîmprospătează pagina
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  ref={mapContainerRef}
+                  className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden"
+                  style={{ zIndex: 1 }}
+                />
+              )}
 
-      {/* FAQ Section - Mobile Optimized */}
-      <section className="px-4 md:px-6 lg:px-8 mb-16">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
-            Întrebări Frecvente
-          </h2>
+              {/* Map Controls - Top Left (Zoom) */}
+              <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomIn()}
+                  className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                  title="Zoom in"
+                >
+                  <span className="text-lg font-bold">+</span>
+                </button>
+                <button
+                  onClick={() => mapInstanceRef.current?.zoomOut()}
+                  className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                  title="Zoom out"
+                >
+                  <span className="text-lg font-bold">−</span>
+                </button>
+              </div>
 
-          <div className="space-y-3">
-            {[
-              {
-                question: "Ce este Fish Trophy și pentru cine este destinat?",
-                answer: "Fish Trophy este platforma națională pentru pescari pasionați din România. Este destinată tuturor celor care iubesc pescuitul și doresc să înregistreze, urmărească și concureze cu recordurile lor."
-              },
-              {
-                question: "De ce nu promovați locațiile exacte de pescuit?",
-                answer: "Fish Trophy nu promovează locațiile exacte de pescuit din respect față de natură și pentru a preveni supraexploatarea zonelor sensibile. Ne concentrăm pe zonele de pescuit, păstrând echilibrul natural al ecosistemelor acvatice."
-              },
-              {
-                question: "Care sunt scopurile Fish Trophy?",
-                answer: "Scopul nostru principal este să facem din pescuit un sport național frumos și respectat. Promovăm respectul față de natură, contribuim la amenajarea spațiilor de pescuit și facem presiune asupra autorităților pentru protejarea zonelor acvatice."
-              },
-              {
-                question: "Cum funcționează sistemul de recorduri?",
-                answer: "Sistemul nostru de recorduri este transparent și verificat. Pescarii pot înregistra prinderea cu dovezi fotografice, informații despre locație (zonă generală), dimensiuni și greutate. Toate recordurile sunt verificate de comunitate."
-              },
-              {
-                question: "Cum contribuiți la protejarea naturii?",
-                answer: "Promovăm pescuitul responsabil prin educarea comunității despre tehnici durabile, respectarea perioadelor de reproducere și limitelor de prindere. Fiecare pescar din comunitatea noastră devine un gardian al naturii."
-              },
-              {
-                question: "Ce planuri aveți pentru dezvoltarea platformei?",
-                answer: "Planificăm să dezvoltăm funcționalități pentru competiții locale și naționale, un sistem de mentorat pentru pescarii începători și parteneriate cu autoritățile locale pentru amenajarea zonelor de pescuit."
-              }
-            ].map((faq, index) => (
-              <FAQItem
-                key={index}
-                question={faq.question}
-                answer={faq.answer}
-                index={index}
-                isOpen={openFAQIndex === index}
-                onToggle={() => setOpenFAQIndex(openFAQIndex === index ? null : index)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Location Request Overlay */}
-      {showLocationRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Navigation className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Permite accesul la locație
-            </h3>
-            <p className="text-gray-600 mb-8 leading-relaxed">
-              Pentru a-ți arăta locațiile de pescuit cele mai apropiate și pentru a-ți oferi o experiență personalizată
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => handleLocationPermission(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
-              >
-                Nu acum
-              </button>
-              <button
-                onClick={() => handleLocationPermission(true)}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                Permite
-              </button>
+              {/* Geolocation Button - Top Right */}
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  onClick={centerOnUserLocation}
+                  disabled={isLocating}
+                  className={`bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl ${isLocating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  title="Centrare pe locația mea"
+                >
+                  {isLocating ? (
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Navigation className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Shop Popup Modal */}
-      {showShopPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <MapPin className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              În Curând!
-            </h3>
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând.
-            </p>
-            <p className="text-gray-700 mb-8 leading-relaxed font-medium">
-              Vrei să-ți adaugi magazinul pe hartă?
-              <br />
-              <span className="text-blue-600">Trimite-ne un email cu detaliile tale!</span>
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowShopPopup(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
-              >
-                Închide
-              </button>
-              <Link
-                to="/fishing-shops"
-                onClick={() => setShowShopPopup(false)}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                Trimite Detalii
-              </Link>
+        {/* FAQ Section - Mobile Optimized */}
+        <section className="px-4 md:px-6 lg:px-8 mb-16">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
+              Întrebări Frecvente
+            </h2>
+
+            <div className="space-y-3">
+              {[
+                {
+                  question: "Ce este Fish Trophy și pentru cine este destinat?",
+                  answer: "Fish Trophy este platforma națională pentru pescari pasionați din România. Este destinată tuturor celor care iubesc pescuitul și doresc să înregistreze, urmărească și concureze cu recordurile lor."
+                },
+                {
+                  question: "De ce nu promovați locațiile exacte de pescuit?",
+                  answer: "Fish Trophy nu promovează locațiile exacte de pescuit din respect față de natură și pentru a preveni supraexploatarea zonelor sensibile. Ne concentrăm pe zonele de pescuit, păstrând echilibrul natural al ecosistemelor acvatice."
+                },
+                {
+                  question: "Care sunt scopurile Fish Trophy?",
+                  answer: "Scopul nostru principal este să facem din pescuit un sport național frumos și respectat. Promovăm respectul față de natură, contribuim la amenajarea spațiilor de pescuit și facem presiune asupra autorităților pentru protejarea zonelor acvatice."
+                },
+                {
+                  question: "Cum funcționează sistemul de recorduri?",
+                  answer: "Sistemul nostru de recorduri este transparent și verificat. Pescarii pot înregistra prinderea cu dovezi fotografice, informații despre locație (zonă generală), dimensiuni și greutate. Toate recordurile sunt verificate de comunitate."
+                },
+                {
+                  question: "Cum contribuiți la protejarea naturii?",
+                  answer: "Promovăm pescuitul responsabil prin educarea comunității despre tehnici durabile, respectarea perioadelor de reproducere și limitelor de prindere. Fiecare pescar din comunitatea noastră devine un gardian al naturii."
+                },
+                {
+                  question: "Ce planuri aveți pentru dezvoltarea platformei?",
+                  answer: "Planificăm să dezvoltăm funcționalități pentru competiții locale și naționale, un sistem de mentorat pentru pescarii începători și parteneriate cu autoritățile locale pentru amenajarea zonelor de pescuit."
+                }
+              ].map((faq, index) => (
+                <FAQItem
+                  key={index}
+                  question={faq.question}
+                  answer={faq.answer}
+                  index={index}
+                  isOpen={openFAQIndex === index}
+                  onToggle={() => setOpenFAQIndex(openFAQIndex === index ? null : index)}
+                />
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Record Submission Modal */}
-      <RecordSubmissionModal
-        isOpen={showRecordModal}
-        onClose={() => {
-          setShowRecordModal(false);
-          setSelectedLocationForRecord(null);
-        }}
-        locationId={selectedLocationForRecord?.id}
-        locationName={selectedLocationForRecord?.name}
-      />
+        {/* Location Request Overlay */}
+        {showLocationRequest && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Navigation className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Permite accesul la locație
+              </h3>
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                Pentru a-ți arăta locațiile de pescuit cele mai apropiate și pentru a-ți oferi o experiență personalizată
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleLocationPermission(false)}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Nu acum
+                </button>
+                <button
+                  onClick={() => handleLocationPermission(true)}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  Permite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shop Popup Modal */}
+        {showShopPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <MapPin className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                În Curând!
+              </h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând.
+              </p>
+              <p className="text-gray-700 mb-8 leading-relaxed font-medium">
+                Vrei să-ți adaugi magazinul pe hartă?
+                <br />
+                <span className="text-blue-600">Trimite-ne un email cu detaliile tale!</span>
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowShopPopup(false)}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Închide
+                </button>
+                <Link
+                  to="/fishing-shops"
+                  onClick={() => setShowShopPopup(false)}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  Trimite Detalii
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Record Submission Modal */}
+        <RecordSubmissionModal
+          isOpen={showRecordModal}
+          onClose={() => {
+            setShowRecordModal(false);
+            setSelectedLocationForRecord(null);
+          }}
+          locationId={selectedLocationForRecord?.id}
+          locationName={selectedLocationForRecord?.name}
+        />
       </div>
     </>
   );

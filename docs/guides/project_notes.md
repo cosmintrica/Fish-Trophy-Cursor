@@ -273,6 +273,21 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - **🔒 SECURITY**: Validarea parolei actuale e obligatorie pentru schimbarea parolei
 - **🔒 SECURITY**: Fiecare user trebuie să aibă datele complet izolate
 
+## 🗺️ Roadmap & Implementation Plan (2025)
+
+- Planul detaliat de lucru pentru etapele următoare este documentat în:
+  - `docs/guides/FISH_TROPHY_ROADMAP_2025.md`
+- Include:
+  - Sesiunile 1–8 („Fish Trophy – Systematic Fixes”) pentru:
+    - R2 Upload Fix
+    - Quick wins Map & UI (marker locație user, dropdown z‑index)
+    - Public Profile redesign
+    - Species images (R2 + DB)
+    - Mobile responsive pentru pagini cheie
+    - Admin map editing & map performance (Supercluster)
+    - Forum system final (reputație, notificări)
+  - Implementation Action Plan cu pașii 0–12 (backup, forum DB, forum service, auth unificat, R2 upload, map fixes, profil, specii, responsive, admin map editing, clustering, forum widgets & notificări).
+
 ## 🔧 Technical Debt
 - [ ] Review și optimizare cod duplicat
 - [ ] Implementare error handling mai robust

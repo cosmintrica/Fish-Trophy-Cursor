@@ -41,26 +41,28 @@ const Records = () => {
   const { trackSearch } = useAnalytics();
   // Real data states
   const [records, setRecords] = useState<FishRecord[]>([]);
-  const [species, setSpecies] = useState<{id: string; name: string}[]>([]);
-  const [locations, setLocations] = useState<{id: string; name: string; type: string; county: string}[]>([]);
+  const [species, setSpecies] = useState<{ id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string; type: string; county: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [activeTab, setActiveTab] = useState('overall');
-  const [teamStats, setTeamStats] = useState<{[key: string]: {
-    locationName: string;
-    locationType: string;
-    county: string;
-    totalWeight: number;
-    totalRecords: number;
-    members: string[];
-    species: string[];
-    memberCount: number;
-    speciesCount: number;
-    records: any[];
-  }}>({});
+  const [teamStats, setTeamStats] = useState<{
+    [key: string]: {
+      locationName: string;
+      locationType: string;
+      county: string;
+      totalWeight: number;
+      totalRecords: number;
+      members: string[];
+      species: string[];
+      memberCount: number;
+      speciesCount: number;
+      records: any[];
+    }
+  }>({});
 
   // Modal states
   const [selectedRecord, setSelectedRecord] = useState<FishRecord | null>(null);
@@ -168,16 +170,18 @@ const Records = () => {
 
 
       // Group by location and calculate stats
-      const stats: {[key: string]: {
-        locationName: string;
-        locationType: string;
-        county: string;
-        totalWeight: number;
-        totalRecords: number;
-        members: Set<string>;
-        species: Set<string>;
-        records: any[];
-      }} = {};
+      const stats: {
+        [key: string]: {
+          locationName: string;
+          locationType: string;
+          county: string;
+          totalWeight: number;
+          totalRecords: number;
+          members: Set<string>;
+          species: Set<string>;
+          records: any[];
+        }
+      } = {};
 
       teamData?.forEach(record => {
         const locationId = record.location_id;
@@ -206,18 +210,20 @@ const Records = () => {
       });
 
       // Convert Sets to Arrays and add counts
-      const finalStats: {[key: string]: {
-        locationName: string;
-        locationType: string;
-        county: string;
-        totalWeight: number;
-        totalRecords: number;
-        members: string[];
-        species: string[];
-        memberCount: number;
-        speciesCount: number;
-        records: any[];
-      }} = {};
+      const finalStats: {
+        [key: string]: {
+          locationName: string;
+          locationType: string;
+          county: string;
+          totalWeight: number;
+          totalRecords: number;
+          members: string[];
+          species: string[];
+          memberCount: number;
+          speciesCount: number;
+          records: any[];
+        }
+      } = {};
 
       Object.keys(stats).forEach(locationId => {
         const stat = stats[locationId];
@@ -438,33 +444,33 @@ const Records = () => {
         </div>
 
         {/* Search and Filters - Mobile Friendly */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-3 sm:p-4 mb-4 sm:mb-6 relative z-50">
           {/* Main Search Bar */}
           <div className="mb-4">
             <div className="relative max-w-xl mx-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
+              <input
+                type="text"
                 placeholder="Caută recorduri, specii, locații..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    if (e.target.value.length > 2) {
-                      trackSearch(e.target.value, records.length);
-                    }
-                  }}
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if (e.target.value.length > 2) {
+                    trackSearch(e.target.value, records.length);
+                  }
+                }}
                 className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm bg-gray-50/50 hover:bg-white"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
+                >
                   <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+                </button>
+              )}
             </div>
+          </div>
 
           {/* Quick Filters */}
           <div className="flex flex-wrap justify-center gap-2 mb-3">
@@ -605,11 +611,10 @@ const Records = () => {
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
-                  className={`flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                    activeTab === id
+                  className={`flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === id
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
                       : 'bg-white/80 text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-3 h-3 mr-1 sm:mr-2 flex-shrink-0" />
                   <span className="hidden sm:inline">{label}</span>
@@ -633,51 +638,51 @@ const Records = () => {
                 (Resetează)
               </button>
             )}
-            </div>
+          </div>
 
-            {/* Advanced Filters */}
-            {showAdvancedFilters && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate min (kg)</label>
-                  <input
-                    type="number"
-                    value={minWeight}
-                    onChange={(e) => setMinWeight(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate max (kg)</label>
-                  <input
-                    type="number"
-                    value={maxWeight}
-                    onChange={(e) => setMaxWeight(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">De la data</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Până la data</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Greutate min (kg)</label>
+                <input
+                  type="number"
+                  value={minWeight}
+                  onChange={(e) => setMinWeight(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
+                />
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Greutate max (kg)</label>
+                <input
+                  type="number"
+                  value={maxWeight}
+                  onChange={(e) => setMaxWeight(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">De la data</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Până la data</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
 
         </div>
 

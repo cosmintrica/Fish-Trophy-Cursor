@@ -1,119 +1,66 @@
-// Upload API - Cloudflare R2 integration for photos and videos
-
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import busboy from 'busboy';
 
-const R2_ACCOUNT_ID = process.env.VITE_R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.VITE_R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = process.env.VITE_R2_SECRET_ACCESS_KEY;
-const R2_BUCKET_NAME = process.env.VITE_R2_BUCKET_NAME || 'fishtrophy-content';
-const R2_PUBLIC_URL = process.env.VITE_R2_PUBLIC_URL;
-
-// Initialize S3 client for Cloudflare R2
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-});
-
-const cors = () => ({
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS'
-});
-
-const ok = (data, init = {}) => ({
-  statusCode: 200,
-  headers: cors(),
-  body: JSON.stringify(data),
-  ...init
-});
-
-const bad = (message, status = 400) => ({
-  statusCode: status,
-  headers: cors(),
-  body: JSON.stringify({ success: false, error: message })
-});
-
+// Minimal debug version
 export const handler = async (event) => {
-  // Handle CORS preflight
+  console.log('🚀 Function started');
+  console.log('Event headers:', JSON.stringify(event.headers));
+
+  // Handle CORS
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
-      headers: cors()
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'POST,OPTIONS'
+      }
     };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return bad('Method not allowed', 405);
-  }
-
   try {
-    // Parse form data
-    const formData = new FormData();
-    const boundary = event.headers['content-type']?.split('boundary=')[1];
+    // Check if dependencies are loaded
+    console.log('Checking dependencies...');
+    console.log('Busboy type:', typeof busboy);
+    console.log('S3Client type:', typeof S3Client);
 
-    if (!boundary) {
-      return bad('Invalid content type');
-    }
+    // Check env vars
+    console.log('Checking env vars...');
+    const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || process.env.VITE_R2_BUCKET_NAME;
+    console.log('Bucket:', R2_BUCKET_NAME);
 
-    // Parse multipart form data
-    const parts = event.body.split(`--${boundary}`);
-    let file = null;
-    let category = null;
-    let fileName = null;
+    // If we got here, basic setup is OK.
+    // Let's try to return a simple success to verify we can send JSON.
 
-    for (const part of parts) {
-      if (part.includes('Content-Disposition: form-data')) {
-        if (part.includes('name="file"')) {
-          const fileMatch = part.match(/filename="([^"]+)"/);
-          const contentTypeMatch = part.match(/Content-Type: ([^\r\n]+)/);
-          if (fileMatch && contentTypeMatch) {
-            const fileContent = part.split('\r\n\r\n')[1];
-            file = {
-              name: fileMatch[1],
-              type: contentTypeMatch[1],
-              content: fileContent
-            };
-          }
-        } else if (part.includes('name="category"')) {
-          category = part.split('\r\n\r\n')[1].trim();
-        } else if (part.includes('name="fileName"')) {
-          fileName = part.split('\r\n\r\n')[1].trim();
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        success: true,
+        message: 'Debug mode active',
+        env: {
+          bucket: R2_BUCKET_NAME ? 'Set' : 'Missing',
+          accountId: (process.env.R2_ACCOUNT_ID || process.env.VITE_R2_ACCOUNT_ID) ? 'Set' : 'Missing'
         }
-      }
-    }
-
-    if (!file || !category || !fileName) {
-      return bad('Missing required fields');
-    }
-
-    // Upload to Cloudflare R2
-    const key = `${category}/${fileName}`;
-    const buffer = Buffer.from(file.content, 'base64');
-
-    const uploadCommand = new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: file.type,
-      ACL: 'public-read'
-    });
-
-    await s3Client.send(uploadCommand);
-
-    const publicUrl = `${R2_PUBLIC_URL}/${key}`;
-
-    return ok({
-      success: true,
-      url: publicUrl,
-      key: key
-    });
+      })
+    };
 
   } catch (error) {
-    console.error('Upload error:', error);
-    return bad('Upload failed: ' + error.message, 500);
+    console.error('🔥 CRITICAL ERROR:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        success: false,
+        error: error.message,
+        stack: error.stack
+      })
+    };
   }
 };

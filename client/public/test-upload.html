@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test R2 Upload</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .upload-form {
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      display: none;
+    }
+    .result.success {
+      background: #d1fae5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+    .result.error {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+    .preview {
+      margin-top: 15px;
+      max-width: 100%;
+    }
+    .preview img, .preview video {
+      max-width: 100%;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .file-info {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎣 Test R2 Upload - Fish Trophy</h1>
+  
+  <div class="upload-form">
+    <h2>Upload Image/Video</h2>
+    
+    <div class="form-group">
+      <label for="file">Select File:</label>
+      <input type="file" id="file" accept="image/*,video/*" required>
+      <div class="file-info" id="fileInfo"></div>
+    </div>
+    
+    <div class="form-group">
+      <label for="category">Category:</label>
+      <select id="category" required>
+        <option value="">-- Select Category --</option>
+        <option value="submission-images">Submission Images</option>
+        <option value="submission-videos">Submission Videos</option>
+        <option value="fish-species">Fish Species</option>
+        <option value="locations">Locations</option>
+        <option value="shops">Shops</option>
+        <option value="test">Test</option>
+      </select>
+    </div>
+    
+    <button id="uploadBtn" onclick="uploadFile()">Upload to R2</button>
+    
+    <div class="result" id="result"></div>
+    
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file');
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const result = document.getElementById('result');
+    const preview = document.getElementById('preview');
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        fileInfo.textContent = `${file.name} (${sizeMB} MB, ${file.type})`;
+      }
+    });
+
+    async function uploadFile() {
+      const file = fileInput.files[0];
+      const category = document.getElementById('category').value;
+
+      if (!file) {
+        showResult('Please select a file', 'error');
+        return;
+      }
+
+      if (!category) {
+        showResult('Please select a category', 'error');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading...';
+      result.style.display = 'none';
+      preview.innerHTML = '';
+
+      try {
+        const formData = new FormData();
+        const fileName = `test_${Date.now()}_${file.name}`;
+        
+        formData.append('file', file);
+        formData.append('category', category);
+        formData.append('fileName', fileName.split('.')[0]); // without extension
+
+        console.log('Uploading:', {
+          fileName,
+          category,
+          size: file.size,
+          type: file.type
+        });
+
+        const response = await fetch('/.netlify/functions/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showResult(`✅ Upload successful!<br>URL: <a href="${data.url}" target="_blank">${data.url}</a><br>Size: ${(data.size / 1024).toFixed(2)} KB`, 'success');
+          
+          // Show preview
+          if (file.type.startsWith('image/')) {
+            preview.innerHTML = `<img src="${data.url}" alt="Uploaded image">`;
+          } else if (file.type.startsWith('video/')) {
+            preview.innerHTML = `<video src="${data.url}" controls></video>`;
+          }
+        } else {
+          showResult(`❌ Upload failed: ${data.error || 'Unknown error'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showResult(`❌ Upload failed: ${error.message}`, 'error');
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload to R2';
+      }
+    }
+
+    function showResult(message, type) {
+      result.innerHTML = message;
+      result.className = `result ${type}`;
+      result.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
