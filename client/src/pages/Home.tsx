@@ -293,7 +293,7 @@ export default function Home() {
           // CRITICAL: Ultra-simplified popup for mobile performance
           const popupContent = isMobile ? `
         <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
-          <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm border border-gray-200" onclick="this.closest('.maplibregl-popup').remove()">
+          <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm" onclick="this.closest('.maplibregl-popup').remove()">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -327,7 +327,7 @@ export default function Home() {
               <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
               </svg>
-              <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+              <a href="${location.website && (location.website.startsWith('http') ? location.website : 'https://' + location.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website ? location.website.replace(/^https?:\/\//, '') : ''}</a>
             </div>
             ` : ''}
             ${location.phone ? `
@@ -370,7 +370,7 @@ export default function Home() {
         </div>
       ` : `
         <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-          <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm border border-gray-200" onclick="this.closest('.maplibregl-popup').remove()">
+          <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm" onclick="this.closest('.maplibregl-popup').remove()">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -403,7 +403,7 @@ export default function Home() {
               <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
               </svg>
-              <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+              <a href="${location.website && (location.website.startsWith('http') ? location.website : 'https://' + location.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website ? location.website.replace(/^https?:\/\//, '') : ''}</a>
             </div>
             ` : ''}
             ${location.phone ? `
@@ -771,7 +771,7 @@ export default function Home() {
                   <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                   </svg>
-                  <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+                  <a href="${location.website && (location.website.startsWith('http') ? location.website : 'https://' + location.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website ? location.website.replace(/^https?:\/\//, '') : ''}</a>
                 </div>
                 ` : ''}
                 ${location.phone ? `

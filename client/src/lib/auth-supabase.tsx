@@ -76,38 +76,54 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Listen for auth changes with error handling
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
         
-        // Check if user needs to complete profile (has no username)
+        // Check if user needs to complete profile (has no username) - async, non-blocking
+        // This is important because:
+        // 1. Username is required for public profiles (/profile/:username)
+        // 2. Users can login with username (not just email)
+        // 3. Google OAuth users need a password to login without Google
         if (session?.user) {
-          try {
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('username')
-              .eq('id', session.user.id)
-              .maybeSingle();
+          // Don't block loading, check in background after a short delay
+          setTimeout(() => {
+            if (!mounted) return;
             
-            if (!error && profile && (!profile.username || profile.username.trim() === '')) {
-              // Check if user is a Google OAuth user (has provider metadata)
-              const providers = session.user.app_metadata?.providers || [];
-              if (providers.includes('google')) {
-                setNeedsProfileCompletion(true);
+            (async () => {
+              try {
+                const { data: profile, error } = await supabase
+                  .from('profiles')
+                  .select('username')
+                  .eq('id', session.user.id)
+                  .maybeSingle();
+                
+                if (!mounted) return; // Component unmounted, don't update state
+                
+                if (!error && profile && (!profile.username || profile.username.trim() === '')) {
+                  // Check if user is a Google OAuth user (has provider metadata)
+                  const providers = session.user.app_metadata?.providers || [];
+                  if (providers.includes('google')) {
+                    setNeedsProfileCompletion(true);
+                  } else {
+                    setNeedsProfileCompletion(false);
+                  }
+                } else {
+                  setNeedsProfileCompletion(false);
+                }
+              } catch (err) {
+                console.error('Error checking profile completion:', err);
+                if (mounted) {
+                  setNeedsProfileCompletion(false);
+                }
               }
-            } else {
-              setNeedsProfileCompletion(false);
-            }
-          } catch (err) {
-            console.error('Error checking profile completion:', err);
-            setNeedsProfileCompletion(false);
-          }
+            })();
+          }, 500); // Small delay to not block initial render
         } else {
           setNeedsProfileCompletion(false);
         }
-        
-        setLoading(false);
       }
     });
 
