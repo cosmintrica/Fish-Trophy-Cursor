@@ -203,7 +203,7 @@ const Messages = () => {
         async (payload) => {
           // Only reload if we're on inbox tab and message is for current context
           if (activeTab === 'inbox' && payload.new.context === context) {
-            // Subtle reload - don't show loading spinner
+            // Reload messages list (combine received and sent like in loadMessages)
             const { data, error } = await supabase
               .from('private_messages')
               .select(`
@@ -211,10 +211,8 @@ const Messages = () => {
                 sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
                 recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
               `)
-              .eq('recipient_id', user.id)
               .eq('context', context)
-              .eq('is_deleted_by_recipient', false)
-              .eq('is_archived_by_recipient', false)
+              .or(`and(recipient_id.eq.${user.id},is_deleted_by_recipient.eq.false,is_archived_by_recipient.eq.false),and(sender_id.eq.${user.id},is_deleted_by_sender.eq.false,is_archived_by_sender.eq.false)`)
               .order('created_at', { ascending: false });
 
             if (!error && data) {
@@ -254,16 +252,17 @@ const Messages = () => {
               
               setMessages(Array.from(threadMap.values()));
               
-              // Play sound if enabled
-              if (soundEnabled) {
-                playNotificationSound();
-              }
-              
               // Update browser tab notification
               updateBrowserTabNotification();
               
               // If this message is for the currently open thread, add it and scroll
-              if (selectedMessage && (payload.new.thread_root_id === selectedMessage.thread_root_id || payload.new.thread_root_id === selectedMessage.id)) {
+              const isInActiveThread = selectedMessage && (
+                payload.new.thread_root_id === selectedMessage.thread_root_id || 
+                payload.new.thread_root_id === selectedMessage.id ||
+                payload.new.id === selectedMessage.thread_root_id
+              );
+              
+              if (isInActiveThread) {
                 // Decrypt the new message
                 let decryptedContent = payload.new.content;
                 if (payload.new.is_encrypted && payload.new.encrypted_content && payload.new.encryption_iv) {
@@ -291,10 +290,18 @@ const Messages = () => {
                 setTimeout(() => {
                   scrollToBottom();
                 }, 100);
+                
+                // Only play sound if in active thread (no visual notification)
+                if (soundEnabled) {
+                  playNotificationSound();
+                }
+              } else {
+                // Not in active thread - show both sound and visual notification
+                if (soundEnabled) {
+                  playNotificationSound();
+                }
+                toast.success('Mesaj nou primit', { duration: 2000 });
               }
-              
-              // Show subtle notification
-              toast.success('Mesaj nou primit', { duration: 2000 });
             }
           }
         }
@@ -1015,7 +1022,7 @@ const Messages = () => {
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="p-3 border-t border-gray-200 bg-white shrink-0">
+              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
@@ -1044,15 +1051,15 @@ const Messages = () => {
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <p className="text-xs text-gray-500 px-1">
+                <div className="flex items-center justify-between mt-1 sm:mt-1.5">
+                  <p className="text-xs text-gray-500 px-1 hidden sm:block">
                     Apasă Enter pentru a trimite, Shift+Enter pentru linie nouă
                   </p>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span>Mesajele sunt criptate end-to-end</span>
+                    <span className="hidden sm:inline">Mesajele sunt criptate end-to-end</span>
                   </div>
                 </div>
               </div>

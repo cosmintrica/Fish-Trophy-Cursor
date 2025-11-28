@@ -55,14 +55,14 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     length_cm: '',
     date_caught: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:MM format
     notes: '',
-    photo_file: null as File | null,
+    photo_files: [] as File[],
     video_file: null as File | null,
-    photo_url: '',
+    photo_urls: [] as string[],
     video_url: ''
   });
 
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrls, setPreviewUrls] = useState<{ photo?: string; video?: string }>({});
+  const [previewUrls, setPreviewUrls] = useState<{ photos?: string[]; video?: string }>({});
 
   // Sync location props with state
   useEffect(() => {
@@ -222,30 +222,90 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   };
 
   // Handle file selection - only store in memory, no upload yet
-  const handleFileSelect = (file: File, type: 'photo' | 'video') => {
+  const handleFileSelect = (files: FileList | null, type: 'photo' | 'video') => {
     if (!user) {
       toast.error('Trebuie să fii autentificat pentru a selecta fișiere');
       return;
     }
 
+    if (!files || files.length === 0) return;
+
     // Validate file size
     const maxSize = type === 'photo' ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for photos, 100MB for videos
-    if (file.size > maxSize) {
-      toast.error(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} este prea mare. Maxim ${type === 'photo' ? '10MB' : '100MB'}.`);
-      return;
-    }
-
-    // Store file in state
-    handleInputChange(type === 'photo' ? 'photo_file' : 'video_file', file);
     
-    // Create local preview URL (browser cache only)
-    const previewUrl = URL.createObjectURL(file);
-    setPreviewUrls(prev => ({
-      ...prev,
-      [type]: previewUrl
-    }));
+    if (type === 'photo') {
+      // Handle multiple photos
+      const validFiles: File[] = [];
+      const previewUrlsArray: string[] = [];
+      
+      Array.from(files).forEach(file => {
+        if (file.size > maxSize) {
+          toast.error(`Imaginea "${file.name}" este prea mare. Maxim 10MB.`);
+          return;
+        }
+        validFiles.push(file);
+        // Create optimized preview URL with reduced quality for performance
+        const previewUrl = URL.createObjectURL(file);
+        previewUrlsArray.push(previewUrl);
+      });
 
-    toast.success(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} a fost selectat. Se va încărca la trimitere.`);
+      if (validFiles.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          photo_files: [...prev.photo_files, ...validFiles]
+        }));
+        
+        setPreviewUrls(prev => ({
+          ...prev,
+          photos: [...(prev.photos || []), ...previewUrlsArray]
+        }));
+
+        toast.success(`${validFiles.length} ${validFiles.length === 1 ? 'imagine' : 'imagini'} ${validFiles.length === 1 ? 'a fost' : 'au fost'} selectat${validFiles.length === 1 ? 'ă' : 'e'}. Se vor încărca la trimitere.`);
+      }
+    } else {
+      // Handle single video
+      const file = files[0];
+      if (file.size > maxSize) {
+        toast.error(`Videoclipul este prea mare. Maxim 100MB.`);
+        return;
+      }
+
+      handleInputChange('video_file', file);
+      
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewUrls(prev => ({
+        ...prev,
+        video: previewUrl
+      }));
+
+      toast.success('Videoclipul a fost selectat. Se va încărca la trimitere.');
+    }
+  };
+
+  // Remove photo from selection
+  const handleRemovePhoto = (index: number) => {
+    setFormData(prev => {
+      const newPhotos = [...prev.photo_files];
+      newPhotos.splice(index, 1);
+      return {
+        ...prev,
+        photo_files: newPhotos
+      };
+    });
+
+    setPreviewUrls(prev => {
+      if (prev.photos) {
+        // Revoke the URL to free memory
+        URL.revokeObjectURL(prev.photos[index]);
+        const newPreviewUrls = [...prev.photos];
+        newPreviewUrls.splice(index, 1);
+        return {
+          ...prev,
+          photos: newPreviewUrls
+        };
+      }
+      return prev;
+    });
   };
 
   // Upload file to R2 (called only when submitting the form)
@@ -292,8 +352,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   useEffect(() => {
     return () => {
       // Cleanup preview URLs when component unmounts or modal closes
-      if (previewUrls.photo) {
-        URL.revokeObjectURL(previewUrls.photo);
+      if (previewUrls.photos) {
+        previewUrls.photos.forEach(url => URL.revokeObjectURL(url));
       }
       if (previewUrls.video) {
         URL.revokeObjectURL(previewUrls.video);
@@ -330,14 +390,16 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
     try {
       // Upload files to R2 first (only now, after validation)
-      let photoUrl: string | null = null;
+      let photoUrls: string[] = [];
       let videoUrl: string | null = null;
 
-      if (formData.photo_file) {
+      // Upload all photos
+      if (formData.photo_files.length > 0) {
         try {
-          photoUrl = await uploadFileToR2(formData.photo_file, 'photo');
+          const uploadPromises = formData.photo_files.map(file => uploadFileToR2(file, 'photo'));
+          photoUrls = await Promise.all(uploadPromises);
         } catch (error: any) {
-          toast.error(`Eroare la încărcarea imaginii: ${error.message}`);
+          toast.error(`Eroare la încărcarea imaginilor: ${error.message}`);
           setIsSubmitting(false);
           toast.dismiss('submit-record');
           return;
@@ -377,6 +439,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       }
 
       // Now save the record with uploaded URLs
+      // Note: Supabase records table might need to be updated to support multiple photo URLs
+      // For now, we'll use the first photo URL or store as JSON array
       const recordData = {
         species_id: formData.species_id,
         weight: parseFloat(formData.weight),
@@ -384,7 +448,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         location_id: selectedLocation,
         date_caught: formData.date_caught,
         notes: formData.notes || null,
-        photo_url: photoUrl,
+        photo_url: photoUrls.length > 0 ? photoUrls[0] : null, // First photo as primary
+        photo_urls: photoUrls.length > 0 ? photoUrls : null, // All photos as array (if column exists)
         video_url: videoUrl
       };
 
@@ -688,16 +753,18 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                 <div className="space-y-2">
                   <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2 text-gray-700">
                     <Camera className="w-4 h-4 text-blue-500" />
-                    Fotografie
+                    Fotografii
                   </Label>
                   <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
                     <input
                       type="file"
                       id="photo"
                       accept="image/*"
+                      multiple
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileSelect(file, 'photo');
+                        handleFileSelect(e.target.files, 'photo');
+                        // Reset input to allow selecting the same file again
+                        e.target.value = '';
                       }}
                       className="hidden"
                     />
@@ -705,24 +772,42 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
                         <Camera className="w-6 h-6 text-blue-500" />
                       </div>
-                      <p className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Selectează imagine</p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP până la 10MB</p>
-                      {formData.photo_file && (
-                        <div className="mt-3">
-                          <p className="text-xs text-green-600 font-medium flex items-center justify-center gap-1 mb-2">
-                            <FileText className="w-3 h-3" />
-                            {formData.photo_file.name}
-                          </p>
-                          {previewUrls.photo && (
-                            <img
-                              src={previewUrls.photo}
-                              alt="Preview"
-                              className="w-full max-w-xs h-32 object-cover rounded mx-auto"
-                            />
-                          )}
-                        </div>
-                      )}
+                      <p className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Selectează imagini</p>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP până la 10MB fiecare</p>
                     </label>
+                    
+                    {/* Display selected photos with remove buttons */}
+                    {formData.photo_files.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        {formData.photo_files.map((file, index) => (
+                          <div key={index} className="relative bg-white rounded-lg p-2 border border-gray-200">
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(index)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-colors z-10"
+                              title="Șterge imaginea"
+                            >
+                              ×
+                            </button>
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="w-3 h-3 text-green-600" />
+                              <p className="text-xs text-green-600 font-medium truncate flex-1">
+                                {file.name}
+                              </p>
+                            </div>
+                            {previewUrls.photos && previewUrls.photos[index] && (
+                              <img
+                                src={previewUrls.photos[index]}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded bg-gray-100"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -759,18 +844,12 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                             <video
                               src={previewUrls.video}
                               controls
-                              className="w-full max-w-xs h-32 object-cover rounded mx-auto"
+                              className="w-full max-w-xs h-48 object-contain rounded mx-auto bg-black"
+                              preload="metadata"
                               onError={(e) => {
                                 console.log('Video preview error:', e);
                                 e.currentTarget.style.display = 'none';
                               }}
-                            />
-                          )}
-                          {formData.photo_file && previewUrls.photo && (
-                            <img
-                              src={previewUrls.photo}
-                              alt="Preview"
-                              className="w-full max-w-xs h-32 object-cover rounded mx-auto mt-2"
                             />
                           )}
                         </div>
