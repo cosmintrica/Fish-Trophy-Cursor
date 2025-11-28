@@ -823,8 +823,9 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       id="video"
                       accept="video/*"
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileSelect(file, 'video');
+                        handleFileSelect(e.target.files, 'video');
+                        // Reset input to allow selecting the same file again
+                        e.target.value = '';
                       }}
                       className="hidden"
                     />
