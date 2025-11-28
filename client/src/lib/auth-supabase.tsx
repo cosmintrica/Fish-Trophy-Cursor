@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -75,10 +76,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Listen for auth changes with error handling
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+    } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Check if user needs to complete profile (has no username)
+        if (session?.user) {
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            
+            if (!error && profile && (!profile.username || profile.username.trim() === '')) {
+              // Check if user is a Google OAuth user (has provider metadata)
+              const providers = session.user.app_metadata?.providers || [];
+              if (providers.includes('google')) {
+                setNeedsProfileCompletion(true);
+              }
+            } else {
+              setNeedsProfileCompletion(false);
+            }
+          } catch (err) {
+            console.error('Error checking profile completion:', err);
+            setNeedsProfileCompletion(false);
+          }
+        } else {
+          setNeedsProfileCompletion(false);
+        }
+        
         setLoading(false);
       }
     });
@@ -140,13 +168,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/email-confirmation`,
-      },
-    });
-    if (error) throw error;
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/email-confirmation`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+      
+      // OAuth redirect will happen, so we don't need to return anything
+      return data;
+    } catch (err: any) {
+      console.error('Error in signInWithGoogle:', err);
+      throw err;
+    }
   };
 
   const logout = async () => {
@@ -195,6 +239,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signInWithGoogle,
     logout,
     updateProfile,
+    needsProfileCompletion,
+    setNeedsProfileCompletion,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

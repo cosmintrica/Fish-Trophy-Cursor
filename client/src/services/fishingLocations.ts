@@ -27,9 +27,13 @@ export interface FishingLocation {
   type: 'river' | 'lake' | 'pond' | 'private_pond' | 'balti_salbatic' | 'maritime' | 'fluviu';
   subtitle?: string;
   administrare?: string;
+  administrare_url?: string;
   description: string;
   county: string;
   region: string;
+  website?: string;
+  phone?: string;
+  youtube_channel?: string;
   species: string[];
   facilities: string[];
   access: 'usor' | 'moderat' | 'dificil';
@@ -69,9 +73,13 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
       type: convertType(dbLocation.type),
       subtitle: dbLocation.subtitle,
       administrare: dbLocation.administrare,
+      administrare_url: dbLocation.administrare_url,
       description: dbLocation.description || '',
       county: dbLocation.county,
       region: dbLocation.region,
+      website: dbLocation.website,
+      phone: dbLocation.phone,
+      youtube_channel: dbLocation.youtube_channel,
       species: [],
       facilities: [],
       access: 'usor',
@@ -89,9 +97,13 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
     type: convertType(dbLocation.type),
     subtitle: dbLocation.subtitle,
     administrare: dbLocation.administrare,
+    administrare_url: dbLocation.administrare_url,
     description: dbLocation.description || '',
     county: dbLocation.county,
     region: dbLocation.region,
+    website: dbLocation.website,
+    phone: dbLocation.phone,
+    youtube_channel: dbLocation.youtube_channel,
     species: [], // Vom adăuga speciile mai târziu
     facilities: [], // Vom adăuga facilitățile mai târziu
     access: 'usor', // Default

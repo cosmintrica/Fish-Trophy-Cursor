@@ -308,9 +308,36 @@ export default function Home() {
             <p class="text-xs text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
           </div>
 
+          ${location.description ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-600 leading-relaxed line-clamp-2">${location.description}</p>
+          </div>
+          ` : ''}
+
           ${location.administrare ? `
           <div class="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-            <p class="text-xs text-blue-700 leading-relaxed">${location.administrare}</p>
+            ${location.administrare_url ? `<a href="${location.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-700 hover:text-blue-900 leading-relaxed underline">${location.administrare}</a>` : `<p class="text-xs text-blue-700 leading-relaxed">${location.administrare}</p>`}
+          </div>
+          ` : ''}
+
+          ${location.website || location.phone ? `
+          <div class="mb-3 space-y-1.5">
+            ${location.website ? `
+            <div class="flex items-center gap-1.5 text-xs">
+              <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+              </svg>
+              <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+            </div>
+            ` : ''}
+            ${location.phone ? `
+            <div class="flex items-center gap-1.5 text-xs">
+              <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+              <a href="tel:${location.phone}" class="text-blue-600 hover:text-blue-800">${location.phone}</a>
+            </div>
+            ` : ''}
           </div>
           ` : ''}
 
@@ -319,10 +346,10 @@ export default function Home() {
           </div>
 
           <div class="flex gap-2 mb-3">
-            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-medium transition-colors" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
+            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs font-medium transition-colors" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
               Adaugă record
             </button>
           </div>
@@ -357,9 +384,36 @@ export default function Home() {
             <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
           </div>
 
+          ${location.description ? `
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">${location.description}</p>
+          </div>
+          ` : ''}
+
           ${location.administrare ? `
           <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-            <p class="text-sm text-blue-700 leading-relaxed">${location.administrare}</p>
+            ${location.administrare_url ? `<a href="${location.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-700 hover:text-blue-900 leading-relaxed underline">${location.administrare}</a>` : `<p class="text-sm text-blue-700 leading-relaxed">${location.administrare}</p>`}
+          </div>
+          ` : ''}
+
+          ${location.website || location.phone ? `
+          <div class="mb-4 space-y-2">
+            ${location.website ? `
+            <div class="flex items-center gap-2 text-sm">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+              </svg>
+              <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+            </div>
+            ` : ''}
+            ${location.phone ? `
+            <div class="flex items-center gap-2 text-sm">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+              <a href="tel:${location.phone}" class="text-blue-600 hover:text-blue-800">${location.phone}</a>
+            </div>
+            ` : ''}
           </div>
           ` : ''}
 
@@ -375,11 +429,11 @@ export default function Home() {
             </div>
           </div>
 
-          <div class="flex gap-3 mb-3">
-            <button class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
+          <div class="flex gap-2 mb-3">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-action="view-records" data-location-id="${location.id}" data-location-name="${location.name}">
               Vezi recorduri
             </button>
-            <button class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
+            <button class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
               Adaugă record
             </button>
           </div>
@@ -705,11 +759,36 @@ export default function Home() {
               <h3 class="font-bold text-lg text-gray-800 mb-2">${location.name}</h3>
               <p class="text-sm text-gray-600">${location.subtitle || ''}</p>
               <p class="text-sm text-gray-500">${location.county}, ${location.region.charAt(0).toUpperCase() + location.region.slice(1)}</p>
+              ${location.description ? `
+              <div class="mt-3 mb-3">
+                <p class="text-xs text-gray-600 leading-relaxed line-clamp-2">${location.description}</p>
+              </div>
+              ` : ''}
+              ${location.website || location.phone ? `
+              <div class="mt-3 mb-3 space-y-1.5">
+                ${location.website ? `
+                <div class="flex items-center gap-1.5 text-xs">
+                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                  </svg>
+                  <a href="${location.website.startsWith('http') ? location.website : 'https://' + location.website}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${location.website.replace(/^https?:\/\//, '')}</a>
+                </div>
+                ` : ''}
+                ${location.phone ? `
+                <div class="flex items-center gap-1.5 text-xs">
+                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                  </svg>
+                  <a href="tel:${location.phone}" class="text-blue-600 hover:text-blue-800">${location.phone}</a>
+                </div>
+                ` : ''}
+              </div>
+              ` : ''}
               <div class="mt-3 flex gap-2 mb-3">
-                <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
+                <button class="px-2 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
                   Vezi recorduri
                 </button>
-                <button class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
+                <button class="px-2 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600" data-action="add-record" data-location-id="${location.id}" data-location-name="${location.name}">
                   Adaugă record
                 </button>
               </div>

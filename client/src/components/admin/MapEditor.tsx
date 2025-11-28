@@ -416,8 +416,6 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
 
   // Map county codes to full names (for backward compatibility)
   const countyCodeMap: Record<string, string> = {
-    'DJ': 'Dolj',
-    'OT': 'Olt',
     'AB': 'Alba',
     'AR': 'Arad',
     'AG': 'Argeș',

@@ -3,10 +3,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth-supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { analytics } from '@/lib/analytics';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
+import { CompleteGoogleProfileModal } from '@/components/CompleteGoogleProfileModal';
 
 // Initialize analytics
 analytics;
@@ -32,6 +34,30 @@ import ForumRoutes from '@/forum/routes';
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
   useAnalytics();
   return <>{children}</>;
+}
+
+function ProfileCompletionWrapper({ children }: { children: React.ReactNode }) {
+  const { needsProfileCompletion, setNeedsProfileCompletion, user } = useAuth();
+
+  const handleComplete = () => {
+    setNeedsProfileCompletion(false);
+    // Refresh page to update user data
+    window.location.reload();
+  };
+
+  return (
+    <>
+      {children}
+      {needsProfileCompletion && user && (
+        <CompleteGoogleProfileModal
+          isOpen={needsProfileCompletion}
+          onClose={() => {}} // Don't allow closing without completing
+          onComplete={handleComplete}
+          userEmail={user.email || ''}
+        />
+      )}
+    </>
+  );
 }
 
 function AppContent() {
@@ -104,7 +130,9 @@ function App() {
       <AuthProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AnalyticsWrapper>
-            <AppContent />
+            <ProfileCompletionWrapper>
+              <AppContent />
+            </ProfileCompletionWrapper>
           </AnalyticsWrapper>
         </Router>
         <Toaster

@@ -10,6 +10,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<{ error: any }>;
   updateProfile: (updates: Record<string, unknown>) => Promise<void>;
+  needsProfileCompletion: boolean;
+  setNeedsProfileCompletion: (value: boolean) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
