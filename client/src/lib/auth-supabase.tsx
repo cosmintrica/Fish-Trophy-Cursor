@@ -183,9 +183,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (): Promise<void> => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/email-confirmation`,
@@ -202,7 +202,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       // OAuth redirect will happen, so we don't need to return anything
-      return data;
     } catch (err: any) {
       console.error('Error in signInWithGoogle:', err);
       throw err;
