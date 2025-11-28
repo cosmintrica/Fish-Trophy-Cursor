@@ -221,7 +221,12 @@ export interface Profile {
   website?: string
   youtube_channel?: string
   show_gear_publicly?: boolean
+  show_county_publicly?: boolean
+  show_city_publicly?: boolean
+  show_website_publicly?: boolean
+  show_youtube_publicly?: boolean
   username_last_changed_at?: string
   photo_url?: string
   cover_photo_url?: string
+  avatar_url?: string
 }

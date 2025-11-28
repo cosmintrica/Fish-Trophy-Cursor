@@ -16,7 +16,7 @@ interface UserProfile {
   id: string;
   username?: string;
   display_name: string;
-  email: string;
+  email?: string;
   photo_url?: string;
   avatar_url?: string;
   cover_photo_url?: string;
@@ -198,39 +198,42 @@ const PublicProfile = () => {
       setLoading(true);
 
       // Load user profile by username - respect ALL privacy settings
-      const { data: profileData, error: profileError } = await supabase
+      // Build select query dynamically based on privacy settings
+      let selectQuery = 'id, username, display_name, photo_url, cover_photo_url, cover_position, bio, show_gear_publicly, show_county_publicly, show_city_publicly, show_website_publicly, show_youtube_publicly, role, created_at, updated_at';
+      
+      // First, get basic profile to check privacy settings
+      const { data: basicProfile, error: basicError } = await supabase
         .from('profiles')
-        .select('id, username, display_name, photo_url, cover_photo_url, cover_position, bio, show_gear_publicly, show_county_publicly, show_city_publicly, show_website_publicly, show_youtube_publicly, role, created_at, updated_at')
+        .select('id, show_website_publicly, show_youtube_publicly, show_county_publicly, show_city_publicly')
         .eq('username', username?.toLowerCase())
         .single();
       
-      // Load website and YouTube ONLY if user chose to make them public
-      if (profileData?.show_website_publicly) {
-        const { data: websiteData } = await supabase
-          .from('profiles')
-          .select('website')
-          .eq('id', profileData.id)
-          .single();
-        if (websiteData?.website) {
-          profileData.website = websiteData.website;
-        }
+      if (basicError) throw basicError;
+      
+      // Add fields based on privacy settings
+      if (basicProfile?.show_website_publicly) {
+        selectQuery += ', website';
+      }
+      if (basicProfile?.show_youtube_publicly) {
+        selectQuery += ', youtube_channel';
+      }
+      if (basicProfile?.show_county_publicly) {
+        selectQuery += ', county_id';
+      }
+      if (basicProfile?.show_city_publicly) {
+        selectQuery += ', city_id';
       }
       
-      if (profileData?.show_youtube_publicly) {
-        const { data: youtubeData } = await supabase
-          .from('profiles')
-          .select('youtube_channel')
-          .eq('id', profileData.id)
-          .single();
-        if (youtubeData?.youtube_channel) {
-          profileData.youtube_channel = youtubeData.youtube_channel;
-        }
-      }
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select(selectQuery)
+        .eq('username', username?.toLowerCase())
+        .single();
 
       if (profileError) throw profileError;
 
       // Get avatar from profiles table or auth metadata
-      let avatarUrl = profileData.avatar_url || profileData.photo_url;
+      let avatarUrl = profileData.photo_url;
       // Normalize empty strings to null
       if (avatarUrl && avatarUrl.trim() === '') {
         avatarUrl = null;
@@ -277,8 +280,13 @@ const PublicProfile = () => {
       
       setUserProfile({
         ...profileData,
+        email: '', // Email is not public, set empty
         avatar_url: finalAvatarUrl,
-        cover_photo_url: coverPhotoUrl
+        cover_photo_url: coverPhotoUrl,
+        website: profileData.website || undefined,
+        youtube_channel: profileData.youtube_channel || undefined,
+        county_id: profileData.county_id || undefined,
+        city_id: profileData.city_id || undefined
       });
       setCoverPosition(coverPos);
       setIsOwner(isCurrentUserOwner);

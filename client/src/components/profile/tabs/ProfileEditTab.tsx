@@ -32,7 +32,7 @@ interface ProfileEditTabProps {
     userId?: string;
     username?: string;
     onLoadCities: (countyId: string) => void;
-    onUpdateProfile: () => void;
+    onUpdateProfile: () => Promise<boolean> | boolean;
 }
 
 export const ProfileEditTab = ({
