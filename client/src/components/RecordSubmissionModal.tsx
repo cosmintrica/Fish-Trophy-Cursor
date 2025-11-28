@@ -62,6 +62,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   });
 
   const [isUploading, setIsUploading] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<{ photo?: string; video?: string }>({});
 
   // Sync location props with state
   useEffect(() => {
@@ -220,83 +221,85 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     }));
   };
 
-  const handleFileUpload = async (file: File, type: 'photo' | 'video') => {
+  // Handle file selection - only store in memory, no upload yet
+  const handleFileSelect = (file: File, type: 'photo' | 'video') => {
     if (!user) {
-      toast.error('Trebuie să fii autentificat pentru a încărca fișiere');
+      toast.error('Trebuie să fii autentificat pentru a selecta fișiere');
       return;
     }
 
-    try {
-      setIsUploading(true);
-      toast.loading(`${type === 'photo' ? 'Se încarcă imaginea' : 'Se încarcă videoclipul'}...`, { id: `upload-${type}` });
+    // Validate file size
+    const maxSize = type === 'photo' ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for photos, 100MB for videos
+    if (file.size > maxSize) {
+      toast.error(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} este prea mare. Maxim ${type === 'photo' ? '10MB' : '100MB'}.`);
+      return;
+    }
 
-      // Generate unique file name
-      const timestamp = Date.now();
-      const fileName = `${user.id}_${timestamp}_${file.name}`;
-      const category = type === 'photo' ? 'submission-images' : 'submission-videos';
+    // Store file in state
+    handleInputChange(type === 'photo' ? 'photo_file' : 'video_file', file);
+    
+    // Create local preview URL (browser cache only)
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewUrls(prev => ({
+      ...prev,
+      [type]: previewUrl
+    }));
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', category);
-      formData.append('fileName', fileName);
+    toast.success(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} a fost selectat. Se va încărca la trimitere.`);
+  };
 
-      // Use Netlify function for upload (works in both dev and production)
-      const uploadUrl = import.meta.env.DEV 
-        ? 'http://localhost:8888/.netlify/functions/upload'
-        : '/.netlify/functions/upload';
+  // Upload file to R2 (called only when submitting the form)
+  const uploadFileToR2 = async (file: File, type: 'photo' | 'video'): Promise<string> => {
+    if (!user) {
+      throw new Error('Trebuie să fii autentificat');
+    }
 
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-      });
+    // Generate unique file name
+    const timestamp = Date.now();
+    const fileName = `${user.id}_${timestamp}_${file.name}`;
+    const category = type === 'photo' ? 'submission-images' : 'submission-videos';
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} ${errorText}`);
-      }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    formData.append('fileName', fileName);
 
-      const result = await response.json();
+    // Use Netlify function for upload (works in both dev and production)
+    const uploadUrl = import.meta.env.DEV 
+      ? 'http://localhost:8888/.netlify/functions/upload'
+      : '/.netlify/functions/upload';
 
-      if (result.success && result.url) {
-        handleInputChange(type === 'photo' ? 'photo_file' : 'video_file', file);
-        handleInputChange(type === 'photo' ? 'photo_url' : 'video_url', result.url);
-        toast.success(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} a fost încărcat cu succes`, { id: `upload-${type}` });
-      } else {
-        throw new Error(result.error || 'Upload failed - no URL returned');
-      }
-    } catch (error: any) {
-      // Dismiss loading toast first
-      toast.dismiss(`upload-${type}`);
-      
-      // Parse error message to show more details
-      let errorMessage = error.message || 'Eroare necunoscută';
-      
-      // Try to parse JSON error from response
-      if (error.message && error.message.includes('{')) {
-        try {
-          const errorMatch = error.message.match(/\{.*\}/);
-          if (errorMatch) {
-            const errorData = JSON.parse(errorMatch[0]);
-            if (errorData.error) {
-              errorMessage = errorData.error;
-              if (errorData.details) {
-                errorMessage += ` (${errorData.details})`;
-              }
-            }
-          }
-        } catch (e) {
-          // Keep original error message
-        }
-      }
-      
-      toast.error(`Eroare la încărcarea ${type === 'photo' ? 'imaginii' : 'videoclipului'}: ${errorMessage}`, { 
-        id: `upload-error-${type}`,
-        duration: 5000 
-      });
-    } finally {
-      setIsUploading(false);
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.success && result.url) {
+      return result.url;
+    } else {
+      throw new Error(result.error || 'Upload failed - no URL returned');
     }
   };
+
+  // Cleanup preview URLs when modal closes
+  useEffect(() => {
+    return () => {
+      // Cleanup preview URLs when component unmounts or modal closes
+      if (previewUrls.photo) {
+        URL.revokeObjectURL(previewUrls.photo);
+      }
+      if (previewUrls.video) {
+        URL.revokeObjectURL(previewUrls.video);
+      }
+    };
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,15 +320,63 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     }
 
     // Video is required
-    if (!formData.video_url) {
+    if (!formData.video_file) {
       toast.error('Videoclipul este obligatoriu pentru trimiterea recordului');
       return;
     }
 
     setIsSubmitting(true);
-    toast.loading('Se trimite recordul...', { id: 'submit-record' });
+    toast.loading('Se încarcă fișierele și se trimite recordul...', { id: 'submit-record' });
 
     try {
+      // Upload files to R2 first (only now, after validation)
+      let photoUrl: string | null = null;
+      let videoUrl: string | null = null;
+
+      if (formData.photo_file) {
+        try {
+          photoUrl = await uploadFileToR2(formData.photo_file, 'photo');
+        } catch (error: any) {
+          toast.error(`Eroare la încărcarea imaginii: ${error.message}`);
+          setIsSubmitting(false);
+          toast.dismiss('submit-record');
+          return;
+        }
+      }
+
+      if (formData.video_file) {
+        try {
+          videoUrl = await uploadFileToR2(formData.video_file, 'video');
+        } catch (error: any) {
+          // Parse error message to show more details
+          let errorMessage = error.message || 'Eroare necunoscută';
+          
+          // Try to parse JSON error from response
+          if (error.message && error.message.includes('{')) {
+            try {
+              const errorMatch = error.message.match(/\{.*\}/);
+              if (errorMatch) {
+                const errorData = JSON.parse(errorMatch[0]);
+                if (errorData.error) {
+                  errorMessage = errorData.error;
+                  if (errorData.details) {
+                    errorMessage += ` (${errorData.details})`;
+                  }
+                }
+              }
+            } catch (e) {
+              // Keep original error message
+            }
+          }
+          
+          toast.error(`Eroare la încărcarea videoclipului: ${errorMessage}`);
+          setIsSubmitting(false);
+          toast.dismiss('submit-record');
+          return;
+        }
+      }
+
+      // Now save the record with uploaded URLs
       const recordData = {
         species_id: formData.species_id,
         weight: parseFloat(formData.weight),
@@ -333,8 +384,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         location_id: selectedLocation,
         date_caught: formData.date_caught,
         notes: formData.notes || null,
-        photo_url: formData.photo_url || null,
-        video_url: formData.video_url || null
+        photo_url: photoUrl,
+        video_url: videoUrl
       };
 
       // Get session token
@@ -361,6 +412,14 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         location: selectedLocation
       });
 
+      // Cleanup preview URLs
+      if (previewUrls.photo) {
+        URL.revokeObjectURL(previewUrls.photo);
+      }
+      if (previewUrls.video) {
+        URL.revokeObjectURL(previewUrls.video);
+      }
+
       onClose();
       // Reset form
       setFormData({
@@ -374,6 +433,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         photo_url: '',
         video_url: ''
       });
+      setPreviewUrls({});
       setSelectedLocation(locationId || '');
     } catch (error) {
       console.error('Error submitting record:', error);
@@ -637,7 +697,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'photo');
+                        if (file) handleFileSelect(file, 'photo');
                       }}
                       className="hidden"
                     />
@@ -648,10 +708,19 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       <p className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Selectează imagine</p>
                       <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP până la 10MB</p>
                       {formData.photo_file && (
-                        <p className="text-xs text-green-600 mt-2 font-medium flex items-center justify-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {formData.photo_file.name}
-                        </p>
+                        <div className="mt-3">
+                          <p className="text-xs text-green-600 font-medium flex items-center justify-center gap-1 mb-2">
+                            <FileText className="w-3 h-3" />
+                            {formData.photo_file.name}
+                          </p>
+                          {previewUrls.photo && (
+                            <img
+                              src={previewUrls.photo}
+                              alt="Preview"
+                              className="w-full max-w-xs h-32 object-cover rounded mx-auto"
+                            />
+                          )}
+                        </div>
                       )}
                     </label>
                   </div>
@@ -670,7 +739,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       accept="video/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'video');
+                        if (file) handleFileSelect(file, 'video');
                       }}
                       className="hidden"
                     />
@@ -686,15 +755,22 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                             <FileText className="w-3 h-3" />
                             {formData.video_file.name}
                           </p>
-                          {formData.video_url && formData.video_url.startsWith('http') && (
+                          {previewUrls.video && (
                             <video
-                              src={formData.video_url}
+                              src={previewUrls.video}
                               controls
                               className="w-full max-w-xs h-32 object-cover rounded mx-auto"
                               onError={(e) => {
                                 console.log('Video preview error:', e);
                                 e.currentTarget.style.display = 'none';
                               }}
+                            />
+                          )}
+                          {formData.photo_file && previewUrls.photo && (
+                            <img
+                              src={previewUrls.photo}
+                              alt="Preview"
+                              className="w-full max-w-xs h-32 object-cover rounded mx-auto mt-2"
                             />
                           )}
                         </div>

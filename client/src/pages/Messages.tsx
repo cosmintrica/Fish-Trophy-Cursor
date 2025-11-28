@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { MessageSquare, Send, Archive, Inbox, Trash2, Reply, ArrowLeft, ArchiveRestore, Lock } from 'lucide-react';
+import { MessageSquare, Send, Archive, Inbox, Trash2, Reply, ArrowLeft, ArchiveRestore, Lock, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,7 +43,7 @@ const Messages = () => {
   const [searchParams] = useSearchParams();
   const context = (searchParams.get('context') || 'site') as 'site' | 'forum';
   const toUsername = searchParams.get('to'); // New: support ?to=username
-  const [activeTab, setActiveTab] = useState<'inbox' | 'sent' | 'archived'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'archived'>('inbox');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -52,12 +52,35 @@ const Messages = () => {
   const [sendingReply, setSendingReply] = useState(false);
   const [recipientProfile, setRecipientProfile] = useState<{ id: string; username: string; display_name: string; photo_url?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('messages_sound_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Scroll to bottom when thread messages change - REMOVED (user requested no autoscroll)
-  // useEffect(() => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // }, [threadMessages]);
+  // Smart auto-scroll: scroll to bottom of messages container (not the whole page)
+  const scrollToBottom = () => {
+    if (!messagesContainerRef.current) return;
+    
+    const container = messagesContainerRef.current;
+    // Scroll to bottom of the container
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
+
+  // Auto-scroll when thread messages change (only if there are messages)
+  useEffect(() => {
+    if (threadMessages.length > 0 && selectedMessage) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [threadMessages.length, selectedMessage?.id]);
 
   // Auto-focus textarea when thread is selected - REMOVED (user requested)
   // useEffect(() => {
@@ -231,6 +254,45 @@ const Messages = () => {
               
               setMessages(Array.from(threadMap.values()));
               
+              // Play sound if enabled
+              if (soundEnabled) {
+                playNotificationSound();
+              }
+              
+              // Update browser tab notification
+              updateBrowserTabNotification();
+              
+              // If this message is for the currently open thread, add it and scroll
+              if (selectedMessage && (payload.new.thread_root_id === selectedMessage.thread_root_id || payload.new.thread_root_id === selectedMessage.id)) {
+                // Decrypt the new message
+                let decryptedContent = payload.new.content;
+                if (payload.new.is_encrypted && payload.new.encrypted_content && payload.new.encryption_iv) {
+                  try {
+                    const key = await deriveKeyFromUsers(payload.new.sender_id, payload.new.recipient_id);
+                    decryptedContent = await decryptMessage(payload.new.encrypted_content, payload.new.encryption_iv, key);
+                  } catch (decryptError) {
+                    decryptedContent = null;
+                  }
+                }
+                
+                const formattedNewMessage = {
+                  ...payload.new,
+                  content: decryptedContent,
+                  sender_name: payload.new.sender_name,
+                  sender_username: payload.new.sender_username,
+                  sender_avatar: payload.new.sender_avatar,
+                  recipient_name: payload.new.recipient_name,
+                  recipient_username: payload.new.recipient_username,
+                  recipient_avatar: payload.new.recipient_avatar
+                };
+                
+                setThreadMessages(prev => [...prev, formattedNewMessage]);
+                // Auto-scroll to bottom when new message arrives in open thread
+                setTimeout(() => {
+                  scrollToBottom();
+                }, 100);
+              }
+              
               // Show subtle notification
               toast.success('Mesaj nou primit', { duration: 2000 });
             }
@@ -253,6 +315,7 @@ const Messages = () => {
       
       // Load directly from private_messages to get encryption fields
       if (activeTab === 'inbox') {
+        // Inbox: combine both received and sent messages (all conversations)
         query = supabase
           .from('private_messages')
           .select(`
@@ -260,25 +323,11 @@ const Messages = () => {
             sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
             recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
           `)
-          .eq('recipient_id', user.id)
           .eq('context', context)
-          .eq('is_deleted_by_recipient', false)
-          .eq('is_archived_by_recipient', false)
-          .order('created_at', { ascending: false });
-      } else if (activeTab === 'sent') {
-        query = supabase
-          .from('private_messages')
-          .select(`
-            *,
-            sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
-            recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
-          `)
-          .eq('sender_id', user.id)
-          .eq('context', context)
-          .eq('is_deleted_by_sender', false)
-          .eq('is_archived_by_sender', false)
+          .or(`and(recipient_id.eq.${user.id},is_deleted_by_recipient.eq.false,is_archived_by_recipient.eq.false),and(sender_id.eq.${user.id},is_deleted_by_sender.eq.false,is_archived_by_sender.eq.false)`)
           .order('created_at', { ascending: false });
       } else {
+        // Archived: messages archived by user
         query = supabase
           .from('private_messages')
           .select(`
@@ -385,6 +434,13 @@ const Messages = () => {
       }));
 
       setThreadMessages(formattedMessages);
+      
+      // Auto-scroll to bottom when thread is loaded (only if there are messages)
+      if (formattedMessages.length > 0) {
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      }
 
       // Mark as read if recipient
       if (formattedMessages.length > 0) {
@@ -519,6 +575,10 @@ const Messages = () => {
         setThreadMessages([formattedMessage]);
       } else {
         setThreadMessages([...threadMessages, formattedMessage]);
+        // Auto-scroll to bottom after sending
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
       }
 
       setReplyText('');
@@ -615,6 +675,59 @@ const Messages = () => {
     );
   }
 
+  // Play notification sound (simple ping)
+  const playNotificationSound = () => {
+    try {
+      // Create a simple beep sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Higher pitch for notification
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+      // Silent fail if audio is not supported
+    }
+  };
+
+  // Update browser tab notification badge
+  const updateBrowserTabNotification = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('private_messages')
+        .select('id', { count: 'exact', head: false })
+        .eq('recipient_id', user.id)
+        .eq('is_read', false)
+        .eq('is_deleted_by_recipient', false)
+        .eq('is_archived_by_recipient', false)
+        .eq('context', context);
+
+      if (!error) {
+        const unreadCount = data?.length || 0;
+        
+        // Update document title
+        if (unreadCount > 0) {
+          document.title = `(${unreadCount > 99 ? '99+' : unreadCount}) Mesaje - Fish Trophy`;
+        } else {
+          document.title = 'Mesaje - Fish Trophy';
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  };
+
   // Calculate unread count only for inbox messages
   const unreadCount = activeTab === 'inbox' 
     ? messages.filter(m => !m.is_read && m.recipient_id === user.id).length
@@ -654,19 +767,15 @@ const Messages = () => {
               </div>
             </div>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="inbox" className="relative text-xs sm:text-sm">
                   <Inbox className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Primite</span>
+                  <span className="hidden sm:inline">Mesaje</span>
                   {unreadCount > 0 && (
                     <span className="ml-1 sm:ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 sm:px-2 py-0.5 shadow-sm">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
-                </TabsTrigger>
-                <TabsTrigger value="sent" className="relative text-xs sm:text-sm">
-                  <Send className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Trimise</span>
                 </TabsTrigger>
                 <TabsTrigger value="archived" className="relative text-xs sm:text-sm">
                   <Archive className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -772,6 +881,21 @@ const Messages = () => {
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSoundEnabled(!soundEnabled);
+                      localStorage.setItem('messages_sound_enabled', (!soundEnabled).toString());
+                    }}
+                    title={soundEnabled ? 'Dezactivează sunetul' : 'Activează sunetul'}
+                  >
+                    {soundEnabled ? (
+                      <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    ) : (
+                      <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />
+                    )}
+                  </Button>
                   {activeTab === 'archived' ? (
                     <Button
                       variant="ghost"
@@ -803,7 +927,11 @@ const Messages = () => {
               </div>
 
               {/* Messages Container - Scrollable */}
-              <div className="flex-1 overflow-y-auto p-2 sm:p-3 bg-gray-50 min-h-0" style={{ scrollBehavior: 'smooth' }}>
+              <div 
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-2 sm:p-3 bg-gray-50 min-h-0" 
+                style={{ scrollBehavior: 'smooth' }}
+              >
                 <div className="space-y-2 sm:space-y-3 max-w-3xl mx-auto">
                   {threadMessages.map((msg) => {
                     const isMsgFromMe = msg.sender_id === user.id;
@@ -836,12 +964,47 @@ const Messages = () => {
                                 {msg.content}
                               </p>
                             </div>
-                            <span className={`text-xs text-gray-500 mt-1 px-1 ${isMsgFromMe ? 'text-right' : 'text-left'}`}>
-                              {new Date(msg.created_at).toLocaleTimeString('ro-RO', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </span>
+                            <div className={`flex items-center gap-1 mt-1 px-1 ${isMsgFromMe ? 'justify-end' : 'justify-start'}`}>
+                              <span className="text-xs text-gray-500">
+                                {new Date(msg.created_at).toLocaleTimeString('ro-RO', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </span>
+                              {/* WhatsApp-style read indicators (only for sent messages) */}
+                              {isMsgFromMe && (
+                                <div 
+                                  className="flex items-center cursor-help"
+                                  title={
+                                    msg.is_read && msg.read_at
+                                      ? `Citit: ${new Date(msg.read_at).toLocaleString('ro-RO', { 
+                                          day: 'numeric', 
+                                          month: 'short', 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        })}`
+                                      : 'Livrat (necitit)'
+                                  }
+                                >
+                                  {msg.is_read && msg.read_at ? (
+                                    // Two blue checkmarks for read (side by side, second slightly to the right like WhatsApp)
+                                    <div className="flex items-center relative" style={{ width: '18px', height: '16px' }}>
+                                      <svg className="w-4 h-4 text-blue-500 absolute left-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                      <svg className="w-4 h-4 text-blue-500 absolute" style={{ left: '5px' }} fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  ) : (
+                                    // Single gray checkmark for delivered
+                                    <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
