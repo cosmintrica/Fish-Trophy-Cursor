@@ -9,6 +9,7 @@ import { analytics } from '@/lib/analytics';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
 import { CompleteGoogleProfileModal } from '@/components/CompleteGoogleProfileModal';
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 
 // Initialize analytics
 analytics;
@@ -33,6 +34,12 @@ import ForumRoutes from '@/forum/routes';
 // Analytics wrapper component that uses useAnalytics inside Router
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
   useAnalytics();
+  return <>{children}</>;
+}
+
+// Realtime messages wrapper - active on all pages
+function RealtimeMessagesWrapper({ children }: { children: React.ReactNode }) {
+  useRealtimeMessages();
   return <>{children}</>;
 }
 
@@ -129,11 +136,13 @@ function App() {
     <HelmetProvider>
       <AuthProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AnalyticsWrapper>
-            <ProfileCompletionWrapper>
-              <AppContent />
-            </ProfileCompletionWrapper>
-          </AnalyticsWrapper>
+          <RealtimeMessagesWrapper>
+            <AnalyticsWrapper>
+              <ProfileCompletionWrapper>
+                <AppContent />
+              </ProfileCompletionWrapper>
+            </AnalyticsWrapper>
+          </RealtimeMessagesWrapper>
         </Router>
         <Toaster
           position="bottom-right"
