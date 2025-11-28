@@ -13,7 +13,7 @@ const EmailConfirmation = () => {
 
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      // Supabase redirects with access_token and refresh_token in URL fragments
+      // Supabase redirects with access_token and refresh_token in URL fragments (hash)
       // Check if user is already authenticated (email was confirmed)
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -23,11 +23,15 @@ const EmailConfirmation = () => {
         return;
       }
 
-      // Check URL parameters for confirmation tokens
+      // Parse hash for OAuth tokens (Supabase OAuth uses hash, not query params)
+      const hash = window.location.hash.substring(1); // Remove #
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      // Check URL parameters for email confirmation tokens
       const token = searchParams.get('token');
       const type = searchParams.get('type');
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
 
       if (accessToken && refreshToken) {
         // Handle OAuth confirmation
@@ -41,8 +45,14 @@ const EmailConfirmation = () => {
             setStatus('error');
             setMessage('A apărut o eroare la confirmarea email-ului. Te rugăm să încerci din nou.');
           } else {
+            // Clear hash from URL
+            window.history.replaceState(null, '', window.location.pathname);
             setStatus('success');
             setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
+            // Redirect to home after a short delay
+            setTimeout(() => {
+              navigate('/');
+            }, 2000);
           }
         } catch (error) {
           setStatus('error');

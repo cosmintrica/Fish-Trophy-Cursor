@@ -160,25 +160,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
     if (error) throw error;
 
-    // Create profile in profiles table
+    // Profile is automatically created by database trigger (handle_new_user)
+    // We just need to update it with additional fields if provided
     if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: email,
-          display_name: displayName || '',
-          username: username?.toLowerCase() || '',
-          county_id: countyId || null,
-          city_id: cityId || null,
-          bio: 'Pescar pasionat din România!',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+      // Wait a bit for trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Update profile with username and other fields
+      const updateData: Record<string, unknown> = {};
+      if (username) updateData.username = username.toLowerCase();
+      if (displayName) updateData.display_name = displayName;
+      if (countyId) updateData.county_id = countyId;
+      if (cityId) updateData.city_id = cityId;
+      
+      if (Object.keys(updateData).length > 0) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', data.user.id);
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        // Don't throw error here as user is already created
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+          // Don't throw error here as user is already created
+        }
       }
     }
   };
