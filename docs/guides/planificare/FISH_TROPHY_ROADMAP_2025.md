@@ -1,21 +1,26 @@
 ## Fish Trophy – Roadmap & Implementation Plan (2025)
 
+**Ultima actualizare:** 28 noiembrie 2025
+
 Acest document sintetizează planul etapizat pe sesiuni și pașii tehnici de implementare pentru Fish Trophy.
 
 ---
 
 ## 1. Sesiuni de lucru – „Fish Trophy - Systematic Fixes”
 
-### Session 1 – R2 Upload Fix 🔴 CRITICAL (≈45 min)
+### Session 1 – R2 Upload Fix ✅ COMPLET (≈45 min)
 
 - **Obiectiv**: Repararea completă a încărcării fișierelor în Cloudflare R2.
-- **Pași**:
-  - Analiză `netlify/functions/upload.mjs` (implementarea curentă).
-  - Instalare parser multipart robust (ex: **Busboy**).
-  - Rescriere logică de upload (parsat form‑data corect, extras buffer și meta‑date).
-  - Test upload **imagine**.
-  - Test upload **video**.
-  - Stop pentru testare manuală de către utilizator.
+- **Status**: ✅ **COMPLET** - Upload funcționează corect
+- **Pași finalizați**:
+  - ✅ Analiză `netlify/functions/upload.mjs` (implementarea curentă).
+  - ✅ Parser multipart implementat cu `busboy`.
+  - ✅ Logică de upload corectă (parsat form‑data, extras buffer și meta‑date).
+  - ✅ Test upload **imagine** - funcționează.
+  - ✅ Test upload **video** - funcționează.
+  - ✅ **OPTIMIZARE EXTRA**: Upload doar după trimiterea cu succes a formularului (nu înainte) - economisește storage R2.
+  - ✅ **OPTIMIZARE EXTRA**: Preview local (browser cache) pentru imagini și video înainte de upload.
+  - ✅ **OPTIMIZARE EXTRA**: Suport pentru multiple imagini cu ștergere individuală (buton X).
 
 ### Session 2 – Quick Wins: Map & UI (≈30 min)
 
@@ -56,15 +61,25 @@ Acest document sintetizează planul etapizat pe sesiuni și pașii tehnici de im
   - Admin panel – UI adaptată pentru mobil (scroll, carduri, grafice).
   - Stop pentru review.
 
-### Session 6 – Admin Map Editing (≈1.5 h)
+### Session 6 – Admin Map Editing ✅ COMPLET (≈1.5 h)
 
 - **Obiectiv**: Editare coordonate pe hartă de către admin.
-- **Pași**:
-  - Toggle **„Edit Mode”** în admin.
-  - Când `editMode` este activ: markerii devin `draggable` (MapLibre / Leaflet, în funcție de ecran).
-  - La `dragend`: se salvează noile coordonate în DB (tabel `fishing_locations`).  
-  - Confirmare vizuală și/sau toast (succes/eroare).
-  - Stop pentru review.
+- **Status**: ✅ **COMPLET** - Funcționalitate completă implementată
+- **Pași finalizați**:
+  - ✅ Toggle **„Edit Mode"** în admin panel.
+  - ✅ Markerii devin `draggable` când `editMode` este activ (MapLibre GL).
+  - ✅ La `dragend`: se salvează automat noile coordonate în DB (tabel `fishing_locations`).
+  - ✅ Confirmare vizuală și toast (succes/eroare).
+  - ✅ **FUNCȚIONALITĂȚI EXTRA**:
+    - ✅ **Click & Hold** pentru mutarea locațiilor existente.
+    - ✅ **Google Maps Import** - import automat de detalii (nume, județ, regiune, website, telefon) din link-uri Google Maps.
+    - ✅ **Drag & Drop** cu afișare detalii locație (nume, județ) în timp real.
+    - ✅ **Câmpuri noi**: website, telefon, canal YouTube, "Administrat de" (cu link).
+    - ✅ **Searchable dropdown** pentru județe (cu căutare smart, fără diacritice).
+    - ✅ **Auto-save** la drag & drop.
+    - ✅ **Optimizări performanță**: GPU acceleration, will-change, fadeDuration: 0.
+    - ✅ **Tooltip** pe hover marker cu nume și județ.
+    - ✅ **Location menu** cu căutare smart pentru selecție locații.
 
 ### Session 7 – Map Performance (≈2 h)
 
@@ -81,6 +96,7 @@ Acest document sintetizează planul etapizat pe sesiuni și pașii tehnici de im
 ### Session 8 – Forum System (FINAL – după design de ranking) 🔵
 
 - **Obiectiv**: Sistem de forum complet, cu reputație și notificări.
+- **Status**: ⏳ **PENDING** - Nu a fost început încă
 - **Pași**:
   - Design **reputation system** (ranguri, puncte, acțiuni).
   - Schema DB forum (tabele topics, posts, users, ranks, notifications etc.).
@@ -88,6 +104,37 @@ Acest document sintetizează planul etapizat pe sesiuni și pașii tehnici de im
   - Unificare auth (reutilizare `@/lib/auth-supabase`, fără AuthProvider separat în forum).
   - Funcționalități forum: widgets, notificări, listări recente, membri activi.
   - Stop pentru review final.
+
+---
+
+## 🆕 Funcționalități Extra Implementate (Nu erau în roadmap inițial)
+
+### Mesaje Private Complete ✅ COMPLET
+
+- **Status**: ✅ **COMPLET** - Sistem complet de mesaje private implementat
+- **Funcționalități**:
+  - ✅ **Realtime messaging** - mesajele apar instant folosind Supabase Realtime.
+  - ✅ **Sunet notificări** - ping audio pentru mesaje noi (cu buton mute).
+  - ✅ **Notificări browser tab** - badge roșu în titlul paginii pentru mesaje necitite.
+  - ✅ **Indicatori WhatsApp** - delivered (gri) și seen (albastru, două checkmark-uri).
+  - ✅ **Auto-scroll inteligent** - scroll automat doar dacă utilizatorul e aproape de jos.
+  - ✅ **Notificări inteligente** - doar sunet când ești în conversația activă, sunet + toast când nu ești.
+  - ✅ **Optimizare mobil** - spacing redus, text adaptat pentru ecrane mici.
+  - ✅ **Inbox unificat** - combină mesajele primite și trimise într-o singură listă (eliminat tab-ul "Trimise").
+  - ✅ **Tooltip pe checkmark-uri** - afișează când a fost citit mesajul sau "Livrat (necitit)".
+  - ✅ **Encryption end-to-end** - mesajele sunt criptate, nimeni nu le poate citi (nici adminii).
+
+### Optimizări Performanță ✅ COMPLET
+
+- **Status**: ✅ **COMPLET** - Multiple optimizări implementate
+- **Funcționalități**:
+  - ✅ **Lazy loading** pentru imagini (loading="lazy", decoding="async").
+  - ✅ **Preview-uri optimizate** - dimensiuni reduse (h-24 pentru imagini, h-32 pentru video).
+  - ✅ **GPU acceleration** - will-change, transform: translateZ(0) pentru animații fluide.
+  - ✅ **Object-cover** în loc de object-contain pentru performanță mai bună.
+  - ✅ **PlaysInline** pentru video pe mobil.
+
+---
 
 ---
 
@@ -487,6 +534,89 @@ CREATE TABLE forum_notifications (
 - **Phase 6** – Admin Map Editing + Performance: ~3.5 h.
 - **Phase 7** – Forum Features finale: ~2 h.
 
-Total estimat: **≈15–16 ore** lucru efectiv, împărțite în sesiuni cu pauze de review după fiecare pas major.
+Total estimat inițial: **≈15–16 ore** lucru efectiv.
 
+**Progres actual (28 noiembrie 2025)**: 
+- ✅ **Completat**: ~6-7 ore (R2 Upload, Admin Map Editing, Mesaje Private, Optimizări)
+- ⏳ **Rămas**: ~9-10 ore (Forum System, Profile Redesign, Species Images, Map Performance, UI Fixes rămase)
+
+---
+
+## 4. Status Actual al Dezvoltării (28 noiembrie 2025)
+
+### ✅ Funcționalități Complet Implementate
+
+1. **R2 Upload System** ✅
+   - Upload funcțional pentru imagini și video
+   - Optimizat să se facă doar după trimiterea cu succes
+   - Preview local înainte de upload
+   - Suport multiple imagini cu ștergere individuală
+
+2. **Admin Map Editor** ✅
+   - Editare coordonate prin drag & drop
+   - Click & hold pentru mutarea locațiilor
+   - Google Maps import automat
+   - Câmpuri noi: website, telefon, YouTube, "Administrat de"
+   - Searchable dropdown pentru județe
+   - Auto-save și optimizări performanță
+
+3. **Sistem Mesaje Private** ✅
+   - Realtime messaging cu Supabase
+   - Sunet și notificări browser tab
+   - Indicatori WhatsApp (delivered/seen)
+   - Auto-scroll inteligent
+   - Notificări inteligente (doar sunet în conversație activă)
+   - Encryption end-to-end
+
+4. **Optimizări Performanță** ✅
+   - Lazy loading imagini
+   - Preview-uri optimizate
+   - GPU acceleration
+   - Optimizări mobil
+
+### ⏳ Funcționalități Pending (din roadmap)
+
+1. **Map User Marker Fix** ⏳
+   - Markerul se mută incorect după animații flyTo
+
+2. **Dropdown Z-Index Fix** ⏳
+   - Dropdown-urile cad sub tabel în Records page
+
+3. **Public Profile Redesign** ⏳
+   - Hero section, stats cards, trophy showcase
+
+4. **Species Images** ⏳
+   - Imagini reale pentru specii
+   - Upload în R2 și afișare
+
+5. **Mobile Responsive** ⏳
+   - Records page card view pe mobil
+   - Species page layout responsive
+   - Admin panel UI adaptată mobil
+
+6. **Map Performance** ⏳
+   - Clustering cu Supercluster
+   - Lazy loading markeri
+
+7. **Forum System** ⏳
+   - Schema DB, servicii, auth unificat
+   - Widgets și notificări
+
+### 🆕 Funcționalități Extra (nu erau în roadmap)
+
+1. **Mesaje Private Complete** ✅
+   - Sistem complet cu realtime, sunet, notificări, indicatori WhatsApp
+
+2. **Google Maps Import** ✅
+   - Import automat de detalii locații din link-uri Google Maps
+
+3. **Multiple Imagini în Formular** ✅
+   - Selectare multiplă, preview, ștergere individuală
+
+4. **Optimizări Performanță** ✅
+   - Lazy loading, GPU acceleration, preview-uri optimizate
+
+---
+
+**Notă**: Acest document este actualizat periodic pentru a reflecta progresul real al dezvoltării.
 

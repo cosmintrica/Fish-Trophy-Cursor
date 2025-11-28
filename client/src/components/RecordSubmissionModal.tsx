@@ -478,8 +478,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       });
 
       // Cleanup preview URLs
-      if (previewUrls.photo) {
-        URL.revokeObjectURL(previewUrls.photo);
+      if (previewUrls.photos) {
+        previewUrls.photos.forEach(url => URL.revokeObjectURL(url));
       }
       if (previewUrls.video) {
         URL.revokeObjectURL(previewUrls.video);
@@ -493,9 +493,9 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         length_cm: '',
         date_caught: new Date().toISOString().slice(0, 16),
         notes: '',
-        photo_file: null,
+        photo_files: [],
         video_file: null,
-        photo_url: '',
+        photo_urls: [],
         video_url: ''
       });
       setPreviewUrls({});

@@ -217,7 +217,7 @@ const Messages = () => {
 
             if (!error && data) {
               // Decrypt and format messages
-              const decryptedMessages = await Promise.all((data || []).map(async (msg: any) => {
+              const decryptedMessages: Message[] = await Promise.all((data || []).map(async (msg: any) => {
                 let decryptedContent = msg.content;
                 
                 if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
@@ -231,14 +231,15 @@ const Messages = () => {
 
                 return {
                   ...msg,
-                  content: decryptedContent,
+                  content: decryptedContent || '',
                   sender_name: msg.sender?.display_name || msg.sender_name,
                   sender_username: msg.sender?.username || msg.sender_username,
                   sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
                   recipient_name: msg.recipient?.display_name || msg.recipient_name,
                   recipient_username: msg.recipient?.username || msg.recipient_username,
-                  recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar
-                };
+                  recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar,
+                  read_at: msg.read_at || null
+                } as Message;
               }));
               
               // Group by thread
@@ -274,9 +275,23 @@ const Messages = () => {
                   }
                 }
                 
-                const formattedNewMessage = {
-                  ...payload.new,
-                  content: decryptedContent,
+                const formattedNewMessage: Message = {
+                  id: payload.new.id,
+                  sender_id: payload.new.sender_id,
+                  recipient_id: payload.new.recipient_id,
+                  subject: payload.new.subject || '',
+                  content: decryptedContent || '',
+                  encrypted_content: payload.new.encrypted_content,
+                  encryption_iv: payload.new.encryption_iv,
+                  is_encrypted: payload.new.is_encrypted || false,
+                  context: payload.new.context as 'site' | 'forum',
+                  parent_message_id: payload.new.parent_message_id,
+                  thread_root_id: payload.new.thread_root_id || payload.new.id,
+                  is_read: payload.new.is_read || false,
+                  is_archived_by_sender: payload.new.is_archived_by_sender || false,
+                  is_archived_by_recipient: payload.new.is_archived_by_recipient || false,
+                  created_at: payload.new.created_at,
+                  read_at: payload.new.read_at || null,
                   sender_name: payload.new.sender_name,
                   sender_username: payload.new.sender_username,
                   sender_avatar: payload.new.sender_avatar,
@@ -414,7 +429,7 @@ const Messages = () => {
       if (error) throw error;
 
       // Decrypt messages if encrypted
-      const formattedMessages = await Promise.all((data || []).map(async (msg: any) => {
+      const formattedMessages: Message[] = await Promise.all((data || []).map(async (msg: any) => {
         let decryptedContent = msg.content;
         
         // If message is encrypted, decrypt it
@@ -430,14 +445,15 @@ const Messages = () => {
 
         return {
           ...msg,
-          content: decryptedContent,
+          content: decryptedContent || '',
           sender_name: msg.sender?.display_name || msg.sender_name,
           sender_username: msg.sender?.username || msg.sender_username,
           sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
           recipient_name: msg.recipient?.display_name || msg.recipient_name,
           recipient_username: msg.recipient?.username || msg.recipient_username,
-          recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar
-        };
+          recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar,
+          read_at: msg.read_at || null
+        } as Message;
       }));
 
       setThreadMessages(formattedMessages);
@@ -565,9 +581,23 @@ const Messages = () => {
         }
       }
 
-      const formattedMessage = {
-        ...newMessage,
-        content: decryptedContent, // Use decrypted content
+      const formattedMessage: Message = {
+        id: newMessage.id,
+        sender_id: newMessage.sender_id,
+        recipient_id: newMessage.recipient_id,
+        subject: newMessage.subject || '',
+        content: decryptedContent || '', // Use decrypted content
+        encrypted_content: newMessage.encrypted_content,
+        encryption_iv: newMessage.encryption_iv,
+        is_encrypted: newMessage.is_encrypted || false,
+        context: newMessage.context as 'site' | 'forum',
+        parent_message_id: newMessage.parent_message_id,
+        thread_root_id: newMessage.thread_root_id || newMessage.id,
+        is_read: newMessage.is_read || false,
+        is_archived_by_sender: newMessage.is_archived_by_sender || false,
+        is_archived_by_recipient: newMessage.is_archived_by_recipient || false,
+        created_at: newMessage.created_at,
+        read_at: newMessage.read_at || null,
         sender_name: newMessage.sender?.display_name || user.user_metadata?.display_name || user.email,
         sender_username: newMessage.sender?.username || user.user_metadata?.username,
         sender_avatar: newMessage.sender?.photo_url,
