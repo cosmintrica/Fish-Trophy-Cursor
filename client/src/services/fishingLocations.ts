@@ -10,8 +10,12 @@ export interface DatabaseFishingLocation {
   longitude: number;
   subtitle?: string;
   administrare?: string;
+  administrare_url?: string;
   description?: string;
   image_url?: string;
+  website?: string;
+  phone?: string;
+  youtube_channel?: string;
   created_at?: string;
   updated_at?: string;
 }

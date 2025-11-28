@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
+import { MapEditor } from '@/components/admin/MapEditor';
 
 const Admin: React.FC = () => {
   const [trafficData, setTrafficData] = useState({
@@ -1627,28 +1628,9 @@ const Admin: React.FC = () => {
 
           {/* Locations Management Tab */}
           <TabsContent value="locations" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Gestionare Locații
-                </CardTitle>
-                <CardDescription>
-                  Harta interactivă pentru gestionarea locațiilor de pescuit
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-96 bg-muted/50 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Harta interactivă va fi implementată aici</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Funcționalități: drag & drop, adăugare locații noi, editare poziții
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <MapEditor onLocationUpdate={() => {
+              // Refresh any related data if needed
+            }} />
           </TabsContent>
 
           {/* Users Management Tab */}
