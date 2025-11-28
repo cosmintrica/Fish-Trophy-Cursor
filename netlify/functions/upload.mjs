@@ -2,8 +2,6 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import busboy from 'busboy';
 
 export const handler = async (event) => {
-  console.log('🚀 Upload function started');
-
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -17,29 +15,25 @@ export const handler = async (event) => {
   }
 
   try {
-    // Get environment variables
-    const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || process.env.VITE_R2_ACCOUNT_ID;
-    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || process.env.VITE_R2_ACCESS_KEY_ID;
-    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || process.env.VITE_R2_SECRET_ACCESS_KEY;
-    const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || process.env.VITE_R2_BUCKET_NAME;
-    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || process.env.VITE_R2_PUBLIC_URL;
-
-    console.log('Environment check:', {
-      accountId: R2_ACCOUNT_ID ? 'Set' : 'Missing',
-      accessKey: R2_ACCESS_KEY_ID ? 'Set' : 'Missing',
-      secretKey: R2_SECRET_ACCESS_KEY ? 'Set' : 'Missing',
-      bucket: R2_BUCKET_NAME || 'Missing',
-      publicUrl: R2_PUBLIC_URL || 'Missing'
-    });
+    // Get environment variables (use R2_* format, no VITE_ prefix needed in Netlify functions)
+    const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+    const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+    const R2_ENDPOINT = process.env.R2_ENDPOINT;
 
     if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
       throw new Error('Missing R2 credentials');
     }
 
+    // Use R2_ENDPOINT if provided, otherwise construct from ACCOUNT_ID
+    const endpoint = R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
     // Initialize S3 client for R2
     const s3Client = new S3Client({
       region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      endpoint: endpoint,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID,
         secretAccessKey: R2_SECRET_ACCESS_KEY
@@ -57,8 +51,6 @@ export const handler = async (event) => {
       let mimeType = '';
 
       bb.on('file', (fieldname, file, info) => {
-        console.log('📁 File field:', fieldname);
-        console.log('📄 File info:', info);
         mimeType = info.mimeType;
 
         file.on('data', (data) => {
@@ -67,25 +59,18 @@ export const handler = async (event) => {
       });
 
       bb.on('field', (fieldname, value) => {
-        console.log(`📝 Field ${fieldname}:`, value);
         if (fieldname === 'fileName') fileName = value;
         if (fieldname === 'category') category = value;
       });
 
       bb.on('finish', async () => {
         try {
-          console.log('✅ Parsing complete');
-          console.log('File size:', fileBuffer.length, 'bytes');
-          console.log('File name:', fileName);
-          console.log('Category:', category);
-
           if (!fileName || fileBuffer.length === 0) {
             throw new Error('No file received');
           }
 
           // Upload to R2
           const key = `${category}/${fileName}`;
-          console.log('📤 Uploading to R2:', key);
 
           await s3Client.send(new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
@@ -95,7 +80,6 @@ export const handler = async (event) => {
           }));
 
           const fileUrl = `${R2_PUBLIC_URL}/${key}`;
-          console.log('✅ Upload successful:', fileUrl);
 
           resolve({
             statusCode: 200,
@@ -110,7 +94,6 @@ export const handler = async (event) => {
             })
           });
         } catch (error) {
-          console.error('❌ Upload error:', error);
           resolve({
             statusCode: 500,
             headers: {
@@ -126,7 +109,6 @@ export const handler = async (event) => {
       });
 
       bb.on('error', (error) => {
-        console.error('❌ Busboy error:', error);
         resolve({
           statusCode: 500,
           headers: {
@@ -147,7 +129,6 @@ export const handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('🔥 Function error:', error);
     return {
       statusCode: 500,
       headers: {

@@ -221,10 +221,18 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   };
 
   const handleFileUpload = async (file: File, type: 'photo' | 'video') => {
+    if (!user) {
+      toast.error('Trebuie să fii autentificat pentru a încărca fișiere');
+      return;
+    }
+
     try {
       setIsUploading(true);
-      // Always use Cloudflare R2 upload (both dev and production)
-      const fileName = `${user?.id}_${Date.now()}_${file.name}`;
+      toast.loading(`${type === 'photo' ? 'Se încarcă imaginea' : 'Se încarcă videoclipul'}...`, { id: `upload-${type}` });
+
+      // Generate unique file name
+      const timestamp = Date.now();
+      const fileName = `${user.id}_${timestamp}_${file.name}`;
       const category = type === 'photo' ? 'submission-images' : 'submission-videos';
 
       const formData = new FormData();
@@ -232,30 +240,33 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       formData.append('category', category);
       formData.append('fileName', fileName);
 
-      console.log(`Starting upload for ${type}:`, fileName);
+      // Use Netlify function for upload (works in both dev and production)
+      const uploadUrl = import.meta.env.DEV 
+        ? 'http://localhost:8888/.netlify/functions/upload'
+        : '/.netlify/functions/upload';
 
-      const response = await fetch('/.netlify/functions/upload', {
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Upload result:', result);
 
-      if (result.success) {
+      if (result.success && result.url) {
         handleInputChange(type === 'photo' ? 'photo_file' : 'video_file', file);
         handleInputChange(type === 'photo' ? 'photo_url' : 'video_url', result.url);
         toast.success(`${type === 'photo' ? 'Imaginea' : 'Videoclipul'} a fost încărcat cu succes`, { id: `upload-${type}` });
       } else {
-        throw new Error(result.error || 'Upload failed');
+        throw new Error(result.error || 'Upload failed - no URL returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
-      toast.error('Eroare la încărcarea fișierului', { id: `upload-error-${type}` });
+      toast.error(`Eroare la încărcarea ${type === 'photo' ? 'imaginii' : 'videoclipului'}: ${error.message || 'Eroare necunoscută'}`, { id: `upload-error-${type}` });
     } finally {
       setIsUploading(false);
     }

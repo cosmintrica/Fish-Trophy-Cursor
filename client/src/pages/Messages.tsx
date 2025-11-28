@@ -168,7 +168,7 @@ const Messages = () => {
 
     // Subscribe to new messages in real-time
     const channel = supabase
-      .channel('private_messages_realtime')
+      .channel(`private_messages_${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -178,9 +178,6 @@ const Messages = () => {
           filter: `recipient_id=eq.${user.id}`
         },
         async (payload) => {
-          // New message received - reload messages subtly
-          console.log('New message received:', payload.new);
-          
           // Only reload if we're on inbox tab and message is for current context
           if (activeTab === 'inbox' && payload.new.context === context) {
             // Subtle reload - don't show loading spinner
