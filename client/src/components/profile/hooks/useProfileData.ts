@@ -16,7 +16,6 @@ interface ProfileData {
     show_city_publicly?: boolean;
     show_website_publicly?: boolean;
     show_youtube_publicly?: boolean;
-    avatar_url?: string;
     cover_photo_url?: string;
 }
 
@@ -34,7 +33,6 @@ export const useProfileData = (userId: string | undefined) => {
         show_city_publicly: false,
         show_website_publicly: false,
         show_youtube_publicly: false,
-        avatar_url: '',
         cover_photo_url: ''
     });
     const [selectedCounty, setSelectedCounty] = useState('');
@@ -108,7 +106,6 @@ export const useProfileData = (userId: string | undefined) => {
                     show_city_publicly: result.data.show_city_publicly || false,
                     show_website_publicly: result.data.show_website_publicly || false,
                     show_youtube_publicly: result.data.show_youtube_publicly || false,
-                    avatar_url: '',
                     cover_photo_url: ''
                 });
 
@@ -141,7 +138,6 @@ export const useProfileData = (userId: string | undefined) => {
                         show_city_publicly: data.show_city_publicly || false,
                         show_website_publicly: data.show_website_publicly || false,
                         show_youtube_publicly: data.show_youtube_publicly || false,
-                        avatar_url: data.avatar_url || '',
                         cover_photo_url: data.cover_photo_url || ''
                     });
 

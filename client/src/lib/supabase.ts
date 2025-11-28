@@ -228,5 +228,4 @@ export interface Profile {
   username_last_changed_at?: string
   photo_url?: string
   cover_photo_url?: string
-  avatar_url?: string
 }

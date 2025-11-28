@@ -18,7 +18,6 @@ interface UserProfile {
   display_name: string;
   email?: string;
   photo_url?: string;
-  avatar_url?: string;
   cover_photo_url?: string;
   cover_position?: any;
   bio?: string;
@@ -275,13 +274,13 @@ const PublicProfile = () => {
         ? profileData.cover_photo_url 
         : null;
       
-      // Normalize avatar_url - empty strings to null
-      const finalAvatarUrl = avatarUrl && avatarUrl.trim() !== '' ? avatarUrl : null;
+      // Normalize photo_url - empty strings to null
+      const finalPhotoUrl = avatarUrl && avatarUrl.trim() !== '' ? avatarUrl : null;
       
       setUserProfile({
         ...profileData,
         email: '', // Email is not public, set empty
-        avatar_url: finalAvatarUrl,
+        photo_url: finalPhotoUrl,
         cover_photo_url: coverPhotoUrl,
         website: profileData.website || undefined,
         youtube_channel: profileData.youtube_channel || undefined,
@@ -599,9 +598,9 @@ const PublicProfile = () => {
                     className="w-full h-full overflow-hidden"
                     style={{ borderRadius: '50%' }}
                   >
-                    {userProfile?.avatar_url || userProfile?.photo_url ? (
+                    {userProfile?.photo_url ? (
                       <img
-                        src={userProfile.avatar_url || userProfile.photo_url}
+                        src={userProfile.photo_url}
                         alt={userProfile?.display_name || 'Avatar'}
                         className="w-full h-full object-cover"
                         style={{ borderRadius: '50%' }}
@@ -650,7 +649,7 @@ const PublicProfile = () => {
                           disabled={isUploadingAvatar}
                         />
                       </label>
-                      {userProfile?.avatar_url && (
+                      {userProfile?.photo_url && (
                         <button
                           onClick={handleAvatarDelete}
                           disabled={isUploadingAvatar}
