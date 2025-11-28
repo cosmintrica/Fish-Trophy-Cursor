@@ -223,13 +223,37 @@ const PublicProfile = () => {
         selectQuery += ', city_id';
       }
       
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileDataRaw, error: profileError } = await supabase
         .from('profiles')
         .select(selectQuery)
         .eq('username', username?.toLowerCase())
         .single();
 
       if (profileError) throw profileError;
+      if (!profileDataRaw) throw new Error('Profile not found');
+
+      // Type assertion for dynamic query result
+      const profileData = profileDataRaw as {
+        id: string;
+        username?: string;
+        display_name: string;
+        photo_url?: string;
+        cover_photo_url?: string;
+        cover_position?: any;
+        bio?: string;
+        show_gear_publicly?: boolean;
+        show_county_publicly?: boolean;
+        show_city_publicly?: boolean;
+        show_website_publicly?: boolean;
+        show_youtube_publicly?: boolean;
+        role?: string;
+        created_at: string;
+        updated_at?: string;
+        website?: string;
+        youtube_channel?: string;
+        county_id?: string;
+        city_id?: string;
+      };
 
       // Get avatar from profiles table or auth metadata
       let avatarUrl = profileData.photo_url;
