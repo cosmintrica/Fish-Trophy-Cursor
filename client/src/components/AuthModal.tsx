@@ -376,8 +376,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
   const cityOptions = cities.map(city => ({ value: city.id, label: city.name }));
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}>
-      <div className={`bg-white rounded-xl shadow-2xl p-4 sm:p-6 transition-all duration-300 max-w-2xl w-full max-h-[90vh] overflow-y-auto ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}>
+      <div className={`bg-white rounded-xl shadow-2xl p-4 sm:p-6 transition-all duration-300 w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
         }`}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -390,7 +390,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
 
         {isLogin ? (
           // LOGIN FORM
-          <form key="login-form" onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
+          <form key="login-form" onSubmit={handleSubmit} className="space-y-4 w-full">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email sau Username *</label>
               <div className="relative">
@@ -629,23 +629,13 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
         )}
 
         {showSuccess && (
-          <div className={`mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-2' : 'opacity-100 scale-100 transform translate-y-0'}`}>
-            <div className="flex items-start">
-              <div className={`flex-shrink-0 transition-all duration-300 ${isTransitioning ? 'scale-75' : 'scale-100'}`}>
+          <div className={`mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm transition-all duration-500 text-center ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-2' : 'opacity-100 scale-100 transform translate-y-0'}`}>
+            <div className="flex flex-col items-center">
+              <div className={`flex-shrink-0 transition-all duration-300 mb-2 ${isTransitioning ? 'scale-75' : 'scale-100'}`}>
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-green-800 text-sm font-semibold mb-1">{success}</p>
-                <p className="text-green-700 text-xs leading-relaxed">Verifică email-ul pentru a confirma contul. După confirmare, te poți autentifica.</p>
-                <div className="mt-2 flex items-center">
-                  <div className="flex space-x-1">
-                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-                  <span className="ml-2 text-xs text-green-600 font-medium">Pregătire autentificare...</span>
-                </div>
-              </div>
+              <p className="text-green-800 text-sm font-semibold mb-1">{success}</p>
+              <p className="text-green-700 text-xs leading-relaxed">Verifică email-ul pentru a confirma contul. După confirmare, te poți autentifica.</p>
             </div>
           </div>
         )}

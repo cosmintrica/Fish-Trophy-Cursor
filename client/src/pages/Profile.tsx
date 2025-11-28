@@ -279,12 +279,29 @@ const Profile = () => {
                   isLoadingGear={isLoadingGear}
                   onGearReload={loadUserGear}
                   showGearPublicly={profileData.show_gear_publicly || false}
-                  onShowGearPubliclyChange={(value) => {
+                  onShowGearPubliclyChange={async (value) => {
+                    // Update local state
                     setProfileData({ ...profileData, show_gear_publicly: value });
-                    // Auto-save when toggled
-                    setTimeout(() => {
-                      updateProfile();
-                    }, 100);
+                    // Save only show_gear_publicly field
+                    try {
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ show_gear_publicly: value, updated_at: new Date().toISOString() })
+                        .eq('id', user.id);
+                      
+                      if (error) {
+                        console.error('Error updating show_gear_publicly:', error);
+                        toast.error('Eroare la actualizarea setării');
+                        // Revert local state on error
+                        setProfileData({ ...profileData, show_gear_publicly: !value });
+                      } else {
+                        toast.success(value ? 'Echipamentele sunt acum publice' : 'Echipamentele sunt acum private');
+                      }
+                    } catch (err) {
+                      console.error('Error:', err);
+                      toast.error('Eroare la actualizarea setării');
+                      setProfileData({ ...profileData, show_gear_publicly: !value });
+                    }
                   }}
                   isUpdatingProfile={isUpdatingProfile}
                 />

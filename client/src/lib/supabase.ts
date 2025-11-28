@@ -76,12 +76,12 @@ export const STORAGE_BUCKETS = {
 
 // Cloudflare R2 configuration (env-only)
 export const R2_CONFIG = {
-  BUCKET_NAME: import.meta.env.VITE_R2_BUCKET_NAME || '',
-  ACCOUNT_ID: import.meta.env.VITE_R2_ACCOUNT_ID || '',
-  ACCESS_KEY_ID: import.meta.env.VITE_R2_ACCESS_KEY_ID || '',
-  SECRET_ACCESS_KEY: import.meta.env.VITE_R2_SECRET_ACCESS_KEY || '',
-  S3_ENDPOINT: import.meta.env.VITE_R2_S3_ENDPOINT || '',
-  PUBLIC_URL: import.meta.env.VITE_R2_PUBLIC_URL || ''
+  BUCKET_NAME: import.meta.env.R2_BUCKET_NAME || '',
+  ACCOUNT_ID: import.meta.env.R2_ACCOUNT_ID || '',
+  ACCESS_KEY_ID: import.meta.env.R2_ACCESS_KEY_ID || '',
+  SECRET_ACCESS_KEY: import.meta.env.R2_SECRET_ACCESS_KEY || '',
+  S3_ENDPOINT: import.meta.env.R2_S3_ENDPOINT || '',
+  PUBLIC_URL: import.meta.env.R2_PUBLIC_URL || ''
 } as const
 
 // R2 content categories

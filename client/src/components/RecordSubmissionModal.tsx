@@ -349,8 +349,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <Card className="modal-content w-full max-w-6xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}>
+      <Card className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Fish className="w-6 h-6 text-blue-600" />
@@ -363,8 +363,9 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Species Selection */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="species" className="text-sm font-medium">
                 Specia de pește <span className="text-red-500">*</span>
               </Label>
@@ -447,7 +448,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
             </div>
 
             {/* Location Selection */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="location" className="text-sm font-medium">
                 Locația de pescuit <span className="text-red-500">*</span>
               </Label>
@@ -532,40 +533,38 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
             </div>
 
             {/* Weight and Length */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
-                  <Scale className="w-4 h-4" />
-                  Greutatea (kg) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.weight}
-                  onChange={(e) => handleInputChange('weight', e.target.value)}
-                  placeholder="ex: 2.5"
-                  className="w-full"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
+                <Scale className="w-4 h-4" />
+                Greutatea (kg) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.weight}
+                onChange={(e) => handleInputChange('weight', e.target.value)}
+                placeholder="ex: 2.5"
+                className="w-full"
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="length" className="text-sm font-medium flex items-center gap-2">
-                  <Ruler className="w-4 h-4" />
-                  Lungimea (cm) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="length"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.length_cm}
-                  onChange={(e) => handleInputChange('length_cm', e.target.value)}
-                  placeholder="ex: 45.2"
-                  className="w-full"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="length" className="text-sm font-medium flex items-center gap-2">
+                <Ruler className="w-4 h-4" />
+                Lungimea (cm) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="length"
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.length_cm}
+                onChange={(e) => handleInputChange('length_cm', e.target.value)}
+                placeholder="ex: 45.2"
+                className="w-full"
+              />
             </div>
 
             {/* Capture Date and Time */}
@@ -584,92 +583,93 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
             </div>
 
             {/* File Uploads */}
-            <div className="space-y-6">
+            <div className="space-y-2 md:col-span-2">
               <Label className="text-sm font-medium text-gray-700">Fișiere (opțional)</Label>
-
-              {/* Photo Upload */}
-              <div className="space-y-3">
-                <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2 text-gray-700">
-                  <Camera className="w-4 h-4 text-blue-500" />
-                  Fotografie
-                </Label>
-                <div className="border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
-                  <input
-                    type="file"
-                    id="photo"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file, 'photo');
-                    }}
-                    className="hidden"
-                  />
-                  <label htmlFor="photo" className="cursor-pointer block">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-                      <Camera className="w-8 h-8 text-blue-500" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Apasă pentru a selecta o imagine</p>
-                    <p className="text-xs text-gray-500 mt-2">PNG, JPG, WEBP până la 10MB</p>
-                    {formData.photo_file && (
-                      <p className="text-xs text-green-600 mt-2 font-medium flex items-center justify-center gap-1">
-                        <FileText className="w-3 h-3" />
-                        {formData.photo_file.name}
-                      </p>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              {/* Video Upload */}
-              <div className="space-y-3">
-                <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700">
-                  <Video className="w-4 h-4 text-green-500" />
-                  Videoclip <span className="text-red-500">*</span>
-                </Label>
-                <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center hover:border-green-500 hover:bg-green-50/30 transition-all duration-200 group">
-                  <input
-                    type="file"
-                    id="video"
-                    accept="video/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file, 'video');
-                    }}
-                    className="hidden"
-                  />
-                  <label htmlFor="video" className="cursor-pointer block">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition-colors">
-                      <Video className="w-8 h-8 text-green-500" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 group-hover:text-green-600">Apasă pentru a selecta un videoclip</p>
-                    <p className="text-xs text-gray-500 mt-2">MP4, MOV, AVI până la 100MB</p>
-                    {formData.video_file && (
-                      <div className="mt-4">
-                        <p className="text-xs text-green-600 font-medium flex items-center justify-center gap-1 mb-2">
-                          <FileText className="w-3 h-3" />
-                          {formData.video_file.name}
-                        </p>
-                        {formData.video_url && formData.video_url.startsWith('http') && (
-                          <video
-                            src={formData.video_url}
-                            controls
-                            className="w-32 h-20 object-cover rounded mx-auto"
-                            onError={(e) => {
-                              console.log('Video preview error:', e);
-                              // Hide video preview if it fails to load
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2 text-gray-700">
+                    <Camera className="w-4 h-4 text-blue-500" />
+                    Fotografie
+                  </Label>
+                  <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
+                    <input
+                      type="file"
+                      id="photo"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'photo');
+                      }}
+                      className="hidden"
+                    />
+                    <label htmlFor="photo" className="cursor-pointer block">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                        <Camera className="w-6 h-6 text-blue-500" />
                       </div>
-                    )}
-                  </label>
+                      <p className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Selectează imagine</p>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP până la 10MB</p>
+                      {formData.photo_file && (
+                        <p className="text-xs text-green-600 mt-2 font-medium flex items-center justify-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          {formData.photo_file.name}
+                        </p>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Video Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700">
+                    <Video className="w-4 h-4 text-green-500" />
+                    Videoclip
+                  </Label>
+                  <div className="border-2 border-dashed border-green-300 rounded-xl p-4 sm:p-6 text-center hover:border-green-500 hover:bg-green-50/30 transition-all duration-200 group">
+                    <input
+                      type="file"
+                      id="video"
+                      accept="video/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'video');
+                      }}
+                      className="hidden"
+                    />
+                    <label htmlFor="video" className="cursor-pointer block">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition-colors">
+                        <Video className="w-6 h-6 text-green-500" />
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 group-hover:text-green-600">Selectează videoclip</p>
+                      <p className="text-xs text-gray-500 mt-1">MP4, MOV, AVI până la 100MB</p>
+                      {formData.video_file && (
+                        <div className="mt-3">
+                          <p className="text-xs text-green-600 font-medium flex items-center justify-center gap-1 mb-2">
+                            <FileText className="w-3 h-3" />
+                            {formData.video_file.name}
+                          </p>
+                          {formData.video_url && formData.video_url.startsWith('http') && (
+                            <video
+                              src={formData.video_url}
+                              controls
+                              className="w-full max-w-xs h-32 object-cover rounded mx-auto"
+                              onError={(e) => {
+                                console.log('Video preview error:', e);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Notes */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Note suplimentare
@@ -682,6 +682,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                 rows={3}
                 className="w-full"
               />
+            </div>
             </div>
 
             {/* Submit Buttons */}

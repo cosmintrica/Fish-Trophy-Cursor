@@ -162,6 +162,91 @@ const Messages = () => {
     }
   }, [user, activeTab, context]);
 
+  // Realtime subscription for new messages
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to new messages in real-time
+    const channel = supabase
+      .channel('private_messages_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'private_messages',
+          filter: `recipient_id=eq.${user.id}`
+        },
+        async (payload) => {
+          // New message received - reload messages subtly
+          console.log('New message received:', payload.new);
+          
+          // Only reload if we're on inbox tab and message is for current context
+          if (activeTab === 'inbox' && payload.new.context === context) {
+            // Subtle reload - don't show loading spinner
+            const { data, error } = await supabase
+              .from('private_messages')
+              .select(`
+                *,
+                sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
+                recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
+              `)
+              .eq('recipient_id', user.id)
+              .eq('context', context)
+              .eq('is_deleted_by_recipient', false)
+              .eq('is_archived_by_recipient', false)
+              .order('created_at', { ascending: false });
+
+            if (!error && data) {
+              // Decrypt and format messages
+              const decryptedMessages = await Promise.all((data || []).map(async (msg: any) => {
+                let decryptedContent = msg.content;
+                
+                if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
+                  try {
+                    const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
+                    decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
+                  } catch (decryptError) {
+                    decryptedContent = null;
+                  }
+                }
+
+                return {
+                  ...msg,
+                  content: decryptedContent,
+                  sender_name: msg.sender?.display_name || msg.sender_name,
+                  sender_username: msg.sender?.username || msg.sender_username,
+                  sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
+                  recipient_name: msg.recipient?.display_name || msg.recipient_name,
+                  recipient_username: msg.recipient?.username || msg.recipient_username,
+                  recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar
+                };
+              }));
+              
+              // Group by thread
+              const threadMap = new Map<string, Message>();
+              decryptedMessages.forEach((msg: Message) => {
+                const rootId = msg.thread_root_id || msg.id;
+                if (!threadMap.has(rootId) || new Date(msg.created_at) > new Date(threadMap.get(rootId)!.created_at)) {
+                  threadMap.set(rootId, msg);
+                }
+              });
+              
+              setMessages(Array.from(threadMap.values()));
+              
+              // Show subtle notification
+              toast.success('Mesaj nou primit', { duration: 2000 });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, activeTab, context]);
+
   const loadMessages = async () => {
     if (!user) return;
 
