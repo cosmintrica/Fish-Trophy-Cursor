@@ -719,7 +719,11 @@ const Admin: React.FC = () => {
 
   // Handle view user profile
   const handleViewUserProfile = (user: any) => {
-    window.open(`/profile/${user.id}`, '_blank');
+    if (user.username) {
+      window.open(`/profile/${user.username}`, '_blank');
+    } else {
+      toast.error('Utilizatorul nu are username setat');
+    }
   };
 
   // Update daily analytics stats

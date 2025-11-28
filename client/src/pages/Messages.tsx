@@ -6,7 +6,7 @@ import { MessageSquare, Send, Archive, Inbox, Trash2, Reply, ArrowLeft, ArchiveR
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { deriveKeyFromUsers, encryptMessage, decryptMessage } from '@/lib/encryption';
@@ -189,7 +189,7 @@ const Messages = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Subscribe to new messages in real-time
+    // Subscribe to new messages in real-time (both received and sent)
     const channel = supabase
       .channel(`private_messages_${user.id}`)
       .on(
@@ -198,7 +198,7 @@ const Messages = () => {
           event: 'INSERT',
           schema: 'public',
           table: 'private_messages',
-          filter: `recipient_id=eq.${user.id}`
+          filter: `or(recipient_id.eq.${user.id},sender_id.eq.${user.id})`
         },
         async (payload) => {
           // Only reload if we're on inbox tab and message is for current context
@@ -260,55 +260,78 @@ const Messages = () => {
               const isInActiveThread = selectedMessage && (
                 payload.new.thread_root_id === selectedMessage.thread_root_id || 
                 payload.new.thread_root_id === selectedMessage.id ||
-                payload.new.id === selectedMessage.thread_root_id
+                payload.new.id === selectedMessage.thread_root_id ||
+                (payload.new.sender_id === user.id && payload.new.recipient_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id)) ||
+                (payload.new.recipient_id === user.id && payload.new.sender_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id))
               );
               
               if (isInActiveThread) {
-                // Decrypt the new message
-                let decryptedContent = payload.new.content;
-                if (payload.new.is_encrypted && payload.new.encrypted_content && payload.new.encryption_iv) {
-                  try {
-                    const key = await deriveKeyFromUsers(payload.new.sender_id, payload.new.recipient_id);
-                    decryptedContent = await decryptMessage(payload.new.encrypted_content, payload.new.encryption_iv, key);
-                  } catch (decryptError) {
-                    decryptedContent = null;
+                // Load full message data including profiles
+                const { data: fullMessageData, error: fullMessageError } = await supabase
+                  .from('private_messages')
+                  .select(`
+                    *,
+                    sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
+                    recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
+                  `)
+                  .eq('id', payload.new.id)
+                  .single();
+
+                if (!fullMessageError && fullMessageData) {
+                  // Decrypt the new message
+                  let decryptedContent = fullMessageData.content;
+                  if (fullMessageData.is_encrypted && fullMessageData.encrypted_content && fullMessageData.encryption_iv) {
+                    try {
+                      const key = await deriveKeyFromUsers(fullMessageData.sender_id, fullMessageData.recipient_id);
+                      decryptedContent = await decryptMessage(fullMessageData.encrypted_content, fullMessageData.encryption_iv, key);
+                    } catch (decryptError) {
+                      decryptedContent = '[Eroare la decriptare]';
+                    }
                   }
-                }
-                
-                const formattedNewMessage: Message = {
-                  id: payload.new.id,
-                  sender_id: payload.new.sender_id,
-                  recipient_id: payload.new.recipient_id,
-                  subject: payload.new.subject || '',
-                  content: decryptedContent || '',
-                  encrypted_content: payload.new.encrypted_content,
-                  encryption_iv: payload.new.encryption_iv,
-                  is_encrypted: payload.new.is_encrypted || false,
-                  context: payload.new.context as 'site' | 'forum',
-                  parent_message_id: payload.new.parent_message_id,
-                  thread_root_id: payload.new.thread_root_id || payload.new.id,
-                  is_read: payload.new.is_read || false,
-                  is_archived_by_sender: payload.new.is_archived_by_sender || false,
-                  is_archived_by_recipient: payload.new.is_archived_by_recipient || false,
-                  created_at: payload.new.created_at,
-                  read_at: payload.new.read_at || null,
-                  sender_name: payload.new.sender_name,
-                  sender_username: payload.new.sender_username,
-                  sender_avatar: payload.new.sender_avatar,
-                  recipient_name: payload.new.recipient_name,
-                  recipient_username: payload.new.recipient_username,
-                  recipient_avatar: payload.new.recipient_avatar
-                };
-                
-                setThreadMessages(prev => [...prev, formattedNewMessage]);
-                // Auto-scroll to bottom when new message arrives in open thread
-                setTimeout(() => {
-                  scrollToBottom();
-                }, 100);
-                
-                // Only play sound if in active thread (no visual notification)
-                if (soundEnabled) {
-                  playNotificationSound();
+                  
+                  const formattedNewMessage: Message = {
+                    id: fullMessageData.id,
+                    sender_id: fullMessageData.sender_id,
+                    recipient_id: fullMessageData.recipient_id,
+                    subject: fullMessageData.subject || '',
+                    content: decryptedContent || '',
+                    encrypted_content: fullMessageData.encrypted_content,
+                    encryption_iv: fullMessageData.encryption_iv,
+                    is_encrypted: fullMessageData.is_encrypted || false,
+                    context: fullMessageData.context as 'site' | 'forum',
+                    parent_message_id: fullMessageData.parent_message_id,
+                    thread_root_id: fullMessageData.thread_root_id || fullMessageData.id,
+                    is_read: fullMessageData.is_read || false,
+                    is_archived_by_sender: fullMessageData.is_archived_by_sender || false,
+                    is_archived_by_recipient: fullMessageData.is_archived_by_recipient || false,
+                    created_at: fullMessageData.created_at,
+                    read_at: fullMessageData.read_at || null,
+                    sender_name: fullMessageData.sender?.display_name || fullMessageData.sender_name,
+                    sender_username: fullMessageData.sender?.username || fullMessageData.sender_username,
+                    sender_avatar: fullMessageData.sender?.photo_url || fullMessageData.sender_avatar,
+                    recipient_name: fullMessageData.recipient?.display_name || fullMessageData.recipient_name,
+                    recipient_username: fullMessageData.recipient?.username || fullMessageData.recipient_username,
+                    recipient_avatar: fullMessageData.recipient?.photo_url || fullMessageData.recipient_avatar
+                  };
+                  
+                  // Check if message already exists in threadMessages to avoid duplicates
+                  setThreadMessages(prev => {
+                    const exists = prev.some(msg => msg.id === formattedNewMessage.id);
+                    if (exists) {
+                      return prev;
+                    }
+                    return [...prev, formattedNewMessage];
+                  });
+                  
+                  // Auto-scroll to bottom when new message arrives in open thread
+                  setTimeout(() => {
+                    scrollToBottom();
+                  }, 100);
+                  
+                  // Only play sound if in active thread (no visual notification)
+                  if (soundEnabled) {
+                    playNotificationSound();
+                  }
                 }
               } else {
                 // Not in active thread - show both sound and visual notification
@@ -326,7 +349,7 @@ const Messages = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, activeTab, context]);
+  }, [user, activeTab, context, selectedMessage?.id, selectedMessage?.thread_root_id, selectedMessage?.sender_id, selectedMessage?.recipient_id, soundEnabled]);
 
   const loadMessages = async () => {
     if (!user) return;
@@ -903,20 +926,25 @@ const Messages = () => {
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <Avatar className="w-10 h-10 sm:w-12 sm:h-12">
-                  <AvatarImage src={otherUser?.avatar} />
-                  <AvatarFallback>
-                    {otherUser?.name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {otherUser?.name}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-500 truncate">
-                    @{otherUser?.username}
-                  </p>
-                </div>
+                <Link
+                  to={otherUser?.username ? `/profile/${otherUser.username}` : '#'}
+                  className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0"
+                >
+                  <Avatar className="w-10 h-10 sm:w-12 sm:h-12">
+                    <AvatarImage src={otherUser?.avatar} />
+                    <AvatarFallback>
+                      {otherUser?.name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">
+                      {otherUser?.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500 truncate">
+                      @{otherUser?.username}
+                    </p>
+                  </div>
+                </Link>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -966,7 +994,7 @@ const Messages = () => {
               {/* Messages Container - Scrollable */}
               <div 
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-3 bg-gray-50 min-h-0" 
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0" 
                 style={{ scrollBehavior: 'smooth' }}
               >
                 <div className="space-y-2 sm:space-y-3 max-w-3xl mx-auto">
@@ -1052,7 +1080,7 @@ const Messages = () => {
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0">
+              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0 pb-2 sm:pb-3">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
@@ -1081,15 +1109,14 @@ const Messages = () => {
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center justify-between mt-1 sm:mt-1.5">
+                <div className="flex items-center justify-between mt-1 sm:mt-1.5 pb-2 sm:pb-0">
                   <p className="text-xs text-gray-500 px-1 hidden sm:block">
                     Apasă Enter pentru a trimite, Shift+Enter pentru linie nouă
                   </p>
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     <span className="hidden sm:inline">Mesajele sunt criptate end-to-end</span>
+                    <span className="sm:hidden">Criptate</span>
                   </div>
                 </div>
               </div>

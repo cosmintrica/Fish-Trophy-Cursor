@@ -453,7 +453,7 @@ const Records = () => {
         </div>
 
         {/* Search and Filters - Mobile Friendly */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-3 sm:p-4 mb-4 sm:mb-6 relative z-50">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-3 sm:p-4 mb-4 sm:mb-6 relative z-40">
           {/* Main Search Bar */}
           <div className="mb-4">
             <div className="relative max-w-xl mx-auto">
@@ -865,10 +865,10 @@ const Records = () => {
             ) : (
               <div className="space-y-2 sm:space-y-3">
                 {getFilteredRecords().slice(0, 15).map((record, index) => (
-                  <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-3 sm:p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
-                    <div className="flex items-center justify-between">
+                  <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-2 sm:p-3 md:p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                       {/* Left side - Rank and Info */}
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
                         {/* Rank */}
                         <div className="flex-shrink-0">
                           {getRankIcon(index + 1)}
@@ -876,9 +876,9 @@ const Records = () => {
 
                         {/* Record Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
                             <h3
-                              className="text-base sm:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                              className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
                               onClick={() => openUserProfile(record)}
                               title="Vezi profilul utilizatorului"
                             >
@@ -886,48 +886,48 @@ const Records = () => {
                             </h3>
                             {getStatusBadge(record.status)}
                           </div>
-                          <p className="text-sm text-gray-700 font-medium">{record.fish_species?.name}</p>
-                          <p className="text-xs text-gray-500 flex items-center">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {record.fishing_locations?.name}
+                          <p className="text-xs sm:text-sm text-gray-700 font-medium truncate">{record.fish_species?.name}</p>
+                          <p className="text-xs text-gray-500 flex items-center truncate">
+                            <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">{record.fishing_locations?.name}</span>
                           </p>
                         </div>
                       </div>
 
                       {/* Right side - Weight, Length and Actions */}
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4">
                         {/* Weight and Length */}
-                        <div className="flex items-center space-x-4 text-right">
+                        <div className="flex items-center space-x-2 sm:space-x-4 text-right">
                           <div className="text-center">
-                            <div className="flex items-center text-lg sm:text-xl font-bold text-blue-600">
-                              <Scale className="w-4 h-4 mr-1" />
-                              <span>{record.weight || 'N/A'} kg</span>
+                            <div className="flex items-center text-sm sm:text-lg md:text-xl font-bold text-blue-600">
+                              <Scale className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                              <span className="text-xs sm:text-base">{record.weight || 'N/A'} kg</span>
                             </div>
                           </div>
                           <div className="text-center">
-                            <div className="flex items-center text-sm sm:text-lg font-bold text-gray-600">
-                              <Ruler className="w-3 h-3 mr-1" />
-                              <span>{record.length_cm || 'N/A'} cm</span>
+                            <div className="flex items-center text-xs sm:text-sm md:text-lg font-bold text-gray-600">
+                              <Ruler className="w-3 h-3 mr-0.5 sm:mr-1" />
+                              <span className="text-xs sm:text-base">{record.length_cm || 'N/A'} cm</span>
                             </div>
                           </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2">
                           <button
                             onClick={() => openRecordModal(record)}
-                            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
+                            className="px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
                           >
-                            <Eye className="w-3 h-3 mr-1" />
-                            Vezi
+                            <Eye className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Vezi</span>
                           </button>
                           {user?.email === 'cosmin.trica@outlook.com' && record.status === 'verified' && (
                             <button
                               onClick={() => handleEditRecord(record)}
-                              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center"
+                              className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center"
                             >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Editează
+                              <Edit className="w-3 h-3 sm:mr-1" />
+                              <span className="hidden sm:inline">Editează</span>
                             </button>
                           )}
                         </div>

@@ -405,7 +405,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           {/* User Section in Mobile Menu */}
           {user ? (
             <div className="p-4 border-t border-gray-100 space-y-1">
-              <div className="flex items-center space-x-3 px-4 py-3">
+              <Link
+                to={userUsername ? `/profile/${userUsername}` : '/profile'}
+                className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+              >
                 <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                   {user.user_metadata?.avatar_url ? (
                     <img
@@ -435,7 +439,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     {getUserDisplayName()}
                   </p>
                 </div>
-              </div>
+              </Link>
 
               <Link
                 to="/profile"
@@ -443,7 +447,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 onClick={closeMobileMenu}
               >
                 <User className="w-5 h-5" />
-                <span className="font-medium text-base">Profilul meu</span>
+                <span className="font-medium text-base">Setări</span>
               </Link>
 
               <button
