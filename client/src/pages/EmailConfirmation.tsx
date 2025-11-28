@@ -24,10 +24,17 @@ const EmailConfirmation = () => {
       }
 
       // Parse hash for OAuth tokens (Supabase OAuth uses hash, not query params)
+      // Also check query params as fallback (some OAuth flows use query params)
       const hash = window.location.hash.substring(1); // Remove #
       const hashParams = new URLSearchParams(hash);
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
+      let accessToken = hashParams.get('access_token');
+      let refreshToken = hashParams.get('refresh_token');
+      
+      // Fallback: check query params if hash is empty
+      if (!accessToken || !refreshToken) {
+        accessToken = searchParams.get('access_token') || accessToken;
+        refreshToken = searchParams.get('refresh_token') || refreshToken;
+      }
 
       // Check URL parameters for email confirmation tokens
       const token = searchParams.get('token');

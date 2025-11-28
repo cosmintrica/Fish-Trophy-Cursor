@@ -24,11 +24,13 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [selectedCounty, setSelectedCounty] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -72,11 +74,19 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
     { test: (pwd: string) => /[0-9]/.test(pwd), label: 'O cifră' },
   ];
 
-  // Generate username from displayName
+  // Generate username from displayName (use full name, not just first word)
   const generateUsernameFromName = async (nameInput: string) => {
     if (!nameInput || nameInput.length < 3) return;
 
-    let baseUsername = nameInput.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 6);
+    // Use full name, not just first word - more unique and safe for multiple users
+    // "Ion Popescu" -> "ionpopescu" instead of just "ion"
+    let baseUsername = nameInput
+      .toLowerCase()
+      .replace(/[ăâîșț]/g, 'a') // Replace Romanian diacritics
+      .replace(/[^a-z0-9_-]/g, '') // Remove all non-alphanumeric except underscore and dash
+      .substring(0, 30); // Max 30 characters
+    
+    // If too short after cleaning, use first part as fallback
     if (baseUsername.length < 3) {
       baseUsername = nameInput.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 6);
     }
@@ -151,6 +161,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
     setEmailOrUsername('');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setDisplayName('');
     setUsername('');
     setSelectedCounty('');
@@ -254,14 +265,16 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
         }
         onClose();
       } else {
-        if (!displayName.trim()) { setError('Numele este obligatoriu.'); return; }
-        if (!username.trim()) { setError('Username-ul este obligatoriu.'); return; }
-        if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) { setError('Username-ul poate conține doar litere, cifre, _ și - (3-30 caractere).'); return; }
+        if (!displayName.trim()) { setError('Numele este obligatoriu.'); setLoading(false); return; }
+        if (!username.trim()) { setError('Username-ul este obligatoriu.'); setLoading(false); return; }
+        if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) { setError('Username-ul poate conține doar litere, cifre, _ și - (3-30 caractere).'); setLoading(false); return; }
 
         const { data: existingUser } = await supabase.from('profiles').select('username').eq('username', username.toLowerCase()).maybeSingle();
-        if (existingUser) { setError('Acest username este deja folosit. Alege altul.'); return; }
-        if (!selectedCounty) { setError('Județul este obligatoriu.'); return; }
-        if (!selectedCity) { setError('Orașul este obligatoriu.'); return; }
+        if (existingUser) { setError('Acest username este deja folosit. Alege altul.'); setLoading(false); return; }
+        if (!selectedCounty) { setError('Județul este obligatoriu.'); setLoading(false); return; }
+        if (!selectedCity) { setError('Orașul este obligatoriu.'); setLoading(false); return; }
+        if (!confirmPassword.trim()) { setError('Confirmarea parolei este obligatorie.'); setLoading(false); return; }
+        if (password !== confirmPassword) { setError('Parolele nu coincid. Te rugăm să reintroduci parola.'); setLoading(false); return; }
 
         await signUp(email, password, displayName, selectedCounty, selectedCity, username);
         setSuccess('Contul a fost creat cu succes!');
@@ -275,17 +288,64 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
         }, 2000);
       }
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'message' in err) {
-        const message = (err as { message: string }).message;
-        if (message.includes('already registered')) setError('Acest email este deja folosit. Încearcă să te autentifici.');
-        else if (message.includes('Invalid email')) setError('Email-ul nu este valid. Verifică formatul.');
-        else if (message.includes('Password should be at least')) setError('Parola trebuie să aibă cel puțin 6 caractere.');
-        else if (message.includes('Invalid login credentials')) setError('Email sau parolă incorectă.');
-        else if (message.includes('Email not confirmed')) setError('Email-ul nu a fost confirmat. Verifică-ți inbox-ul și apasă pe link-ul de confirmare.');
-        else setError('A apărut o eroare. Încearcă din nou.');
-      } else {
-        setError('A apărut o eroare. Încearcă din nou.');
+      console.error('Signup error details:', err);
+      
+      // Extract error message from various error formats
+      let errorMessage = 'A apărut o eroare la înregistrare. Te rugăm să încerci din nou.';
+      
+      if (err && typeof err === 'object') {
+        // Supabase error format
+        if ('message' in err) {
+          const message = (err as { message: string }).message;
+          errorMessage = message;
+          
+          // Map common error messages to user-friendly Romanian messages
+          if (message.includes('already registered') || message.includes('already exists') || message.includes('User already registered')) {
+            errorMessage = 'Acest email este deja folosit. Încearcă să te autentifici.';
+          } else if (message.includes('Email address') && message.includes('is invalid') || message.includes('Invalid email') || message.includes('invalid email') || message.includes('Email format')) {
+            errorMessage = 'Email-ul nu este valid. Supabase blochează unele email-uri de test (ex: test@gmail.com). Te rugăm să folosești un email real.';
+          } else if (message.includes('password') || message.includes('Password')) {
+            if (message.includes('at least') || message.includes('minimum')) {
+              errorMessage = 'Parola trebuie să aibă minim 6 caractere.';
+            } else if (message.includes('too weak') || message.includes('weak')) {
+              errorMessage = 'Parola este prea slabă. Folosește o parolă mai puternică.';
+            } else {
+              errorMessage = 'Parola nu îndeplinește cerințele. Te rugăm să folosești o parolă mai puternică.';
+            }
+          } else if (message.includes('username') || message.includes('Username')) {
+            if (message.includes('already') || message.includes('exists') || message.includes('taken')) {
+              errorMessage = 'Acest username este deja folosit. Alege altul.';
+            } else if (message.includes('invalid') || message.includes('format')) {
+              errorMessage = 'Username-ul nu este valid. Folosește doar litere, cifre, underscore (_) și cratimă (-).';
+            } else {
+              errorMessage = 'Username-ul nu este valid sau este deja folosit.';
+            }
+          } else if (message.includes('rate limit') || message.includes('too many')) {
+            errorMessage = 'Prea multe încercări. Te rugăm să aștepți câteva momente și să încerci din nou.';
+          } else if (message.includes('network') || message.includes('fetch')) {
+            errorMessage = 'Eroare de conexiune. Verifică conexiunea la internet și încearcă din nou.';
+          } else if (message.includes('constraint') || message.includes('violates')) {
+            errorMessage = 'Datele introduse nu sunt valide. Verifică toate câmpurile.';
+          } else {
+            // Show the actual error message if it's meaningful
+            errorMessage = message.length > 100 ? 'A apărut o eroare la înregistrare. Te rugăm să încerci din nou.' : message;
+          }
+        }
+        
+        // Check for status code in error
+        if ('status' in err) {
+          const status = (err as { status: number }).status;
+          if (status === 400) {
+            errorMessage = 'Datele introduse nu sunt valide. Verifică toate câmpurile.';
+          } else if (status === 429) {
+            errorMessage = 'Prea multe încercări. Te rugăm să aștepți câteva momente.';
+          } else if (status >= 500) {
+            errorMessage = 'Eroare de server. Te rugăm să încerci mai târziu.';
+          }
+        }
       }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -316,8 +376,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
   const cityOptions = cities.map(city => ({ value: city.id, label: city.name }));
 
   return (
-    <div className="modal-overlay">
-      <div className={`modal-content bg-white rounded-xl shadow-2xl p-4 sm:p-6 transition-all duration-300 max-w-xl sm:!max-w-lg ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}>
+      <div className={`bg-white rounded-xl shadow-2xl p-4 sm:p-6 transition-all duration-300 max-w-2xl w-full max-h-[90vh] overflow-y-auto ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
         }`}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -330,7 +390,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
 
         {isLogin ? (
           // LOGIN FORM
-          <form key="login-form" onSubmit={handleSubmit} className="space-y-4">
+          <form key="login-form" onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email sau Username *</label>
               <div className="relative">
@@ -380,10 +440,10 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
             </Button>
           </form>
         ) : (
-          // REGISTER FORM
+          // REGISTER FORM - 2 columns layout
           <form key="register-form" onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
-
-            <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Nume complet *</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -415,7 +475,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
                   autoComplete="off"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1 text-center">3-30 caractere: litere, cifre, _ și -</p>
+              <p className="text-xs text-gray-500 mt-1">3-30 caractere: litere, cifre, _ și -</p>
             </div>
 
             <div>
@@ -453,7 +513,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
                   </div>
                 )}
                 {!email.includes('@') && email.length > 0 && (
-                  <p className="text-xs text-orange-600 mt-1 text-center flex items-center justify-center gap-1">
+                  <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
                     <span>❌</span> Email trebuie să conțină @
                   </p>
                 )}
@@ -500,7 +560,39 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
                 </div>
               )}
               {!passwordFocused && (
-                <p className="text-xs text-gray-500 mt-1 text-center">Minim 8 caractere, o literă mică, mare și o cifră</p>
+                <p className="text-xs text-gray-500 mt-1">Minim 8 caractere, o literă mică, mare și o cifră</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Confirmă parola *</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  key="register-confirm-password"
+                  id="register-confirm-password"
+                  name="confirm_password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="text-xs text-red-500 mt-1">❌ Parolele nu coincid</p>
+              )}
+              {confirmPassword.length > 0 && password === confirmPassword && password.length > 0 && (
+                <p className="text-xs text-green-600 mt-1">✅ Parolele coincid</p>
               )}
             </div>
 
@@ -525,6 +617,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
                 searchPlaceholder="Caută oraș..."
                 disabled={!selectedCounty}
               />
+            </div>
             </div>
 
             {error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200 text-center">{error}</div>}

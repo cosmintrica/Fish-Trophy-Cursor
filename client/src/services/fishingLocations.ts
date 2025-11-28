@@ -148,7 +148,7 @@ export const loadFishingLocationsByType = async (type: string): Promise<FishingL
   try {
     const { data, error } = await supabase
       .from('fishing_locations')
-      .select('id, name, type, county, region, latitude, longitude, subtitle, administrare, administrare_url, description, image_url, website, phone, youtube_channel, created_at, updated_at')
+      .select('*')
       .eq('type', type)
       .order('name');
 

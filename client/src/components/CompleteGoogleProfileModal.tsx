@@ -23,74 +23,42 @@ export const CompleteGoogleProfileModal = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [usernameError, setUsernameError] = useState('');
+  const [loadingUsername, setLoadingUsername] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setUsername('');
       setPassword('');
       setConfirmPassword('');
       setError('');
-      setUsernameError('');
+      setLoadingUsername(true);
+      
+      // Load username from profile
+      (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', user.id)
+              .maybeSingle();
+            
+            if (!profileError && profile?.username) {
+              setUsername(profile.username);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading username:', err);
+        } finally {
+          setLoadingUsername(false);
+        }
+      })();
     }
   }, [isOpen]);
-
-  const validateUsername = async (value: string): Promise<string | null> => {
-    if (!value.trim()) {
-      return 'Username-ul este obligatoriu.';
-    }
-
-    if (value.length < 3) {
-      return 'Username-ul trebuie să aibă minim 3 caractere.';
-    }
-
-    if (value.length > 30) {
-      return 'Username-ul trebuie să aibă maxim 30 de caractere.';
-    }
-
-    if (!/^[a-z0-9_]+$/.test(value.toLowerCase())) {
-      return 'Username-ul poate conține doar litere mici, cifre și underscore (_).';
-    }
-
-    // Check if username already exists
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', value.toLowerCase().trim())
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error checking username:', error);
-      return 'Eroare la verificarea username-ului. Te rugăm să încerci din nou.';
-    }
-
-    if (data) {
-      return 'Acest username este deja folosit. Te rugăm să alegi altul.';
-    }
-
-    return null;
-  };
-
-  const handleUsernameBlur = async () => {
-    if (username.trim()) {
-      const error = await validateUsername(username);
-      setUsernameError(error || '');
-    } else {
-      setUsernameError('');
-    }
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setUsernameError('');
-
-    // Validate username
-    const usernameValidation = await validateUsername(username);
-    if (usernameValidation) {
-      setUsernameError(usernameValidation);
-      return;
-    }
 
     // Validate password
     if (!password.trim()) {
@@ -117,7 +85,7 @@ export const CompleteGoogleProfileModal = ({
         throw new Error('Utilizatorul nu este autentificat.');
       }
 
-      // Update password
+      // Update password only
       const { error: passwordError } = await supabase.auth.updateUser({
         password: password,
       });
@@ -126,17 +94,14 @@ export const CompleteGoogleProfileModal = ({
         throw passwordError;
       }
 
-      // Update profile with username
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          username: username.toLowerCase().trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      // Mark profile as completed in user metadata
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { profile_completed: true }
+      });
 
-      if (profileError) {
-        throw profileError;
+      if (metadataError) {
+        console.error('Error updating user metadata:', metadataError);
+        // Don't throw - profile update was successful
       }
 
       // Success - close modal and refresh
@@ -168,7 +133,7 @@ export const CompleteGoogleProfileModal = ({
               Completează-ți profilul
             </h2>
             <p className="text-sm text-gray-600">
-              Te-ai înregistrat cu Google. Pentru a continua, te rugăm să completezi următoarele informații obligatorii.
+              Te-ai înregistrat cu Google. Pentru a continua, te rugăm să îți setezi o parolă.
             </p>
           </div>
 
@@ -188,33 +153,17 @@ export const CompleteGoogleProfileModal = ({
 
             <div>
               <Label htmlFor="username" className="text-sm font-semibold text-gray-700">
-                Username <span className="text-red-500">*</span>
+                Username
               </Label>
               <Input
                 id="username"
                 type="text"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  setUsernameError('');
-                }}
-                onBlur={handleUsernameBlur}
-                placeholder="ex: pescar123"
-                className="mt-1"
-                required
-                minLength={3}
-                maxLength={30}
-                pattern="[a-z0-9_]+"
-                title="Doar litere mici, cifre și underscore"
+                value={loadingUsername ? 'Se încarcă...' : username}
+                disabled
+                className="mt-1 bg-gray-50 cursor-not-allowed"
               />
-              {usernameError && (
-                <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {usernameError}
-                </p>
-              )}
               <p className="mt-1 text-xs text-gray-500">
-                Doar litere mici, cifre și underscore (_). Minim 3 caractere.
+                Username-ul tău a fost generat automat.
               </p>
             </div>
 
@@ -281,7 +230,7 @@ export const CompleteGoogleProfileModal = ({
               <Button
                 type="submit"
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                disabled={loading || !!usernameError}
+                disabled={loading || loadingUsername}
               >
                 {loading ? 'Se salvează...' : 'Completează profilul'}
               </Button>

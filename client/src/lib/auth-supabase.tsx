@@ -94,24 +94,53 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             
             (async () => {
               try {
-                const { data: profile, error } = await supabase
-                  .from('profiles')
-                  .select('username')
-                  .eq('id', session.user.id)
-                  .maybeSingle();
+                // Check if user is a Google OAuth user (has provider metadata)
+                const providers = session.user.app_metadata?.providers || [];
+                const isGoogleOAuth = providers.includes('google');
                 
-                if (!mounted) return; // Component unmounted, don't update state
-                
-                if (!error && profile && (!profile.username || profile.username.trim() === '')) {
-                  // Check if user is a Google OAuth user (has provider metadata)
-                  const providers = session.user.app_metadata?.providers || [];
-                  if (providers.includes('google')) {
+                if (isGoogleOAuth) {
+                  // For Google OAuth users, ALWAYS require profile completion (username + password)
+                  // We can't directly check if password is set, so we'll always show the modal
+                  // The modal will handle setting both username and password
+                  const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('username')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                  
+                  if (!mounted) return; // Component unmounted, don't update state
+                  
+                  // Check if profile completion flag exists in user metadata
+                  // If user has completed profile before, we can skip (but we'll still check)
+                  const hasCompletedProfile = session.user.user_metadata?.profile_completed === true;
+                  
+                  // Always show modal for Google OAuth users to ensure password is set
+                  // unless they've explicitly completed it before
+                  if (!hasCompletedProfile) {
+                    setNeedsProfileCompletion(true);
+                  } else {
+                    // Even if marked as completed, check if username exists
+                    if (!error && profile && (!profile.username || profile.username.trim() === '')) {
+                      setNeedsProfileCompletion(true);
+                    } else {
+                      setNeedsProfileCompletion(false);
+                    }
+                  }
+                } else {
+                  // For non-OAuth users, only check username
+                  const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('username')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                  
+                  if (!mounted) return;
+                  
+                  if (!error && profile && (!profile.username || profile.username.trim() === '')) {
                     setNeedsProfileCompletion(true);
                   } else {
                     setNeedsProfileCompletion(false);
                   }
-                } else {
-                  setNeedsProfileCompletion(false);
                 }
               } catch (err) {
                 console.error('Error checking profile completion:', err);
@@ -146,45 +175,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string, displayName?: string, countyId?: string, cityId?: string, username?: string) => {
+    // Prepare metadata - only include non-empty values
+    const metadata: Record<string, string> = {};
+    if (displayName) metadata.display_name = displayName;
+    if (username) metadata.username = username.toLowerCase().trim();
+    // Don't include county_id and city_id in metadata - they're not used by trigger
+    // They can be updated later in the profile if needed
+    
+    console.log('Signing up user with metadata:', { email, hasDisplayName: !!displayName, hasUsername: !!username });
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          display_name: displayName,
-          county_id: countyId,
-          city_id: cityId,
-          username: username?.toLowerCase(),
-        },
+        data: metadata,
       },
     });
-    if (error) throw error;
+    
+    if (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
 
     // Profile is automatically created by database trigger (handle_new_user)
-    // We just need to update it with additional fields if provided
-    if (data.user) {
-      // Wait a bit for trigger to create the profile
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Update profile with username and other fields
-      const updateData: Record<string, unknown> = {};
-      if (username) updateData.username = username.toLowerCase();
-      if (displayName) updateData.display_name = displayName;
-      if (countyId) updateData.county_id = countyId;
-      if (cityId) updateData.city_id = cityId;
-      
-      if (Object.keys(updateData).length > 0) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update(updateData)
-          .eq('id', data.user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-          // Don't throw error here as user is already created
-        }
-      }
-    }
+    // The trigger reads username, display_name, etc. from raw_user_meta_data
+    // Additional fields (county_id, city_id) can be updated later if needed
+    // We don't update here to avoid conflicts and API key issues
   };
 
   const signInWithGoogle = async (): Promise<void> => {
