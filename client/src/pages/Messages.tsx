@@ -201,144 +201,150 @@ const Messages = () => {
           filter: `or(recipient_id.eq.${user.id},sender_id.eq.${user.id})`
         },
         async (payload) => {
-          // Only reload if we're on inbox tab and message is for current context
-          if (activeTab === 'inbox' && payload.new.context === context) {
-            // Reload messages list (combine received and sent like in loadMessages)
-            const { data, error } = await supabase
-              .from('private_messages')
-              .select(`
-                *,
-                sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
-                recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
-              `)
-              .eq('context', context)
-              .or(`and(recipient_id.eq.${user.id},is_deleted_by_recipient.eq.false,is_archived_by_recipient.eq.false),and(sender_id.eq.${user.id},is_deleted_by_sender.eq.false,is_archived_by_sender.eq.false)`)
-              .order('created_at', { ascending: false });
+          // Filter already ensures message is for current user, just check context
+          if (payload.new.context !== context) {
+            return; // Ignore messages from different context
+          }
 
-            if (!error && data) {
-              // Decrypt and format messages
-              const decryptedMessages: Message[] = await Promise.all((data || []).map(async (msg: any) => {
-                let decryptedContent = msg.content;
-                
-                if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
-                  try {
-                    const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
-                    decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
-                  } catch (decryptError) {
-                    decryptedContent = null;
-                  }
-                }
+          // Load full message data including profiles
+          const { data: fullMessageData, error: fullMessageError } = await supabase
+            .from('private_messages')
+            .select(`
+              *,
+              sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
+              recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
+            `)
+            .eq('id', payload.new.id)
+            .single();
 
-                return {
-                  ...msg,
-                  content: decryptedContent || '',
-                  sender_name: msg.sender?.display_name || msg.sender_name,
-                  sender_username: msg.sender?.username || msg.sender_username,
-                  sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
-                  recipient_name: msg.recipient?.display_name || msg.recipient_name,
-                  recipient_username: msg.recipient?.username || msg.recipient_username,
-                  recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar,
-                  read_at: msg.read_at || null
-                } as Message;
-              }));
-              
-              // Group by thread
-              const threadMap = new Map<string, Message>();
-              decryptedMessages.forEach((msg: Message) => {
-                const rootId = msg.thread_root_id || msg.id;
-                if (!threadMap.has(rootId) || new Date(msg.created_at) > new Date(threadMap.get(rootId)!.created_at)) {
-                  threadMap.set(rootId, msg);
-                }
-              });
-              
-              setMessages(Array.from(threadMap.values()));
-              
-              // Update browser tab notification
-              updateBrowserTabNotification();
-              
-              // If this message is for the currently open thread, add it and scroll
-              const isInActiveThread = selectedMessage && (
-                payload.new.thread_root_id === selectedMessage.thread_root_id || 
-                payload.new.thread_root_id === selectedMessage.id ||
-                payload.new.id === selectedMessage.thread_root_id ||
-                (payload.new.sender_id === user.id && payload.new.recipient_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id)) ||
-                (payload.new.recipient_id === user.id && payload.new.sender_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id))
-              );
-              
-              if (isInActiveThread) {
-                // Load full message data including profiles
-                const { data: fullMessageData, error: fullMessageError } = await supabase
-                  .from('private_messages')
-                  .select(`
-                    *,
-                    sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
-                    recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
-                  `)
-                  .eq('id', payload.new.id)
-                  .single();
+          if (fullMessageError || !fullMessageData) {
+            return; // Skip if we can't load the message
+          }
 
-                if (!fullMessageError && fullMessageData) {
-                  // Decrypt the new message
-                  let decryptedContent = fullMessageData.content;
-                  if (fullMessageData.is_encrypted && fullMessageData.encrypted_content && fullMessageData.encryption_iv) {
+          // Decrypt the new message
+          let decryptedContent = fullMessageData.content;
+          if (fullMessageData.is_encrypted && fullMessageData.encrypted_content && fullMessageData.encryption_iv) {
+            try {
+              const key = await deriveKeyFromUsers(fullMessageData.sender_id, fullMessageData.recipient_id);
+              decryptedContent = await decryptMessage(fullMessageData.encrypted_content, fullMessageData.encryption_iv, key);
+            } catch (decryptError) {
+              decryptedContent = '[Eroare la decriptare]';
+            }
+          }
+          
+          const formattedNewMessage: Message = {
+            id: fullMessageData.id,
+            sender_id: fullMessageData.sender_id,
+            recipient_id: fullMessageData.recipient_id,
+            subject: fullMessageData.subject || '',
+            content: decryptedContent || '',
+            encrypted_content: fullMessageData.encrypted_content,
+            encryption_iv: fullMessageData.encryption_iv,
+            is_encrypted: fullMessageData.is_encrypted || false,
+            context: fullMessageData.context as 'site' | 'forum',
+            parent_message_id: fullMessageData.parent_message_id,
+            thread_root_id: fullMessageData.thread_root_id || fullMessageData.id,
+            is_read: fullMessageData.is_read || false,
+            is_archived_by_sender: fullMessageData.is_archived_by_sender || false,
+            is_archived_by_recipient: fullMessageData.is_archived_by_recipient || false,
+            created_at: fullMessageData.created_at,
+            read_at: fullMessageData.read_at || null,
+            sender_name: fullMessageData.sender?.display_name || fullMessageData.sender_name,
+            sender_username: fullMessageData.sender?.username || fullMessageData.sender_username,
+            sender_avatar: fullMessageData.sender?.photo_url || fullMessageData.sender_avatar,
+            recipient_name: fullMessageData.recipient?.display_name || fullMessageData.recipient_name,
+            recipient_username: fullMessageData.recipient?.username || fullMessageData.recipient_username,
+            recipient_avatar: fullMessageData.recipient?.photo_url || fullMessageData.recipient_avatar
+          };
+
+          // Check if this message is for the currently open thread
+          const isInActiveThread = selectedMessage && (
+            formattedNewMessage.thread_root_id === selectedMessage.thread_root_id || 
+            formattedNewMessage.thread_root_id === selectedMessage.id ||
+            formattedNewMessage.id === selectedMessage.thread_root_id ||
+            (formattedNewMessage.sender_id === user.id && formattedNewMessage.recipient_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id)) ||
+            (formattedNewMessage.recipient_id === user.id && formattedNewMessage.sender_id === (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id))
+          );
+          
+          // If message is for active thread, add it immediately
+          if (isInActiveThread) {
+            // Check if message already exists in threadMessages to avoid duplicates
+            setThreadMessages(prev => {
+              const exists = prev.some(msg => msg.id === formattedNewMessage.id);
+              if (exists) {
+                return prev;
+              }
+              return [...prev, formattedNewMessage];
+            });
+            
+            // Auto-scroll to bottom when new message arrives in open thread
+            setTimeout(() => {
+              scrollToBottom();
+            }, 100);
+            
+            // Only play sound if in active thread (no visual notification)
+            if (soundEnabled) {
+              playNotificationSound();
+            }
+          } else {
+            // Not in active thread - ALWAYS show notification (sound + toast)
+            if (soundEnabled) {
+              playNotificationSound();
+            }
+            toast.success('Mesaj nou primit', { duration: 2000 });
+            
+            // Reload messages list to update conversation list
+            if (activeTab === 'inbox') {
+              // Reload messages list inline (can't use loadMessages here as it's defined later)
+              const { data, error } = await supabase
+                .from('private_messages')
+                .select(`
+                  *,
+                  sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
+                  recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
+                `)
+                .eq('context', context)
+                .or(`and(recipient_id.eq.${user.id},is_deleted_by_recipient.eq.false,is_archived_by_recipient.eq.false),and(sender_id.eq.${user.id},is_deleted_by_sender.eq.false,is_archived_by_sender.eq.false)`)
+                .order('created_at', { ascending: false });
+
+              if (!error && data) {
+                // Decrypt and format messages
+                const decryptedMessages: Message[] = await Promise.all((data || []).map(async (msg: any) => {
+                  let decryptedContent = msg.content;
+                  
+                  if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
                     try {
-                      const key = await deriveKeyFromUsers(fullMessageData.sender_id, fullMessageData.recipient_id);
-                      decryptedContent = await decryptMessage(fullMessageData.encrypted_content, fullMessageData.encryption_iv, key);
+                      const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
+                      decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
                     } catch (decryptError) {
-                      decryptedContent = '[Eroare la decriptare]';
+                      decryptedContent = null;
                     }
                   }
-                  
-                  const formattedNewMessage: Message = {
-                    id: fullMessageData.id,
-                    sender_id: fullMessageData.sender_id,
-                    recipient_id: fullMessageData.recipient_id,
-                    subject: fullMessageData.subject || '',
+
+                  return {
+                    ...msg,
                     content: decryptedContent || '',
-                    encrypted_content: fullMessageData.encrypted_content,
-                    encryption_iv: fullMessageData.encryption_iv,
-                    is_encrypted: fullMessageData.is_encrypted || false,
-                    context: fullMessageData.context as 'site' | 'forum',
-                    parent_message_id: fullMessageData.parent_message_id,
-                    thread_root_id: fullMessageData.thread_root_id || fullMessageData.id,
-                    is_read: fullMessageData.is_read || false,
-                    is_archived_by_sender: fullMessageData.is_archived_by_sender || false,
-                    is_archived_by_recipient: fullMessageData.is_archived_by_recipient || false,
-                    created_at: fullMessageData.created_at,
-                    read_at: fullMessageData.read_at || null,
-                    sender_name: fullMessageData.sender?.display_name || fullMessageData.sender_name,
-                    sender_username: fullMessageData.sender?.username || fullMessageData.sender_username,
-                    sender_avatar: fullMessageData.sender?.photo_url || fullMessageData.sender_avatar,
-                    recipient_name: fullMessageData.recipient?.display_name || fullMessageData.recipient_name,
-                    recipient_username: fullMessageData.recipient?.username || fullMessageData.recipient_username,
-                    recipient_avatar: fullMessageData.recipient?.photo_url || fullMessageData.recipient_avatar
-                  };
-                  
-                  // Check if message already exists in threadMessages to avoid duplicates
-                  setThreadMessages(prev => {
-                    const exists = prev.some(msg => msg.id === formattedNewMessage.id);
-                    if (exists) {
-                      return prev;
-                    }
-                    return [...prev, formattedNewMessage];
-                  });
-                  
-                  // Auto-scroll to bottom when new message arrives in open thread
-                  setTimeout(() => {
-                    scrollToBottom();
-                  }, 100);
-                  
-                  // Only play sound if in active thread (no visual notification)
-                  if (soundEnabled) {
-                    playNotificationSound();
+                    sender_name: msg.sender?.display_name || msg.sender_name,
+                    sender_username: msg.sender?.username || msg.sender_username,
+                    sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
+                    recipient_name: msg.recipient?.display_name || msg.recipient_name,
+                    recipient_username: msg.recipient?.username || msg.recipient_username,
+                    recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar,
+                    read_at: msg.read_at || null
+                  } as Message;
+                }));
+                
+                // Group by thread
+                const threadMap = new Map<string, Message>();
+                decryptedMessages.forEach((msg: Message) => {
+                  const rootId = msg.thread_root_id || msg.id;
+                  if (!threadMap.has(rootId) || new Date(msg.created_at) > new Date(threadMap.get(rootId)!.created_at)) {
+                    threadMap.set(rootId, msg);
                   }
-                }
-              } else {
-                // Not in active thread - show both sound and visual notification
-                if (soundEnabled) {
-                  playNotificationSound();
-                }
-                toast.success('Mesaj nou primit', { duration: 2000 });
+                });
+                
+                setMessages(Array.from(threadMap.values()));
+                updateBrowserTabNotification();
               }
             }
           }
