@@ -232,8 +232,8 @@ const PublicProfile = () => {
       if (profileError) throw profileError;
       if (!profileDataRaw) throw new Error('Profile not found');
 
-      // Type assertion for dynamic query result
-      const profileData = profileDataRaw as {
+      // Type assertion for dynamic query result - use unknown first to avoid TS2352
+      const profileData = profileDataRaw as unknown as {
         id: string;
         username?: string;
         display_name: string;
