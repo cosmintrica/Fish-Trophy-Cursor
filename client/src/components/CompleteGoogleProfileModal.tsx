@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,8 +66,8 @@ export const CompleteGoogleProfileModal = ({
       return;
     }
 
-    if (password.length < 6) {
-      setError('Parola trebuie să aibă minim 6 caractere.');
+    if (password.length < 8) {
+      setError('Parola trebuie să aibă minim 8 caractere.');
       return;
     }
 
@@ -120,13 +120,6 @@ export const CompleteGoogleProfileModal = ({
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" style={{ pointerEvents: 'auto' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         <div className="p-6">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -179,13 +172,13 @@ export const CompleteGoogleProfileModal = ({
                   setPassword(e.target.value);
                   setError('');
                 }}
-                placeholder="Minim 6 caractere"
+                placeholder="Minim 8 caractere"
                 className="mt-1"
                 required
-                minLength={6}
+                minLength={8}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Minim 6 caractere. Vei putea folosi această parolă pentru a te autentifica și fără Google.
+                Minim 8 caractere. Vei putea folosi această parolă pentru a te autentifica și fără Google.
               </p>
             </div>
 
@@ -204,7 +197,7 @@ export const CompleteGoogleProfileModal = ({
                 placeholder="Reintrodu parola"
                 className="mt-1"
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
 
@@ -217,19 +210,10 @@ export const CompleteGoogleProfileModal = ({
               </div>
             )}
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="flex-1"
-                disabled={loading}
-              >
-                Anulează
-              </Button>
+            <div className="pt-4">
               <Button
                 type="submit"
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={loading || loadingUsername}
               >
                 {loading ? 'Se salvează...' : 'Completează profilul'}

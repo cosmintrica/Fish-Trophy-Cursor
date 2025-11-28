@@ -116,7 +116,16 @@ const Profile = () => {
                                user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
 
       setIsGoogleUser(hasGoogleProvider);
-      setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
+      
+      // For Google OAuth users, check if password is set by checking profile_completed flag
+      if (hasGoogleProvider) {
+        // If profile_completed is true, password is already set
+        const profileCompleted = user.user_metadata?.profile_completed === true;
+        setNeedsPassword(!profileCompleted);
+      } else {
+        // For non-Google users, check if they have email provider (password auth)
+        setNeedsPassword(!user.app_metadata?.providers?.includes('email'));
+      }
     } catch (error) {
       console.error('Error checking Google Auth status:', error);
     }

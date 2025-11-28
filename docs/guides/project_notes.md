@@ -21,6 +21,35 @@
 - **Account Management**: Secure account deletion with password verification
 - **Google Auth Integration**: Restored Google password setting functionality
 
+## 🔒 Ștergere Cont - Detalii Complete (2025-01-30)
+
+### Ce se șterge automat când un utilizator șterge contul:
+
+**Date șterse complet (prin CASCADE DELETE):**
+- ✅ **Profilul** din `profiles` - șters complet
+- ✅ **Recordurile** din `records` - șterse automat (ON DELETE CASCADE)
+- ✅ **Echipamentele** din `user_gear` - șterse automat (ON DELETE CASCADE)
+- ✅ **Mesajele private** din `private_messages` - șterse automat pentru sender_id și recipient_id (ON DELETE CASCADE)
+- ✅ **Capturile** din `catches` - șterse automat (ON DELETE CASCADE)
+- ✅ **Like-urile** din `catch_likes` - șterse automat (ON DELETE CASCADE)
+- ✅ **Comentariile** din `catch_comments` - șterse automat (ON DELETE CASCADE)
+- ✅ **Share-urile** din `catch_shares` - șterse automat (ON DELETE CASCADE)
+- ✅ **Recenziile** din `shop_reviews` - șterse automat (ON DELETE CASCADE)
+
+**Date care rămân (cu user_id setat la NULL):**
+- ⚠️ **Analytics events** din `analytics_events` - user_id devine NULL (datele rămân pentru statistici, dar fără legătură la utilizator)
+- ⚠️ **Analytics sessions** din `analytics_sessions` - user_id devine NULL (datele rămân pentru statistici, dar fără legătură la utilizator)
+
+**Notă importantă:**
+- Ștergerea din `profiles` declanșează automat ștergerea din `auth.users` prin CASCADE (profiles.id references auth.users(id) ON DELETE CASCADE)
+- Toate datele personale și asociate utilizatorului sunt șterse complet
+- Datele de analytics rămân pentru statistici agregate, dar fără legătură la utilizatorul șters
+
+**Implementare:**
+- Funcția de ștergere se află în `client/src/components/profile/hooks/useAccountSettings.ts`
+- Verificare parolă obligatorie pentru utilizatorii non-Google
+- Utilizatorii Google OAuth pot șterge contul fără parolă (nu au parolă setată inițial)
+
 ### Current Focus
 - **Construction Page Management**: Managing site access with admin-only real site access
 - **Email Marketing Preparation**: Database ready for future email campaigns

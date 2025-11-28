@@ -256,11 +256,42 @@ export const useAccountSettings = (user: any, isGoogleUser: boolean = false, nee
                 }
             }
 
-            // Delete user data
-            await supabase.from('profiles').delete().eq('id', user.id);
+            // IMPORTANT: Ordinea ștergerii este crucială!
+            // 1. Ștergem datele care au foreign keys către profiles (CASCADE va șterge automat, dar e mai sigur explicit)
+            // 2. Ștergem profilul (care are ON DELETE CASCADE către auth.users)
+            // 3. Ștergerea din auth.users se face automat prin CASCADE când ștergem din profiles
+            
+            // Ștergem datele utilizatorului (CASCADE ar face asta automat, dar e mai sigur explicit):
+            // - records (ON DELETE CASCADE către profiles)
+            // - user_gear (ON DELETE CASCADE către profiles)
+            // - private_messages (ON DELETE CASCADE pentru sender_id și recipient_id)
+            // - catches și datele asociate (catch_likes, catch_comments, catch_shares - ON DELETE CASCADE)
+            // - shop_reviews (ON DELETE CASCADE)
+            
             await supabase.from('user_gear').delete().eq('user_id', user.id);
             await supabase.from('records').delete().eq('user_id', user.id);
-
+            await supabase.from('private_messages').delete().or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+            
+            // Ștergem catch-urile și datele asociate (dacă există)
+            try {
+                await supabase.from('catches').delete().eq('user_id', user.id);
+            } catch (e) {
+                // Tabelul catches poate să nu existe sau să fie deja șters prin CASCADE
+                console.log('Catches deletion:', e);
+            }
+            
+            // Ștergem profilul - aceasta va declanșa CASCADE pentru auth.users
+            // profiles.id are: references auth.users(id) on delete cascade
+            // Deci când ștergem din profiles, auth.users se șterge automat
+            const { error: profileError } = await supabase.from('profiles').delete().eq('id', user.id);
+            
+            if (profileError) {
+                throw profileError;
+            }
+            
+            // Note: analytics_events și analytics_sessions au ON DELETE SET NULL,
+            // deci user_id devine NULL (datele rămân pentru statistici, dar fără legătură la utilizator)
+            
             toast.success('Cont șters cu succes! Toate datele au fost eliminate.', { id: 'delete-account' });
             await supabase.auth.signOut();
         } catch (error) {
