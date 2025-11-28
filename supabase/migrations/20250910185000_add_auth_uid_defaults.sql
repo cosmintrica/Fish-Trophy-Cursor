@@ -32,12 +32,27 @@ END $$;
 -- Create function to automatically create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  user_display_name TEXT;
 BEGIN
+  -- Try to get display_name from metadata, prioritizing Google's full_name or name
+  user_display_name := COALESCE(
+    NEW.raw_user_meta_data->>'display_name',
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    NULL
+  );
+  
+  -- If still null, use email prefix (before @) as last resort, but never full email
+  IF user_display_name IS NULL OR user_display_name = '' THEN
+    user_display_name := SPLIT_PART(NEW.email, '@', 1);
+  END IF;
+  
   INSERT INTO public.profiles (id, email, display_name, created_at, updated_at)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.email),
+    user_display_name,
     NOW(),
     NOW()
   );

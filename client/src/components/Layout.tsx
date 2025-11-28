@@ -1,9 +1,10 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, MapPin } from 'lucide-react';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, MapPin, Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { supabase } from '@/lib/supabase';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
 
@@ -13,6 +14,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { trackUserAction } = useAnalytics();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userUsername, setUserUsername] = useState<string | null>(null);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
 
@@ -39,14 +43,90 @@ export default function Layout({ children }: { children: ReactNode }) {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Get user display name
+  // Get user display name - prioritize display_name from profile, never show email
   const getUserDisplayName = () => {
     if (!user) return '';
+    // Always prioritize display_name from profile database
+    if (userDisplayName) {
+      return userDisplayName;
+    }
+    // Fallback to metadata
     return user.user_metadata?.display_name ||
            user.user_metadata?.full_name ||
-           user.email?.split('@')[0] ||
+           userUsername ||
            'Utilizator';
   };
+
+  // Load username and display_name from profile
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .select('username, display_name')
+        .eq('id', user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            if (data.username) {
+              setUserUsername(data.username);
+            }
+            // Always set display_name from profile
+            if (data.display_name) {
+              setUserDisplayName(data.display_name);
+              // Update user metadata with display_name if it exists and is not already set
+              if (!user.user_metadata?.display_name) {
+                supabase.auth.updateUser({
+                  data: { display_name: data.display_name }
+                }).catch(() => {
+                  // Ignore errors
+                });
+              }
+            }
+          }
+        });
+    } else {
+      setUserUsername(null);
+      setUserDisplayName(null);
+      setUnreadMessagesCount(0);
+    }
+  }, [user?.id]);
+
+  // Load unread messages count
+  useEffect(() => {
+    if (!user?.id) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    const loadUnreadCount = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('private_messages')
+          .select('id', { count: 'exact', head: false })
+          .eq('recipient_id', user.id)
+          .eq('is_read', false)
+          .eq('is_deleted_by_recipient', false)
+          .eq('is_archived_by_recipient', false)
+          .eq('context', 'site');
+
+        if (error) {
+          console.error('Error loading unread messages count:', error);
+          return;
+        }
+
+        setUnreadMessagesCount(data?.length || 0);
+      } catch (error) {
+        console.error('Error loading unread messages count:', error);
+      }
+    };
+
+    loadUnreadCount();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000);
+
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
 
 
@@ -165,16 +245,35 @@ export default function Layout({ children }: { children: ReactNode }) {
               {user ? (
                 <>
                   <div className="hidden sm:flex items-center space-x-3">
-                    <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm`}>
-                      {getUserDisplayName()}
-                    </div>
+                    {userUsername ? (
+                      <Link
+                        to={`/profile/${userUsername}`}
+                        className={`relative px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer`}
+                      >
+                        {getUserDisplayName()}
+                        {unreadMessagesCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white shadow-lg">
+                            {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      <div className={`relative px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm`}>
+                        {getUserDisplayName()}
+                        {unreadMessagesCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white shadow-lg">
+                            {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Link
                     to="/profile"
                     className="hidden sm:inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                   >
                     <User className="w-4 h-4 mr-2" />
-                    Profilul meu
+                    Setări
                   </Link>
                 </>
               ) : (
@@ -326,7 +425,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     <img
                       src={user.user_metadata.avatar_url}
                       alt={getUserDisplayName()}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-full"
                       onError={(e) => {
                         // Fallback to default icon if image fails to load
                         const target = e.target as HTMLImageElement;
@@ -362,10 +461,15 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Link>
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   trackUserAction('logout', { method: 'email' });
-                  logout();
                   closeMobileMenu();
+                  const result = await logout();
+                  if (result?.error) {
+                    console.error('Logout error:', result.error);
+                  }
+                  // Use replace instead of href to avoid showing blank page
+                  window.location.replace('/');
                 }}
                 className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-red-600 transition-colors w-full text-left"
               >

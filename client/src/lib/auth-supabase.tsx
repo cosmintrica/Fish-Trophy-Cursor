@@ -21,6 +21,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const session = data?.session ?? null;
         if (error) {
           console.error('Error getting session:', error);
+          // If 403 Forbidden, try to refresh the session
+          if (error && typeof error === 'object' && 'status' in error && error.status === 403) {
+            // Try to refresh the session
+            supabase.auth.refreshSession()
+              .then(({ data: refreshData, error: refreshError }) => {
+                if (refreshError || !refreshData.session) {
+                  // If refresh fails, clear session
+                  if (mounted) {
+                    setSession(null);
+                    setUser(null);
+                    setLoading(false);
+                  }
+                } else {
+                  if (mounted) {
+                    setSession(refreshData.session);
+                    setUser(refreshData.session.user);
+                    setLoading(false);
+                  }
+                }
+              })
+              .catch(() => {
+                // If refresh fails, clear session
+                if (mounted) {
+                  setSession(null);
+                  setUser(null);
+                  setLoading(false);
+                }
+              });
+            return;
+          }
         }
         if (mounted) {
           setSession(session);
@@ -61,14 +91,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) throw error;
+    if (error) {
+      return { error };
+    }
+    return { data, error: null };
   };
 
-  const signUp = async (email: string, password: string, displayName?: string, countyId?: string, cityId?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, countyId?: string, cityId?: string, username?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -77,6 +110,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           display_name: displayName,
           county_id: countyId,
           city_id: cityId,
+          username: username?.toLowerCase(),
         },
       },
     });
@@ -90,6 +124,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           id: data.user.id,
           email: email,
           display_name: displayName || '',
+          username: username?.toLowerCase() || '',
           county_id: countyId || null,
           city_id: cityId || null,
           bio: 'Pescar pasionat din România!',
@@ -116,7 +151,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) {
+      console.error('Logout error:', error);
+      return { error };
+    }
+    return { error: null };
   };
 
   const updateProfile = async (updates: Record<string, unknown>) => {

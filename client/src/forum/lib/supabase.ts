@@ -1,20 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+// Import the shared Supabase instance instead of creating a new one
+import { supabase } from '@/lib/supabase';
 
-// Pentru dezvoltare fără baza de date - folosim valori mock
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mock.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-key-for-development';
-
-// Comentez verificarea pentru dezvoltare locală
-// if (!supabaseUrl || !supabaseAnonKey) {
-//   throw new Error('Missing Supabase environment variables');
-// }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-  },
-});
+// Re-export supabase for forum modules
+export { supabase };
 
 // Helper functions pentru forum
 export const forumQueries = {

@@ -1,173 +1,57 @@
-# 🎣 Fish Trophy - Aplicație de Pescuit
+# Ghiduri și Documentație
 
-Aplicație web modernă pentru înregistrarea și gestionarea recordurilor de pescuit din România.
+## 📚 Structură Organizată
 
-## 📁 Structura Proiectului
+### 🔐 [Securitate](./securitate/)
+- **[CRIPARE_MESAJE_PRIVATE.md](./securitate/CRIPARE_MESAJE_PRIVATE.md)** - Ghid complet despre criptarea end-to-end pentru mesaje private
 
-```
-Fish-Trophy-Cursor/
-├── client/                     # 🖥️ Frontend React + Vite
-│   ├── src/
-│   │   ├── components/         # Componente React
-│   │   ├── pages/             # Pagini aplicație
-│   │   ├── services/          # Servicii API
-│   │   ├── hooks/             # Custom hooks
-│   │   └── styles/            # Stiluri CSS
-│   └── public/                # Fișiere statice
-├── netlify/                   # ☁️ Netlify Functions
-│   └── functions/             # Serverless functions
-├── supabase/                  # 🗄️ Baza de date
-│   └── migrations/            # Migrări Supabase
-├── backup-system/             # 🛡️ Sistem backup
-│   ├── scripts/               # Scripturi backup
-│   ├── backups/               # Backup-uri salvate
-│   └── docs/                  # Documentație backup
-├── project-docs/              # 📚 Documentație proiect
-│   ├── guides/                # Ghiduri utilizare
-│   ├── deployment/            # Ghiduri deployment
-│   ├── database/              # Scripturi baza de date
-│   └── history/               # Istoric modificări
-└── README.md                  # Acest fișier
-```
+### 💾 [Backup și Database](./backup/)
+- **[BACKUP_AUTOMAT_COMPLET.md](./backup/BACKUP_AUTOMAT_COMPLET.md)** - Ghid pentru backup automat
+- **[CONFIGURARE_BACKUP_AUTOMAT.md](./backup/CONFIGURARE_BACKUP_AUTOMAT.md)** - Configurare backup automat
+- **[EXPLICATIE_CIRCULAR_FOREIGN_KEYS.md](./backup/EXPLICATIE_CIRCULAR_FOREIGN_KEYS.md)** - Explicație despre constrângeri circulare în database
 
-## 🚀 Comenzi Rapide
+### 🗺️ [Funcționalități](./functionalitati/)
+- **[CUM_SA_ASCUNDI_LOCATIILE_PESCUIT.md](./functionalitati/CUM_SA_ASCUNDI_LOCATIILE_PESCUIT.md)** - Cum să ascunzi locațiile de pescuit
+- **[GHID_FINAL_ORASE.md](./functionalitati/GHID_FINAL_ORASE.md)** - Ghid pentru gestionarea orașelor
+- **[GHID_UTILIZARE_PAS_CU_PAS.md](./functionalitati/GHID_UTILIZARE_PAS_CU_PAS.md)** - Ghid de utilizare pas cu pas
+- **[GHID_APLICATIE_MOBILA_FISH_TROPHY.md](./functionalitati/GHID_APLICATIE_MOBILA_FISH_TROPHY.md)** - Ghid pentru aplicația mobilă
 
-### Backup și Restore:
-```bash
-# Backup manual
-node backup.js backup
+### 📱 [Admin și Configurare](./admin/)
+- **[PAGINA_CONSTRUCTIE_ADMIN.md](./admin/PAGINA_CONSTRUCTIE_ADMIN.md)** - Pagină de construcție pentru admin
+- **[FUNCTIONALITATI_CONSTRUCTION_PAGE.md](./admin/FUNCTIONALITATI_CONSTRUCTION_PAGE.md)** - Funcționalități pentru pagina de construcție
+- **[SCHEDULED_JOBS_SETUP.md](./admin/SCHEDULED_JOBS_SETUP.md)** - Configurare job-uri programate
+- **[VIEW_MESSAGES_AS_ADMIN.md](./admin/VIEW_MESSAGES_AS_ADMIN.md)** - Vizualizare mesaje ca admin
 
-# Backup de urgență
-node backup.js emergency "mesaj-urgență"
+### 📋 [Planificare și Status](./planificare/)
+- **[FISH_TROPHY_ROADMAP_2025.md](./planificare/FISH_TROPHY_ROADMAP_2025.md)** - Roadmap pentru 2025
+- **[TASK_STATUS_UPDATE.md](./planificare/TASK_STATUS_UPDATE.md)** - Status actualizat al task-urilor
+- **[REZUMAT_FINAL_COMPLET.md](./planificare/REZUMAT_FINAL_COMPLET.md)** - Rezumat final complet
+- **[REZUMAT_ORGANIZARE_FINALA.md](./planificare/REZUMAT_ORGANIZARE_FINALA.md)** - Rezumat organizare finală
 
-# Restore
-node backup.js restore backup-2025-01-15
-
-# Verificare
-node backup.js verify
-```
-
-### Dezvoltare:
-```bash
-# Instalează dependențele
-cd client
-npm install
-
-# Pornește serverul de dezvoltare
-npm run dev
-
-# Build pentru producție
-npm run build
-```
-
-### Corectare Orașe:
-```bash
-# 1. Backup înainte
-node backup.js emergency "inainte-correctare-orase"
-
-# 2. Execută scriptul SQL în Supabase
-# Rulează project-docs/database/CORECTARE_ORASE_LIPSITE.sql
-
-# 3. Verifică: 282 → 319 orașe
-```
-
-## 📖 Documentație
-
-### 🛡️ Backup și Restore:
-- **`backup-system/README.md`** - Ghid sistem backup
-- **`backup-system/docs/GHID_BACKUP_RESTORE.md`** - Ghid complet backup
-
-### 🏙️ Corectare Orașe:
-- **`project-docs/guides/GHID_FINAL_ORASE.md`** - Ghid corectare orașe
-- **`project-docs/database/CORECTARE_ORASE_LIPSITE.sql`** - Script SQL
-
-### 🚀 Deployment:
-- **`project-docs/deployment/DEPLOY_NETLIFY.md`** - Ghid deployment Netlify
-- **`project-docs/deployment/NETLIFY_ENV_VARS.md`** - Variabile mediu
-- **`project-docs/deployment/production-instructions.md`** - Instrucțiuni producție
-
-### 📊 Baza de Date:
-- **`project-docs/database/supabase-schema-final.sql`** - Schema finală
-- **`project-docs/database/CORECTARE_ORASE_LIPSITE.sql`** - Script corectare
-
-### 📚 Istoric:
-- **`project-docs/history/change_history.md`** - Istoric modificări
-- **`project-docs/history/project_notes.md`** - Note proiect
-- **`project-docs/history/PUSH_SUMMARY.md`** - Rezumat push-uri
-
-## 🔧 Setup Inițial
-
-### 1. **Backup Inițial** (OBLIGATORIU!)
-```bash
-# Fă primul backup complet
-node backup.js backup "backup-initial-complet"
-
-# Verifică că backup-ul este valid
-node backup.js verify
-```
-
-### 2. **Setup Dezvoltare**
-```bash
-# Instalează dependențele
-cd client
-npm install
-
-# Pornește serverul
-npm run dev
-```
-
-### 3. **Setup Backup** (OPȚIONAL)
-```bash
-# Setup complet sistem backup
-node backup.js setup
-
-# Testează sistemul
-node backup.js test
-```
-
-## ⚠️ Importante
-
-### 🔒 **Siguranță:**
-1. **NICIODATĂ** să nu rulezi `supabase reset`!
-2. **ÎNTOTDEAUNA** fă backup înainte de modificări!
-3. **VERIFICĂ** backup-urile înainte de restore!
-4. **PĂSTREAZĂ** multiple backup-uri pentru siguranță!
-
-### 📊 **Corectare Orașe:**
-- **282 orașe** în baza de date actuală
-- **319 orașe** necesare (37 lipsă)
-- **Script SQL** pregătit pentru adăugare
-
-## 🎯 Status Proiect
-
-### ✅ **Complet:**
-- ✅ **Frontend React** - Funcțional
-- ✅ **Backend Supabase** - Configurat
-- ✅ **Sistem Backup** - Implementat
-- ✅ **Deployment Netlify** - Configurat
-- ✅ **Documentație** - Completă
-
-### 🔄 **În Progres:**
-- 🔄 **Corectare Orașe** - Pregătită (37 orașe lipsă)
-
-### 📋 **Următorii Pași:**
-1. **Backup inițial** (obligatoriu)
-2. **Corectare orașe** (opțional)
-3. **Testare completă** (recomandat)
-4. **Deployment producție** (când ești gata)
-
-## 🆘 Suport
-
-### 📖 **Documentație:**
-- Citește ghidurile din `project-docs/`
-- Verifică `backup-system/README.md` pentru backup
-- Consultă `project-docs/guides/` pentru instrucțiuni
-
-### 🔧 **Troubleshooting:**
-- **Backup**: `node backup.js test`
-- **Dezvoltare**: `cd client && npm run dev`
-- **Deployment**: Verifică `project-docs/deployment/`
+### 📝 Documentație Generală
+- **[project_notes.md](./project_notes.md)** - Note despre proiect
+- **[change_history.md](./change_history.md)** - Istoric modificări
 
 ---
 
-**🎣 Fish Trophy - Aplicația ta de pescuit!**
+## 🔍 Căutare Rapidă
+
+### Criptare și Securitate
+- Criptare end-to-end → `securitate/CRIPARE_MESAJE_PRIVATE.md`
+
+### Backup și Database
+- Backup automat → `backup/BACKUP_AUTOMAT_COMPLET.md`
+- Constrainte circulare → `backup/EXPLICATIE_CIRCULAR_FOREIGN_KEYS.md`
+
+### Funcționalități
+- Ascundere locații → `functionalitati/CUM_SA_ASCUNDI_LOCATIILE_PESCUIT.md`
+- Gestionare orașe → `functionalitati/GHID_FINAL_ORASE.md`
+- Utilizare aplicație → `functionalitati/GHID_UTILIZARE_PAS_CU_PAS.md`
+
+### Planificare
+- Roadmap 2025 → `planificare/FISH_TROPHY_ROADMAP_2025.md`
+- Status task-uri → `planificare/TASK_STATUS_UPDATE.md`
+
+---
+
+**Ultima actualizare:** 2025-11-28

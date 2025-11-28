@@ -33,21 +33,43 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
--- Policies (drop-if-exists ca să fie idempotent)
+-- Funcție pentru verificare admin (fără recursiune)
+create or replace function public.is_admin_user()
+returns boolean
+language sql stable as $$
+  select exists (
+    select 1 from public.profiles
+    where profiles.id = auth.uid()
+    and profiles.role = 'admin'
+  );
+$$;
+
+-- Policies pentru profiles (drop-if-exists ca să fie idempotent)
+drop policy if exists "Public can view profiles" on public.profiles;
 drop policy if exists "Users can view own profile" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
+drop policy if exists "Users can insert own profile" on public.profiles;
+drop policy if exists "Admin can view all profiles" on public.profiles;
 
-create policy "Users can view own profile"
+-- Oricine poate vedea profilele (pentru profil public)
+create policy "Public can view profiles"
   on public.profiles for select
-  using (auth.uid() = id);
+  using (true);
 
+-- Utilizatorii pot actualiza propriul profil
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
+-- Utilizatorii pot crea propriul profil
 create policy "Users can insert own profile"
   on public.profiles for insert
   with check (auth.uid() = id);
+
+-- Admin poate vedea toate profilele
+create policy "Admin can view all profiles"
+  on public.profiles for select
+  using (public.is_admin_user());
 
 -- updated_at auto
 create or replace function public.update_updated_at_column()
@@ -233,33 +255,45 @@ create table if not exists public.records (
 alter table public.records enable row level security;
 
 -- Select policies corecte - DOAR verified records public
-drop policy if exists "Users can view all records" on public.records;
-create policy "Public can view verified records"
-  on public.records for select using (status = 'verified');
-
-create policy "Owner can view own records"
-  on public.records for select using (auth.uid() = user_id);
-
-create policy "Admins can view all records"
-  on public.records for select using (public.is_admin(auth.uid()));
-
--- Insert/Update
+drop policy if exists "Public can view verified records" on public.records;
+drop policy if exists "Users can view own records" on public.records;
+drop policy if exists "Admin can view all records" on public.records;
 drop policy if exists "Users can insert own records" on public.records;
 drop policy if exists "Users can update own records" on public.records;
+drop policy if exists "Admin can update all records" on public.records;
+drop policy if exists "Owner can update own records (while pending/rejected)" on public.records;
+drop policy if exists "Admins can view all records" on public.records;
+drop policy if exists "Admins can update any record" on public.records;
 
+-- Oricine poate vedea recordurile verificate (publice)
+create policy "Public can view verified records"
+  on public.records for select
+  using (status = 'verified');
+
+-- Utilizatorii pot vedea propriile recorduri (toate statusurile)
+create policy "Users can view own records"
+  on public.records for select
+  using (auth.uid() = user_id);
+
+-- Utilizatorii pot crea propriile recorduri
 create policy "Users can insert own records"
   on public.records for insert
   with check (auth.uid() = user_id);
 
--- Owner poate modifica DOAR când nu sunt verificate
-create policy "Owner can update own records (while pending/rejected)"
+-- Utilizatorii pot actualiza propriile recorduri
+create policy "Users can update own records"
   on public.records for update
-  using (auth.uid() = user_id and status <> 'verified')
-  with check (auth.uid() = user_id and status in ('pending','rejected'));
+  using (auth.uid() = user_id);
 
-create policy "Admins can update any record"
+-- Admin poate vedea toate recordurile
+create policy "Admin can view all records"
+  on public.records for select
+  using (public.is_admin_user());
+
+-- Admin poate actualiza orice record
+create policy "Admin can update all records"
   on public.records for update
-  using (public.is_admin(auth.uid()))
+  using (public.is_admin_user())
   with check (public.is_admin(auth.uid()));
 
 -- Autocomplete câmpuri de verificare
@@ -560,12 +594,27 @@ create index if not exists idx_user_gear_user on public.user_gear(user_id);
 -- Creează profil automat la signup (setează admin pe e-mailul tău)
 create or replace function public.handle_new_user()
 returns trigger as $$
+declare
+  user_display_name text;
 begin
+  -- Try to get display_name from metadata, prioritizing Google's full_name or name
+  user_display_name := coalesce(
+    new.raw_user_meta_data->>'display_name',
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'name',
+    null
+  );
+  
+  -- If still null, use email prefix (before @) as last resort, but never full email
+  if user_display_name is null or user_display_name = '' then
+    user_display_name := split_part(new.email, '@', 1);
+  end if;
+  
   insert into public.profiles (id, email, display_name, photo_url, location, role)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'display_name',''),
+    user_display_name,
     coalesce(new.raw_user_meta_data->>'avatar_url',''),
     coalesce(new.raw_user_meta_data->>'location',''),
     case when lower(new.email) = 'cosmin.trica@outlook.com' then 'admin' else 'user' end
@@ -604,6 +653,7 @@ for each row execute function public.sync_profile_email();
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
 ('avatars','avatars', true, 2097152, array['image/jpeg','image/png','image/webp']),
+('covers','covers', true, 3145728, array['image/jpeg','image/png','image/webp']),
 ('thumbnails','thumbnails', true, 1048576, array['image/jpeg','image/png','image/webp'])
 on conflict (id) do update
 set public = excluded.public,
@@ -623,6 +673,20 @@ create policy "Users can delete own avatar" on storage.objects
   for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "Anyone can view avatars" on storage.objects
   for select using (bucket_id = 'avatars');
+
+-- Covers: upload/update/delete doar pe folderul userului; view public
+drop policy if exists "Users can upload own cover" on storage.objects;
+drop policy if exists "Users can update own cover" on storage.objects;
+drop policy if exists "Users can delete own cover" on storage.objects;
+drop policy if exists "Anyone can view covers" on storage.objects;
+create policy "Users can upload own cover" on storage.objects
+  for insert with check (bucket_id = 'covers' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "Users can update own cover" on storage.objects
+  for update using (bucket_id = 'covers' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "Users can delete own cover" on storage.objects
+  for delete using (bucket_id = 'covers' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "Anyone can view covers" on storage.objects
+  for select using (bucket_id = 'covers');
 
 -- Thumbnails: doar autentificați, pe folderul userului; view public
 drop policy if exists "Anyone can upload thumbnails" on storage.objects;

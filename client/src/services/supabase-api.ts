@@ -29,11 +29,16 @@ class SupabaseApiService {
         data: {
           displayName: data.display_name || '',
           email: data.email,
+          username: data.username || '',
           phone: data.phone || '',
           location: data.location || '',
           bio: data.bio || '',
           county_id: data.county_id || '',
           city_id: data.city_id || '',
+          website: data.website || '',
+          youtube_channel: data.youtube_channel || '',
+          show_gear_publicly: data.show_gear_publicly || false,
+          username_last_changed_at: data.username_last_changed_at || ''
         }
       };
     } catch (error) {
@@ -48,11 +53,15 @@ class SupabaseApiService {
         .from('profiles')
         .update({
           display_name: profileData.displayName,
+          username: profileData.username,
           phone: profileData.phone,
           location: profileData.location,
           bio: profileData.bio,
           county_id: profileData.county_id,
           city_id: profileData.city_id,
+          website: profileData.website,
+          youtube_channel: profileData.youtube_channel,
+          show_gear_publicly: profileData.show_gear_publicly,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId)
@@ -69,11 +78,16 @@ class SupabaseApiService {
         data: {
           displayName: data.display_name || '',
           email: data.email,
+          username: data.username || '',
           phone: data.phone || '',
           location: data.location || '',
           bio: data.bio || '',
           county_id: data.county_id || '',
           city_id: data.city_id || '',
+          website: data.website || '',
+          youtube_channel: data.youtube_channel || '',
+          show_gear_publicly: data.show_gear_publicly || false,
+          username_last_changed_at: data.username_last_changed_at || ''
         }
       };
     } catch (error) {

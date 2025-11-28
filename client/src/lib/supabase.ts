@@ -19,7 +19,13 @@ function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
     !looksLikePlaceholder(supabaseAnonKey)
   ) {
     if (!globalForSupabase.__supabaseClient) {
-      globalForSupabase.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+      globalForSupabase.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        }
+      })
     }
     return globalForSupabase.__supabaseClient
   }
@@ -27,7 +33,7 @@ function createSafeSupabase(): SupabaseClient | Record<string, unknown> {
   return {
     auth: {
       getSession: async () => ({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() { } } } }),
       signInWithPassword: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
       signUp: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
       signInWithOAuth: async () => ({ data: null, error: new Error('Auth disabled in dev (no credentials)') }),
@@ -206,9 +212,16 @@ export interface User {
 export interface Profile {
   displayName: string
   email: string
+  username?: string
   phone?: string
   location?: string
   bio?: string
   county_id?: string
   city_id?: string
+  website?: string
+  youtube_channel?: string
+  show_gear_publicly?: boolean
+  username_last_changed_at?: string
+  photo_url?: string
+  cover_photo_url?: string
 }

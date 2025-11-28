@@ -33,7 +33,8 @@ interface FishingLocation {
 const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   isOpen,
   onClose,
-  locationId
+  locationId,
+  locationName
 }) => {
   const { user } = useAuth();
   const { trackRecordSubmission } = useAnalytics();
@@ -59,6 +60,18 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     photo_url: '',
     video_url: ''
   });
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Sync location props with state
+  useEffect(() => {
+    if (locationId) {
+      setSelectedLocation(locationId);
+      if (locationName) {
+        setLocationSearchTerm(locationName);
+      }
+    }
+  }, [locationId, locationName, isOpen]);
 
   // Load species and locations
   useEffect(() => {
@@ -209,6 +222,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
   const handleFileUpload = async (file: File, type: 'photo' | 'video') => {
     try {
+      setIsUploading(true);
       // Always use Cloudflare R2 upload (both dev and production)
       const fileName = `${user?.id}_${Date.now()}_${file.name}`;
       const category = type === 'photo' ? 'submission-images' : 'submission-videos';
@@ -217,6 +231,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       formData.append('file', file);
       formData.append('category', category);
       formData.append('fileName', fileName);
+
+      console.log(`Starting upload for ${type}:`, fileName);
 
       const response = await fetch('/.netlify/functions/upload', {
         method: 'POST',
@@ -228,6 +244,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       }
 
       const result = await response.json();
+      console.log('Upload result:', result);
 
       if (result.success) {
         handleInputChange(type === 'photo' ? 'photo_file' : 'video_file', file);
@@ -239,6 +256,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error('Eroare la încărcarea fișierului', { id: `upload-error-${type}` });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -247,6 +266,11 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
     if (!user) {
       toast.error('Trebuie să fii autentificat pentru a adăuga un record');
+      return;
+    }
+
+    if (isUploading) {
+      toast.error('Te rugăm să aștepți finalizarea încărcării fișierelor');
       return;
     }
 

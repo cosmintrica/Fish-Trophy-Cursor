@@ -26,6 +26,7 @@ import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import MapcherryTest from '@/pages/MapcherryTest';
+import Messages from '@/pages/Messages';
 import ForumRoutes from '@/forum/routes';
 
 // Analytics wrapper component that uses useAnalytics inside Router
@@ -63,7 +64,7 @@ function AppContent() {
             <Route path="/species" element={<Species />} />
             <Route path="/leaderboards" element={<Leaderboards />} />
             <Route path="/records" element={<Records />} />
-            <Route path="/profile/:userId" element={<PublicProfile />} />
+            <Route path="/profile/:username" element={<PublicProfile />} />
             <Route path="/submission-guide" element={<SubmissionGuide />} />
             <Route path="/fishing-shops" element={<FishingShops />} />
             <Route path="/og-generator" element={<OgGenerator />} />
@@ -73,6 +74,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Messages />
                 </ProtectedRoute>
               }
             />

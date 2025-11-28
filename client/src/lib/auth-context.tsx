@@ -5,10 +5,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName?: string, countyId?: string, cityId?: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ data?: any; error: any }>;
+  signUp: (email: string, password: string, displayName?: string, countyId?: string, cityId?: string, username?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => Promise<{ error: any }>;
   updateProfile: (updates: Record<string, unknown>) => Promise<void>;
 }
 

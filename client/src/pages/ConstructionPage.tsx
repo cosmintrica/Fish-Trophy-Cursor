@@ -52,11 +52,27 @@ const ConstructionPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword.trim()) return;
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      toast.error('Completează toate câmpurile.');
+      return;
+    }
 
     setIsLoggingIn(true);
     try {
-      await signIn(loginEmail.trim(), loginPassword);
+      const result = await signIn(loginEmail.trim(), loginPassword);
+      if (result?.error) {
+        const errorMessage = result.error.message;
+        if (errorMessage.includes('Invalid login credentials')) {
+          toast.error('Email sau parolă incorectă.');
+        } else if (errorMessage.includes('Email not confirmed')) {
+          toast.error('Email-ul nu a fost confirmat. Verifică-ți inbox-ul.');
+        } else {
+          toast.error(errorMessage || 'Eroare la autentificare.');
+        }
+        setIsLoggingIn(false);
+        return;
+      }
+      
       toast.success('Te-ai logat cu succes!');
       setShowLoginModal(false);
       setLoginEmail('');

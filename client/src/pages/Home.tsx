@@ -10,6 +10,8 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import RecordSubmissionModal from '@/components/RecordSubmissionModal';
+import { AuthRequiredModal } from '@/components/AuthRequiredModal';
+import AuthModal from '@/components/AuthModal';
 
 // FAQ Component with animations
 function FAQItem({ question, answer, index, isOpen, onToggle }: {
@@ -134,6 +136,9 @@ export default function Home() {
   const [showLocationRequest, setShowLocationRequest] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [selectedLocationForRecord, setSelectedLocationForRecord] = useState<{ id: string, name: string } | null>(null);
+  const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -385,8 +390,12 @@ export default function Home() {
                   const locationId = button.getAttribute('data-location-id');
                   const locationName = button.getAttribute('data-location-name');
                   if (locationId && locationName) {
-                    setSelectedLocationForRecord({ id: locationId, name: locationName });
-                    setShowRecordModal(true);
+                    if (user) {
+                      setSelectedLocationForRecord({ id: locationId, name: locationName });
+                      setShowRecordModal(true);
+                    } else {
+                      setShowAuthRequiredModal(true);
+                    }
                   }
                 });
               });
@@ -443,15 +452,22 @@ export default function Home() {
     }
   };
 
+  // Prevent double loading
+  const hasLoadedLocationsRef = useRef(false);
+
   // Încarcă locațiile din baza de date
   useEffect(() => {
+    if (hasLoadedLocationsRef.current) return;
+
     const loadLocations = async () => {
+      hasLoadedLocationsRef.current = true;
       setIsLoadingLocations(true);
       try {
         const locations = await loadFishingLocations();
         setDatabaseLocations(locations);
       } catch (error) {
         console.error('❌ Error loading locations:', error);
+        hasLoadedLocationsRef.current = false; // Retry on error
       } finally {
         setIsLoadingLocations(false);
       }
@@ -919,7 +935,7 @@ export default function Home() {
         align-items: center;
         justify-content: center;
         position: relative;
-        z-index: 999999 !important;
+        z-index: 9999999 !important;
       ">
         <div style="
           font-size: 20px;
@@ -928,16 +944,6 @@ export default function Home() {
       </div>
     `;
 
-    // Add hover effect
-    userMarkerEl.addEventListener('mouseenter', () => {
-      userMarkerEl.style.transform = 'scale(1.1)';
-      userMarkerEl.style.boxShadow = '0 12px 35px rgba(59, 130, 246, 0.4), 0 6px 16px rgba(0,0,0,0.2)';
-    });
-
-    userMarkerEl.addEventListener('mouseleave', () => {
-      userMarkerEl.style.transform = 'scale(1)';
-      userMarkerEl.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.15)';
-    });
 
     const userMarker = new maplibregl.Marker({
       element: userMarkerEl,
@@ -951,7 +957,10 @@ export default function Home() {
     console.log('🎣 User marker added at:', [longitude, latitude], 'silent:', silent);
 
     // Adaugă popup cu design original
-    const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Utilizator';
+    // Get display name - never use email as public name
+    const userName = user?.user_metadata?.display_name || 
+                     user?.user_metadata?.full_name || 
+                     'Utilizator';
     const userPhoto = user?.user_metadata?.avatar_url || '';
 
     // Obține adresa prin reverse geocoding
@@ -1460,6 +1469,32 @@ export default function Home() {
           }}
           locationId={selectedLocationForRecord?.id}
           locationName={selectedLocationForRecord?.name}
+        />
+
+        {/* Auth Required Modal */}
+        <AuthRequiredModal
+          isOpen={showAuthRequiredModal}
+          onClose={() => setShowAuthRequiredModal(false)}
+          onLogin={() => {
+            setShowAuthRequiredModal(false);
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onRegister={() => {
+            setShowAuthRequiredModal(false);
+            setAuthModalMode('register');
+            setIsAuthModalOpen(true);
+          }}
+          title="Autentificare necesară"
+          message="Trebuie să fii autentificat pentru a adăuga un record."
+          actionName="adaugarea unui record"
+        />
+
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode={authModalMode}
         />
       </div>
     </>

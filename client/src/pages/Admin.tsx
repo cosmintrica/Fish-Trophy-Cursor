@@ -14,7 +14,9 @@ import {
   Database,
   ExternalLink,
   TrendingUp,
-  X
+  X,
+  Download,
+  Save
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -50,6 +52,8 @@ const Admin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [backupData, setBackupData] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
@@ -762,6 +766,51 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleCreateBackup = async () => {
+    setIsCreatingBackup(true);
+    setBackupData(null);
+    
+    try {
+      const response = await fetch('/.netlify/functions/backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Eroare la crearea backup-ului');
+      }
+
+      setBackupData(result.backup);
+      toast.success('Backup creat cu succes!');
+    } catch (error: any) {
+      console.error('Error creating backup:', error);
+      toast.error('Eroare la crearea backup-ului: ' + (error.message || 'Necunoscută'));
+    } finally {
+      setIsCreatingBackup(false);
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    if (!backupData) return;
+
+    const dataStr = JSON.stringify(backupData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${backupData.metadata.backup_name}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Backup descărcat cu succes!');
+  };
+
   const handleRejectRecord = async (recordId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -803,7 +852,7 @@ const Admin: React.FC = () => {
         </div>
 
         <Tabs defaultValue="analytics" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
             <TabsTrigger value="analytics" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Analytics & Status</span>
@@ -828,6 +877,11 @@ const Admin: React.FC = () => {
               <Users className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Utilizatori</span>
               <span className="sm:hidden">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="backup" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Database className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Backup</span>
+              <span className="sm:hidden">Backup</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1667,6 +1721,71 @@ const Admin: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Backup Tab */}
+          <TabsContent value="backup" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Backup Baza de Date
+                </CardTitle>
+                <CardDescription>
+                  Creează un backup complet al bazei de date. Backup-ul include toate tabelele importante.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">ℹ️ Informații</h4>
+                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Backup-ul include: profiles, records, fishing_locations, fish_species, user_gear, catches, private_messages</li>
+                    <li>Backup-ul va fi descărcat ca fișier JSON</li>
+                    <li>Recomandat: Fă backup înainte de modificări majore</li>
+                    <li>Backup-ul este salvat local pe computerul tău</li>
+                  </ul>
+                </div>
+
+                <Button
+                  onClick={handleCreateBackup}
+                  disabled={isCreatingBackup}
+                  className="w-full sm:w-auto"
+                  size="lg"
+                >
+                  {isCreatingBackup ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Se creează backup-ul...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Creează Backup
+                    </>
+                  )}
+                </Button>
+
+                {backupData && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                    <h4 className="font-semibold text-green-900">✅ Backup creat cu succes!</h4>
+                    <div className="text-sm text-green-800 space-y-1">
+                      <p><span className="font-medium">Tabele:</span> {backupData.summary.successful_tables}/{backupData.summary.total_tables}</p>
+                      <p><span className="font-medium">Înregistrări:</span> {backupData.summary.total_records.toLocaleString('ro-RO')}</p>
+                      <p><span className="font-medium">Mărime:</span> {(backupData.summary.backup_size_bytes / 1024 / 1024).toFixed(2)} MB</p>
+                      <p><span className="font-medium">Data:</span> {new Date(backupData.metadata.created_at).toLocaleString('ro-RO')}</p>
+                    </div>
+                    <Button
+                      onClick={handleDownloadBackup}
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Descarcă Backup
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

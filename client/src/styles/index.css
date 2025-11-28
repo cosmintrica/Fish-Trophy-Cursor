@@ -53,7 +53,8 @@
   max-height: 90vh !important;
   overflow-y: auto !important;
   width: 100% !important;
-  max-width: 28rem !important;
+  max-width: 30rem;
+  /* 480px - Middle ground width */
   background: white !important;
   border-radius: 0.75rem !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
@@ -95,12 +96,12 @@
   border-bottom-color: white !important;
 }
 
-.fixed.inset-0 > div {
+.fixed.inset-0>div {
   margin: 0 !important;
   max-height: 90vh !important;
   overflow-y: auto !important;
   width: 100% !important;
-  max-width: 28rem !important;
+  max-width: 30rem !important;
   background: white !important;
   border-radius: 0.75rem !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
@@ -109,7 +110,7 @@
 }
 
 /* Exception for mobile menu - don't apply modal styles */
-.fixed.inset-0 > .mobile-menu-card {
+.fixed.inset-0>.mobile-menu-card {
   margin: 0 !important;
   max-height: none !important;
   overflow-y: auto !important;
@@ -124,13 +125,13 @@
 }
 
 /* Mobile menu open state */
-.fixed.inset-0 > .mobile-menu-card.translate-x-0 {
+.fixed.inset-0>.mobile-menu-card.translate-x-0 {
   transform: translateX(0) !important;
   opacity: 1 !important;
 }
 
 /* Mobile menu closed state */
-.fixed.inset-0 > .mobile-menu-card.translate-x-full {
+.fixed.inset-0>.mobile-menu-card.translate-x-full {
   transform: translateX(100%) !important;
   opacity: 0 !important;
 }
@@ -371,6 +372,7 @@ button,
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;

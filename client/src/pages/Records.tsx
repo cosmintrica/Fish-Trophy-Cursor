@@ -31,8 +31,10 @@ interface FishRecord {
     county: string;
   };
   profiles?: {
+    id: string;
     display_name: string;
     email: string;
+    username?: string;
   };
 }
 
@@ -85,13 +87,14 @@ const Records = () => {
   const loadRecords = async () => {
     try {
       // First load records with profiles
+      // Use explicit foreign key reference: records.user_id -> profiles.id
       const { data: recordsData, error: recordsError } = await supabase
         .from('records')
         .select(`
           *,
           fish_species:species_id(name),
           fishing_locations:location_id(name, type, county),
-          profiles!records_user_id_fkey(id, display_name, email)
+          profiles!records_user_id_fkey(id, display_name, username)
         `)
         .eq('status', 'verified')
         .order('weight', { ascending: false });
@@ -158,7 +161,7 @@ const Records = () => {
           weight,
           status,
           fishing_locations:location_id(name, type, county),
-          profiles:user_id(display_name),
+          profiles!records_user_id_fkey(id, display_name, username),
           fish_species:species_id(name)
         `)
         .eq('status', 'verified');
@@ -341,9 +344,15 @@ const Records = () => {
     setIsModalOpen(true);
   };
 
-  const openUserProfile = (userId: string) => {
-    // Navigate to user profile page using React Router
-    window.location.href = `/profile/${userId}`;
+  const openUserProfile = (record: FishRecord) => {
+    // Navigate to user profile page using username if available, otherwise use userId
+    const username = record.profiles?.username;
+    if (username) {
+      window.location.href = `/profile/${username}`;
+    } else {
+      // Fallback to userId if username is not available
+      window.location.href = `/profile/${record.user_id}`;
+    }
   };
 
   const closeRecordModal = () => {
@@ -870,7 +879,7 @@ const Records = () => {
                           <div className="flex items-center gap-2 mb-1">
                             <h3
                               className="text-base sm:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
-                              onClick={() => openUserProfile(record.user_id)}
+                              onClick={() => openUserProfile(record)}
                               title="Vezi profilul utilizatorului"
                             >
                               {record.profiles?.display_name || 'Utilizator'}
