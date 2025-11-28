@@ -28,6 +28,7 @@ export const handler = async (event) => {
     }
 
     // Use R2_ENDPOINT if provided, otherwise construct from ACCOUNT_ID
+    // R2 endpoint format: https://<account-id>.r2.cloudflarestorage.com
     const endpoint = R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
     // Initialize S3 client for R2
@@ -37,7 +38,8 @@ export const handler = async (event) => {
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID,
         secretAccessKey: R2_SECRET_ACCESS_KEY
-      }
+      },
+      forcePathStyle: false // R2 uses virtual-hosted-style URLs
     });
 
     // Parse multipart form data
@@ -72,12 +74,14 @@ export const handler = async (event) => {
           // Upload to R2
           const key = `${category}/${fileName}`;
 
-          await s3Client.send(new PutObjectCommand({
+          const putCommand = new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
             Key: key,
             Body: fileBuffer,
-            ContentType: mimeType
-          }));
+            ContentType: mimeType || 'application/octet-stream'
+          });
+
+          await s3Client.send(putCommand);
 
           const fileUrl = `${R2_PUBLIC_URL}/${key}`;
 
@@ -94,6 +98,10 @@ export const handler = async (event) => {
             })
           });
         } catch (error) {
+          // More detailed error information for debugging
+          const errorMessage = error.message || 'Unknown error';
+          const errorCode = error.Code || error.code || 'UNKNOWN';
+          
           resolve({
             statusCode: 500,
             headers: {
@@ -102,7 +110,11 @@ export const handler = async (event) => {
             },
             body: JSON.stringify({
               success: false,
-              error: error.message
+              error: errorMessage,
+              code: errorCode,
+              details: error.Code === 'AccessDenied' 
+                ? 'Check R2 credentials and bucket permissions. Verify R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME are correct.'
+                : undefined
             })
           });
         }

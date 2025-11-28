@@ -265,8 +265,34 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         throw new Error(result.error || 'Upload failed - no URL returned');
       }
     } catch (error: any) {
-      console.error('Error uploading file:', error);
-      toast.error(`Eroare la încărcarea ${type === 'photo' ? 'imaginii' : 'videoclipului'}: ${error.message || 'Eroare necunoscută'}`, { id: `upload-error-${type}` });
+      // Dismiss loading toast first
+      toast.dismiss(`upload-${type}`);
+      
+      // Parse error message to show more details
+      let errorMessage = error.message || 'Eroare necunoscută';
+      
+      // Try to parse JSON error from response
+      if (error.message && error.message.includes('{')) {
+        try {
+          const errorMatch = error.message.match(/\{.*\}/);
+          if (errorMatch) {
+            const errorData = JSON.parse(errorMatch[0]);
+            if (errorData.error) {
+              errorMessage = errorData.error;
+              if (errorData.details) {
+                errorMessage += ` (${errorData.details})`;
+              }
+            }
+          }
+        } catch (e) {
+          // Keep original error message
+        }
+      }
+      
+      toast.error(`Eroare la încărcarea ${type === 'photo' ? 'imaginii' : 'videoclipului'}: ${errorMessage}`, { 
+        id: `upload-error-${type}`,
+        duration: 5000 
+      });
     } finally {
       setIsUploading(false);
     }
