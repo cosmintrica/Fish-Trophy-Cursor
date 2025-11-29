@@ -4,6 +4,32 @@ import App from './App';
 import './styles/index.css';
 import './forum/styles/forum.css';
 
+// Suppress 403 errors from Supabase auth when no session exists (normal behavior)
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    try {
+      const response = await originalFetch(...args);
+      // Suppress 403 errors for Supabase auth endpoints when no session (normal)
+      if (response.status === 403 && args[0] && typeof args[0] === 'string' && args[0].includes('/auth/v1/user')) {
+        // This is normal when user is not authenticated - don't log to console
+        return response;
+      }
+      return response;
+    } catch (error) {
+      // Suppress 403 errors in catch as well
+      if (error && typeof error === 'object' && 'status' in error && error.status === 403) {
+        const url = args[0];
+        if (url && typeof url === 'string' && url.includes('/auth/v1/user')) {
+          // Normal 403 when no session - don't log
+          return Promise.reject(error);
+        }
+      }
+      throw error;
+    }
+  };
+}
+
 // Register Service Worker for PWA (optimizat)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

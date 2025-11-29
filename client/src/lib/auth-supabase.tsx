@@ -21,10 +21,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .then(({ data, error }: { data: { session: Session | null } | null; error: unknown }) => {
         const session = data?.session ?? null;
         if (error) {
-          console.error('Error getting session:', error);
-          // If 403 Forbidden, try to refresh the session
-          if (error && typeof error === 'object' && 'status' in error && error.status === 403) {
-            // Try to refresh the session
+          // 403 Forbidden is normal when no session exists - ignore it silently
+          const is403 = error && typeof error === 'object' && 'status' in error && error.status === 403;
+          if (!is403) {
+            console.error('Error getting session:', error);
+          }
+          
+          // If 403 and no session, just clear state (normal case)
+          if (is403 && !session) {
+            if (mounted) {
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+            }
+            return;
+          }
+          
+          // If 403 with potential session, try to refresh
+          if (is403 && session) {
             supabase.auth.refreshSession()
               .then(({ data: refreshData, error: refreshError }) => {
                 if (refreshError || !refreshData.session) {
@@ -60,8 +74,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       })
       .catch((error: unknown) => {
-        console.error('Error in getSession:', error);
+        // Ignore 403 errors in catch (normal when no session)
+        const is403 = error && typeof error === 'object' && 'status' in error && error.status === 403;
+        if (!is403) {
+          console.error('Error in getSession:', error);
+        }
         if (mounted) {
+          setSession(null);
+          setUser(null);
           setLoading(false);
         }
       });

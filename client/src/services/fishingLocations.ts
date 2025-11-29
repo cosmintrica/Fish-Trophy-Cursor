@@ -169,7 +169,6 @@ export const loadFishingMarkers = async (): Promise<FishingMarker[]> => {
       };
     });
 
-    console.log(`✅ Loaded ${markers.length} markers (minimal data for performance)`);
     return markers;
   } catch (error) {
     console.error('❌ Error in loadFishingMarkers:', error);
