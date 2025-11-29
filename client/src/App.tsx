@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
@@ -16,14 +16,27 @@ analytics;
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from '@/components/ScrollToTop';
 
-// Pages
-import Home from '@/pages/Home';
+// Loading component pentru lazy loaded pages
+const PageLoader = () => (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-600">Se încarcă...</p>
+    </div>
+  </div>
+);
+
+// ✅ OPTIMIZARE: Lazy load pagini mari (code splitting)
+// Pagini mari - lazy loaded (conțin biblioteci mari sau sunt complexe)
+const Home = lazy(() => import('@/pages/Home')); // Conține MapLibre GL (mare)
+const Admin = lazy(() => import('@/pages/Admin')); // Pagina admin (probabil mare)
+const Profile = lazy(() => import('@/pages/Profile')); // Pagina profil (probabil mare)
+
+// Pagini mici - importate normal (nu blochează)
 import Species from '@/pages/Species';
 import Leaderboards from '@/pages/Leaderboards';
 import Records from '@/pages/Records';
-import Admin from '@/pages/Admin';
 import SubmissionGuide from '@/pages/SubmissionGuide';
-import Profile from '@/pages/Profile';
 import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
 import OgGenerator from '@/pages/OgGenerator';
@@ -91,7 +104,14 @@ function AppContent() {
         <Layout>
           <ScrollToTop />
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route 
+              path="/" 
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Home />
+                </Suspense>
+              } 
+            />
             <Route path="/email-confirmation" element={<EmailConfirmation />} />
             <Route path="/species" element={<Species />} />
             <Route path="/leaderboards" element={<Leaderboards />} />
@@ -104,7 +124,9 @@ function AppContent() {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <Profile />
+                  <Suspense fallback={<PageLoader />}>
+                    <Profile />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -120,7 +142,9 @@ function AppContent() {
               path="/admin/*"
               element={
                 <ProtectedRoute>
-                  <Admin />
+                  <Suspense fallback={<PageLoader />}>
+                    <Admin />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />

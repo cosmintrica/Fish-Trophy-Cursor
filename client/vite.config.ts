@@ -24,24 +24,18 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    minify: 'terser', // ✅ OPTIMIZARE: Activează minificare pentru -30-40% bundle size
-    terserOptions: {
-      compress: {
-        drop_console: true, // Elimină console.log în producție
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug'], // Elimină console logs
-      },
-    },
+    minify: 'esbuild', // ✅ OPTIMIZARE: Activează minificare (esbuild e mai rapid și mai sigur decât terser)
+    // Notă: esbuild nu suportă drop_console, dar e mai rapid și mai sigur
     rollupOptions: {
       output: {
         manualChunks: (id) => {
           // ✅ OPTIMIZARE: Separă vendor-urile mari în chunk-uri separate
           if (id.includes('node_modules')) {
-            // React și React DOM
+            // React și React DOM (trebuie împreună pentru a evita dependențe circulare)
             if (id.includes('react') || id.includes('react-dom')) {
               return 'vendor-react';
             }
-            // MapLibre GL (mare)
+            // MapLibre GL (mare) - separat pentru lazy loading
             if (id.includes('maplibre-gl')) {
               return 'vendor-maplibre';
             }
@@ -53,12 +47,16 @@ export default defineConfig({
             if (id.includes('react-router')) {
               return 'vendor-router';
             }
-            // Radix UI components
+            // Radix UI components (toate împreună pentru a evita dependențe)
             if (id.includes('@radix-ui')) {
               return 'vendor-radix';
             }
-            // Restul vendor-urilor
-            return 'vendor';
+            // Lucide React (iconițe)
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            // Restul vendor-urilor mici
+            return 'vendor-other';
           }
         },
         chunkFileNames: 'assets/[name]-[hash].js',

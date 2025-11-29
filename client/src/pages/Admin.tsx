@@ -438,19 +438,51 @@ const Admin: React.FC = () => {
         setRejectedRecords(rejectedData || []);
       }
 
-      // Load all users
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          records!records_user_id_fkey(count)
-        `)
-        .order('created_at', { ascending: false });
+      // Load all users with last_sign_in_at from auth.users
+      // Folosim funcția SQL pentru a accesa auth.users (doar admin)
+      const { data: usersWithSignIn, error: usersSignInError } = await supabase
+        .rpc('get_users_with_last_sign_in');
 
-      if (usersError) {
-        // console.error('Error loading users:', usersError);
+      if (usersSignInError) {
+        // Fallback la query normal dacă funcția nu există sau e eroare
+        const { data: usersData, error: usersError } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            records!records_user_id_fkey(count)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (usersError) {
+          // console.error('Error loading users:', usersError);
+        } else {
+          setUsers(usersData || []);
+        }
       } else {
-        setUsers(usersData || []);
+        // Load records count pentru fiecare user
+        if (usersWithSignIn && usersWithSignIn.length > 0) {
+          const userIds = usersWithSignIn.map(u => u.id);
+          const { data: recordsData } = await supabase
+            .from('records')
+            .select('user_id')
+            .in('user_id', userIds);
+
+          // Count records per user
+          const recordsCount: Record<string, number> = {};
+          recordsData?.forEach(r => {
+            recordsCount[r.user_id] = (recordsCount[r.user_id] || 0) + 1;
+          });
+
+          // Combine data
+          const usersWithData = usersWithSignIn.map(user => ({
+            ...user,
+            records: [{ count: recordsCount[user.id] || 0 }]
+          }));
+
+          setUsers(usersWithData);
+        } else {
+          setUsers([]);
+        }
       }
 
       // Load analytics data directly from database
@@ -1673,6 +1705,17 @@ const Admin: React.FC = () => {
                                 <p className="text-xs text-gray-500">
                                   Membru din {new Date(user.created_at).toLocaleDateString('ro-RO')}
                                 </p>
+                                {user.last_sign_in_at && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Ultima conectare: {new Date(user.last_sign_in_at).toLocaleString('ro-RO', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center space-x-4">
