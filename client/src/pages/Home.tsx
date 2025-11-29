@@ -112,6 +112,10 @@ const mobileCSS = `
       width: 12px !important;
       height: 12px !important;
     }
+    
+    .maplibregl-container {
+      padding: 50px !important;
+    }
   }
 `;
 
@@ -269,20 +273,21 @@ export default function Home() {
 
         // Calculate offset for one-shot animation (estimate at target zoom 14)
         const containerHeight = _map.getContainer().clientHeight;
-        const offsetY = containerHeight * 0.08; // Position marker at ~8% from top (card visible at top, marker below)
+        const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
         
         // Estimate pixel-to-degree conversion at zoom 14
         // At zoom 14: 1 pixel ≈ 0.0001 degrees latitude
-        const currentZoom = _map.getZoom();
+        const mapZoomForOffset = _map.getZoom();
         const targetZoom = 14;
         const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
         const degreesPerPixel = 360 / pixelsAtTargetZoom;
         const offsetLat = offsetY * degreesPerPixel;
         
         // Calculate adjusted center for one-shot animation
+        // Add to latitude to move marker down in viewport (center moves up)
         const adjustedCenter: [number, number] = [
           coordinates[0],
-          coordinates[1] - offsetLat
+          coordinates[1] + offsetLat
         ];
 
         // One-shot flyTo with smooth easing (more pronounced ease-out)
@@ -297,13 +302,19 @@ export default function Home() {
           essential: true
         });
 
-        // Show loading popup with offset to appear above marker
+        // Calculate marker radius at current zoom for proper popup positioning
+        const currentZoom = _map.getZoom();
+        const markerRadius = currentZoom <= 5 ? 10 : currentZoom <= 10 ? 14 : 18;
+        const popupOffset = -(markerRadius + 5); // Position tip at marker edge + small gap
+        
+        // Show loading popup
         const loadingPopup = new maplibregl.Popup({
           maxWidth: isMobile ? '240px' : '400px',
           closeButton: false,
           className: 'custom-popup',
           closeOnClick: false,
-          offset: [0, -10] // Offset above marker
+          anchor: 'bottom', // Anchor at bottom so tip points to marker
+          offset: [0, popupOffset] // Offset to position tip at marker edge
         })
           .setLngLat(coordinates)
           .setHTML(`
@@ -314,23 +325,23 @@ export default function Home() {
           .addTo(_map);
 
         // Load full details
-        const fullDetails = await getLocationDetails(properties.id);
-        if (fullDetails) {
-          // Update popup with offset to appear above marker
-          loadingPopup.setOffset([0, -10]);
-          
-          const popupHTML = isMobile ? `
+        getLocationDetails(properties.id).then(fullDetails => {
+          if (fullDetails) {
+            // Update popup with calculated offset
+            loadingPopup.setOffset([0, popupOffset]);
+              
+              const popupHTML = isMobile ? `
             <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
-              <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm" onclick="this.closest('.maplibregl-popup').remove()">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
 
               <div class="mb-3">
-                <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
-                  <span class="text-lg">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
-                  ${fullDetails.name}
+                <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-start gap-2">
+                  <span class="text-lg flex-shrink-0">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
+                  <span class="break-words">${fullDetails.name}</span>
                 </h3>
                 ${fullDetails.subtitle ? `<p class="text-xs text-gray-600 mb-1">${fullDetails.subtitle}</p>` : ''}
                 <p class="text-xs text-gray-500">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
@@ -398,15 +409,15 @@ export default function Home() {
             </div>
           ` : `
             <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-              <button class="absolute top-3 right-3 w-6 h-6 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm" onclick="this.closest('.maplibregl-popup').remove()">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              <button class="absolute top-4 right-4 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
               <div class="mb-4">
-                <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-center gap-2">
-                  <span class="text-2xl">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
-                  ${fullDetails.name}
+                <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-start gap-2">
+                  <span class="text-2xl flex-shrink-0">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
+                  <span class="break-words">${fullDetails.name}</span>
                 </h3>
                 ${fullDetails.subtitle ? `<p class="text-sm text-gray-600 mb-1">${fullDetails.subtitle}</p>` : ''}
                 <p class="text-sm text-gray-500">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
@@ -481,34 +492,36 @@ export default function Home() {
               </div>
             </div>
           `;
-          loadingPopup.setHTML(popupHTML);
-          
-          setTimeout(() => {
-            const popup = loadingPopup.getElement();
-            if (!popup) return;
-            popup.querySelectorAll('[data-action]').forEach(btn => {
-              btn.addEventListener('click', (e) => {
-                const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
-                const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
-                
-                if (action === 'view-records') {
-                  window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
-                } else if (action === 'add-record') {
-                  if (!user) {
-                    setShowAuthRequiredModal(true);
-                  } else {
-                    setSelectedLocationForRecord({ id: locationId || '', name: fullDetails.name });
-                    setShowRecordModal(true);
+            loadingPopup.setHTML(popupHTML);
+            
+            setTimeout(() => {
+              const popup = loadingPopup.getElement();
+              if (!popup) return;
+              popup.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                  const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
+                  const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
+                  
+                  if (action === 'view-records') {
+                    window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
+                  } else if (action === 'add-record') {
+                    if (!user) {
+                      setShowAuthRequiredModal(true);
+                    } else {
+                      setSelectedLocationForRecord({ id: locationId || '', name: fullDetails.name });
+                      setShowRecordModal(true);
+                    }
                   }
-                }
+                });
               });
-            });
-          }, 100);
-        } else {
-          loadingPopup.setHTML('<div class="p-4 text-red-500">Eroare la încărcare</div>');
-        }
-        
-        trackMapInteraction({ action: 'marker_click', location_id: properties.id });
+            }, 100);
+          } else {
+            loadingPopup.setHTML('<div class="p-4 text-red-500">Eroare la încărcare</div>');
+          }
+          
+          // Track interaction
+          trackMapInteraction({ action: 'marker_click', location_id: properties.id });
+        });
       });
 
       // Hover effect
@@ -645,41 +658,7 @@ export default function Home() {
     setSearchResults(resultsWithScore.slice(0, 10)); // Limitează la 10 rezultate
     setShowSearchResults(true);
 
-    // Dacă se caută un județ, fac zoom pe județ
-    if (normalizedQuery.length >= 3) {
-      const countyResults = resultsWithScore.filter(loc =>
-        normalizeText(loc.county).includes(normalizedQuery)
-      );
-
-      if (countyResults.length > 0 && mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
-        // Calculează centrul județului
-        const validResults = countyResults.filter(loc => {
-          const lat = loc.coords[1];
-          const lng = loc.coords[0];
-          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-        });
-
-        if (validResults.length === 0) {
-          return;
-        }
-
-        const avgLat = validResults.reduce((sum, loc) => {
-          return sum + loc.coords[1];
-        }, 0) / validResults.length;
-        const avgLng = validResults.reduce((sum, loc) => {
-          return sum + loc.coords[0];
-        }, 0) / validResults.length;
-
-        // Verifică dacă coordonatele sunt valide
-        if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
-          mapInstanceRef.current.flyTo({
-            center: [avgLng, avgLat],
-            zoom: 10,
-            duration: 1000
-          });
-        }
-      }
-    }
+    // NO ZOOM when searching - only when selecting a location
   };
 
   // Debounce pentru căutare
@@ -704,8 +683,13 @@ export default function Home() {
 
   // Funcția pentru a selecta o locație din căutare
   const selectLocation = (location: FishingLocation & { score: number }) => {
-    // Remove all existing popups first
+    // Remove all existing popups first - CRITICAL: Do this immediately
     document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+    
+    // Also remove any popups that might be in the process of being created
+    setTimeout(() => {
+      document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+    }, 10);
 
     // Verifică dacă coordonatele sunt valide
     const lng = location.coords[0];
@@ -717,10 +701,13 @@ export default function Home() {
 
     if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
       const map = mapInstanceRef.current;
+      
+      // Remove popups one more time right before animation
+      document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
       // Calculate offset for one-shot animation (estimate at target zoom 14)
       const containerHeight = map.getContainer().clientHeight;
-      const offsetY = containerHeight * 0.08; // Position marker at ~8% from top (card visible at top, marker below)
+      const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
       
       // Estimate pixel-to-degree conversion at zoom 14
       // At zoom 14: 1 pixel ≈ 0.0001 degrees latitude
@@ -731,10 +718,14 @@ export default function Home() {
       const offsetLat = offsetY * degreesPerPixel;
       
       // Calculate adjusted center for one-shot animation
+      // Add to latitude to move marker down in viewport (center moves up)
       const adjustedCenter: [number, number] = [
         lng,
-        lat - offsetLat
+        lat + offsetLat
       ];
+
+      // Remove all popups right before starting animation (critical fix for stuck popup)
+      document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
       // One-shot flyTo with smooth easing (more pronounced ease-out)
       map.flyTo({
@@ -749,26 +740,49 @@ export default function Home() {
 
       // Open popup after moveend with small delay for smooth animation
       map.once('moveend', () => {
+        // Remove all popups immediately when animation ends
+        document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+        
         // Small delay to ensure map is fully settled
         setTimeout(() => {
-          // Remove all popups again before creating new one
+          // Remove all popups again before creating new one (double-check)
           document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
           // Find location in databaseLocations for full details
           const fullLocation = databaseLocations.find(loc => loc.id === location.id);
           if (fullLocation) {
             const isMobile = window.innerWidth <= 768;
+            
+            // Calculate marker radius at current zoom for proper popup positioning
+            const mapZoomForPopup = map.getZoom();
+            const markerRadius = mapZoomForPopup <= 5 ? 10 : mapZoomForPopup <= 10 ? 14 : 18;
+            
+            // Detect if marker is in top part of viewport (would cut off popup above)
+            const containerHeight = map.getContainer().clientHeight;
+            const point = map.project([lng, lat]);
+            const isInTopViewport = point.y < containerHeight * 0.35; // Top 35% of viewport
+            
+            // Adjust popup position: above marker (default) or below marker (if in top viewport)
+            const popupAnchor = isInTopViewport ? 'top' : 'bottom';
+            const popupOffset = isInTopViewport ? (markerRadius + 5) : -(markerRadius + 5);
+            
             const popup = new maplibregl.Popup({
               maxWidth: isMobile ? '300px' : '400px',
-              closeButton: true,
+              closeButton: false,
               className: 'custom-popup',
-              offset: [0, -15] // Offset above marker for better visibility
+              anchor: popupAnchor, // Smart anchor based on viewport position
+              offset: [0, popupOffset] // Offset to position tip at marker edge
             }).setHTML(isMobile ? `
-            <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100">
+            <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
+              <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
               <div class="mb-3">
-                <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
-                  <span class="text-lg">${fullLocation.type === 'river' || fullLocation.type === 'fluviu' ? '🌊' : fullLocation.type === 'lake' ? '🏞️' : fullLocation.type === 'balti_salbatic' ? '🌿' : fullLocation.type === 'private_pond' ? '🏡' : '💧'}</span>
-                  ${fullLocation.name}
+                <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-start gap-2">
+                  <span class="text-lg flex-shrink-0">${fullLocation.type === 'river' || fullLocation.type === 'fluviu' ? '🌊' : fullLocation.type === 'lake' ? '🏞️' : fullLocation.type === 'balti_salbatic' ? '🌿' : fullLocation.type === 'private_pond' ? '🏡' : '💧'}</span>
+                  <span class="break-words">${fullLocation.name}</span>
                 </h3>
                 ${fullLocation.subtitle ? `<p class="text-xs text-gray-600 mb-1">${fullLocation.subtitle}</p>` : ''}
                 <p class="text-xs text-gray-500">${fullLocation.county}, ${fullLocation.region.charAt(0).toUpperCase() + fullLocation.region.slice(1)}</p>
@@ -830,11 +844,16 @@ export default function Home() {
               </div>
             </div>
           ` : `
-            <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100">
+            <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+              <button class="absolute top-4 right-4 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
               <div class="mb-4">
-                <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-center gap-2">
-                  <span class="text-2xl">${fullLocation.type === 'river' || fullLocation.type === 'fluviu' ? '🌊' : fullLocation.type === 'lake' ? '🏞️' : fullLocation.type === 'balti_salbatic' ? '🌿' : fullLocation.type === 'private_pond' ? '🏡' : '💧'}</span>
-                  ${fullLocation.name}
+                <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-start gap-2">
+                  <span class="text-2xl flex-shrink-0">${fullLocation.type === 'river' || fullLocation.type === 'fluviu' ? '🌊' : fullLocation.type === 'lake' ? '🏞️' : fullLocation.type === 'balti_salbatic' ? '🌿' : fullLocation.type === 'private_pond' ? '🏡' : '💧'}</span>
+                  <span class="break-words">${fullLocation.name}</span>
                 </h3>
                 ${fullLocation.subtitle ? `<p class="text-sm text-gray-600 mb-1">${fullLocation.subtitle}</p>` : ''}
                 <p class="text-sm text-gray-500">${fullLocation.county}, ${fullLocation.region.charAt(0).toUpperCase() + fullLocation.region.slice(1)}</p>
@@ -947,8 +966,13 @@ export default function Home() {
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Detect if mobile device
-    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Detect if mobile device - robust check
+    const checkIsMobile = () => {
+      const width = window.innerWidth;
+      const userAgent = navigator.userAgent;
+      return width <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    };
+    const isMobile = checkIsMobile();
 
     // CRITICAL: Optimized config to prevent flicker and size changes
     const mapConfig: maplibregl.MapOptions = {
@@ -976,7 +1000,7 @@ export default function Home() {
         ]
       },
       center: [25.0094, 45.9432] as [number, number], // Centru România
-      zoom: isMobile ? 5.5 : 6,
+      zoom: isMobile ? 4.6 : 6, // Different zoom for mobile vs desktop
       minZoom: 3,
       maxZoom: 18,
       pitch: 0,
@@ -1070,6 +1094,9 @@ export default function Home() {
   const filterLocations = (type: string) => {
     if (isAddingMarkers) return;
 
+    // Remove all popups when filter changes
+    document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+
     // Clear previous timeout
     if (filterDebounceRef.current) {
       clearTimeout(filterDebounceRef.current);
@@ -1086,10 +1113,10 @@ export default function Home() {
         const map = mapInstanceRef.current;
         const isMobile = window.innerWidth <= 768;
 
-        // FIX 10: Reset zoom to Romania view
+        // FIX 10: Reset zoom to Romania view (different zoom for mobile)
         map.flyTo({
           center: [25.0094, 45.9432] as [number, number],
-          zoom: isMobile ? 5.5 : 6,
+          zoom: isMobile ? 4.6 : 6,
           duration: 1000
         });
 
@@ -1186,6 +1213,9 @@ export default function Home() {
         justify-content: center;
         position: relative;
         z-index: 9999999 !important;
+        opacity: 0;
+        transform: scale(0);
+        transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       ">
         <div style="
           font-size: 20px;
@@ -1201,6 +1231,15 @@ export default function Home() {
       .setLngLat([longitude, latitude])
       .addTo(mapInstanceRef.current);
 
+    // Animate marker appearance (same style as fishing location markers)
+    setTimeout(() => {
+      const markerDiv = userMarkerEl.querySelector('div');
+      if (markerDiv) {
+        markerDiv.style.opacity = '1';
+        markerDiv.style.transform = 'scale(1)';
+      }
+    }, 100);
+
     userLocationMarkerRef.current = userMarker;
 
     const userName = user?.user_metadata?.display_name || 
@@ -1215,17 +1254,22 @@ export default function Home() {
       // Silent fail
     }
 
+    // Calculate marker radius for user location marker (50px / 2 = 25px radius)
+    const userMarkerRadius = 25;
+    const userPopupOffset = -(userMarkerRadius + 5); // Position tip at marker edge + small gap
+    
     const popup = new maplibregl.Popup({
       maxWidth: '250px',
       closeButton: false,
       closeOnClick: false,
       className: 'custom-popup',
-      offset: [0, -10]
+      anchor: 'bottom', // Anchor at bottom so tip points to marker
+      offset: [0, userPopupOffset] // Offset to position tip at marker edge
     }).setHTML(`
       <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-        <button class="absolute top-3 right-3 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" onclick="this.closest('.maplibregl-popup').remove()">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
 
@@ -1261,10 +1305,33 @@ export default function Home() {
       if (userMarker) {
         userMarker.togglePopup();
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 15,
-            duration: 1000
+          const map = mapInstanceRef.current;
+          
+          // Calculate offset for one-shot animation (same logic as other markers)
+          const containerHeight = map.getContainer().clientHeight;
+          const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
+          
+          // Estimate pixel-to-degree conversion at zoom 14
+          const targetZoom = 14;
+          const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
+          const degreesPerPixel = 360 / pixelsAtTargetZoom;
+          const offsetLat = offsetY * degreesPerPixel;
+          
+          // Calculate adjusted center for one-shot animation
+          // Add to latitude to move marker down in viewport (center moves up)
+          const adjustedCenter: [number, number] = [
+            longitude,
+            latitude + offsetLat
+          ];
+
+          // One-shot flyTo with smooth easing (same as other markers)
+          map.flyTo({
+            center: adjustedCenter,
+            zoom: targetZoom,
+            duration: 1400,
+            easing: (t: number) => {
+              return 1 - Math.pow(1 - t, 4);
+            }
           });
         }
       }
@@ -1613,7 +1680,7 @@ export default function Home() {
             {/* Map Container */}
             <div className="relative">
               {mapError ? (
-                <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl border-4 border-white overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl overflow-hidden bg-gray-100 flex items-center justify-center">
                   <div className="text-center p-8">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
