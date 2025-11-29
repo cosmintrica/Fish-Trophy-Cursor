@@ -147,6 +147,9 @@ export default function Home() {
   const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   const [fishingMarkers, setFishingMarkers] = useState<FishingMarker[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  // Refs pentru a evita closure issues în event listeners
+  const fishingMarkersRef = useRef<FishingMarker[]>([]);
+  const databaseLocationsRef = useRef<FishingLocation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<FishingLocation & { score: number }>>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -168,6 +171,12 @@ export default function Home() {
     }
 
     setIsAddingMarkers(true);
+    
+    // Timeout de siguranță pentru a reseta isAddingMarkers dacă ceva merge greșit
+    const safetyTimeout = setTimeout(() => {
+      console.warn('⚠️ addLocationsToMap timeout - resetting isAddingMarkers');
+      setIsAddingMarkers(false);
+    }, 5000); // 5 secunde timeout
 
     try {
       // Use fishingMarkers (minimal data) if available, fallback to full data
@@ -206,6 +215,7 @@ export default function Home() {
       // Update existing source or create new one
       if (_map.getSource(sourceId)) {
         (_map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
+        clearTimeout(safetyTimeout);
         setIsAddingMarkers(false);
         return;
       }
@@ -551,8 +561,11 @@ export default function Home() {
       // }, intervalTime);
       
       // TEST MODE: All markers loaded instantly
+      clearTimeout(safetyTimeout);
       setIsAddingMarkers(false);
     } catch (error) {
+      console.error('❌ Error adding locations to map:', error);
+      clearTimeout(safetyTimeout);
       setIsAddingMarkers(false);
     }
   };
@@ -571,10 +584,12 @@ export default function Home() {
         // Load minimal marker data first (FAST!)
         const markers = await loadFishingMarkers();
         setFishingMarkers(markers);
+        fishingMarkersRef.current = markers; // Update ref
         
         // Load full details in background (for search/filters)
         const locations = await loadFishingLocations();
         setDatabaseLocations(locations);
+        databaseLocationsRef.current = locations; // Update ref
       } catch (error) {
         hasLoadedLocationsRef.current = false; // Retry on error
       } finally {
@@ -1045,15 +1060,42 @@ export default function Home() {
       setMapError(true);
     });
 
-    // Load locations after map is ready - FIX 1: Use fishingMarkers, start instantly if already loaded
-    map.once('load', () => {
-      // Always try to add markers when map loads (useEffect will also handle it, but this ensures it works)
-      // Use a small delay to ensure fishingMarkers state is updated
-      setTimeout(() => {
-        if (fishingMarkers.length > 0 || databaseLocations.length > 0) {
+    // Load locations after map is ready - FIX: Verificare robustă pentru race conditions
+    // Folosește 'load' în loc de 'once' pentru a se apela de fiecare dată
+    map.on('load', () => {
+      // Verifică dacă harta e gata
+      if (!map.isStyleLoaded() || !map.loaded()) return;
+      
+      // Funcție pentru a verifica și adăuga markerele
+      const tryAddMarkers = () => {
+        const hasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
+        if (hasData && map.isStyleLoaded() && map.loaded()) {
           addLocationsToMap(map, activeFilter);
+          return true;
         }
-      }, 100);
+        return false;
+      };
+      
+      // Verifică imediat
+      if (!tryAddMarkers()) {
+        // Dacă datele nu sunt gata, folosește requestAnimationFrame pentru retry rapid (fără delay artificial)
+        const retryWithRAF = () => {
+          if (!tryAddMarkers()) {
+            // Continuă să încerci până când datele sunt gata (max 50 de încercări = ~1 secundă)
+            let attempts = 0;
+            const maxAttempts = 50;
+            const retry = () => {
+              attempts++;
+              if (tryAddMarkers() || attempts >= maxAttempts) {
+                return; // Stop retrying
+              }
+              requestAnimationFrame(retry);
+            };
+            requestAnimationFrame(retry);
+          }
+        };
+        requestAnimationFrame(retryWithRAF);
+      }
     });
 
     // CRITICAL: Close popups when clicking on map (FIX 9)
@@ -1081,20 +1123,58 @@ export default function Home() {
     };
   }, []); // Empty dependency array - initialize only once
 
-  // Separate effect for updating markers when data changes - FIX 1: Use fishingMarkers.length, instant start
+  // Separate effect for updating markers when data changes - FIX: Verificare robustă cu fallback și refs, INSTANT
   useEffect(() => {
-    if (mapInstanceRef.current && fishingMarkers.length > 0) {
-      // Start animation instantly when fishingMarkers are loaded (don't wait for isLoadingLocations)
-      if (mapInstanceRef.current.isStyleLoaded()) {
-        addLocationsToMap(mapInstanceRef.current, activeFilter);
-      } else {
-        // Wait for style to load if not ready
-        mapInstanceRef.current.once('styledata', () => {
-          addLocationsToMap(mapInstanceRef.current!, activeFilter);
-        });
+    if (!mapInstanceRef.current) return;
+    
+    const map = mapInstanceRef.current;
+    // Verifică din refs pentru valori curente (evită closure issues)
+    const hasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
+    
+    if (!hasData) return;
+    
+    // Funcție pentru a adăuga markerele
+    const tryAddMarkers = () => {
+      // Verifică dacă harta e complet gata
+      if (map.isStyleLoaded() && map.loaded()) {
+        addLocationsToMap(map, activeFilter);
+        return true;
       }
+      return false;
+    };
+    
+    // Verifică imediat dacă harta e gata
+    if (tryAddMarkers()) {
+      return; // Markerele au fost adăugate
     }
-  }, [fishingMarkers.length, activeFilter]); // Removed isLoadingLocations dependency
+    
+    // Harta nu e gata - folosește requestAnimationFrame pentru retry rapid
+    let attempts = 0;
+    const maxAttempts = 100; // ~1.6 secunde la 60fps
+    const retry = () => {
+      attempts++;
+      if (tryAddMarkers() || attempts >= maxAttempts) {
+        return; // Stop retrying
+      }
+      requestAnimationFrame(retry);
+    };
+    requestAnimationFrame(retry);
+    
+    // Fallback: așteaptă evenimentele de la hartă
+    const onMapReady = () => {
+      const stillHasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
+      if (stillHasData) {
+        tryAddMarkers();
+      }
+    };
+    
+    if (!map.loaded()) {
+      map.once('load', onMapReady);
+    }
+    if (!map.isStyleLoaded()) {
+      map.once('styledata', onMapReady);
+    }
+  }, [fishingMarkers.length, databaseLocations.length, activeFilter]); // Verifică ambele surse de date
 
   // Funcție pentru filtrarea locațiilor - FIX 3: Debouncing + FIX 10: Reset zoom
   const filterLocations = (type: string) => {
