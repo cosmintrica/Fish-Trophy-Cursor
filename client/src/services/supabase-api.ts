@@ -37,7 +37,11 @@ class SupabaseApiService {
           city_id: data.city_id || '',
           website: data.website || '',
           youtube_channel: data.youtube_channel || '',
-          show_gear_publicly: data.show_gear_publicly || false,
+          show_gear_publicly: data.show_gear_publicly ?? false,
+          show_county_publicly: data.show_county_publicly ?? false,
+          show_city_publicly: data.show_city_publicly ?? false,
+          show_website_publicly: data.show_website_publicly ?? false,
+          show_youtube_publicly: data.show_youtube_publicly ?? false,
           username_last_changed_at: data.username_last_changed_at || ''
         }
       };

@@ -23,6 +23,8 @@ export const InlineCoverEditor = ({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0, startPosX: 0, startPosY: 0 });
+  const initialPinchDistanceRef = useRef<number | null>(null);
+  const lastScaleRef = useRef(position.scale);
 
   const updatePosition = (newX: number, newY: number) => {
     setPosition(prev => ({
@@ -35,11 +37,6 @@ export const InlineCoverEditor = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // INSTANT SCROLL BLOCK
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-    document.body.style.userSelect = 'none';
 
     setIsDragging(true);
     dragStartRef.current = {
@@ -70,36 +67,63 @@ export const InlineCoverEditor = ({
 
   const handleMouseUp = () => {
     setIsDragging(false);
-
-    // INSTANT SCROLL RESTORE
-    document.body.style.overflow = '';
-    document.body.style.touchAction = '';
-    document.body.style.userSelect = '';
+    initialPinchDistanceRef.current = null;
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // INSTANT SCROLL BLOCK
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-    document.body.style.userSelect = 'none';
+    if (e.touches.length === 2) {
+      // Pinch zoom gesture started
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      initialPinchDistanceRef.current = distance;
+      lastScaleRef.current = position.scale;
+      return;
+    }
 
-    setIsDragging(true);
-    const touch = e.touches[0];
-    dragStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      startPosX: position.x,
-      startPosY: position.y
-    };
+    if (e.touches.length === 1) {
+      // Single touch drag started
+      setIsDragging(true);
+      const touch = e.touches[0];
+      dragStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        startPosX: position.x,
+        startPosY: position.y
+      };
+    }
   };
 
   const handleTouchMove = (e: TouchEvent) => {
-    if (!isDragging || !containerRef.current) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Handle pinch zoom with 2 fingers
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+
+      if (initialPinchDistanceRef.current !== null) {
+        // Calculate scale change based on pinch distance change
+        const scaleChange = (distance - initialPinchDistanceRef.current) * 0.5;
+        const newScale = Math.max(100, Math.min(300, lastScaleRef.current + scaleChange));
+        setPosition(prev => ({ ...prev, scale: newScale }));
+      }
+      return;
+    }
+
+    // Handle single finger drag
+    if (!isDragging || !containerRef.current || e.touches.length !== 1) return;
 
     const touch = e.touches[0];
     const rect = containerRef.current.getBoundingClientRect();

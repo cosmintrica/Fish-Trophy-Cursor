@@ -42,8 +42,17 @@ export async function encryptMessage(
   );
 
   // Convert to base64 for storage
+  // Use a safer method for large arrays to avoid "Maximum call stack size exceeded" on mobile
+  const encryptedArray = new Uint8Array(encrypted);
+  let encryptedBase64 = '';
+  const chunkSize = 8192; // Process in chunks to avoid stack overflow on mobile
+  for (let i = 0; i < encryptedArray.length; i += chunkSize) {
+    const chunk = encryptedArray.slice(i, i + chunkSize);
+    encryptedBase64 += String.fromCharCode(...chunk);
+  }
+  
   return {
-    encrypted: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+    encrypted: btoa(encryptedBase64),
     iv: btoa(String.fromCharCode(...iv)),
   };
 }
@@ -56,7 +65,15 @@ export async function decryptMessage(
 ): Promise<string> {
   // Convert from base64
   const encrypted = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
-  const iv = Uint8Array.from(atob(ivString), c => c.charCodeAt(0));
+  let iv = Uint8Array.from(atob(ivString), c => c.charCodeAt(0));
+
+  // AES-GCM requires exactly 12 bytes for IV
+  // If IV is 16 bytes (old format or error), truncate to 12 bytes
+  if (iv.length === 16) {
+    iv = iv.slice(0, 12);
+  } else if (iv.length !== 12) {
+    throw new Error(`IV length invalid: expected 12 bytes, got ${iv.length} bytes`);
+  }
 
   // Decrypt
   const decrypted = await crypto.subtle.decrypt(
@@ -104,4 +121,3 @@ export async function deriveKeyFromUsers(
     ['encrypt', 'decrypt']
   );
 }
-

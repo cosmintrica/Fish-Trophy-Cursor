@@ -117,9 +117,12 @@ export function useRealtimeMessages() {
             };
 
             // Check if message is for active thread
+            // For new messages (thread_root_id = id), check if it matches the active thread
+            const messageThreadRootId = formattedMessage.thread_root_id || formattedMessage.id;
             const isInActiveThread = globalActiveThread && (
-              formattedMessage.thread_root_id === globalActiveThread.threadRootId ||
+              messageThreadRootId === globalActiveThread.threadRootId ||
               formattedMessage.id === globalActiveThread.selectedMessageId ||
+              formattedMessage.id === globalActiveThread.threadRootId || // For new messages where thread_root_id = id
               (formattedMessage.sender_id === user.id && formattedMessage.recipient_id === (globalActiveThread.senderId === user.id ? globalActiveThread.recipientId : globalActiveThread.senderId)) ||
               (formattedMessage.recipient_id === user.id && formattedMessage.sender_id === (globalActiveThread.senderId === user.id ? globalActiveThread.recipientId : globalActiveThread.senderId))
             );
@@ -127,16 +130,32 @@ export function useRealtimeMessages() {
             // Check if message matches active thread context
             const matchesActiveContext = !globalActiveThread || globalActiveThread.context === formattedMessage.context;
 
+            // Always check if message is for active thread first
             if (isInActiveThread && globalActiveThread?.onNewMessage && matchesActiveContext) {
-              // Message is for active thread - send to Messages component
+              // Message is for active thread - send to Messages component immediately
+              // This works for both sent and received messages in the active thread
+              console.log('Realtime: Message for active thread, calling onNewMessage', formattedMessage.id);
               globalActiveThread.onNewMessage(formattedMessage);
             } else {
+              console.log('Realtime: Message not in active thread', {
+                isInActiveThread,
+                hasCallback: !!globalActiveThread?.onNewMessage,
+                matchesContext: matchesActiveContext,
+                messageId: formattedMessage.id,
+                threadRootId: formattedMessage.thread_root_id,
+                activeThreadRootId: globalActiveThread?.threadRootId
+              });
               // Not in active thread - show notification
               // Only show for received messages (not sent by current user)
               if (formattedMessage.recipient_id === user.id) {
                 toast.success('Mesaj nou primit', { duration: 2000 });
                 
                 // Trigger reload of messages list if callback exists
+                if (globalActiveThread?.onMessageReceived && matchesActiveContext) {
+                  globalActiveThread.onMessageReceived();
+                }
+              } else if (formattedMessage.sender_id === user.id) {
+                // Message sent by us but not in active thread - reload list to show it
                 if (globalActiveThread?.onMessageReceived && matchesActiveContext) {
                   globalActiveThread.onMessageReceived();
                 }

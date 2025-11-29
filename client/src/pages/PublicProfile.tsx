@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Calendar, Trophy, Globe, Fish, TrendingUp, Wrench, Camera, Trash2, Upload, ExternalLink, Move, Youtube, MessageSquare, Inbox } from 'lucide-react';
@@ -20,6 +20,7 @@ interface UserProfile {
   photo_url?: string;
   cover_photo_url?: string;
   cover_position?: any;
+  cover_position_mobile?: any;
   bio?: string;
   location?: string;
   county_id?: string;
@@ -75,6 +76,7 @@ interface UserRecord {
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
   const [userGear, setUserGear] = useState<UserGear[]>([]);
@@ -91,7 +93,7 @@ const PublicProfile = () => {
 
   // Track if we just uploaded a cover to auto-open editor
   const [justUploadedCover, setJustUploadedCover] = useState(false);
-  
+
   // Load unread messages count for owner
   useEffect(() => {
     if (isOwner && user?.id) {
@@ -124,16 +126,16 @@ const PublicProfile = () => {
       setUnreadMessagesCount(0);
     }
   }, [isOwner, user?.id]);
-  
+
   // Photo upload
   const handleProfileReload = () => {
     if (userProfile?.id) {
       loadUserData();
     }
   };
-  
+
   const { isUploadingAvatar, isUploadingCover, uploadPhoto, deletePhoto } = usePhotoUpload(
-    userProfile?.id, 
+    userProfile?.id,
     handleProfileReload
   );
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -142,7 +144,19 @@ const PublicProfile = () => {
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [coverPosition, setCoverPosition] = useState({ x: 50, y: 50, scale: 100, rotation: 0 });
-  
+
+  // Detect if device is mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Auto-open cover editor after upload
   useEffect(() => {
     if (justUploadedCover && userProfile?.cover_photo_url && !isUploadingCover) {
@@ -159,6 +173,10 @@ const PublicProfile = () => {
   const [avatarMenuPos, setAvatarMenuPos] = useState({ top: 0, left: 0 });
   const avatarContainerRef = useRef<HTMLDivElement>(null);
 
+  // Cover Menu Positioning
+  const [coverMenuPos, setCoverMenuPos] = useState({ top: 0, left: 0 });
+  const coverButtonRef = useRef<HTMLButtonElement>(null);
+
   // Cleanup portals on unmount
   useEffect(() => {
     return () => {
@@ -171,7 +189,7 @@ const PublicProfile = () => {
   // Close avatar menu when clicking outside
   useEffect(() => {
     if (!showAvatarMenu) return;
-    
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       // Check if click is outside avatar menu
@@ -186,177 +204,133 @@ const PublicProfile = () => {
     };
   }, [showAvatarMenu]);
 
+  // Close cover menu when clicking outside
+  useEffect(() => {
+    if (!showCoverMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Check if click is outside cover menu
+      if (!target.closest('.cover-menu-container') && !target.closest('.cover-menu-portal')) {
+        setShowCoverMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [showCoverMenu]);
+
   useEffect(() => {
     if (username) {
       loadUserData();
     }
   }, [username]);
 
+  // Update cover position when device type changes or when profile loads
+  useEffect(() => {
+    if (userProfile) {
+      try {
+        // Use mobile position if on mobile, otherwise use desktop position
+        // Fallback to the other if current device's position is not set
+        const positionToParse = isMobile
+          ? (userProfile.cover_position_mobile || userProfile.cover_position)
+          : (userProfile.cover_position || userProfile.cover_position_mobile);
+
+        if (positionToParse) {
+          const parsed = typeof positionToParse === 'string'
+            ? JSON.parse(positionToParse)
+            : positionToParse;
+          setCoverPosition(parsed || { x: 50, y: 50, scale: 100, rotation: 0 });
+        } else {
+          setCoverPosition({ x: 50, y: 50, scale: 100, rotation: 0 });
+        }
+      } catch {
+        // Use default on error
+        setCoverPosition({ x: 50, y: 50, scale: 100, rotation: 0 });
+      }
+    }
+  }, [userProfile?.cover_position, userProfile?.cover_position_mobile, isMobile]);
+
   const loadUserData = async () => {
     try {
       setLoading(true);
 
-      // Load user profile by username - respect ALL privacy settings
-      // Build select query dynamically based on privacy settings
-      let selectQuery = 'id, username, display_name, photo_url, cover_photo_url, cover_position, bio, show_gear_publicly, show_county_publicly, show_city_publicly, show_website_publicly, show_youtube_publicly, role, created_at, updated_at';
-      
-      // First, get basic profile to check privacy settings
-      const { data: basicProfile, error: basicError } = await supabase
-        .from('profiles')
-        .select('id, show_website_publicly, show_youtube_publicly, show_county_publicly, show_city_publicly')
-        .eq('username', username?.toLowerCase())
-        .single();
-      
-      if (basicError) throw basicError;
-      
-      // Add fields based on privacy settings
-      if (basicProfile?.show_website_publicly) {
-        selectQuery += ', website';
-      }
-      if (basicProfile?.show_youtube_publicly) {
-        selectQuery += ', youtube_channel';
-      }
-      if (basicProfile?.show_county_publicly) {
-        selectQuery += ', county_id';
-      }
-      if (basicProfile?.show_city_publicly) {
-        selectQuery += ', city_id';
-      }
-      
+      // 1. Fetch Profile (Single Request)
+      // We fetch all public fields needed. Privacy filtering is done in UI or via RLS if strict.
       const { data: profileDataRaw, error: profileError } = await supabase
         .from('profiles')
-        .select(selectQuery)
+        .select('*')
         .eq('username', username?.toLowerCase())
         .single();
 
       if (profileError) throw profileError;
       if (!profileDataRaw) throw new Error('Profile not found');
 
-      // Type assertion for dynamic query result - use unknown first to avoid TS2352
-      const profileData = profileDataRaw as unknown as {
-        id: string;
-        username?: string;
-        display_name: string;
-        photo_url?: string;
-        cover_photo_url?: string;
-        cover_position?: any;
-        bio?: string;
-        show_gear_publicly?: boolean;
-        show_county_publicly?: boolean;
-        show_city_publicly?: boolean;
-        show_website_publicly?: boolean;
-        show_youtube_publicly?: boolean;
-        role?: string;
-        created_at: string;
-        updated_at?: string;
-        website?: string;
-        youtube_channel?: string;
-        county_id?: string;
-        city_id?: string;
-      };
+      // Type assertion
+      const profileData = profileDataRaw as UserProfile;
 
-      // Get avatar from profiles table or auth metadata
-      let avatarUrl = profileData.photo_url;
-      // Normalize empty strings to null
-      if (avatarUrl && avatarUrl.trim() === '') {
-        avatarUrl = null;
-      }
-
-      // Check if current user is owner
+      // Check owner status
       let isCurrentUserOwner = false;
+      let avatarUrl = profileData.photo_url;
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (authUser && authUser.id === profileData.id) {
           isCurrentUserOwner = true;
-          if (authUser.user_metadata?.avatar_url) {
-            const metadataAvatar = authUser.user_metadata.avatar_url;
-            if (metadataAvatar && metadataAvatar.trim() !== '') {
-              avatarUrl = metadataAvatar;
-            }
+          // Use auth metadata avatar if profile avatar is missing
+          if (authUser.user_metadata?.avatar_url && !avatarUrl) {
+            avatarUrl = authUser.user_metadata.avatar_url;
           }
         }
-      } catch (e) {
-        // Ignore auth errors for public profiles
-      }
+      } catch (e) { /* Ignore auth error */ }
 
-      // Load cover position if exists
+      // Normalize URLs - keep valid URLs even if they're Google URLs
+      if (avatarUrl && avatarUrl.trim() === '') {
+        avatarUrl = undefined;
+      }
+      // Log for debugging
+      console.log('Profile loaded - photo_url:', avatarUrl, 'from profileData:', profileData.photo_url);
+      const coverPhotoUrl = profileData.cover_photo_url && profileData.cover_photo_url.trim() !== ''
+        ? profileData.cover_photo_url
+        : undefined;
+
+      // Parse cover position - use separate columns for desktop and mobile
       let coverPos = { x: 50, y: 50, scale: 100, rotation: 0 };
-      if (profileData.cover_position) {
-        if (typeof profileData.cover_position === 'string') {
-          try {
-            coverPos = JSON.parse(profileData.cover_position);
-          } catch {
-            coverPos = { x: 50, y: 50, scale: 100, rotation: 0 };
-          }
-        } else if (typeof profileData.cover_position === 'object') {
-          coverPos = profileData.cover_position as { x: number; y: number; scale: number; rotation: number };
-        }
+      const isMobileDevice = window.innerWidth < 768;
+
+      // Use mobile position if on mobile, otherwise use desktop position
+      const positionToParse = isMobileDevice
+        ? (profileData.cover_position_mobile || profileData.cover_position)
+        : (profileData.cover_position || profileData.cover_position_mobile);
+
+      if (positionToParse) {
+        try {
+          coverPos = typeof positionToParse === 'string'
+            ? JSON.parse(positionToParse)
+            : positionToParse;
+        } catch { /* use default */ }
       }
 
-      // Normalize cover_photo_url - empty strings to null
-      const coverPhotoUrl = profileData.cover_photo_url && profileData.cover_photo_url.trim() !== '' 
-        ? profileData.cover_photo_url 
-        : null;
-      
-      // Normalize photo_url - empty strings to null
-      const finalPhotoUrl = avatarUrl && avatarUrl.trim() !== '' ? avatarUrl : null;
-      
+      // Update Profile State
+      // Ensure photo_url is properly set (even if it's a Google URL)
+      const finalPhotoUrl = avatarUrl && avatarUrl.trim() !== '' ? avatarUrl : undefined;
+      console.log('Setting userProfile with photo_url:', finalPhotoUrl, 'original:', profileData.photo_url);
       setUserProfile({
         ...profileData,
-        email: '', // Email is not public, set empty
         photo_url: finalPhotoUrl,
         cover_photo_url: coverPhotoUrl,
-        website: profileData.website || undefined,
-        youtube_channel: profileData.youtube_channel || undefined,
-        county_id: profileData.county_id || undefined,
-        city_id: profileData.city_id || undefined
+        cover_position: profileData.cover_position // Store full object, not just device-specific
       });
-      setCoverPosition(coverPos);
+      setCoverPosition(coverPos); // Set device-specific position
       setIsOwner(isCurrentUserOwner);
 
-      // Load county and city names ONLY if user has chosen to make them public
-      if (profileData.show_county_publicly && profileData.county_id) {
-        // Need to fetch county_id separately if it's public
-        const { data: profileWithLocation } = await supabase
-          .from('profiles')
-          .select('county_id, city_id')
-          .eq('id', profileData.id)
-          .single();
-        
-        if (profileWithLocation?.county_id) {
-          const { data: countyData } = await supabase
-            .from('counties')
-            .select('name')
-            .eq('id', profileWithLocation.county_id)
-            .single();
-          if (countyData) {
-            setCountyName(countyData.name);
-          }
-        }
-      }
+      // 2. Parallel Fetch for Related Data
+      // We start all these requests at the same time
+      const promises = [];
 
-      if (profileData.show_city_publicly) {
-        // Need to fetch city_id separately if it's public
-        const { data: profileWithLocation } = await supabase
-          .from('profiles')
-          .select('city_id')
-          .eq('id', profileData.id)
-          .single();
-        
-        if (profileWithLocation?.city_id) {
-          const { data: cityData } = await supabase
-            .from('cities')
-            .select('name')
-            .eq('id', profileWithLocation.city_id)
-            .single();
-          if (cityData) {
-            setCityName(cityData.name);
-          }
-        }
-      }
-
-      // Load user records
-      const { data: recordsData, error: recordsError } = await supabase
+      // A. Fetch Records
+      const recordsPromise = supabase
         .from('records')
         .select(`
           *,
@@ -366,22 +340,59 @@ const PublicProfile = () => {
         .eq('user_id', profileData.id)
         .in('status', ['verified', 'pending'])
         .order('weight', { ascending: false });
+      promises.push(recordsPromise);
 
-      if (recordsError) throw recordsError;
-      setUserRecords(recordsData || []);
-
-      // Load user gear if public
-      if (profileData.show_gear_publicly) {
-        const { data: gearData, error: gearError } = await supabase
+      // B. Fetch Gear (if public or owner)
+      if (profileData.show_gear_publicly || isCurrentUserOwner) {
+        const gearPromise = supabase
           .from('user_gear')
           .select('*')
           .eq('user_id', profileData.id)
           .order('created_at', { ascending: false });
-
-        if (!gearError) {
-          setUserGear(gearData || []);
-        }
+        promises.push(gearPromise);
+      } else {
+        promises.push(Promise.resolve({ data: [], error: null }));
       }
+
+      // C. Fetch County Name (if public and exists)
+      if (profileData.show_county_publicly && profileData.county_id) {
+        const countyPromise = supabase
+          .from('counties')
+          .select('name')
+          .eq('id', profileData.county_id)
+          .single();
+        promises.push(countyPromise);
+      } else {
+        promises.push(Promise.resolve({ data: null, error: null }));
+      }
+
+      // D. Fetch City Name (if public and exists)
+      if (profileData.show_city_publicly && profileData.city_id) {
+        const cityPromise = supabase
+          .from('cities')
+          .select('name')
+          .eq('id', profileData.city_id)
+          .single();
+        promises.push(cityPromise);
+      } else {
+        promises.push(Promise.resolve({ data: null, error: null }));
+      }
+
+      // Wait for all requests to complete
+      const [recordsResult, gearResult, countyResult, cityResult] = await Promise.all(promises);
+
+      // Handle Records
+      if (recordsResult.error) console.error('Error loading records:', recordsResult.error);
+      setUserRecords((recordsResult.data as UserRecord[]) || []);
+
+      // Handle Gear
+      if (gearResult.data) {
+        setUserGear(gearResult.data as UserGear[]);
+      }
+
+      // Handle Location Names
+      if (countyResult.data) setCountyName(countyResult.data.name);
+      if (cityResult.data) setCityName(cityResult.data.name);
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -492,10 +503,10 @@ const PublicProfile = () => {
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* Main Profile Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
+        {/* Main Profile Card - Cover + Avatar + Info + Buttons */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-visible border border-gray-100 relative">
           {/* Cover Photo */}
-          <div className="h-64 md:h-80 lg:h-96 bg-gray-900 relative group z-0 -mb-32 md:-mb-36 lg:-mb-40">
+          <div className="h-48 md:h-64 lg:h-80 bg-gray-900 relative group z-0 overflow-hidden rounded-t-2xl">
             {showCoverEditor && userProfile?.cover_photo_url ? (
               <InlineCoverEditor
                 coverUrl={userProfile.cover_photo_url}
@@ -503,20 +514,36 @@ const PublicProfile = () => {
                 onSave={async (position) => {
                   // Optimistic Update: Update local state immediately
                   setCoverPosition(position);
-                  if (userProfile) {
-                    setUserProfile({ ...userProfile, cover_position: position });
-                  }
                   setShowCoverEditor(false);
 
-                  // Background Save
+                  // Background Save - save to device-specific column
                   if (userProfile?.id) {
                     try {
+                      // Determine device type
+                      const isMobileDevice = window.innerWidth < 768;
+                      const updateData: any = {};
+
+                      // Update the appropriate column based on device
+                      if (isMobileDevice) {
+                        updateData.cover_position_mobile = position;
+                        if (userProfile) {
+                          setUserProfile({ ...userProfile, cover_position_mobile: position });
+                        }
+                      } else {
+                        updateData.cover_position = position;
+                        if (userProfile) {
+                          setUserProfile({ ...userProfile, cover_position: position });
+                        }
+                      }
+
+                      // Save to database
                       const { error } = await supabase
                         .from('profiles')
-                        .update({ cover_position: position })
+                        .update(updateData)
                         .eq('id', userProfile.id);
+
                       if (error) throw error;
-                      toast.success('Poziția cover-ului a fost salvată!');
+                      toast.success(`Poziția cover-ului pentru ${isMobileDevice ? 'mobil' : 'desktop'} a fost salvată!`);
                     } catch (error: any) {
                       console.error('Error saving cover position:', error);
                       toast.error(`Eroare la salvare: ${error.message || 'Necunoscută'}`);
@@ -541,19 +568,36 @@ const PublicProfile = () => {
                 {!userProfile?.cover_photo_url && (
                   <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
 
                 {/* Edit Cover Button */}
                 {isOwner && (
-                  <div className="absolute top-4 right-4 z-10">
+                  <div className="absolute top-4 right-4 z-[100] cover-menu-container">
                     <button
-                      onClick={() => setShowCoverMenu(!showCoverMenu)}
+                      ref={coverButtonRef}
+                      onClick={() => {
+                        if (!showCoverMenu && coverButtonRef.current) {
+                          const rect = coverButtonRef.current.getBoundingClientRect();
+                          setCoverMenuPos({
+                            top: rect.bottom + 8,
+                            left: rect.right
+                          });
+                        }
+                        setShowCoverMenu(!showCoverMenu);
+                      }}
                       className="bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 border border-white/10 cursor-pointer"
                     >
                       <Camera className="w-4 h-4" />
                     </button>
-                    {showCoverMenu && (
-                      <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    {showCoverMenu && createPortal(
+                      <div
+                        className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 w-48 cover-menu-portal"
+                        style={{
+                          top: coverMenuPos.top,
+                          left: coverMenuPos.left,
+                          transform: 'translateX(-100%)'
+                        }}
+                      >
                         <div className="py-1">
                           <label className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
                             <Upload className="w-4 h-4" />
@@ -590,7 +634,8 @@ const PublicProfile = () => {
                             </button>
                           )}
                         </div>
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 )}
@@ -598,471 +643,476 @@ const PublicProfile = () => {
             )}
           </div>
 
-          {/* Profile Header Content */}
-          <div className="px-6 pb-6 md:px-10 relative z-20 bg-white">
-            <div className="flex flex-col md:flex-row gap-6 items-end -mt-12 md:-mt-16 justify-center md:justify-start">
-
-              {/* Avatar Container */}
+          {/* Profile Header Content - Info + Buttons (positioned to the right of avatar) */}
+          <div className="px-4 pb-6 pt-6 md:px-6 md:pl-56 lg:pl-60 relative z-20 bg-white rounded-b-2xl">
+            {/* Avatar Container - Positioned absolutely overlapping cover */}
+            <div
+              ref={avatarContainerRef}
+              className="absolute left-1/2 -translate-x-1/2 md:left-8 md:translate-x-0 -top-[60px] md:-top-[90px] z-50 avatar-menu-container w-[120px] h-[120px] md:w-[180px] md:h-[180px]"
+            >
+              {/* Avatar with Border - Circular */}
               <div
-                ref={avatarContainerRef}
-                className="relative shrink-0 z-30 mx-auto md:mx-0 avatar-menu-container"
+                className="relative w-full h-full bg-white group/avatar cursor-pointer"
+                style={{
+                  borderRadius: '50%',
+                  border: '4px solid white',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                }}
+                onClick={handleAvatarClick}
               >
-                {/* Avatar with Border - Circular */}
+                {/* Image Container */}
                 <div
-                  className="relative w-32 h-32 md:w-40 md:h-40 bg-white group/avatar cursor-pointer"
-                  style={{
-                    borderRadius: '50%',
-                    border: '4px solid white',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                  }}
-                  onClick={handleAvatarClick}
+                  className="w-full h-full overflow-hidden"
+                  style={{ borderRadius: '50%' }}
                 >
-                  {/* Image Container */}
-                  <div
-                    className="w-full h-full overflow-hidden"
-                    style={{ borderRadius: '50%' }}
-                  >
-                    {userProfile?.photo_url ? (
-                      <img
-                        src={userProfile.photo_url}
-                        alt={userProfile?.display_name || 'Avatar'}
-                        className="w-full h-full object-cover"
-                        style={{ borderRadius: '50%' }}
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full bg-slate-100 text-slate-400 font-bold text-4xl flex items-center justify-center"
-                        style={{ borderRadius: '50%' }}
-                      >
-                        {userProfile?.display_name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hover Overlay */}
-                  {isOwner && (
+                  {userProfile?.photo_url && userProfile.photo_url.trim() !== '' ? (
+                    <img
+                      src={userProfile.photo_url}
+                      alt={userProfile?.display_name || 'Avatar'}
+                      className="w-full h-full object-cover"
+                      style={{ borderRadius: '50%' }}
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        console.error('Error loading avatar image:', userProfile.photo_url);
+                        // Hide image on error, show fallback
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('Avatar image loaded successfully:', userProfile.photo_url);
+                      }}
+                    />
+                  ) : (
                     <div
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all pointer-events-none"
+                      className="w-full h-full bg-slate-100 text-slate-400 font-bold text-5xl flex items-center justify-center"
                       style={{ borderRadius: '50%' }}
                     >
-                      <Camera className="w-8 h-8 text-white" />
+                      {userProfile?.display_name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                   )}
                 </div>
 
-                {/* Menu - Using Portal to escape overflow-hidden */}
-                {isOwner && showAvatarMenu && createPortal(
+                {/* Hover Overlay */}
+                {isOwner && (
                   <div
-                    className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 w-48 avatar-menu-portal"
-                    style={{
-                      top: avatarMenuPos.top,
-                      left: avatarMenuPos.left,
-                      transform: 'translateX(-50%)'
-                    }}
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all pointer-events-none"
+                    style={{ borderRadius: '50%' }}
                   >
-                    <div className="py-1">
-                      <label className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer block">
-                        <Upload className="w-4 h-4" />
-                        Încarcă avatar
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          disabled={isUploadingAvatar}
-                        />
-                      </label>
-                      {userProfile?.photo_url && (
-                        <button
-                          onClick={handleAvatarDelete}
-                          disabled={isUploadingAvatar}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Șterge avatar
-                        </button>
-                      )}
-                    </div>
-                  </div>,
-                  document.body
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
                 )}
               </div>
 
-              {/* User Info */}
-              <div className="flex-1 text-center md:text-left mb-2 w-full">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    {userProfile?.username ? (
-                      <Link
-                        to={`/profile/${userProfile.username}`}
-                        className="text-3xl font-bold text-gray-900 leading-tight hover:text-blue-600 transition-colors cursor-pointer inline-block"
+              {/* Menu - Using Portal to escape overflow-hidden */}
+              {isOwner && showAvatarMenu && createPortal(
+                <div
+                  className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 w-48 avatar-menu-portal"
+                  style={{
+                    top: avatarMenuPos.top,
+                    left: avatarMenuPos.left,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <div className="py-1">
+                    <label className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer block">
+                      <Upload className="w-4 h-4" />
+                      Încarcă avatar
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        disabled={isUploadingAvatar}
+                      />
+                    </label>
+                    {userProfile?.photo_url && (
+                      <button
+                        onClick={handleAvatarDelete}
+                        disabled={isUploadingAvatar}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50"
                       >
-                        {userProfile?.display_name || 'Utilizator'}
-                      </Link>
-                    ) : (
-                      <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-                        {userProfile?.display_name || 'Utilizator'}
-                      </h1>
-                    )}
-                    <p className="text-gray-500 font-medium text-sm mt-1 flex items-center justify-center md:justify-start gap-2">
-                      {(() => {
-                        const locationParts: string[] = [];
-                        if (userProfile?.show_county_publicly && countyName) {
-                          locationParts.push(countyName);
-                        }
-                        if (userProfile?.show_city_publicly && cityName) {
-                          locationParts.push(cityName);
-                        }
-                        const locationText = locationParts.join(', ');
-                        return locationText ? (
-                          <>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {locationText}
-                            </span>
-                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                          </>
-                        ) : null;
-                      })()}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        Membru din {memberSince.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric' })}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-end">
-                    {isOwner ? (
-                      <>
-                        <Link
-                          to="/messages?context=site"
-                          className="relative px-5 py-2 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-sm flex items-center justify-center gap-2"
-                        >
-                          <Inbox className="w-4 h-4" />
-                          Inbox
-                          {unreadMessagesCount > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white shadow-lg">
-                              {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                            </span>
-                          )}
-                        </Link>
-                        <a
-                          href="/profile"
-                          className="px-5 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
-                        >
-                          Editează profilul
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            if (user) {
-                              window.location.href = `/messages?context=site&to=${userProfile?.username || ''}`;
-                            } else {
-                              setShowAuthRequiredModal(true);
-                            }
-                          }}
-                          className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 flex items-center justify-center gap-2"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          Mesaj privat
-                        </button>
-                        <button className="px-5 py-2 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-sm">
-                          Urmărește
-                        </button>
-                      </>
+                        <Trash2 className="w-4 h-4" />
+                        Șterge avatar
+                      </button>
                     )}
                   </div>
-                </div>
+                </div>,
+                document.body
+              )}
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-3 pt-14 md:pt-0">
+              <div className="min-w-0 text-center md:text-left">
+                {userProfile?.username ? (
+                  <Link
+                    to={`/profile/${userProfile.username}`}
+                    className="text-xl md:text-2xl font-bold text-gray-900 leading-tight hover:text-blue-600 transition-colors cursor-pointer inline-block"
+                  >
+                    {userProfile?.display_name || 'Utilizator'}
+                  </Link>
+                ) : (
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+                    {userProfile?.display_name || 'Utilizator'}
+                  </h1>
+                )}
+                <p className="text-gray-500 font-medium text-xs md:text-sm mt-1 flex items-center gap-2 justify-center md:justify-start">
+                  {(() => {
+                    const locationParts: string[] = [];
+                    if (userProfile?.show_county_publicly && countyName) {
+                      locationParts.push(countyName);
+                    }
+                    if (userProfile?.show_city_publicly && cityName) {
+                      locationParts.push(cityName);
+                    }
+                    const locationText = locationParts.join(', ');
+                    return locationText ? (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" />
+                          {locationText}
+                        </span>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                      </>
+                    ) : null;
+                  })()}
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Membru din {memberSince.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric' })}
+                  </span>
+                </p>
 
                 {/* Bio */}
                 {userProfile?.bio && (
-                  <p className="text-gray-600 mt-4 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0">
+                  <p className="text-gray-600 mt-2 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0">
                     {userProfile.bio}
                   </p>
                 )}
               </div>
+
+              {/* Actions - Right Side */}
+              <div className="flex flex-row gap-2 shrink-0 justify-center md:justify-start w-full md:w-auto">
+                {isOwner ? (
+                  <>
+                    <Link
+                      to="/messages?context=site"
+                      className="relative px-3 py-1.5 bg-gray-100 text-gray-900 text-xs md:text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                    >
+                      <Inbox className="w-3.5 h-3.5" />
+                      Inbox
+                      {unreadMessagesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 border-2 border-white shadow-lg">
+                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                        </span>
+                      )}
+                    </Link>
+                    <a
+                      href="/profile"
+                      className="px-3 py-1.5 bg-gray-900 text-white text-xs md:text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+                    >
+                      Editează profilul
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (user) {
+                          navigate(`/messages?context=site&to=${userProfile?.username || ''}`);
+                        } else {
+                          setShowAuthRequiredModal(true);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs md:text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 flex items-center justify-center gap-1.5"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Mesaj privat
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Capturi Totale', value: totalCatches, icon: Fish, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Record Personal', value: biggestCatch ? `${biggestCatch.weight} kg` : '-', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
-            { label: 'Locații', value: uniqueLocations, icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Zile Membru', value: daysSinceMember, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' }
-          ].map((stat, i) => (
-            <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-              <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-gray-900 leading-none">{stat.value}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
-              </div>
+        {/* Content Card - Stats + Trophies + Gear */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+          <div className="px-4 md:px-6 py-6">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: 'Capturi Totale', value: totalCatches, icon: Fish, color: 'text-blue-600', bg: 'bg-blue-50' },
+                { label: 'Record Personal', value: biggestCatch ? `${biggestCatch.weight} kg` : '-', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
+                { label: 'Locații', value: uniqueLocations, icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { label: 'Zile Membru', value: daysSinceMember, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                  <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-gray-900 leading-none">{stat.value}</div>
+                    <div className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Trophy Showcase */}
-          <div className="lg:col-span-2 space-y-6">
-            {topThree.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-amber-500" />
-                  Sala Trofeelor
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {topThree.map((record, index) => {
-                    const medals = ['🥇', '🥈', '🥉'];
-                    const bgs = ['bg-amber-50 border-amber-100', 'bg-slate-50 border-slate-100', 'bg-orange-50 border-orange-100'];
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Trophy Showcase */}
+              <div className="lg:col-span-2 space-y-6">
+                {topThree.length > 0 && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-amber-500" />
+                      Sala Trofeelor
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {topThree.map((record, index) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const bgs = ['bg-amber-50 border-amber-100', 'bg-slate-50 border-slate-100', 'bg-orange-50 border-orange-100'];
 
-                    return (
-                      <div
-                        key={record.id}
-                        className={`rounded-xl border ${bgs[index]} p-3 cursor-pointer hover:-translate-y-1 transition-transform`}
-                        onClick={() => openRecordModal(record)}
-                      >
-                        <div className="aspect-square rounded-lg overflow-hidden bg-white mb-3 relative shadow-sm">
-                          {record.photo_url ? (
-                            <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">
-                              <Fish className="w-8 h-8" />
+                        return (
+                          <div
+                            key={record.id}
+                            className={`rounded-xl border ${bgs[index]} p-3 cursor-pointer hover:-translate-y-1 transition-transform`}
+                            onClick={() => openRecordModal(record)}
+                          >
+                            <div className="aspect-square rounded-lg overflow-hidden bg-white mb-3 relative shadow-sm">
+                              {record.photo_url ? (
+                                <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                  <Fish className="w-8 h-8" />
+                                </div>
+                              )}
+                              <div className="absolute top-2 left-2 text-2xl drop-shadow-sm">{medals[index]}</div>
                             </div>
-                          )}
-                          <div className="absolute top-2 left-2 text-2xl drop-shadow-sm">{medals[index]}</div>
+                            <div className="text-center">
+                              <div className="font-bold text-gray-900 truncate">{record.fish_species?.name}</div>
+                              <div className="text-sm font-semibold text-blue-600">{record.weight} kg</div>
+                              <div className="text-xs text-gray-500 truncate">{record.fishing_locations?.name}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Activity / All Records */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Fish className="w-5 h-5 text-blue-600" />
+                    Jurnal de Capturi
+                  </h2>
+
+                  {userRecords.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      Nu există capturi înregistrate.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {userRecords.map((record) => (
+                        <div
+                          key={record.id}
+                          className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-100 group"
+                          onClick={() => openRecordModal(record)}
+                        >
+                          <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 relative">
+                            {record.photo_url ? (
+                              <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <Fish className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <h3 className="font-bold text-gray-900 truncate pr-2">{record.fish_species?.name}</h3>
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 shrink-0">
+                                {new Date(record.captured_at).toLocaleDateString('ro-RO')}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500 truncate flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {record.fishing_locations?.name}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-sm">
+                              <span className="font-semibold text-blue-600 bg-blue-50 px-1.5 rounded">{record.weight} kg</span>
+                              <span className="text-gray-600 bg-gray-100 px-1.5 rounded">{record.length_cm} cm</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="font-bold text-gray-900 truncate">{record.fish_species?.name}</div>
-                          <div className="text-sm font-semibold text-blue-600">{record.weight} kg</div>
-                          <div className="text-xs text-gray-500 truncate">{record.fishing_locations?.name}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Recent Activity / All Records */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Fish className="w-5 h-5 text-blue-600" />
-                Jurnal de Capturi
-              </h2>
+              {/* Right Column: Details & Gear */}
+              <div className="space-y-6">
+                {/* About Card - Only show if there's at least one public field */}
+                {(() => {
+                  const hasPublicWebsite = userProfile?.website && userProfile?.show_website_publicly;
+                  const hasPublicYouTube = userProfile?.youtube_channel && userProfile?.show_youtube_publicly;
+                  const hasPublicLocation = (userProfile?.show_county_publicly && countyName) || (userProfile?.show_city_publicly && cityName);
 
-              {userRecords.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  Nu există capturi înregistrate.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {userRecords.map((record) => (
-                    <div
-                      key={record.id}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-100 group"
-                      onClick={() => openRecordModal(record)}
-                    >
-                      <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 relative">
-                        {record.photo_url ? (
-                          <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <Fish className="w-6 h-6" />
+                  // Only show section if at least one field is public
+                  if (!hasPublicWebsite && !hasPublicYouTube && !hasPublicLocation) {
+                    return null;
+                  }
+
+                  return (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Despre</h3>
+                      <div className="space-y-4 text-sm">
+                        {hasPublicWebsite && (
+                          <div className="flex items-center gap-3 text-gray-600">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                              <Globe className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900">Website</div>
+                              <a
+                                href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                {formatWebsiteUrl(userProfile.website)}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {hasPublicYouTube && (
+                          <div className="flex items-center gap-3 text-gray-600">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                              <Youtube className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900">YouTube</div>
+                              <a
+                                href={userProfile.youtube_channel.startsWith('http') ? userProfile.youtube_channel : `https://${userProfile.youtube_channel}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                {getYoutubeChannelName(userProfile.youtube_channel)}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {hasPublicLocation && (
+                          <div className="flex items-center gap-3 text-gray-600">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                              <MapPin className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900">Locație</div>
+                              <div>
+                                {(() => {
+                                  const locationParts: string[] = [];
+                                  if (userProfile?.show_county_publicly && countyName) {
+                                    locationParts.push(countyName);
+                                  }
+                                  if (userProfile?.show_city_publicly && cityName) {
+                                    locationParts.push(cityName);
+                                  }
+                                  return locationParts.join(', ');
+                                })()}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-bold text-gray-900 truncate pr-2">{record.fish_species?.name}</h3>
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 shrink-0">
-                            {new Date(record.captured_at).toLocaleDateString('ro-RO')}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-500 truncate flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {record.fishing_locations?.name}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-sm">
-                          <span className="font-semibold text-blue-600 bg-blue-50 px-1.5 rounded">{record.weight} kg</span>
-                          <span className="text-gray-600 bg-gray-100 px-1.5 rounded">{record.length_cm} cm</span>
-                        </div>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                  );
+                })()}
 
-          {/* Right Column: Details & Gear */}
-          <div className="space-y-6">
-            {/* About Card - Only show if there's at least one public field */}
-            {(() => {
-              const hasPublicWebsite = userProfile?.website && userProfile?.show_website_publicly;
-              const hasPublicYouTube = userProfile?.youtube_channel && userProfile?.show_youtube_publicly;
-              const hasPublicLocation = (userProfile?.show_county_publicly && countyName) || (userProfile?.show_city_publicly && cityName);
-              
-              // Only show section if at least one field is public
-              if (!hasPublicWebsite && !hasPublicYouTube && !hasPublicLocation) {
-                return null;
-              }
+                {/* Gear Card - Dark Theme Single Panel */}
+                {userProfile?.show_gear_publicly && userGear.length > 0 && (
+                  <div className="bg-slate-900 rounded-2xl shadow-xl p-6 border border-slate-800">
+                    <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+                      <Wrench className="w-5 h-5 text-white" />
+                      Echipament
+                    </h3>
 
-              return (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Despre</h3>
-                  <div className="space-y-4 text-sm">
-                    {hasPublicWebsite && (
-                      <div className="flex items-center gap-3 text-gray-600">
-                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                          <Globe className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">Website</div>
-                          <a
-                            href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            {formatWebsiteUrl(userProfile.website)}
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      </div>
-                    )}
+                    <div className="space-y-3">
+                      {userGear.map((gear) => {
+                        const getGearIcon = (type: string) => {
+                          switch (type.toLowerCase()) {
+                            case 'undita': return '🎣 Undiță';
+                            case 'mulineta': return '⚙️ Mulinetă';
+                            case 'scaun': return '🪑 Scaun';
+                            case 'rucsac': return '🎒 Rucsac';
+                            case 'vesta': return '🦺 Vestă';
+                            case 'cizme': return '👢 Cizme';
+                            case 'nada': return '🌽 Nadă';
+                            case 'fir': return '🧵 Fir';
+                            case 'carlige': return '🪝 Cârlige';
+                            default: return `🔧 ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+                          }
+                        };
 
-                    {hasPublicYouTube && (
-                      <div className="flex items-center gap-3 text-gray-600">
-                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                          <Youtube className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">YouTube</div>
-                          <a
-                            href={userProfile.youtube_channel.startsWith('http') ? userProfile.youtube_channel : `https://${userProfile.youtube_channel}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            {getYoutubeChannelName(userProfile.youtube_channel)}
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {hasPublicLocation && (
-                      <div className="flex items-center gap-3 text-gray-600">
-                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                          <MapPin className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">Locație</div>
-                          <div>
-                            {(() => {
-                              const locationParts: string[] = [];
-                              if (userProfile?.show_county_publicly && countyName) {
-                                locationParts.push(countyName);
-                              }
-                              if (userProfile?.show_city_publicly && cityName) {
-                                locationParts.push(cityName);
-                              }
-                              return locationParts.join(', ');
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Gear Card - Dark Theme Single Panel */}
-            {userProfile?.show_gear_publicly && userGear.length > 0 && (
-              <div className="bg-slate-900 rounded-2xl shadow-xl p-6 border border-slate-800">
-                <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-white" />
-                  Echipament
-                </h3>
-
-                <div className="space-y-3">
-                  {userGear.map((gear) => {
-                    const getGearIcon = (type: string) => {
-                      switch (type.toLowerCase()) {
-                        case 'undita': return '🎣 Undiță';
-                        case 'mulineta': return '⚙️ Mulinetă';
-                        case 'scaun': return '🪑 Scaun';
-                        case 'rucsac': return '🎒 Rucsac';
-                        case 'vesta': return '🦺 Vestă';
-                        case 'cizme': return '👢 Cizme';
-                        case 'nada': return '🌽 Nadă';
-                        case 'fir': return '🧵 Fir';
-                        case 'carlige': return '🪝 Cârlige';
-                        default: return `🔧 ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-                      }
-                    };
-
-                    return (
-                      <div key={gear.id} className="bg-slate-800/40 hover:bg-slate-800 transition-all duration-300 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 group">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1.5 w-full">
-                            {/* Gear Type Title with Emoji */}
-                            <div className="flex items-center justify-between">
-                              <div className="text-blue-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 bg-blue-950/30 px-2 py-0.5 rounded border border-blue-900/30">
-                                {getGearIcon(gear.gear_type)}
-                              </div>
-                              {gear.quantity > 1 && (
-                                <div className="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] font-bold font-mono shadow-sm border border-slate-600">
-                                  x{gear.quantity}
+                        return (
+                          <div key={gear.id} className="bg-slate-800/40 hover:bg-slate-800 transition-all duration-300 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 group">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="space-y-1.5 w-full">
+                                {/* Gear Type Title with Emoji */}
+                                <div className="flex items-center justify-between">
+                                  <div className="text-blue-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 bg-blue-950/30 px-2 py-0.5 rounded border border-blue-900/30">
+                                    {getGearIcon(gear.gear_type)}
+                                  </div>
+                                  {gear.quantity > 1 && (
+                                    <div className="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] font-bold font-mono shadow-sm border border-slate-600">
+                                      x{gear.quantity}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
 
-                            <h4 className="font-bold text-lg text-white leading-tight group-hover:text-blue-200 transition-colors">
-                              {gear.brand} <span className="text-slate-400 font-normal text-base">{gear.model}</span>
-                            </h4>
+                                <h4 className="font-bold text-lg text-white leading-tight group-hover:text-blue-200 transition-colors">
+                                  {gear.brand} <span className="text-slate-400 font-normal text-base">{gear.model}</span>
+                                </h4>
 
-                            {gear.description && (
-                              <p className="text-slate-400 text-sm leading-relaxed pl-1">
-                                {gear.description}
-                              </p>
-                            )}
-
-                            {/* Details Footer */}
-                            {(gear.purchase_price || gear.purchase_date) && (
-                              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/50">
-                                {gear.purchase_price && (
-                                  <div className="flex items-center text-xs text-emerald-400 font-medium bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
-                                    <span className="mr-1.5 text-sm">💰</span>
-                                    {gear.purchase_price} RON
-                                  </div>
+                                {gear.description && (
+                                  <p className="text-slate-400 text-sm leading-relaxed pl-1">
+                                    {gear.description}
+                                  </p>
                                 )}
-                                {gear.purchase_date && (
-                                  <div className="flex items-center text-xs text-slate-400 bg-slate-700/30 px-2 py-1 rounded border border-slate-700/50">
-                                    <Calendar className="w-3 h-3 mr-1.5 opacity-70" />
-                                    {new Date(gear.purchase_date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
+
+                                {/* Details Footer */}
+                                {(gear.purchase_price || gear.purchase_date) && (
+                                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/50">
+                                    {gear.purchase_price && (
+                                      <div className="flex items-center text-xs text-emerald-400 font-medium bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
+                                        <span className="mr-1.5 text-sm">💰</span>
+                                        {gear.purchase_price} RON
+                                      </div>
+                                    )}
+                                    {gear.purchase_date && (
+                                      <div className="flex items-center text-xs text-slate-400 bg-slate-700/30 px-2 py-1 rounded border border-slate-700/50">
+                                        <Calendar className="w-3 h-3 mr-1.5 opacity-70" />
+                                        {new Date(gear.purchase_date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -1098,7 +1148,7 @@ const PublicProfile = () => {
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authModalMode}
       />
-    </div>
+    </div >
   );
 };
 

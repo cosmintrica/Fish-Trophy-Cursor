@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -51,10 +51,12 @@ const Messages = () => {
   const [threadMessages, setThreadMessages] = useState<Message[]>([]); // All messages in thread
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [recipientProfile, setRecipientProfile] = useState<{ id: string; username: string; display_name: string; photo_url?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handlingToUsernameRef = useRef(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('messages_sound_enabled');
     return saved !== null ? saved === 'true' : true;
@@ -90,92 +92,7 @@ const Messages = () => {
   //   }
   // }, [selectedMessage]);
 
-  // Handle ?to=username parameter - create new message or find existing thread
-  useEffect(() => {
-    if (toUsername && user) {
-      handleToUsername(toUsername);
-    }
-  }, [toUsername, user]);
-
-  const handleToUsername = async (username: string) => {
-    try {
-      if (!username || !username.trim()) {
-        toast.error('Username invalid');
-        navigate('/messages');
-        return;
-      }
-
-      // Get recipient profile - use maybeSingle() instead of single() to avoid 400 error
-      // Note: profiles table uses photo_url, not avatar_url
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, photo_url')
-        .eq('username', username.toLowerCase().trim())
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        toast.error('Eroare la încărcarea profilului: ' + profileError.message);
-        navigate('/messages');
-        return;
-      }
-
-      if (!profile) {
-        toast.error('Utilizatorul nu a fost găsit');
-        navigate('/messages');
-        return;
-      }
-
-      setRecipientProfile({
-        id: profile.id,
-        username: profile.username || username,
-        display_name: profile.display_name || username,
-        photo_url: profile.photo_url // profiles table uses photo_url
-      });
-
-      // Check if there's an existing thread with this user
-      const { data: existingThread, error: threadError } = await supabase
-        .from('private_messages')
-        .select('*')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${profile.id}),and(sender_id.eq.${profile.id},recipient_id.eq.${user.id})`)
-        .eq('context', context)
-        .is('parent_message_id', null) // Only root messages (use is() instead of eq() for null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingThread && !threadError) {
-        // Existing thread found - load it
-        setSelectedMessage(existingThread as Message);
-        loadThread(existingThread.thread_root_id || existingThread.id);
-      } else {
-        // No existing thread - create a placeholder for new message
-        setSelectedMessage({
-          id: 'new',
-          sender_id: user.id,
-          recipient_id: profile.id,
-          subject: '',
-          content: '',
-          context,
-          thread_root_id: 'new',
-          is_read: false,
-          is_archived_by_sender: false,
-          is_archived_by_recipient: false,
-          created_at: new Date().toISOString(),
-          read_at: null,
-          sender_name: user.user_metadata?.display_name || user.email,
-          sender_username: user.user_metadata?.username,
-          recipient_name: profile.display_name,
-          recipient_username: profile.username,
-          recipient_avatar: profile.photo_url
-        } as Message);
-        setThreadMessages([]);
-      }
-    } catch (error: any) {
-      console.error('Error handling to username:', error);
-      toast.error('Eroare la încărcarea profilului');
-    }
-  };
+  // Handle ?to=username parameter - will be defined after loadThread
 
   useEffect(() => {
     if (user) {
@@ -283,21 +200,23 @@ const Messages = () => {
           try {
             const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
             decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
-          } catch (decryptError) {
-            // Decryption failed - use placeholder
-            decryptedContent = null;
+          } catch (decryptError: any) {
+            // Decryption failed - log error and show placeholder
+            console.error('Decryption error:', decryptError);
+            console.error('Message ID:', msg.id, 'Sender:', msg.sender_id, 'Recipient:', msg.recipient_id);
+            decryptedContent = '[Eroare la decriptare - mesajul nu poate fi citit]';
           }
         }
 
         return {
           ...msg,
-          content: decryptedContent,
+          content: decryptedContent || msg.content || '[Mesaj nedecriptat]',
           sender_name: msg.sender?.display_name || msg.sender_name,
           sender_username: msg.sender?.username || msg.sender_username,
-          sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
+          sender_avatar: (msg.sender?.photo_url && msg.sender.photo_url.trim() !== '') ? msg.sender.photo_url : (msg.sender_avatar && msg.sender_avatar.trim() !== '' ? msg.sender_avatar : undefined),
           recipient_name: msg.recipient?.display_name || msg.recipient_name,
           recipient_username: msg.recipient?.username || msg.recipient_username,
-          recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar
+          recipient_avatar: (msg.recipient?.photo_url && msg.recipient.photo_url.trim() !== '') ? msg.recipient.photo_url : (msg.recipient_avatar && msg.recipient_avatar.trim() !== '' ? msg.recipient_avatar : undefined)
         };
       }));
       
@@ -310,9 +229,19 @@ const Messages = () => {
         }
       });
       
-      setMessages(Array.from(threadMap.values()).sort((a, b) => 
+      const sortedMessages = Array.from(threadMap.values()).sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
+      );
+      
+      setMessages(sortedMessages);
+      
+      // Auto-select first conversation if none is selected and messages exist
+      if (sortedMessages.length > 0 && !selectedMessage && !toUsername) {
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          handleMessageClick(sortedMessages[0]);
+        }, 100);
+      }
     } catch (error: any) {
       toast.error('Eroare la încărcarea mesajelor');
     } finally {
@@ -345,7 +274,10 @@ const Messages = () => {
   }, [user, activeTab, context, selectedMessage]);
 
   const loadThread = async (threadRootId: string) => {
-    if (!user || !threadRootId) return;
+    if (!user || !threadRootId) {
+      console.warn('loadThread called without user or threadRootId:', { user: !!user, threadRootId });
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -367,11 +299,16 @@ const Messages = () => {
         // If message is encrypted, decrypt it
         if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
           try {
+            if (!msg.sender_id || !msg.recipient_id) {
+              throw new Error('ID-uri utilizator lipsă pentru decriptare');
+            }
             const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
             decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
-          } catch (decryptError) {
-            // Decryption failed - show error to user
-            decryptedContent = '[Eroare la decriptare]';
+          } catch (decryptError: any) {
+            // Decryption failed - log error and show message to user
+            console.error('Decryption error in thread:', decryptError);
+            console.error('Message ID:', msg.id, 'Sender:', msg.sender_id, 'Recipient:', msg.recipient_id);
+            decryptedContent = '[Eroare la decriptare - mesajul nu poate fi citit]';
           }
         }
 
@@ -380,10 +317,10 @@ const Messages = () => {
           content: decryptedContent || '',
           sender_name: msg.sender?.display_name || msg.sender_name,
           sender_username: msg.sender?.username || msg.sender_username,
-          sender_avatar: msg.sender?.photo_url || msg.sender_avatar,
+          sender_avatar: (msg.sender?.photo_url && msg.sender.photo_url.trim() !== '') ? msg.sender.photo_url : (msg.sender_avatar && msg.sender_avatar.trim() !== '' ? msg.sender_avatar : undefined),
           recipient_name: msg.recipient?.display_name || msg.recipient_name,
           recipient_username: msg.recipient?.username || msg.recipient_username,
-          recipient_avatar: msg.recipient?.photo_url || msg.recipient_avatar,
+          recipient_avatar: (msg.recipient?.photo_url && msg.recipient.photo_url.trim() !== '') ? msg.recipient.photo_url : (msg.recipient_avatar && msg.recipient_avatar.trim() !== '' ? msg.recipient_avatar : undefined),
           read_at: msg.read_at || null
         } as Message;
       }));
@@ -432,6 +369,103 @@ const Messages = () => {
     }
   };
 
+  // Handle ?to=username parameter - create new message or find existing thread
+  const handleToUsername = async (username: string) => {
+    console.log('handleToUsername called with:', username);
+    try {
+      if (!username || !username.trim()) {
+        console.error('Username invalid:', username);
+        toast.error('Username invalid');
+        navigate('/messages');
+        return;
+      }
+
+      // Get recipient profile - use maybeSingle() instead of single() to avoid 400 error
+      // Note: profiles table uses photo_url, not avatar_url
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, photo_url')
+        .eq('username', username.toLowerCase().trim())
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        toast.error('Eroare la încărcarea profilului: ' + profileError.message);
+        navigate('/messages');
+        return;
+      }
+
+      if (!profile) {
+        toast.error('Utilizatorul nu a fost găsit');
+        navigate('/messages');
+        return;
+      }
+
+      setRecipientProfile({
+        id: profile.id,
+        username: profile.username || username,
+        display_name: profile.display_name || username,
+        photo_url: profile.photo_url // profiles table uses photo_url
+      });
+
+      // Check if there's an existing thread with this user
+      const { data: existingThread, error: threadError } = await supabase
+        .from('private_messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user?.id},recipient_id.eq.${profile.id}),and(sender_id.eq.${profile.id},recipient_id.eq.${user?.id})`)
+        .eq('context', context)
+        .is('parent_message_id', null) // Only root messages (use is() instead of eq() for null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingThread && !threadError) {
+        // Existing thread found - load it
+        console.log('Existing thread found:', existingThread.id);
+        setSelectedMessage(existingThread as Message);
+        await loadThread(existingThread.thread_root_id || existingThread.id);
+      } else {
+        // No existing thread - create a placeholder for new message
+        if (!user) return;
+        console.log('No existing thread, creating new message placeholder');
+        setSelectedMessage({
+          id: 'new',
+          sender_id: user.id,
+          recipient_id: profile.id,
+          subject: '',
+          content: '',
+          context,
+          thread_root_id: 'new',
+          is_read: false,
+          is_archived_by_sender: false,
+          is_archived_by_recipient: false,
+          created_at: new Date().toISOString(),
+          read_at: null,
+          sender_name: user.user_metadata?.display_name || user.email,
+          sender_username: user.user_metadata?.username,
+          recipient_name: profile.display_name,
+          recipient_username: profile.username,
+          recipient_avatar: profile.photo_url
+        } as Message);
+        setThreadMessages([]);
+      }
+    } catch (error: any) {
+      console.error('Error handling to username:', error);
+      toast.error('Eroare la încărcarea profilului');
+    }
+  };
+
+  // Handle ?to=username parameter - must run after loadMessages completes
+  useEffect(() => {
+    if (toUsername && user && !loading && !handlingToUsernameRef.current) {
+      handlingToUsernameRef.current = true;
+      console.log('Calling handleToUsername with:', toUsername, 'user:', user.id);
+      handleToUsername(toUsername).finally(() => {
+        handlingToUsernameRef.current = false;
+      });
+    }
+  }, [toUsername, user, loading]);
+
   const handleSendReply = async () => {
     if (!user || !replyText.trim() || sendingReply) return;
     if (!selectedMessage) {
@@ -457,12 +491,17 @@ const Messages = () => {
       let plainContent: string | null = null;
       
       try {
+        if (!user?.id || !recipientId) {
+          throw new Error('ID-uri utilizator lipsă');
+        }
         const key = await deriveKeyFromUsers(user.id, recipientId);
         const encrypted = await encryptMessage(replyText.trim(), key);
         encryptedContent = encrypted.encrypted;
         encryptionIv = encrypted.iv;
-      } catch (encryptError) {
-        toast.error('Eroare la criptarea mesajului. Încearcă din nou.');
+      } catch (encryptError: any) {
+        console.error('Encryption error:', encryptError);
+        console.error('User ID:', user?.id, 'Recipient ID:', recipientId);
+        toast.error(`Eroare la criptarea mesajului: ${encryptError.message || 'Necunoscută'}. Încearcă din nou.`);
         setSendingReply(false);
         return;
       }
@@ -483,6 +522,9 @@ const Messages = () => {
         // Reply to existing message
         messageData.parent_message_id = selectedMessage.id;
         messageData.thread_root_id = selectedMessage.thread_root_id || selectedMessage.id;
+      } else {
+        // For new messages, thread_root_id will be set to the message ID after insert (via database trigger or manually)
+        // We'll handle this after insert
       }
 
       const { data: newMessage, error } = await supabase
@@ -540,8 +582,61 @@ const Messages = () => {
 
       // Update thread immediately with decrypted message
       if (isNewMessage) {
+        // For new messages, update thread_root_id to the new message ID
+        formattedMessage.thread_root_id = formattedMessage.id;
         setSelectedMessage(formattedMessage);
         setThreadMessages([formattedMessage]);
+        // Update active thread registration immediately
+        setActiveThread({
+          threadRootId: formattedMessage.id,
+          selectedMessageId: formattedMessage.id,
+          senderId: formattedMessage.sender_id,
+          recipientId: formattedMessage.recipient_id,
+          context: context,
+          onNewMessage: (message: Message) => {
+            // Only process messages for current context
+            if (message.context !== context) return;
+            
+            // Check if message already exists to avoid duplicates
+            setThreadMessages(prev => {
+              const exists = prev.some(msg => msg.id === message.id);
+              if (exists) {
+                return prev;
+              }
+              return [...prev, message];
+            });
+            
+            // Auto-scroll to bottom
+            setTimeout(() => {
+              scrollToBottom();
+            }, 100);
+            
+            // Play sound if enabled
+            if (soundEnabled) {
+              playNotificationSound();
+            }
+          },
+          onMessageReceived: () => {
+            // Reload messages list when new message arrives (not in active thread)
+            if (activeTab === 'inbox') {
+              loadMessages();
+            }
+          }
+        });
+        // Load the full thread to ensure consistency (with error handling)
+        setTimeout(async () => {
+          try {
+            await loadThread(formattedMessage.id);
+            scrollToBottom();
+          } catch (loadError) {
+            console.error('Error loading thread after new message:', loadError);
+            // Don't show error to user, just log it - the message was sent successfully
+          }
+        }, 100);
+        // Clear to parameter from URL
+        if (toUsername) {
+          navigate('/messages?context=' + context);
+        }
       } else {
         setThreadMessages([...threadMessages, formattedMessage]);
         // Auto-scroll to bottom after sending
@@ -551,7 +646,10 @@ const Messages = () => {
       }
 
       setReplyText('');
-      loadMessages(); // Refresh list
+      // Refresh list after a small delay to allow state updates
+      setTimeout(() => {
+        loadMessages();
+      }, 200);
       toast.success('Mesaj trimis!');
     } catch (error: any) {
       console.error('Error sending reply:', error);
@@ -613,23 +711,83 @@ const Messages = () => {
   };
 
   const handleDelete = async (messageId: string, isSender: boolean) => {
+    if (isDeleting) return; // Prevent multiple clicks
+    
+    setIsDeleting(true);
     try {
+      // Get the thread root ID to delete all messages in the thread
+      const { data: messageData } = await supabase
+        .from('private_messages')
+        .select('thread_root_id, id')
+        .eq('id', messageId)
+        .single();
+
+      if (!messageData) {
+        toast.error('Mesajul nu a fost găsit');
+        setIsDeleting(false);
+        return;
+      }
+
+      const threadRootId = messageData.thread_root_id || messageData.id;
       const updateField = isSender ? 'is_deleted_by_sender' : 'is_deleted_by_recipient';
-      const { error } = await supabase
+
+      // Soft delete: set deleted flag only for messages in thread where current user is sender or recipient
+      // This ensures that when user A deletes, only user A's view is affected, not user B's
+      // Update messages where: (thread_root_id = X OR id = X) AND (sender_id = user.id OR recipient_id = user.id)
+      const { error: updateError } = await supabase
         .from('private_messages')
         .update({ [updateField]: true })
-        .eq('id', messageId);
+        .or(`thread_root_id.eq.${threadRootId},id.eq.${threadRootId}`)
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
 
-      if (error) throw error;
-      toast.success('Mesaj șters');
-      loadMessages();
-      if (selectedMessage?.id === messageId) {
+      if (updateError) throw updateError;
+      
+      // Check if both parties have deleted the messages, then permanently delete
+      // Get all messages in thread after the update
+      const { data: threadMessages, error: checkError } = await supabase
+        .from('private_messages')
+        .select('id, is_deleted_by_sender, is_deleted_by_recipient')
+        .or(`thread_root_id.eq.${threadRootId},id.eq.${threadRootId}`);
+
+      if (!checkError && threadMessages && threadMessages.length > 0) {
+        // Find messages where both parties have deleted
+        const messagesToDelete = threadMessages.filter((msg) => {
+          // Check if both sender and recipient have deleted
+          return msg.is_deleted_by_sender === true && msg.is_deleted_by_recipient === true;
+        });
+
+        if (messagesToDelete.length > 0) {
+          // Permanently delete messages where both parties have deleted
+          const messageIds = messagesToDelete.map((msg) => msg.id);
+          const { error: deleteError } = await supabase
+            .from('private_messages')
+            .delete()
+            .in('id', messageIds);
+
+          if (deleteError) {
+            console.error('Error permanently deleting messages:', deleteError);
+            // Don't throw - soft delete was successful
+          } else {
+            console.log(`Permanently deleted ${messagesToDelete.length} messages`);
+          }
+        }
+      }
+      
+      toast.success('Conversație ștearsă');
+      
+      // Clear selected message and thread
+      if (selectedMessage && (selectedMessage.thread_root_id === threadRootId || selectedMessage.id === threadRootId)) {
         setSelectedMessage(null);
         setThreadMessages([]);
       }
+      
+      // Reload messages to update UI
+      await loadMessages();
     } catch (error) {
-      console.error('Error deleting message:', error);
+      console.error('Error deleting conversation:', error);
       toast.error('Eroare la ștergere');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -758,7 +916,8 @@ const Messages = () => {
               <div className="p-8 text-center text-gray-500">Se încarcă...</div>
             ) : messages.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                Nu există mesaje
+                <p className="text-base font-medium mb-2">Nu ai mesaje</p>
+                <p className="text-sm">Trimite un mesaj nou de pe profilul unui utilizator</p>
               </div>
             ) : (
               <>
@@ -819,7 +978,89 @@ const Messages = () => {
 
         {/* Thread View - Instagram/WhatsApp Style */}
         <div className={`${selectedMessage ? 'flex' : 'hidden lg:flex'} flex-1 flex flex-col bg-white rounded-lg shadow-sm min-h-[600px] max-h-[calc(100vh-8rem)] ml-0 lg:ml-4`}>
-          {selectedMessage ? (
+          {selectedMessage && selectedMessage.id === 'new' ? (
+            <>
+              {/* Header for new message */}
+              <div className="p-2 sm:p-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden"
+                  onClick={() => {
+                    setSelectedMessage(null);
+                    setThreadMessages([]);
+                    navigate('/messages?context=' + context);
+                  }}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <Link
+                  to={otherUser?.username ? `/profile/${otherUser.username}` : '#'}
+                  className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0"
+                >
+                  <Avatar className="w-10 h-10 sm:w-12 sm:h-12">
+                    <AvatarImage src={otherUser?.avatar} />
+                    <AvatarFallback>
+                      {otherUser?.name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">
+                      {otherUser?.name || 'Utilizator'}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500 truncate">
+                      @{otherUser?.username || 'utilizator'}
+                    </p>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Empty messages container for new message */}
+              <div 
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0 flex items-center justify-center" 
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                <div className="text-center text-gray-500">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-sm">Scrie un mesaj pentru a începe conversația</p>
+                </div>
+              </div>
+
+              {/* Reply Input - Fixed at bottom */}
+              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0 pb-2 sm:pb-3">
+                <div className="flex gap-2 items-end">
+                  <Textarea
+                    ref={textareaRef}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Scrie un mesaj..."
+                    className="min-h-[44px] max-h-[120px] resize-none text-sm sm:text-base"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendReply();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleSendReply}
+                    disabled={!replyText.trim() || sendingReply}
+                    className="shrink-0 h-[44px] w-[44px] p-0"
+                  >
+                    {sendingReply ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                  Apasă Enter pentru a trimite, Shift+Enter pentru linie nouă
+                </p>
+              </div>
+            </>
+          ) : selectedMessage && selectedMessage.id !== 'new' ? (
             <>
               {/* Header */}
               <div className="p-2 sm:p-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
@@ -894,8 +1135,13 @@ const Messages = () => {
                     size="icon"
                     onClick={() => handleDelete(selectedMessage.id, isSender(selectedMessage))}
                     title="Șterge"
+                    disabled={isDeleting}
                   >
-                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {isDeleting ? (
+                      <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1033,18 +1279,37 @@ const Messages = () => {
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 min-h-0">
               <div className="text-center text-gray-500">
-                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-medium">Selectează un mesaj pentru a-l citi</p>
-                <p className="text-sm mt-2">Sau trimite un mesaj nou de pe profilul unui utilizator</p>
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md mx-auto">
-                  <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
-                    <Lock className="w-4 h-4 text-gray-400 shrink-0" />
-                    <div className="text-center flex-1">
-                      <div>Mesajele sunt criptate end-to-end.</div>
-                      <div>Nimeni nu le poate citi, nici măcar administratorii.</div>
+                {messages.length === 0 ? (
+                  <>
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">Nu ai mesaje</p>
+                    <p className="text-sm text-gray-600 mb-6">Trimite un mesaj nou de pe profilul unui utilizator pentru a începe o conversație</p>
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md mx-auto">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
+                        <Lock className="w-4 h-4 text-gray-400 shrink-0" />
+                        <div className="text-center flex-1">
+                          <div className="font-medium">Mesajele sunt criptate end-to-end.</div>
+                          <div className="mt-1">Nimeni le poate citi, nici măcar administratorii.</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">Selectează o conversație</p>
+                    <p className="text-sm text-gray-600 mb-6">Alege o conversație din listă pentru a o citi</p>
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md mx-auto">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
+                        <Lock className="w-4 h-4 text-gray-400 shrink-0" />
+                        <div className="text-center flex-1">
+                          <div className="font-medium">Mesajele sunt criptate end-to-end.</div>
+                          <div className="mt-1">Nimeni le poate citi, nici măcar administratorii.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

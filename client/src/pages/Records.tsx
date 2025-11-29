@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,6 +42,7 @@ interface FishRecord {
 const Records = () => {
   const { user } = useAuth();
   const { trackSearch } = useAnalytics();
+  const [searchParams, setSearchParams] = useSearchParams();
   // Real data states
   const [records, setRecords] = useState<FishRecord[]>([]);
   const [species, setSpecies] = useState<{ id: string; name: string }[]>([]);
@@ -48,7 +50,7 @@ const Records = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState(searchParams.get('location_id') || 'all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [activeTab, setActiveTab] = useState('overall');
   const [teamStats, setTeamStats] = useState<{

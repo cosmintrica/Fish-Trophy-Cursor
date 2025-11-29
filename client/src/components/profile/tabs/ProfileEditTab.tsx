@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, Save, User, ExternalLink, Eye } from 'lucide-react';
+import { Edit, Save, User, ExternalLink, Eye, Globe, Youtube, Phone, MapPin } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { Link } from 'react-router-dom';
 
@@ -76,27 +76,27 @@ export const ProfileEditTab = ({
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Informații profil</h2>
-                    {!isEditing ? (
-                        <Button onClick={() => setIsEditing(true)} variant="outline">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editează
+                {!isEditing ? (
+                    <Button onClick={() => setIsEditing(true)} variant="outline">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editează
+                    </Button>
+                ) : (
+                    <div className="flex space-x-2">
+                        <Button onClick={() => setIsEditing(false)} variant="outline">
+                            Anulează
                         </Button>
-                    ) : (
-                        <div className="flex space-x-2">
-                            <Button onClick={() => setIsEditing(false)} variant="outline">
-                                Anulează
-                            </Button>
-                            <Button
-                                onClick={handleSave}
-                                disabled={isUpdatingProfile}
-                                className="bg-blue-600 hover:bg-blue-700"
-                            >
-                                <Save className="w-4 h-4 mr-2" />
-                                {isUpdatingProfile ? 'Se salvează...' : 'Salvează'}
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                        <Button
+                            onClick={handleSave}
+                            disabled={isUpdatingProfile}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            <Save className="w-4 h-4 mr-2" />
+                            {isUpdatingProfile ? 'Se salvează...' : 'Salvează'}
+                        </Button>
+                    </div>
+                )}
+            </div>
 
             <Card>
                 <CardContent className="pt-6 space-y-4">
@@ -110,7 +110,10 @@ export const ProfileEditTab = ({
                                 placeholder="Numele tău complet"
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">{profileData.displayName || '-'}</p>
+                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <User className="w-5 h-5 text-gray-600" />
+                                <p className="text-gray-900 font-medium">{profileData.displayName || '-'}</p>
+                            </div>
                         )}
                     </div>
 
@@ -124,7 +127,10 @@ export const ProfileEditTab = ({
                                 placeholder="+40 XXX XXX XXX"
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">{profileData.phone || '-'}</p>
+                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <Phone className="w-5 h-5 text-gray-600" />
+                                <p className="text-gray-900">{profileData.phone || '-'}</p>
+                            </div>
                         )}
                     </div>
 
@@ -135,12 +141,16 @@ export const ProfileEditTab = ({
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={profileData.show_county_publicly || false}
-                                        onChange={(e) => setProfileData({ ...profileData, show_county_publicly: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
+                                    <div
+                                        onClick={() => setProfileData({ ...profileData, show_county_publicly: !profileData.show_county_publicly })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profileData.show_county_publicly ? 'bg-blue-600' : 'bg-gray-300'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profileData.show_county_publicly ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </div>
                                 </label>
                             )}
                         </div>
@@ -152,7 +162,18 @@ export const ProfileEditTab = ({
                                 placeholder="Selectează județul"
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">{countyName || '-'}</p>
+                            <div className="mt-2">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <MapPin className="w-5 h-5 text-blue-600" />
+                                    <p className="text-gray-900 flex-1">{countyName || '-'}</p>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_county_publicly
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-gray-200 text-gray-700'
+                                        }`}>
+                                        {profileData.show_county_publicly ? 'Public' : 'Privat'}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -163,12 +184,16 @@ export const ProfileEditTab = ({
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={profileData.show_city_publicly || false}
-                                        onChange={(e) => setProfileData({ ...profileData, show_city_publicly: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
+                                    <div
+                                        onClick={() => setProfileData({ ...profileData, show_city_publicly: !profileData.show_city_publicly })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profileData.show_city_publicly ? 'bg-blue-600' : 'bg-gray-300'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profileData.show_city_publicly ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </div>
                                 </label>
                             )}
                         </div>
@@ -181,7 +206,18 @@ export const ProfileEditTab = ({
                                 disabled={!selectedCounty}
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">{cityName || '-'}</p>
+                            <div className="mt-2">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <MapPin className="w-5 h-5 text-purple-600" />
+                                    <p className="text-gray-900 flex-1">{cityName || '-'}</p>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_city_publicly
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-gray-200 text-gray-700'
+                                        }`}>
+                                        {profileData.show_city_publicly ? 'Public' : 'Privat'}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -196,7 +232,9 @@ export const ProfileEditTab = ({
                                 className="w-full mt-1 p-2 border border-gray-300 rounded-md min-h-[100px]"
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900 whitespace-pre-wrap">{profileData.bio || '-'}</p>
+                            <div className="mt-2 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">{profileData.bio || '-'}</p>
+                            </div>
                         )}
                     </div>
 
@@ -207,12 +245,16 @@ export const ProfileEditTab = ({
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={profileData.show_website_publicly || false}
-                                        onChange={(e) => setProfileData({ ...profileData, show_website_publicly: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
+                                    <div
+                                        onClick={() => setProfileData({ ...profileData, show_website_publicly: !profileData.show_website_publicly })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profileData.show_website_publicly ? 'bg-blue-600' : 'bg-gray-300'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profileData.show_website_publicly ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </div>
                                 </label>
                             )}
                         </div>
@@ -223,13 +265,24 @@ export const ProfileEditTab = ({
                                 placeholder="https://..."
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">
-                                {profileData.website ? (
-                                    <a href={profileData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                        {profileData.website}
-                                    </a>
-                                ) : '-'}
-                            </p>
+                            <div className="mt-2">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <Globe className="w-5 h-5 text-green-600" />
+                                    <div className="flex-1">
+                                        {profileData.website ? (
+                                            <a href={profileData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                {profileData.website}
+                                            </a>
+                                        ) : '-'}
+                                    </div>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_website_publicly
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-gray-200 text-gray-700'
+                                        }`}>
+                                        {profileData.show_website_publicly ? 'Public' : 'Privat'}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -240,12 +293,16 @@ export const ProfileEditTab = ({
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={profileData.show_youtube_publicly || false}
-                                        onChange={(e) => setProfileData({ ...profileData, show_youtube_publicly: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
+                                    <div
+                                        onClick={() => setProfileData({ ...profileData, show_youtube_publicly: !profileData.show_youtube_publicly })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profileData.show_youtube_publicly ? 'bg-blue-600' : 'bg-gray-300'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profileData.show_youtube_publicly ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </div>
                                 </label>
                             )}
                         </div>
@@ -256,13 +313,24 @@ export const ProfileEditTab = ({
                                 placeholder="https://youtube.com/@..."
                             />
                         ) : (
-                            <p className="mt-2 text-gray-900">
-                                {profileData.youtube_channel ? (
-                                    <a href={profileData.youtube_channel} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                        {profileData.youtube_channel}
-                                    </a>
-                                ) : '-'}
-                            </p>
+                            <div className="mt-2">
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <Youtube className="w-5 h-5 text-red-600" />
+                                    <div className="flex-1">
+                                        {profileData.youtube_channel ? (
+                                            <a href={profileData.youtube_channel} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                {profileData.youtube_channel}
+                                            </a>
+                                        ) : '-'}
+                                    </div>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_youtube_publicly
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-gray-200 text-gray-700'
+                                        }`}>
+                                        {profileData.show_youtube_publicly ? 'Public' : 'Privat'}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
 

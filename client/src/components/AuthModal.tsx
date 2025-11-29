@@ -216,48 +216,19 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
           const errorStatus = (result.error as any)?.status;
           const errorCode = (result.error as any)?.code;
           
-          // Check if it's invalid credentials - might be Google account without password
+          // Handle different error types with specific messages
           if (errorCode === 'invalid_credentials' || errorMessage.includes('Invalid login credentials') || errorMessage.includes('invalid_credentials')) {
-            // Check if user exists and might be a Google account
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('id, email')
-                .eq('email', loginEmail.toLowerCase())
-                .maybeSingle();
-              
-              if (profile) {
-                // User exists - likely Google account without password
-                setError('Acest cont a fost creat cu Google și nu are parolă setată. Te rugăm să folosești butonul "Continuă cu Google" pentru a te autentifica, sau mergi în Setări → Setări cont pentru a seta o parolă.');
-              } else {
-                setError('Email sau parolă incorectă.');
-              }
-            } catch (checkError) {
-              console.error('Error checking profile:', checkError);
-              // If check fails, show generic error
-              setError('Email sau parolă incorectă. Dacă contul tău a fost creat cu Google, folosește butonul "Continuă cu Google" sau setează o parolă din Setări.');
-            }
-          } else if (errorStatus === 400 || errorCode === 400 || errorMessage.includes('invalid_grant') || errorMessage.includes('Email rate limit exceeded')) {
-            // Other 400 errors - check if might be Google account
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('id, email')
-                .eq('email', loginEmail.toLowerCase())
-                .maybeSingle();
-              
-              if (profile) {
-                setError('Acest cont a fost creat cu Google și nu are parolă setată. Te rugăm să folosești butonul "Continuă cu Google" pentru a te autentifica, sau mergi în Setări → Setări cont pentru a seta o parolă.');
-              } else {
-                setError('Email sau parolă incorectă.');
-              }
-            } catch (checkError) {
-              console.error('Error checking profile:', checkError);
-              setError('Email sau parolă incorectă. Dacă contul tău a fost creat cu Google, folosește butonul "Continuă cu Google" sau setează o parolă din Setări.');
-            }
+            // Invalid credentials - wrong email or password
+            setError('Email sau parolă incorectă.');
+          } else if (errorMessage.includes('Email rate limit exceeded') || errorMessage.includes('rate limit')) {
+            setError('Prea multe încercări. Te rugăm să aștepți câteva momente și să încerci din nou.');
           } else if (errorMessage.includes('Email not confirmed')) {
             setError('Email-ul nu a fost confirmat. Verifică-ți inbox-ul și apasă pe link-ul de confirmare.');
+          } else if (errorStatus === 400 || errorCode === 400) {
+            // Generic 400 error - likely wrong credentials
+            setError('Email sau parolă incorectă.');
           } else {
+            // Other errors - show the actual error message or generic
             setError(errorMessage || 'Eroare la autentificare. Încearcă din nou.');
           }
           setLoading(false);

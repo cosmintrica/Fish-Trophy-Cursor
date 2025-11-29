@@ -176,7 +176,18 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
-            <Link to="/" className="flex items-center space-x-3 group" aria-label="Acasă">
+            <Link 
+              to="/" 
+              className="flex items-center space-x-3 group" 
+              aria-label="Acasă"
+              onClick={(e) => {
+                // If already on homepage, refresh the page
+                if (location.pathname === '/') {
+                  e.preventDefault();
+                  window.location.reload();
+                }
+              }}
+            >
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy"
@@ -191,6 +202,13 @@ export default function Layout({ children }: { children: ReactNode }) {
             <nav className="hidden lg:flex items-center space-x-8" role="navigation" aria-label="Navigația principală">
               <Link
                 to="/"
+                onClick={(e) => {
+                  // If already on homepage, refresh the page
+                  if (location.pathname === '/') {
+                    e.preventDefault();
+                    window.location.reload();
+                  }
+                }}
                 className={`text-sm font-medium transition-colors ${
                   location.pathname === '/'
                     ? 'text-blue-600'

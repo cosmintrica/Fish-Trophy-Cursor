@@ -44,28 +44,38 @@ export interface FishingLocation {
   imageUrl?: string;
 }
 
+// Minimal marker data for map rendering (performance optimization)
+export interface FishingMarker {
+  id: string;
+  name: string;
+  coords: [number, number];
+  type: 'river' | 'lake' | 'pond' | 'private_pond' | 'balti_salbatic' | 'maritime' | 'fluviu';
+  county: string;
+  region: string;
+}
+
 // Convertește tipul din baza de date la tipul din aplicație
 const convertType = (dbType: string): FishingLocation['type'] => {
   switch (dbType) {
     case 'lac': return 'lake';           // Lacuri mari
     case 'rau': return 'river';          // Râuri
-    case 'fluviu': return 'river';       // Fluviuri (Dunărea) = râuri
-    case 'balti_private': return 'private_pond'; // Bălți private (administrate privat)
-    case 'balti_salbatic': return 'balti_salbatic'; // Bălți sălbatice (ANPA, ape necontractate)
-    case 'delta': return 'lake';         // Delta Dunării = lacuri
+    case 'fluviu': return 'fluviu';     // Fluvii
+    case 'balti_private': return 'private_pond'; // Bălți private
+    case 'balti_salbatic': return 'balti_salbatic'; // Bălți sălbatice
+    case 'mare': return 'maritime';      // Pescuit în mare
+    case 'delta': return 'maritime';     // Delta Dunării
     default: return 'lake';
   }
 };
 
-// Convertește locația din baza de date la formatul aplicației
+// Convertește o locație din formatul bazei de date la formatul aplicației
 const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation => {
-  // Verifică dacă coordonatele sunt valide
-  const lat = Number(dbLocation.latitude);
-  const lng = Number(dbLocation.longitude);
+  const lat = dbLocation.latitude;
+  const lng = dbLocation.longitude;
 
-  if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-    console.error('❌ Invalid coordinates for location:', dbLocation.name, 'lat:', lat, 'lng:', lng);
-    // Returnează coordonatele default pentru România
+  // Verifică dacă coordonatele sunt valide
+  if (!lat || !lng || lat < 43 || lat > 48 || lng < 20 || lng > 30) {
+    console.warn(`Invalid coords for ${dbLocation.name}: (${lat}, ${lng}), using default`);
     return {
       id: dbLocation.id,
       name: dbLocation.name,
@@ -112,6 +122,84 @@ const convertLocation = (dbLocation: DatabaseFishingLocation): FishingLocation =
     recordCount: 0, // Vom calcula mai târziu
     imageUrl: dbLocation.image_url
   };
+};
+
+// PERFORMANCE: Load only minimal marker data (id, name, coords, type, county, region)
+export const loadFishingMarkers = async (): Promise<FishingMarker[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('fishing_locations')
+      .select('id, name, type, county, region, latitude, longitude')
+      .order('name');
+
+    if (error) {
+      console.error('❌ Error loading fishing markers:', error);
+      return [];
+    }
+
+    if (!data) {
+      return [];
+    }
+
+    // Convert to minimal marker format
+    const markers: FishingMarker[] = data.map(dbLocation => {
+      const lat = dbLocation.latitude;
+      const lng = dbLocation.longitude;
+
+      // Validate coordinates
+      if (!lat || !lng || lat < 43 || lat > 48 || lng < 20 || lng > 30) {
+        console.warn(`Invalid coords for ${dbLocation.name}: (${lat}, ${lng}), using default`);
+        return {
+          id: dbLocation.id,
+          name: dbLocation.name,
+          coords: [25.0, 45.0] as [number, number],
+          type: convertType(dbLocation.type),
+          county: dbLocation.county,
+          region: dbLocation.region
+        };
+      }
+
+      return {
+        id: dbLocation.id,
+        name: dbLocation.name,
+        coords: [lng, lat] as [number, number],
+        type: convertType(dbLocation.type),
+        county: dbLocation.county,
+        region: dbLocation.region
+      };
+    });
+
+    console.log(`✅ Loaded ${markers.length} markers (minimal data for performance)`);
+    return markers;
+  } catch (error) {
+    console.error('❌ Error in loadFishingMarkers:', error);
+    return [];
+  }
+};
+
+// PERFORMANCE: Load full location details on-demand (when user clicks a marker)
+export const getLocationDetails = async (id: string): Promise<FishingLocation | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('fishing_locations')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('❌ Error loading location details:', error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return convertLocation(data);
+  } catch (error) {
+    console.error('❌ Error in getLocationDetails:', error);
+    return null;
+  }
 };
 
 // Încarcă toate locațiile din baza de date
@@ -208,6 +296,30 @@ export const loadFishingLocationsByRegion = async (region: string): Promise<Fish
     return data.map(convertLocation);
   } catch (error) {
     console.error('❌ Error in loadFishingLocationsByRegion:', error);
+    return [];
+  }
+};
+
+// Caută locații după nume
+export const searchFishingLocations = async (query: string): Promise<FishingLocation[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('fishing_locations')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+
+    if (error) {
+      console.error('❌ Error searching fishing locations:', error);
+      return [];
+    }
+
+    if (!data) return [];
+
+    return data.map(convertLocation);
+  } catch (error) {
+    console.error('❌ Error in searchFishingLocations:', error);
     return [];
   }
 };

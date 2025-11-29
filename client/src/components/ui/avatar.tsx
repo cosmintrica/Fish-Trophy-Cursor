@@ -25,6 +25,10 @@ const AvatarImage = React.forwardRef<
     ref={ref}
     className={cn("aspect-square h-full w-full object-cover rounded-full", className)}
     {...props}
+    onError={(e) => {
+      console.error('Avatar image failed to load:', props.src);
+      // AvatarPrimitive will automatically show fallback on error
+    }}
   />
 ))
 AvatarImage.displayName = AvatarPrimitive.Image.displayName
