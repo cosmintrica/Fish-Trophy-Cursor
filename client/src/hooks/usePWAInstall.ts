@@ -71,6 +71,30 @@ export const usePWAInstall = () => {
       setShowTutorial(true);
     }
 
+    // Verifică dacă PWA este instalabil (manifest + service worker activ)
+    const checkPWAInstallable = async () => {
+      // Verifică dacă manifest.json există și este valid
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (!manifestLink) {
+        return false;
+      }
+
+      // Verifică dacă service worker este activ
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && registration.active) {
+            // PWA este instalabil dacă manifest + service worker sunt active
+            return true;
+          }
+        } catch (error) {
+          console.error('Error checking service worker:', error);
+        }
+      }
+
+      return false;
+    };
+
     // Pentru Android - folosește beforeinstallprompt
     if (isAndroid()) {
       const handleBeforeInstallPrompt = (e: Event) => {
@@ -81,12 +105,24 @@ export const usePWAInstall = () => {
 
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-      // Dacă nu există beforeinstallprompt, afișează prompt-ul manual
-      setTimeout(() => {
-        if (!deferredPrompt) {
+      // Verifică dacă PWA este instalabil și afișează prompt-ul manual dacă beforeinstallprompt nu apare
+      const verifyAndShowPrompt = async () => {
+        const isInstallable = await checkPWAInstallable();
+        if (isInstallable && !deferredPrompt) {
+          // Afișează prompt-ul manual dacă PWA este instalabil dar beforeinstallprompt nu apare
           setIsInstallable(true);
         }
-      }, 2000);
+      };
+
+      // Verifică după 3 secunde (timp pentru încărcarea completă)
+      setTimeout(() => {
+        verifyAndShowPrompt();
+      }, 3000);
+
+      // Verifică și după 5 secunde (backup)
+      setTimeout(() => {
+        verifyAndShowPrompt();
+      }, 5000);
 
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

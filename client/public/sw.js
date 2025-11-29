@@ -231,7 +231,23 @@ self.addEventListener('message', (event) => {
   }
   
   if (event.data && event.data.type === 'GET_VERSION') {
-    event.ports[0].postMessage({ version: CACHE_VERSION });
+    // Fix: Verifică dacă portul există înainte de a trimite mesaj
+    if (event.ports && event.ports[0]) {
+      try {
+        event.ports[0].postMessage({ version: CACHE_VERSION });
+      } catch (error) {
+        // Ignore errors if port is closed
+      }
+    }
+  }
+  
+  // Respond to all messages to prevent "message channel closed" errors
+  if (event.ports && event.ports[0]) {
+    try {
+      event.ports[0].postMessage({ success: true });
+    } catch (error) {
+      // Ignore errors if port is closed
+    }
   }
 });
 

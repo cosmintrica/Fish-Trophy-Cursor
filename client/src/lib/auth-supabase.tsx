@@ -86,12 +86,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       });
 
-    // Set loading to false after a short timeout to prevent white screen
+    // Set loading to false after a very short timeout to prevent white screen
+    // Reduced to 200ms for instant mobile loading (auth usually resolves in <100ms)
+    // This is a safety timeout - most auth checks complete instantly
     const timeout = setTimeout(() => {
       if (mounted) {
         setLoading(false);
       }
-    }, 3000); // 3 second timeout
+    }, 200); // 200ms timeout (optimized for mobile - auth is usually instant)
 
     // Listen for auth changes with error handling
     const {

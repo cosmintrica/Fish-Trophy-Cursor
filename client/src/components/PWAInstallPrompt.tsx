@@ -31,10 +31,10 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
     if (isInstallable && !isInstalled && isMobile()) {
       const notificationDismissed = localStorage.getItem('pwa-notification-dismissed') === 'true';
       if (!notificationDismissed) {
-        // Delay pentru a permite aplicației să se încarce
+        // Delay redus pentru a permite aplicației să se încarce (sincronizat cu hook-ul)
         setTimeout(() => {
           setShowNotification(true);
-        }, 3000);
+        }, 3500); // 3.5 secunde - după ce hook-ul verifică (3 secunde)
       }
     }
   }, [isInstallable, isInstalled]);

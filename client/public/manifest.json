@@ -2,9 +2,10 @@
   "name": "Fish Trophy - Platforma Pescarilor din România",
   "short_name": "Fish Trophy",
   "description": "Descoperă cele mai bune locații de pescuit din România",
-  "start_url": "/",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#3b82f6",
   "theme_color": "#3b82f6",
   "icons": [

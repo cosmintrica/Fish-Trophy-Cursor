@@ -1047,11 +1047,13 @@ export default function Home() {
 
     // Load locations after map is ready - FIX 1: Use fishingMarkers, start instantly if already loaded
     map.once('load', () => {
-      // If fishingMarkers are already loaded, start animation instantly
-      if (fishingMarkers.length > 0) {
-        addLocationsToMap(map, activeFilter);
-      }
-      // If not loaded yet, useEffect will handle it when fishingMarkers are ready
+      // Always try to add markers when map loads (useEffect will also handle it, but this ensures it works)
+      // Use a small delay to ensure fishingMarkers state is updated
+      setTimeout(() => {
+        if (fishingMarkers.length > 0 || databaseLocations.length > 0) {
+          addLocationsToMap(map, activeFilter);
+        }
+      }, 100);
     });
 
     // CRITICAL: Close popups when clicking on map (FIX 9)
@@ -1081,8 +1083,8 @@ export default function Home() {
 
   // Separate effect for updating markers when data changes - FIX 1: Use fishingMarkers.length, instant start
   useEffect(() => {
-    if (mapInstanceRef.current && fishingMarkers.length > 0 && !isLoadingLocations) {
-      // Start animation instantly when fishingMarkers are loaded
+    if (mapInstanceRef.current && fishingMarkers.length > 0) {
+      // Start animation instantly when fishingMarkers are loaded (don't wait for isLoadingLocations)
       if (mapInstanceRef.current.isStyleLoaded()) {
         addLocationsToMap(mapInstanceRef.current, activeFilter);
       } else {
@@ -1092,7 +1094,7 @@ export default function Home() {
         });
       }
     }
-  }, [fishingMarkers.length, isLoadingLocations, activeFilter]);
+  }, [fishingMarkers.length, activeFilter]); // Removed isLoadingLocations dependency
 
   // Funcție pentru filtrarea locațiilor - FIX 3: Debouncing + FIX 10: Reset zoom
   const filterLocations = (type: string) => {
