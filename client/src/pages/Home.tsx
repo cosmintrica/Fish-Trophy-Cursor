@@ -211,17 +211,18 @@ export default function Home() {
       }
 
       // Progressive loading animation: add markers randomly over 4.5 seconds
-      const totalMarkers = geojson.features.length;
-      const animationDuration = 4500; // 4.5 seconds
-      const batchSize = Math.max(1, Math.ceil(totalMarkers / 100)); // ~100 batches
-      const intervalTime = animationDuration / 100;
+      // TEMPORAR: ANIMAȚIE COMENTATĂ PENTRU TEST - ÎNCĂRCARE INSTANT
+      // const totalMarkers = geojson.features.length;
+      // const animationDuration = 4500; // 4.5 seconds
+      // const batchSize = Math.max(1, Math.ceil(totalMarkers / 100)); // ~100 batches
+      // const intervalTime = animationDuration / 100;
 
-      const shuffled = [...geojson.features].sort(() => Math.random() - 0.5);
+      // const shuffled = [...geojson.features].sort(() => Math.random() - 0.5);
 
-      // Add source with empty data initially
+      // Add source with ALL data instantly (TEST MODE)
       _map.addSource(sourceId, {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
+        data: geojson // Load all markers instantly
       });
 
       // Add circle layer with EXACT same colors as filter buttons
@@ -532,22 +533,25 @@ export default function Home() {
         _map.getCanvas().style.cursor = '';
       });
 
-      // Progressive loading animation
-      let currentIndex = 0;
-      const loadInterval = setInterval(() => {
-        currentIndex += batchSize;
-        if (currentIndex >= totalMarkers) {
-          currentIndex = totalMarkers;
-          clearInterval(loadInterval);
-          setIsAddingMarkers(false);
-        }
-        
-        const currentFeatures = shuffled.slice(0, currentIndex);
-        (_map.getSource(sourceId) as maplibregl.GeoJSONSource).setData({
-          type: 'FeatureCollection',
-          features: currentFeatures
-        });
-      }, intervalTime);
+      // Progressive loading animation - TEMPORAR COMENTATĂ (TEST MODE)
+      // let currentIndex = 0;
+      // const loadInterval = setInterval(() => {
+      //   currentIndex += batchSize;
+      //   if (currentIndex >= totalMarkers) {
+      //     currentIndex = totalMarkers;
+      //     clearInterval(loadInterval);
+      //     setIsAddingMarkers(false);
+      //   }
+      //   
+      //   const currentFeatures = shuffled.slice(0, currentIndex);
+      //   (_map.getSource(sourceId) as maplibregl.GeoJSONSource).setData({
+      //     type: 'FeatureCollection',
+      //     features: currentFeatures
+      //   });
+      // }, intervalTime);
+      
+      // TEST MODE: All markers loaded instantly
+      setIsAddingMarkers(false);
     } catch (error) {
       setIsAddingMarkers(false);
     }
