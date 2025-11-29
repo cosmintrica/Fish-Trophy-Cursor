@@ -29,34 +29,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // ✅ OPTIMIZARE: Separă vendor-urile mari în chunk-uri separate
+          // ✅ OPTIMIZARE: Separă doar MapLibre (foarte mare) - restul împreună pentru a evita dependențe circulare
           if (id.includes('node_modules')) {
-            // React și React DOM (trebuie împreună pentru a evita dependențe circulare)
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor-react';
-            }
             // MapLibre GL (mare) - separat pentru lazy loading
             if (id.includes('maplibre-gl')) {
               return 'vendor-maplibre';
             }
-            // Supabase client
-            if (id.includes('@supabase')) {
-              return 'vendor-supabase';
-            }
-            // React Router
-            if (id.includes('react-router')) {
-              return 'vendor-router';
-            }
-            // Radix UI components (toate împreună pentru a evita dependențe)
-            if (id.includes('@radix-ui')) {
-              return 'vendor-radix';
-            }
-            // Lucide React (iconițe)
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
-            // Restul vendor-urilor mici
-            return 'vendor-other';
+            // Toate celelalte vendor-uri împreună (evită dependențe circulare)
+            return 'vendor';
           }
         },
         chunkFileNames: 'assets/[name]-[hash].js',
