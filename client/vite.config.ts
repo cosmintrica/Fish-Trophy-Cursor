@@ -24,13 +24,46 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    minify: false,
+    minify: 'terser', // ✅ OPTIMIZARE: Activează minificare pentru -30-40% bundle size
+    terserOptions: {
+      compress: {
+        drop_console: true, // Elimină console.log în producție
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug'], // Elimină console logs
+      },
+    },
     rollupOptions: {
       output: {
-        manualChunks: undefined,
-        chunkFileNames: 'assets/[name].js',
-        entryFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        manualChunks: (id) => {
+          // ✅ OPTIMIZARE: Separă vendor-urile mari în chunk-uri separate
+          if (id.includes('node_modules')) {
+            // React și React DOM
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            // MapLibre GL (mare)
+            if (id.includes('maplibre-gl')) {
+              return 'vendor-maplibre';
+            }
+            // Supabase client
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+            // React Router
+            if (id.includes('react-router')) {
+              return 'vendor-router';
+            }
+            // Radix UI components
+            if (id.includes('@radix-ui')) {
+              return 'vendor-radix';
+            }
+            // Restul vendor-urilor
+            return 'vendor';
+          }
+        },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
     chunkSizeWarningLimit: 5000,
