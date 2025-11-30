@@ -253,6 +253,29 @@ button,
     /* Previne layout shift */
     margin: 0;
     padding: 0;
+    /* Fundal consistent pentru iPhone și mobile */
+    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
+    background-attachment: fixed;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  html {
+    /* Fundal pentru iPhone safe area */
+    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
+    background-attachment: fixed;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    /* Suport pentru safe area insets pe iPhone */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  #root {
+    /* Asigură că root-ul are fundal */
+    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff);
+    background-attachment: fixed;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   /* Optimizează font loading pentru LCP */
@@ -330,8 +353,13 @@ button,
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Fundal gradient pentru mobile - override bg-background pentru a preveni negru pe iPhone */
+    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
+    background-attachment: fixed;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 }
 
