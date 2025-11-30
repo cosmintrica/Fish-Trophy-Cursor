@@ -14,7 +14,7 @@ import RecordSubmissionModal from '@/components/RecordSubmissionModal';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
 
-// FAQ Component with animations
+// FAQ Component with smooth, professional animations
 function FAQItem({ question, answer, index, isOpen, onToggle }: {
   question: string;
   answer: string;
@@ -23,41 +23,44 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-white/20 overflow-hidden hover:shadow-lg" style={{ willChange: 'transform, opacity, box-shadow' }}>
+    <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-white/20 overflow-hidden hover:shadow-lg transition-shadow duration-500 ease-out">
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors"
-        style={{ willChange: 'background-color' }}
+        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors duration-300"
       >
         <h3 className="text-base md:text-lg font-semibold text-gray-900 flex items-start gap-2">
           <span className="text-blue-600 font-bold text-base">Q{index + 1}.</span>
           <span className="flex-1">{question}</span>
         </h3>
         <div
-          className="ml-2 transition-transform duration-200 ease-out"
-          style={{
-            transform: isOpen ? 'translateZ(0) rotate(180deg)' : 'translateZ(0) rotate(0deg)',
-            willChange: 'transform'
-          }}
+          className={`ml-2 flex-shrink-0 transition-transform duration-500 ease-in-out ${
+            isOpen ? 'rotate-180' : 'rotate-0'
+          }`}
         >
-          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg 
+            className="w-5 h-5 text-gray-500 transition-colors duration-300" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </button>
 
       <div
-        className="overflow-hidden"
+        className="overflow-hidden transition-all duration-500 ease-in-out"
         style={{
-          transform: isOpen ? 'scaleY(1)' : 'scaleY(0)',
-          transformOrigin: 'top',
+          maxHeight: isOpen ? '500px' : '0px',
           opacity: isOpen ? 1 : 0,
-          maxHeight: isOpen ? '400px' : '0px',
-          transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
-          willChange: 'transform, opacity'
         }}
       >
-        <div className="px-4 pb-3">
+        <div 
+          className="px-4 pb-3 transition-all duration-500 ease-out"
+          style={{
+            transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
+          }}
+        >
           <p className="text-base text-gray-700 leading-relaxed pl-6">
             {answer}
           </p>
@@ -150,6 +153,7 @@ export default function Home() {
   // Refs pentru a evita closure issues în event listeners
   const fishingMarkersRef = useRef<FishingMarker[]>([]);
   const databaseLocationsRef = useRef<FishingLocation[]>([]);
+  const layerListenersAddedRef = useRef(false); // Flag pentru a evita duplicate listeners
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<FishingLocation & { score: number }>>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -211,9 +215,45 @@ export default function Home() {
       };
 
       const sourceId = 'fishing-locations';
+      const layerId = 'location-circles';
 
       // Update existing source or create new one
       if (_map.getSource(sourceId)) {
+        // CRITICAL FIX: Verifică dacă layer-ul există, altfel îl creează
+        // Dacă layer-ul nu există, markerele nu vor fi vizibile chiar dacă source-ul are date
+        if (!_map.getLayer(layerId)) {
+          // Layer-ul nu există - trebuie creat (poate fi șters accidental sau nu a fost creat)
+          _map.addLayer({
+            id: layerId,
+            type: 'circle',
+            source: sourceId,
+            paint: {
+              'circle-color': [
+                'match',
+                ['get', 'type'],
+                'river', '#10b981',
+                'fluviu', '#10b981',
+                'lake', '#3b82f6',
+                'pond', '#ef4444',
+                'balti_salbatic', '#ef4444',
+                'private_pond', '#a855f7',
+                'maritime', '#6366f1',
+                '#6b7280'
+              ],
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                5, 10,
+                10, 14,
+                15, 18
+              ],
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity': 0.95
+            }
+          });
+        }
+        
+        // Actualizează datele source-ului (markerele vor apărea dacă layer-ul există)
         (_map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
         clearTimeout(safetyTimeout);
         setIsAddingMarkers(false);
@@ -269,7 +309,9 @@ export default function Home() {
       const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
       // Click handler - load full details on demand
-      _map.on('click', 'location-circles', async (e) => {
+      // Adaugă listeners doar dacă nu au fost deja adăugate (evită duplicate)
+      if (!layerListenersAddedRef.current) {
+        _map.on('click', 'location-circles', async (e) => {
         if (!e.features || !e.features[0]) return;
         const coordinates = (e.features[0].geometry as any).coordinates.slice();
         const properties = e.features[0].properties;
@@ -535,13 +577,16 @@ export default function Home() {
         });
       });
 
-      // Hover effect
-      _map.on('mouseenter', 'location-circles', () => {
-        _map.getCanvas().style.cursor = 'pointer';
-      });
-      _map.on('mouseleave', 'location-circles', () => {
-        _map.getCanvas().style.cursor = '';
-      });
+        // Hover effect
+        _map.on('mouseenter', 'location-circles', () => {
+          _map.getCanvas().style.cursor = 'pointer';
+        });
+        _map.on('mouseleave', 'location-circles', () => {
+          _map.getCanvas().style.cursor = '';
+        });
+        
+        layerListenersAddedRef.current = true; // Marchează că listeners-urile au fost adăugate
+      }
 
       // Progressive loading animation - TEMPORAR COMENTATĂ (TEST MODE)
       // let currentIndex = 0;
@@ -1060,43 +1105,8 @@ export default function Home() {
       setMapError(true);
     });
 
-    // Load locations after map is ready - FIX: Verificare robustă pentru race conditions
-    // Folosește 'load' în loc de 'once' pentru a se apela de fiecare dată
-    map.on('load', () => {
-      // Verifică dacă harta e gata
-      if (!map.isStyleLoaded() || !map.loaded()) return;
-      
-      // Funcție pentru a verifica și adăuga markerele
-      const tryAddMarkers = () => {
-        const hasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
-        if (hasData && map.isStyleLoaded() && map.loaded()) {
-          addLocationsToMap(map, activeFilter);
-          return true;
-        }
-        return false;
-      };
-      
-      // Verifică imediat
-      if (!tryAddMarkers()) {
-        // Dacă datele nu sunt gata, folosește requestAnimationFrame pentru retry rapid (fără delay artificial)
-        const retryWithRAF = () => {
-          if (!tryAddMarkers()) {
-            // Continuă să încerci până când datele sunt gata (max 50 de încercări = ~1 secundă)
-            let attempts = 0;
-            const maxAttempts = 50;
-            const retry = () => {
-              attempts++;
-              if (tryAddMarkers() || attempts >= maxAttempts) {
-                return; // Stop retrying
-              }
-              requestAnimationFrame(retry);
-            };
-            requestAnimationFrame(retry);
-          }
-        };
-        requestAnimationFrame(retryWithRAF);
-      }
-    });
+    // Map load event - doar pentru logging/debugging, logica reală e în useEffect
+    // (Eliminată redundanța - useEffect gestionează totul)
 
     // CRITICAL: Close popups when clicking on map (FIX 9)
     map.on('click', (e) => {
@@ -1123,7 +1133,8 @@ export default function Home() {
     };
   }, []); // Empty dependency array - initialize only once
 
-  // Separate effect for updating markers when data changes - FIX: Verificare robustă cu fallback și refs, INSTANT
+  // Effect pentru actualizarea markerelor când datele sau filtrul se schimbă
+  // SIMPLIFICAT: O singură sursă de adevăr, fără redundanțe
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
@@ -1133,9 +1144,8 @@ export default function Home() {
     
     if (!hasData) return;
     
-    // Funcție pentru a adăuga markerele
+    // Funcție simplificată pentru a adăuga markerele
     const tryAddMarkers = () => {
-      // Verifică dacă harta e complet gata
       if (map.isStyleLoaded() && map.loaded()) {
         addLocationsToMap(map, activeFilter);
         return true;
@@ -1148,19 +1158,19 @@ export default function Home() {
       return; // Markerele au fost adăugate
     }
     
-    // Harta nu e gata - folosește requestAnimationFrame pentru retry rapid
+    // Harta nu e gata - retry rapid cu requestAnimationFrame (max 60 încercări = ~1 secundă)
     let attempts = 0;
-    const maxAttempts = 100; // ~1.6 secunde la 60fps
+    const maxAttempts = 60;
     const retry = () => {
       attempts++;
       if (tryAddMarkers() || attempts >= maxAttempts) {
-        return; // Stop retrying
+        return;
       }
       requestAnimationFrame(retry);
     };
     requestAnimationFrame(retry);
     
-    // Fallback: așteaptă evenimentele de la hartă
+    // Fallback: așteaptă evenimentele de la hartă dacă retry-ul nu a reușit
     const onMapReady = () => {
       const stillHasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
       if (stillHasData) {
@@ -1174,7 +1184,7 @@ export default function Home() {
     if (!map.isStyleLoaded()) {
       map.once('styledata', onMapReady);
     }
-  }, [fishingMarkers.length, databaseLocations.length, activeFilter]); // Verifică ambele surse de date
+  }, [fishingMarkers.length, databaseLocations.length, activeFilter]);
 
   // Funcție pentru filtrarea locațiilor - FIX 3: Debouncing + FIX 10: Reset zoom
   const filterLocations = (type: string) => {

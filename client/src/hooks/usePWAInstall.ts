@@ -71,7 +71,7 @@ export const usePWAInstall = () => {
       setShowTutorial(true);
     }
 
-    // Verifică dacă PWA este instalabil (manifest + service worker activ)
+    // Verifică dacă PWA este instalabil (manifest + service worker activ pentru Android, doar manifest pentru iOS)
     const checkPWAInstallable = async () => {
       // Verifică dacă manifest.json există și este valid
       const manifestLink = document.querySelector('link[rel="manifest"]');
@@ -79,7 +79,13 @@ export const usePWAInstall = () => {
         return false;
       }
 
-      // Verifică dacă service worker este activ
+      // Pentru iOS - verifică doar manifest și apple-touch-icon (nu service worker)
+      if (isIOS()) {
+        const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        return !!appleTouchIcon; // iOS nu necesită service worker pentru PWA
+      }
+
+      // Pentru Android - verifică service worker
       if ('serviceWorker' in navigator) {
         try {
           const registration = await navigator.serviceWorker.getRegistration();
@@ -114,24 +120,40 @@ export const usePWAInstall = () => {
         }
       };
 
-      // Verifică după 3 secunde (timp pentru încărcarea completă)
+      // Verifică după 2 secunde (timp pentru încărcarea completă) - REDUS pentru prompt mai rapid
       setTimeout(() => {
         verifyAndShowPrompt();
-      }, 3000);
+      }, 2000);
 
-      // Verifică și după 5 secunde (backup)
+      // Verifică și după 4 secunde (backup) - REDUS
       setTimeout(() => {
         verifyAndShowPrompt();
-      }, 5000);
+      }, 4000);
 
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       };
     }
 
-    // Pentru iOS - afișează instrucțiuni manuale
+    // Pentru iOS - verifică și setează instalabilitatea
     if (isIOS()) {
-      setIsInstallable(true);
+      // Verifică dacă PWA este instalabil (manifest + apple-touch-icon)
+      const verifyIOSInstallable = async () => {
+        const isInstallable = await checkPWAInstallable();
+        if (isInstallable) {
+          setIsInstallable(true);
+        }
+      };
+
+      // Verifică după 2 secunde (timp pentru încărcarea completă)
+      setTimeout(() => {
+        verifyIOSInstallable();
+      }, 2000);
+
+      // Verifică și după 4 secunde (backup)
+      setTimeout(() => {
+        verifyIOSInstallable();
+      }, 4000);
     }
 
     // Verifică dacă aplicația a fost instalată

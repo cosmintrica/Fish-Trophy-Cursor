@@ -39,7 +39,6 @@ import Records from '@/pages/Records';
 import SubmissionGuide from '@/pages/SubmissionGuide';
 import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
-import OgGenerator from '@/pages/OgGenerator';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import Messages from '@/pages/Messages';
 import ForumRoutes from '@/forum/routes';
@@ -119,7 +118,6 @@ function AppContent() {
             <Route path="/profile/:username" element={<PublicProfile />} />
             <Route path="/submission-guide" element={<SubmissionGuide />} />
             <Route path="/fishing-shops" element={<FishingShops />} />
-            <Route path="/og-generator" element={<OgGenerator />} />
             <Route
               path="/profile"
               element={

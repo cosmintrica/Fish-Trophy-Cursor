@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import SimpleLoginModal from './SimpleLoginModal';
+import BackToTop from '@/components/BackToTop';
 
 export interface ForumUser {
   id: string;
@@ -351,169 +352,209 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
         {children}
       </main>
 
-      {/* Footer */}
-      <footer style={{
-        backgroundColor: theme.surface,
+      {/* Footer - Modern Design (same as main site) */}
+      <footer style={{ 
+        background: 'linear-gradient(to bottom, #f9fafb, #ffffff)',
         borderTop: `1px solid ${theme.border}`,
-        marginTop: '4rem',
-        transition: 'all 0.3s ease'
+        marginTop: '4rem'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 1rem 2rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '3rem 1rem' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
             gap: '2rem',
             marginBottom: '2rem'
           }}>
-            {/* Logo și descriere */}
-            <div>
+            {/* Logo & Mission */}
+            <div style={{ gridColumn: 'span 2' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <img
-                  src="/icon_free.png"
-                  alt="Fish Trophy Forum"
-                  style={{
-                    width: '2rem',
-                    height: '2rem',
-                    borderRadius: '0.375rem'
-                  }}
-                />
-                <span style={{ fontSize: '1.125rem', fontWeight: '600', color: theme.text }}>
-                  Fish Trophy Forum
-                </span>
+                <img src="/icon_free.png" alt="Fish Trophy" style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }} />
+                <div>
+                  <span style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: '700', 
+                    background: 'linear-gradient(to right, #2563eb, #4f46e5)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>Fish Trophy</span>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Platforma pescarilor din România</p>
+                </div>
               </div>
-              <p style={{ color: theme.textSecondary, fontSize: '0.875rem', lineHeight: '1.5' }}>
-                Comunitatea pescarilor pasionați din România. Împărtășim experiențe,
-                sfaturi și pasiunea pentru pescuit.
+              <p style={{ color: '#4b5563', maxWidth: '32rem', lineHeight: '1.6', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
               </p>
-            </div>
-
-            {/* Linkuri rapide */}
-            <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '1rem' }}>
-                Linkuri Rapide
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Acasă Forum
-                </Link>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Categorii
-                </Link>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Membri
-                </Link>
-                <a href="https://fishtrophy.ro" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Fish Trophy
-                </a>
-              </div>
-            </div>
-
-            {/* Suport */}
-            <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '1rem' }}>
-                Suport
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <a href="mailto:contact@fishtrophy.ro" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <a 
+                  href="mailto:contact@fishtrophy.ro" 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    color: '#374151',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }}
+                >
+                  <svg style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
                   Contact
                 </a>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Regulament
-                </Link>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Confidențialitate
-                </Link>
-                <Link to="/forum" style={{ color: theme.textSecondary, textDecoration: 'none', fontSize: '0.875rem' }}>
-                  Termeni
-                </Link>
               </div>
             </div>
 
-            {/* Social Media */}
+            {/* Navigation */}
             <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '1rem' }}>
-                Urmărește-ne
-              </h3>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <a
-                  href="https://facebook.com/fishtrophy"
-                  style={{
-                    width: '2.25rem',
-                    height: '2.25rem',
-                    backgroundColor: '#3b5998',
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontSize: '1rem',
-                    transition: 'transform 0.2s'
-                  }}
-                >
-                  📘
-                </a>
-                <a
-                  href="https://instagram.com/fishtrophy"
-                  style={{
-                    width: '2.25rem',
-                    height: '2.25rem',
-                    background: 'linear-gradient(135deg, #e1306c, #fd1d1d)',
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontSize: '1rem',
-                    transition: 'transform 0.2s'
-                  }}
-                >
-                  📷
-                </a>
-                <a
-                  href="https://youtube.com/fishtrophy"
-                  style={{
-                    width: '2.25rem',
-                    height: '2.25rem',
-                    backgroundColor: '#ff0000',
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontSize: '1rem',
-                    transition: 'transform 0.2s'
-                  }}
-                >
-                  📺
-                </a>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigare</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <li><a href="/" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Acasă</a></li>
+                <li><a href="/species" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Specii</a></li>
+                <li><a href="/records" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Recorduri</a></li>
+                <li><a href="/submission-guide" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Ghid Submisie</a></li>
+              </ul>
+            </div>
+
+            {/* Community & Social */}
+            <div>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comunitate</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <li><a href="/profile" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Profilul meu</a></li>
+                <li><a href="/leaderboards" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Clasamente</a></li>
+                <li><a href="/fishing-shops" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Magazine</a></li>
+              </ul>
+
+              <div>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Urmărește-ne</h4>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <a 
+                    href="https://www.facebook.com/fishtrophy.ro" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '2.5rem',
+                      height: '2.5rem',
+                      backgroundColor: '#1877F2',
+                      borderRadius: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 6px rgba(24, 119, 242, 0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#166FE5';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(24, 119, 242, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1877F2';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(24, 119, 242, 0.3)';
+                    }}
+                  >
+                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/fishtrophy.ro" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '2.5rem',
+                      height: '2.5rem',
+                      background: 'linear-gradient(to right, #E4405F, #C13584)',
+                      borderRadius: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 6px rgba(228, 64, 95, 0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(to right, #D7356A, #B02A73)';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(228, 64, 95, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(to right, #E4405F, #C13584)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(228, 64, 95, 0.3)';
+                    }}
+                  >
+                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                  </a>
+                  <a 
+                    href="https://x.com/fishtrophy_ro" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '2.5rem',
+                      height: '2.5rem',
+                      backgroundColor: '#000000',
+                      borderRadius: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1f2937';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#000000';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.3)';
+                    }}
+                  >
+                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Copyright */}
-          <div style={{
-            borderTop: `1px solid ${theme.border}`,
-            paddingTop: '2rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: theme.textSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              © 2025 Fish Trophy Forum. Made with ❤️ in România.
-            </div>
-            <div style={{ fontSize: '0.875rem', color: theme.textSecondary }}>
-              Toate drepturile rezervate.
+          {/* Bottom Section */}
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '2.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
+                <span style={{ fontWeight: '500' }}>© 2025 Fish Trophy</span>
+                <span style={{ color: '#d1d5db' }}>•</span>
+                <span>Toate drepturile rezervate</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                <span>Făcut cu</span>
+                <span style={{ color: '#ef4444', fontSize: '1.125rem', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>❤️</span>
+                <span>în România</span>
+              </div>
             </div>
           </div>
         </div>
@@ -524,6 +565,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
       />
+
+      {/* Back to Top Button */}
+      <BackToTop />
     </div>
   );
 }

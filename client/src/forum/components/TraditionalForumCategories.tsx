@@ -227,31 +227,6 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
         </div>
       ))}
 
-      {/* Marea Neagră - Coming Soon */}
-      <div style={{
-        backgroundColor: '#f9fafb',
-        borderTop: '1px solid #e5e7eb',
-        padding: '0.75rem 1rem',
-        display: 'grid',
-        gridTemplateColumns: '1fr 80px 80px 200px',
-        gap: '1rem',
-        alignItems: 'center',
-        opacity: 0.6
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <ChevronRight style={{ width: '1rem', height: '1rem', color: '#9ca3af' }} />
-          <div style={{ fontSize: '1.25rem' }}>🌊</div>
-          <div>
-            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.125rem' }}>
-              Marea Neagră
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-              Pescuit marin și de coastă - Coming Soon 🔒
-            </div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'center', fontSize: '0.875rem', color: '#9ca3af' }}>-</div>
-        <div style={{ textAlign: 'center', fontSize: '0.875rem', color: '#9ca3af' }}>-</div>
         <div style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
           În curând...
         </div>

@@ -34,7 +34,7 @@ export default function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPro
         // Delay redus pentru a permite aplicației să se încarce (sincronizat cu hook-ul)
         setTimeout(() => {
           setShowNotification(true);
-        }, 3500); // 3.5 secunde - după ce hook-ul verifică (3 secunde)
+        }, 2500); // 2.5 secunde - după ce hook-ul verifică (2 secunde)
       }
     }
   }, [isInstallable, isInstalled]);

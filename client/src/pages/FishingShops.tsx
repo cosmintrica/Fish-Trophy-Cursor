@@ -1,14 +1,195 @@
-import { MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const FishingShops = () => {
-  const stats = [
-    { icon: Users, value: '2,500+', label: 'Pescari înregistrați' },
-    { icon: Trophy, value: '150+', label: 'Recorduri aprobate' },
-    { icon: MapPin, value: '300+', label: 'Locații de pescuit' },
+  const [stats, setStats] = useState([
+    { icon: Users, value: 0, label: 'Pescari înregistrați', isNumber: true },
+    { icon: Trophy, value: 0, label: 'Recorduri aprobate', isNumber: true },
+    { icon: MapPin, value: 0, label: 'Locații de pescuit', isNumber: true },
+    { icon: Star, value: '4.8/5', label: 'Rating utilizatori', isNumber: false }
+  ]);
+  const [displayStats, setDisplayStats] = useState([
+    { icon: Users, value: '0', label: 'Pescari înregistrați' },
+    { icon: Trophy, value: '0', label: 'Recorduri aprobate' },
+    { icon: MapPin, value: '0', label: 'Locații de pescuit' },
     { icon: Star, value: '4.8/5', label: 'Rating utilizatori' }
-  ];
+  ]);
+  const hasAnimated = useRef(false);
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        // Pescari înregistrați
+        const { count: usersCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+
+        // Recorduri aprobate
+        const { count: recordsCount } = await supabase
+          .from('records')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'verified');
+
+        // Locații de pescuit
+        const { count: locationsCount } = await supabase
+          .from('fishing_locations')
+          .select('*', { count: 'exact', head: true });
+
+        setStats([
+          { icon: Users, value: usersCount || 0, label: 'Pescari înregistrați', isNumber: true },
+          { icon: Trophy, value: recordsCount || 0, label: 'Recorduri aprobate', isNumber: true },
+          { icon: MapPin, value: locationsCount || 0, label: 'Locații de pescuit', isNumber: true },
+          { icon: Star, value: '4.8/5', label: 'Rating utilizatori', isNumber: false }
+        ]);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  useEffect(() => {
+    // Verifică dacă datele sunt încărcate (nu mai sunt 0)
+    const hasData = stats.some(s => s.isNumber && typeof s.value === 'number' && s.value > 0);
+    if (!hasData || hasAnimated.current) return;
+    
+    // Animație de numărare pentru statistici
+    const animateValue = (start: number, end: number, duration: number, callback: (value: number) => void) => {
+      const startTime = performance.now();
+      
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function pentru animație mai smooth
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        const current = Math.floor(start + (end - start) * easeOutQuart);
+        
+        callback(current);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          callback(end);
+        }
+      };
+      
+      requestAnimationFrame(animate);
+    };
+
+    // Animează fiecare statistică
+    stats.forEach((stat, index) => {
+      if (stat.isNumber && typeof stat.value === 'number' && stat.value > 0) {
+        // Durata fixă pentru toate statisticile - sincronizare
+        const duration = 2000; // 2 secunde pentru toate
+        
+        // Delay mic pentru fiecare statistică pentru efect cascadă
+        setTimeout(() => {
+          const numericValue = typeof stat.value === 'number' ? stat.value : 0;
+          animateValue(0, numericValue, duration, (value) => {
+            setDisplayStats(prev => {
+              const newStats = [...prev];
+              newStats[index] = {
+                ...newStats[index],
+                value: `${value.toLocaleString('ro-RO')}+`
+              };
+              return newStats;
+            });
+          });
+        }, index * 100); // 100ms delay între fiecare statistică
+      } else if (!stat.isNumber) {
+        // Pentru rating, păstrează valoarea
+        setDisplayStats(prev => {
+          const newStats = [...prev];
+          newStats[index] = {
+            ...newStats[index],
+            value: stat.value as string
+          };
+          return newStats;
+        });
+      }
+    });
+
+    hasAnimated.current = true;
+  }, [stats]);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const emailLower = email.trim().toLowerCase();
+      
+      // Verifică dacă email-ul există deja pentru fishing_shops
+      const { data: existing } = await supabase
+        .from('subscribers')
+        .select('id, source')
+        .eq('email', emailLower)
+        .eq('source', 'fishing_shops')
+        .maybeSingle();
+
+      if (existing) {
+        toast.error('Acest email este deja înregistrat pentru Fishing Shops!');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Adaugă subscription pentru fishing_shops
+      // Notă: Dacă email-ul există deja pentru altă sursă (ex: construction_page),
+      // va da eroare de duplicate key. Pentru a permite același email pentru surse diferite,
+      // trebuie modificată schema să aibă UNIQUE(email, source) în loc de UNIQUE(email)
+      const { error } = await supabase
+        .from('subscribers')
+        .insert([
+          {
+            email: emailLower,
+            subscribed_at: new Date().toISOString(),
+            status: 'active',
+            source: 'fishing_shops'
+          }
+        ]);
+
+      if (error) {
+        if (error.code === '23505') {
+          // Email deja există - verificăm dacă e pentru fishing_shops sau altă sursă
+          const { data: check } = await supabase
+            .from('subscribers')
+            .select('source')
+            .eq('email', emailLower)
+            .maybeSingle();
+          
+          if (check?.source === 'fishing_shops') {
+            toast.error('Acest email este deja înregistrat pentru Fishing Shops!');
+          } else {
+            // Există pentru altă sursă - schema nu permite același email pentru surse diferite
+            // Trebuie modificată schema pentru a permite acest lucru
+            toast.error('Acest email este deja înregistrat. Pentru a te abona și pentru Fishing Shops, contactează-ne.');
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        setIsSubscribed(true);
+        setEmail('');
+        toast.success('Te-ai abonat cu succes! Vei fi notificat când funcționalitatea devine disponibilă.');
+      }
+    } catch (error) {
+      console.error('Error subscribing:', error);
+      toast.error('A apărut o eroare. Te rugăm să încerci din nou.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const benefits = [
     {
@@ -61,7 +242,7 @@ const FishingShops = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            {stats.map((stat, index) => (
+            {displayStats.map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <stat.icon className="w-8 h-8 text-blue-600" />
@@ -78,10 +259,12 @@ const FishingShops = () => {
               <Mail className="w-5 h-5 mr-2" />
               Trimite Detalii
             </Button>
-            <Button size="lg" variant="outline" className="px-8 py-3">
-              <MapPin className="w-5 h-5 mr-2" />
-              Vezi Locația
-            </Button>
+            <Link to="/">
+              <Button size="lg" variant="outline" className="px-8 py-3">
+                <MapPin className="w-5 h-5 mr-2" />
+                Vezi Locații
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -189,10 +372,41 @@ const FishingShops = () => {
               Trimite-ne un email cu detaliile magazinului tău și vei fi notificat 
               când funcționalitatea devine disponibilă.
             </p>
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Mail className="w-5 h-5 mr-2" />
-              Trimite Email
-            </Button>
+            
+            {isSubscribed ? (
+              <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 rounded-lg p-4">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Te-ai abonat cu succes!</span>
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} className="w-full max-w-lg mx-auto">
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Adresa ta de email"
+                    required
+                    className="w-full px-5 py-2.5 pr-28 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm"
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-sm hover:shadow-md"
+                  >
+                    {isSubmitting ? (
+                      <span className="text-sm">Se trimite...</span>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        <span className="text-sm">Trimite</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </section>
@@ -207,14 +421,18 @@ const FishingShops = () => {
             Alătură-te platformei Fish Trophy și conectează-te cu comunitatea de pescari din România
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" className="px-8 py-3">
-              <MapPin className="w-5 h-5 mr-2" />
-              Vezi Harta
-            </Button>
-            <Button size="lg" variant="outline" className="px-8 py-3 border-white text-white hover:bg-white hover:text-blue-600">
-              <Trophy className="w-5 h-5 mr-2" />
-              Vezi Recorduri
-            </Button>
+            <Link to="/">
+              <Button size="lg" variant="secondary" className="px-8 py-3">
+                <MapPin className="w-5 h-5 mr-2" />
+                Vezi Harta
+              </Button>
+            </Link>
+            <Link to="/records">
+              <Button size="lg" variant="outline" className="px-8 py-3 border-white text-gray-900 bg-white hover:text-blue-600">
+                <Trophy className="w-5 h-5 mr-2" />
+                Vezi Recorduri
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

@@ -8,6 +8,9 @@
   "orientation": "any",
   "background_color": "#3b82f6",
   "theme_color": "#3b82f6",
+  "dir": "ltr",
+  "lang": "ro",
+  "categories": ["sports", "outdoors", "lifestyle"],
   "icons": [
     {
       "src": "/icon-192.png",
