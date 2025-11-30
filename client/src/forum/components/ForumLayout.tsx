@@ -422,10 +422,110 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
             <div>
               <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigare</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <li><a href="/" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Acasă</a></li>
-                <li><a href="/species" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Specii</a></li>
-                <li><a href="/records" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Recorduri</a></li>
-                <li><a href="/submission-guide" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Ghid Submisie</a></li>
+                <li>
+                  <a 
+                    href="/" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Acasă
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/species" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Specii
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/records" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Recorduri
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/submission-guide" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Ghid Submisie
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -433,9 +533,84 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
             <div>
               <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comunitate</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <li><a href="/profile" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Profilul meu</a></li>
-                <li><a href="/leaderboards" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Clasamente</a></li>
-                <li><a href="/fishing-shops" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.color = '#4b5563'}>Magazine</a></li>
+                <li>
+                  <a 
+                    href="/profile" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Profilul meu
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/leaderboards" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Clasamente
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/fishing-shops" 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563', 
+                      textDecoration: 'none', 
+                      transition: 'color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }} 
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#2563eb';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#4b5563';
+                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
+                      if (dot) dot.style.opacity = '0';
+                    }}
+                  >
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    Magazine
+                  </a>
+                </li>
               </ul>
 
               <div>
@@ -455,18 +630,18 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                       justifyContent: 'center',
                       color: 'white',
                       textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(24, 119, 242, 0.3)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#166FE5';
                       e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(24, 119, 242, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = '#1877F2';
                       e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(24, 119, 242, 0.3)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
@@ -487,18 +662,18 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                       justifyContent: 'center',
                       color: 'white',
                       textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(228, 64, 95, 0.3)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'linear-gradient(to right, #D7356A, #B02A73)';
                       e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(228, 64, 95, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'linear-gradient(to right, #E4405F, #C13584)';
                       e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(228, 64, 95, 0.3)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
@@ -519,18 +694,18 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                       justifyContent: 'center',
                       color: 'white',
                       textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#1f2937';
                       e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = '#000000';
                       e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.3)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">

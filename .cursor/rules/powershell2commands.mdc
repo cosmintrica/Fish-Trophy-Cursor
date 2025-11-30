@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+---
+
+# PowerShell Commands Rule
+
+Nu folosi niciodată două sau mai multe comenzi cu `&&` fiindcă nu funcționează în PowerShell.
+
+Folosește în schimb:
+- `;` pentru separarea comenzilor pe aceeași linie
+- Sau comenzi separate pe linii diferite

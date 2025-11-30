@@ -227,9 +227,8 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
         </div>
       ))}
 
-        <div style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
-          În curând...
-        </div>
+      <div style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', padding: '1rem' }}>
+        În curând...
       </div>
     </div>
   );

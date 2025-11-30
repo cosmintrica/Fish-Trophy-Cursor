@@ -242,11 +242,24 @@ self.addEventListener('message', (event) => {
   }
   
   // Respond to all messages to prevent "message channel closed" errors
-  if (event.ports && event.ports[0]) {
+  // Only respond if we have a valid port and it's not already closed
+  if (event.ports && event.ports.length > 0 && event.ports[0]) {
     try {
-      event.ports[0].postMessage({ success: true });
+      // Check if port is still open before posting
+      if (event.ports[0] && typeof event.ports[0].postMessage === 'function') {
+        event.ports[0].postMessage({ success: true });
+      }
     } catch (error) {
-      // Ignore errors if port is closed
+      // Silently ignore errors if port is closed - this is expected behavior
+    }
+  } else {
+    // If no port, respond directly to the client
+    if (event.source && typeof event.source.postMessage === 'function') {
+      try {
+        event.source.postMessage({ success: true });
+      } catch (error) {
+        // Ignore errors
+      }
     }
   }
 });

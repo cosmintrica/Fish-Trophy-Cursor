@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MapPin, Users, Trophy, Star, Mail, Phone, Clock, ShoppingBag, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import ShopInquiryModal from '@/components/ShopInquiryModal';
 
 const FishingShops = () => {
   const [stats, setStats] = useState([
@@ -20,9 +21,11 @@ const FishingShops = () => {
     { icon: Star, value: '4.8/5', label: 'Rating utilizatori' }
   ]);
   const hasAnimated = useRef(false);
+  const animationFrameRefs = useRef<number[]>([]);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -43,12 +46,17 @@ const FishingShops = () => {
           .from('fishing_locations')
           .select('*', { count: 'exact', head: true });
 
-        setStats([
+        const newStats = [
           { icon: Users, value: usersCount || 0, label: 'Pescari înregistrați', isNumber: true },
           { icon: Trophy, value: recordsCount || 0, label: 'Recorduri aprobate', isNumber: true },
           { icon: MapPin, value: locationsCount || 0, label: 'Locații de pescuit', isNumber: true },
           { icon: Star, value: '4.8/5', label: 'Rating utilizatori', isNumber: false }
-        ]);
+        ];
+        
+        setStats(newStats);
+        
+        // Resetează animația când datele se încarcă
+        hasAnimated.current = false;
       } catch (error) {
         console.error('Error loading stats:', error);
       }
@@ -57,54 +65,82 @@ const FishingShops = () => {
     loadStats();
   }, []);
 
+  // Animație pentru statistici
   useEffect(() => {
+    // Cleanup animații anterioare
+    animationFrameRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
+    animationFrameRefs.current = [];
+    
     // Verifică dacă datele sunt încărcate (nu mai sunt 0)
     const hasData = stats.some(s => s.isNumber && typeof s.value === 'number' && s.value > 0);
-    if (!hasData || hasAnimated.current) return;
+    if (!hasData) {
+      hasAnimated.current = false;
+      return;
+    }
     
-    // Animație de numărare pentru statistici
-    const animateValue = (start: number, end: number, duration: number, callback: (value: number) => void) => {
-      const startTime = performance.now();
-      
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing function pentru animație mai smooth
-        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-        const current = Math.floor(start + (end - start) * easeOutQuart);
-        
-        callback(current);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          callback(end);
-        }
-      };
-      
-      requestAnimationFrame(animate);
-    };
-
-    // Animează fiecare statistică
+    // Resetează animația dacă datele s-au schimbat (de la 0 la valori pozitive)
+    // Verifică dacă displayStats are încă 0 pentru statisticile care acum au valori > 0
+    const needsAnimation = stats.some((stat, index) => {
+      if (stat.isNumber && typeof stat.value === 'number' && stat.value > 0) {
+        const displayValue = parseInt(displayStats[index]?.value.replace(/[^0-9]/g, '') || '0');
+        return displayValue === 0 || displayValue !== stat.value;
+      }
+      return false;
+    });
+    
+    if (!needsAnimation && hasAnimated.current) {
+      return;
+    }
+    
+    hasAnimated.current = true;
+    
+    // Durata fixă pentru toate statisticile (2 secunde)
+    const duration = 2000;
+    
+    // Animație pentru fiecare statistică
     stats.forEach((stat, index) => {
       if (stat.isNumber && typeof stat.value === 'number' && stat.value > 0) {
-        // Durata fixă pentru toate statisticile - sincronizare
-        const duration = 2000; // 2 secunde pentru toate
+        const endValue = stat.value;
         
-        // Delay mic pentru fiecare statistică pentru efect cascadă
+        // Delay mic pentru efect cascadă
         setTimeout(() => {
-          const numericValue = typeof stat.value === 'number' ? stat.value : 0;
-          animateValue(0, numericValue, duration, (value) => {
+          const startTime = performance.now();
+          
+          const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function pentru animație smooth
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const current = Math.floor(endValue * easeOutQuart);
+            
             setDisplayStats(prev => {
               const newStats = [...prev];
               newStats[index] = {
                 ...newStats[index],
-                value: `${value.toLocaleString('ro-RO')}+`
+                value: `${current.toLocaleString('ro-RO')}+`
               };
               return newStats;
             });
-          });
+            
+            if (progress < 1) {
+              const rafId = requestAnimationFrame(animate);
+              animationFrameRefs.current.push(rafId);
+            } else {
+              // Asigură-te că ajunge la valoarea finală
+              setDisplayStats(prev => {
+                const newStats = [...prev];
+                newStats[index] = {
+                  ...newStats[index],
+                  value: `${endValue.toLocaleString('ro-RO')}+`
+                };
+                return newStats;
+              });
+            }
+          };
+          
+          const rafId = requestAnimationFrame(animate);
+          animationFrameRefs.current.push(rafId);
         }, index * 100); // 100ms delay între fiecare statistică
       } else if (!stat.isNumber) {
         // Pentru rating, păstrează valoarea
@@ -118,11 +154,15 @@ const FishingShops = () => {
         });
       }
     });
-
-    hasAnimated.current = true;
+    
+    // Cleanup function
+    return () => {
+      animationFrameRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
+      animationFrameRefs.current = [];
+    };
   }, [stats]);
 
-  const handleSubscribe = async (e: React.FormEvent) => {
+  const handleSubscribe = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
@@ -189,9 +229,9 @@ const FishingShops = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [email]);
 
-  const benefits = [
+  const benefits = useMemo(() => [
     {
       icon: MapPin,
       title: 'Vizibilitate pe Hartă',
@@ -212,16 +252,16 @@ const FishingShops = () => {
       title: 'Catalog Digital',
       description: 'Oferă-ți produsele în catalogul digital Fish Trophy cu descrieri detaliate.'
     }
-  ];
+  ], []);
 
-  const contactInfo = [
+  const contactInfo = useMemo(() => [
     { icon: Mail, label: 'Email', value: 'contact@fishtrophy.ro' },
     { icon: Phone, label: 'Telefon', value: '+40 123 456 789' },
     { icon: Clock, label: 'Program', value: 'Luni-Vineri: 9:00-18:00' }
-  ];
+  ], []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50" style={{ willChange: 'auto' }}>
 
 
       {/* Hero Section */}
@@ -241,13 +281,35 @@ const FishingShops = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12" style={{ contain: 'layout style' }}>
             {displayStats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div 
+                key={index} 
+                className="text-center"
+                style={{ 
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                  contain: 'layout style'
+                }}
+              >
+                <div 
+                  className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{ 
+                    willChange: 'transform',
+                    transform: 'translateZ(0)'
+                  }}
+                >
                   <stat.icon className="w-8 h-8 text-blue-600" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                <div 
+                  className="text-2xl font-bold text-gray-900 mb-1"
+                  style={{ 
+                    willChange: 'contents',
+                    transform: 'translateZ(0)'
+                  }}
+                >
+                  {stat.value}
+                </div>
                 <div className="text-sm text-gray-600">{stat.label}</div>
               </div>
             ))}
@@ -255,7 +317,11 @@ const FishingShops = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3">
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3"
+              onClick={() => setIsShopModalOpen(true)}
+            >
               <Mail className="w-5 h-5 mr-2" />
               Trimite Detalii
             </Button>
@@ -270,8 +336,8 @@ const FishingShops = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white" style={{ contain: 'layout style' }}>
+        <div className="max-w-7xl mx-auto" style={{ willChange: 'auto' }}>
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Beneficiile de a fi pe Fish Trophy
@@ -281,11 +347,25 @@ const FishingShops = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8" style={{ contain: 'layout' }}>
             {benefits.map((benefit, index) => (
-              <Card key={index} className="text-center hover:shadow-lg transition-shadow">
+              <Card 
+                key={index} 
+                className="text-center hover:shadow-lg transition-shadow"
+                style={{ 
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                  contain: 'layout style'
+                }}
+              >
                 <CardHeader>
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div 
+                    className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ 
+                      willChange: 'transform',
+                      transform: 'translateZ(0)'
+                    }}
+                  >
                     <benefit.icon className="w-8 h-8 text-blue-600" />
                   </div>
                   <CardTitle className="text-lg">{benefit.title}</CardTitle>
@@ -436,6 +516,12 @@ const FishingShops = () => {
           </div>
         </div>
       </section>
+
+      {/* Shop Inquiry Modal */}
+      <ShopInquiryModal
+        isOpen={isShopModalOpen}
+        onClose={() => setIsShopModalOpen(false)}
+      />
     </div>
   );
 };

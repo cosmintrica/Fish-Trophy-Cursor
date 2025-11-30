@@ -289,8 +289,6 @@ const PublicProfile = () => {
       if (avatarUrl && avatarUrl.trim() === '') {
         avatarUrl = undefined;
       }
-      // Log for debugging
-      console.log('Profile loaded - photo_url:', avatarUrl, 'from profileData:', profileData.photo_url);
       const coverPhotoUrl = profileData.cover_photo_url && profileData.cover_photo_url.trim() !== ''
         ? profileData.cover_photo_url
         : undefined;
@@ -315,7 +313,6 @@ const PublicProfile = () => {
       // Update Profile State
       // Ensure photo_url is properly set (even if it's a Google URL)
       const finalPhotoUrl = avatarUrl && avatarUrl.trim() !== '' ? avatarUrl : undefined;
-      console.log('Setting userProfile with photo_url:', finalPhotoUrl, 'original:', profileData.photo_url);
       setUserProfile({
         ...profileData,
         photo_url: finalPhotoUrl,
@@ -673,12 +670,8 @@ const PublicProfile = () => {
                       style={{ borderRadius: '50%' }}
                       crossOrigin="anonymous"
                       onError={(e) => {
-                        console.error('Error loading avatar image:', userProfile.photo_url);
                         // Hide image on error, show fallback
                         e.currentTarget.style.display = 'none';
-                      }}
-                      onLoad={() => {
-                        console.log('Avatar image loaded successfully:', userProfile.photo_url);
                       }}
                     />
                   ) : (

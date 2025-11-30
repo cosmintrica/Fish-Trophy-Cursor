@@ -16,7 +16,9 @@ import {
   TrendingUp,
   X,
   Download,
-  Save
+  Save,
+  Store,
+  Mail
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -57,6 +59,10 @@ const Admin: React.FC = () => {
   const [backupData, setBackupData] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('analytics');
+  const [shopInquiries, setShopInquiries] = useState<any[]>([]);
+  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
+  const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
 
   // Metric filters
   const [showPageViews, setShowPageViews] = useState(true);
@@ -655,12 +661,31 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Load shop inquiries
+  const loadShopInquiries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fishing_shop_inquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading shop inquiries:', error);
+      } else {
+        setShopInquiries(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading shop inquiries:', error);
+    }
+  };
+
   // Load real data from database
   useEffect(() => {
     const loadAllData = async () => {
       await loadRealData();
       await loadDetailedAnalytics();
       await loadTrafficGraphData();
+      await loadShopInquiries();
     };
     loadAllData();
   }, []);
@@ -875,6 +900,16 @@ const Admin: React.FC = () => {
     }
   };
 
+  const menuItems = [
+    { id: 'analytics', label: 'Analytics & Status', icon: BarChart3 },
+    { id: 'records', label: 'Moderare Recorduri', icon: CheckCircle },
+    { id: 'rejected', label: 'Recorduri Respinse', icon: XCircle },
+    { id: 'locations', label: 'Gestionare Locații', icon: MapPin },
+    { id: 'users', label: 'Utilizatori', icon: Users },
+    { id: 'shops', label: 'Mesaje Magazine', icon: Store },
+    { id: 'backup', label: 'Backup', icon: Database },
+  ];
+
   return (
     <div className="min-h-screen py-4 sm:py-6 md:py-12">
       <div className="container mx-auto px-3 sm:px-4">
@@ -888,39 +923,37 @@ const Admin: React.FC = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="analytics" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
-            <TabsTrigger value="analytics" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Analytics & Status</span>
-              <span className="sm:hidden">Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="records" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Moderare Recorduri</span>
-              <span className="sm:hidden">Recorduri</span>
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Recorduri Respinse</span>
-              <span className="sm:hidden">Respinse</span>
-            </TabsTrigger>
-            <TabsTrigger value="locations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Gestionare Locații</span>
-              <span className="sm:hidden">Locații</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Utilizatori</span>
-              <span className="sm:hidden">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="backup" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Database className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Backup</span>
-              <span className="sm:hidden">Backup</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Sidebar */}
+          <div className="w-full lg:w-56 flex-shrink-0">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2">
+              <nav className="space-y-1">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveSection(item.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors text-sm ${
+                        activeSection === item.id
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
+              <TabsList className="hidden">
+              </TabsList>
 
           {/* Analytics & Status Tab */}
           <TabsContent value="analytics" className="space-y-6">
@@ -1818,7 +1851,116 @@ const Admin: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Shop Inquiries Tab */}
+          <TabsContent value="shops" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="w-5 h-5" />
+                  Mesaje de la Magazine de Pescuit
+                </CardTitle>
+                <CardDescription>
+                  Cereri și mesaje de la proprietarii de magazine care doresc să se adauge pe platformă
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {shopInquiries.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nu există mesaje de la magazine momentan.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {shopInquiries.map((inquiry) => (
+                      <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                {inquiry.shop_name}
+                              </h3>
+                              <div className="space-y-1 text-sm text-gray-600">
+                                <p><span className="font-medium">Proprietar:</span> {inquiry.owner_name}</p>
+                                <p><span className="font-medium">Email:</span> {inquiry.email}</p>
+                                {inquiry.phone && <p><span className="font-medium">Telefon:</span> {inquiry.phone}</p>}
+                                <p><span className="font-medium">Adresă:</span> {inquiry.address}</p>
+                                {inquiry.city && <p><span className="font-medium">Oraș:</span> {inquiry.city}</p>}
+                                {inquiry.county && <p><span className="font-medium">Județ:</span> {inquiry.county}</p>}
+                                {inquiry.google_maps_link && (
+                                  <p>
+                                    <span className="font-medium">Google Maps:</span>{' '}
+                                    <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                      Vezi locația
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Badge variant={inquiry.status === 'pending' ? 'default' : inquiry.status === 'approved' ? 'default' : 'secondary'}>
+                              {inquiry.status === 'pending' ? 'În așteptare' : 
+                               inquiry.status === 'reviewed' ? 'Revizuit' :
+                               inquiry.status === 'contacted' ? 'Contactat' :
+                               inquiry.status === 'approved' ? 'Aprobat' : 'Respins'}
+                            </Badge>
+                          </div>
+                          
+                          {inquiry.description && (
+                            <div className="mb-4">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{inquiry.description}</p>
+                            </div>
+                          )}
+
+                          {inquiry.images && inquiry.images.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Poze:</p>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {inquiry.images.map((img: string, idx: number) => (
+                                  <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <p className="text-xs text-gray-500">
+                              Trimis pe {new Date(inquiry.created_at).toLocaleString('ro-RO')}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedInquiry(inquiry);
+                                  setIsInquiryModalOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Vezi Detalii
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  window.location.href = `mailto:${inquiry.email}?subject=Re: Cerere Magazin - ${inquiry.shop_name}`;
+                                }}
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                Răspunde
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+          </div>
+        </div>
       </div>
 
       {/* Record Details Modal */}
@@ -1829,6 +1971,97 @@ const Admin: React.FC = () => {
         isAdmin={true}
         canEdit={false}
       />
+
+      {/* Shop Inquiry Details Modal */}
+      {isInquiryModalOpen && selectedInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Store className="w-6 h-6" />
+                <h2 className="text-2xl font-bold">{selectedInquiry.shop_name}</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setIsInquiryModalOpen(false);
+                  setSelectedInquiry(null);
+                }}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Informații Contact</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Proprietar:</span> {selectedInquiry.owner_name}</p>
+                    <p><span className="font-medium">Email:</span> {selectedInquiry.email}</p>
+                    {selectedInquiry.phone && <p><span className="font-medium">Telefon:</span> {selectedInquiry.phone}</p>}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Locație</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Adresă:</span> {selectedInquiry.address}</p>
+                    {selectedInquiry.city && <p><span className="font-medium">Oraș:</span> {selectedInquiry.city}</p>}
+                    {selectedInquiry.county && <p><span className="font-medium">Județ:</span> {selectedInquiry.county}</p>}
+                    {selectedInquiry.google_maps_link && (
+                      <p>
+                        <a href={selectedInquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          Vezi pe Google Maps
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedInquiry.description && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Detalii</h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedInquiry.description}</p>
+                </div>
+              )}
+
+              {selectedInquiry.images && selectedInquiry.images.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Poze</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {selectedInquiry.images.map((img: string, idx: number) => (
+                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-48 object-cover rounded-lg" />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsInquiryModalOpen(false);
+                    setSelectedInquiry(null);
+                  }}
+                  className="flex-1"
+                >
+                  Închide
+                </Button>
+                <Button
+                  onClick={() => {
+                    window.location.href = `mailto:${selectedInquiry.email}?subject=Re: Cerere Magazin - ${selectedInquiry.shop_name}`;
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Răspunde prin Email
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Details Modal */}
       {isUserModalOpen && selectedUser && (
