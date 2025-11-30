@@ -17,10 +17,24 @@ const EmailConfirmation = () => {
       // Check if user is already authenticated (email was confirmed)
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user?.email_confirmed_at) {
-        setStatus('success');
-        setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
-        return;
+      // If user is already authenticated and has OAuth provider, redirect immediately
+      // This prevents showing email confirmation message for OAuth users
+      if (session?.user) {
+        const providers = session.user.app_metadata?.providers || [];
+        const isOAuthUser = providers.length > 0 && providers.includes('google');
+        
+        if (isOAuthUser) {
+          // OAuth users don't need email confirmation, redirect immediately
+          navigate('/', { replace: true });
+          return;
+        }
+        
+        // For regular email users who already confirmed, show success message
+        if (session.user.email_confirmed_at) {
+          setStatus('success');
+          setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
+          return;
+        }
       }
 
       // Parse hash for OAuth tokens (Supabase OAuth uses hash, not query params)
@@ -41,7 +55,7 @@ const EmailConfirmation = () => {
       const type = searchParams.get('type');
 
       if (accessToken && refreshToken) {
-        // Handle OAuth confirmation
+        // Handle OAuth confirmation (Google, etc.)
         try {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -50,16 +64,14 @@ const EmailConfirmation = () => {
 
           if (error) {
             setStatus('error');
-            setMessage('A apărut o eroare la confirmarea email-ului. Te rugăm să încerci din nou.');
+            setMessage('A apărut o eroare la autentificare. Te rugăm să încerci din nou.');
           } else {
             // Clear hash from URL
             window.history.replaceState(null, '', window.location.pathname);
-            setStatus('success');
-            setMessage('Email-ul a fost confirmat cu succes! Acum te poți autentifica.');
-            // Redirect to home after a short delay
-            setTimeout(() => {
-              navigate('/');
-            }, 2000);
+            // For OAuth (Google), redirect immediately without showing confirmation message
+            // This is not an email confirmation, it's an OAuth login
+            navigate('/', { replace: true });
+            return;
           }
         } catch (error) {
           setStatus('error');
