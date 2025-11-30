@@ -920,7 +920,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
                     Adaugă Locație
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
                   <DialogHeader>
                     <DialogTitle>
                       {selectedLocation ? 'Editează Locație' : 'Adaugă Locație Nouă'}
@@ -1233,7 +1233,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
           <div className="relative">
             <div
               ref={mapContainerRef}
-              className="w-full h-[600px] rounded-lg border border-gray-200"
+              className="w-full h-[400px] sm:h-[500px] md:h-[600px] rounded-lg border border-gray-200"
               style={{
                 willChange: 'transform',
                 transform: 'translateZ(0)',

@@ -18,7 +18,8 @@ import {
   Download,
   Save,
   Store,
-  Mail
+  Mail,
+  Menu
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -63,6 +64,7 @@ const Admin: React.FC = () => {
   const [shopInquiries, setShopInquiries] = useState<any[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Metric filters
   const [showPageViews, setShowPageViews] = useState(true);
@@ -923,25 +925,48 @@ const Admin: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="w-full flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Menu className="w-4 h-4" />
+                {menuItems.find(item => item.id === activeSection)?.label || 'Meniu'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {isMobileMenuOpen ? '✕' : '☰'}
+              </span>
+            </Button>
+          </div>
+
           {/* Sidebar */}
-          <div className="w-full lg:w-56 flex-shrink-0">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2">
+          <div className={`w-full lg:w-56 flex-shrink-0 transition-all duration-300 ${
+            isMobileMenuOpen ? 'block' : 'hidden lg:block'
+          }`}>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2 sm:p-3">
               <nav className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors text-sm ${
+                      onClick={() => {
+                        setActiveSection(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-left transition-colors text-xs sm:text-sm ${
                         activeSection === item.id
                           ? 'bg-blue-50 text-blue-700 font-medium'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm">{item.label}</span>
+                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm truncate">{item.label}</span>
                     </button>
                   );
                 })}
@@ -961,16 +986,16 @@ const Admin: React.FC = () => {
               {/* Traffic Analytics */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                     <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Trafic Website
+                      <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-base sm:text-lg">Trafic Website</span>
                     </div>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={updateAnalyticsStats}
-                      className="text-xs"
+                      className="text-xs w-full sm:w-auto"
                     >
                       Actualizează
                     </Button>
@@ -980,31 +1005,31 @@ const Admin: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2 md:gap-4">
-                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Page Views</div>
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Total vizualizări pagini</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
+                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Page Views</div>
+                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Total vizualizări</div>
                     </div>
-                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Vizitatori Unici</div>
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Utilizatori diferiți</div>
+                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
+                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Vizitatori Unici</div>
+                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Utilizatori diferiți</div>
                     </div>
-                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Sesiuni</div>
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Sesiuni active</div>
+                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
+                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Sesiuni</div>
+                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Sesiuni active</div>
                     </div>
-                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Bounce Rate</div>
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">% care pleacă rapid</div>
+                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
+                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Bounce Rate</div>
+                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">% care pleacă rapid</div>
                     </div>
-                    <div className="text-center p-2 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Timp Mediu</div>
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">Timp pe sesiune</div>
+                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
+                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Timp Mediu</div>
+                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Timp pe sesiune</div>
                     </div>
                   </div>
                 </CardContent>
@@ -1331,8 +1356,9 @@ const Admin: React.FC = () => {
                         </div>
 
                         {/* Line Chart - Mobile Optimized */}
-                        <div className="flex-1 relative px-2 sm:px-4 md:px-6 py-2 sm:py-4">
-                          <svg className="w-full h-full" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
+                        <div className="flex-1 relative px-1 sm:px-2 md:px-4 lg:px-6 py-2 sm:py-4">
+                          <div className="w-full overflow-x-auto">
+                            <svg className="w-full h-[200px] sm:h-[250px] md:h-[300px] min-w-[800px] sm:min-w-0" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
                             {/* Y-axis grid lines */}
                             {[0, 20, 40, 60, 80, 100].map((percent, i) => (
                               <line
@@ -1496,8 +1522,9 @@ const Admin: React.FC = () => {
                               </g>
                             )}
                           </svg>
+                            </div>
+                          </div>
                         </div>
-                      </div>
                     ) : (
                       <div className="h-full flex items-center justify-center">
                         <div className="text-center">
@@ -1572,10 +1599,10 @@ const Admin: React.FC = () => {
                   ) : (
                     pendingRecords.map((record) => (
                       <div key={record.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <h4 className="font-semibold">{record.species_name} - {record.weight} kg</h4>
-                            <p className="text-sm text-muted-foreground">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm sm:text-base">{record.species_name} - {record.weight} kg</h4>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                               {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1584,36 +1611,40 @@ const Admin: React.FC = () => {
                             <p className="text-xs text-muted-foreground">
                               Trimis: {new Date(record.created_at).toLocaleString('ro-RO')}
                             </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleApproveRecord(record.id)}
+                              className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
+                            >
+                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                              <span className="hidden sm:inline">Aprobă</span>
+                              <span className="sm:hidden">✓</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectRecord(record.id)}
+                              className="text-red-600 hover:text-red-700 text-xs sm:text-sm flex-1 sm:flex-initial"
+                            >
+                              <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                              <span className="hidden sm:inline">Respinge</span>
+                              <span className="sm:hidden">✕</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewRecordDetails(record)}
+                              className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                            >
+                              <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                              <span className="hidden sm:inline">Detalii</span>
+                              <span className="sm:hidden">👁</span>
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleApproveRecord(record.id)}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Aprobă
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRejectRecord(record.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Respinge
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleViewRecordDetails(record)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Vezi Detalii
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   ))
                   )}
@@ -1649,12 +1680,12 @@ const Admin: React.FC = () => {
                   ) : (
                     rejectedRecords.map((record) => (
                       <div key={record.id} className="border border-red-200 rounded-lg p-4 space-y-3 bg-red-50">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <h4 className="font-semibold text-red-800">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm sm:text-base text-red-800">
                               {record.species_name} - {record.weight} kg
                             </h4>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                               {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1666,25 +1697,28 @@ const Admin: React.FC = () => {
                               </p>
                             )}
                           </div>
-                          <Badge variant="destructive">Respinse</Badge>
+                          <Badge variant="destructive" className="self-start sm:self-auto text-xs">Respinse</Badge>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleApproveRecord(record.id)}
-                            className="text-green-600 hover:text-green-700"
+                            className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Aprobă
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            <span className="hidden sm:inline">Aprobă</span>
+                            <span className="sm:hidden">✓</span>
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleViewRecordDetails(record)}
+                            className="text-xs sm:text-sm flex-1 sm:flex-initial"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Vezi Detalii
+                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            <span className="hidden sm:inline">Detalii</span>
+                            <span className="sm:hidden">👁</span>
                           </Button>
                         </div>
                       </div>
@@ -1714,66 +1748,71 @@ const Admin: React.FC = () => {
                   Lista tuturor utilizatorilor din baza de date
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="overflow-x-auto">
+                <div className="space-y-3 sm:space-y-4 min-w-0">
                   {users.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4" />
                       <p>Nu există utilizatori în baza de date</p>
                     </div>
                   ) : (
-                    <div className="grid gap-4">
+                    <div className="grid gap-3 sm:gap-4">
                       {users.map((user) => (
-                        <div key={user.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span className="text-blue-600 font-medium">
+                        <div key={user.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors w-full">
+                          <div className="flex flex-col gap-3">
+                            {/* Top row - Avatar and basic info */}
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 font-medium text-sm sm:text-base">
                                   {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                                 </span>
                               </div>
-                              <div>
-                                <h3 className="font-medium">{user.display_name || 'Fără nume'}</h3>
-                                <p className="text-sm text-gray-600">{user.email}</p>
-                                <p className="text-xs text-gray-500">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-medium text-sm sm:text-base break-words">{user.display_name || 'Fără nume'}</h3>
+                                <p className="text-xs sm:text-sm text-gray-600 break-all">{user.email}</p>
+                                <p className="text-xs text-gray-500 mt-1">
                                   Membru din {new Date(user.created_at).toLocaleDateString('ro-RO')}
                                 </p>
                                 {user.last_sign_in_at && (
                                   <p className="text-xs text-gray-500 mt-1">
-                                    Ultima conectare: {new Date(user.last_sign_in_at).toLocaleString('ro-RO', {
+                                    Ultima conectare: {new Date(user.last_sign_in_at).toLocaleDateString('ro-RO', {
                                       day: '2-digit',
                                       month: '2-digit',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
+                                      year: 'numeric'
                                     })}
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <p className="text-sm font-medium">{user.records?.[0]?.count || 0} recorduri</p>
-                                <p className="text-xs text-gray-500">
-                                  {user.phone ? `Tel: ${user.phone}` : 'Fără telefon'}
-                                </p>
+                            
+                            {/* Bottom row - Stats and actions */}
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                              <div className="text-left">
+                                <p className="text-xs sm:text-sm font-medium">{user.records?.[0]?.count || 0} recorduri</p>
+                                {user.phone && (
+                                  <p className="text-xs text-gray-500">
+                                    {user.phone}
+                                  </p>
+                                )}
                               </div>
-                              <div className="flex space-x-2">
+                              <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleViewUserDetails(user)}
+                                  className="text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                                 >
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Vezi
+                                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Vezi</span>
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleViewUserProfile(user)}
+                                  className="text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                                 >
-                                  <ExternalLink className="w-4 h-4 mr-1" />
-                                  Profil
+                                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Profil</span>
                                 </Button>
                               </div>
                             </div>
@@ -1813,17 +1852,18 @@ const Admin: React.FC = () => {
                 <Button
                   onClick={handleCreateBackup}
                   disabled={isCreatingBackup}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
                   size="lg"
                 >
                   {isCreatingBackup ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      Se creează backup-ul...
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin sm:mr-2" />
+                      <span className="hidden sm:inline">Se creează backup-ul...</span>
+                      <span className="sm:hidden">Se creează...</span>
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 mr-2" />
+                      <Save className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                       Creează Backup
                     </>
                   )}
@@ -1841,9 +1881,9 @@ const Admin: React.FC = () => {
                     <Button
                       onClick={handleDownloadBackup}
                       variant="outline"
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
-                      <Download className="w-4 h-4 mr-2" />
+                      <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                       Descarcă Backup
                     </Button>
                   </div>
@@ -1874,30 +1914,30 @@ const Admin: React.FC = () => {
                   <div className="space-y-4">
                     {shopInquiries.map((inquiry) => (
                       <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <CardContent className="p-3 sm:p-4 md:p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                                 {inquiry.shop_name}
                               </h3>
-                              <div className="space-y-1 text-sm text-gray-600">
+                              <div className="space-y-1 text-xs sm:text-sm text-gray-600">
                                 <p><span className="font-medium">Proprietar:</span> {inquiry.owner_name}</p>
-                                <p><span className="font-medium">Email:</span> {inquiry.email}</p>
+                                <p className="truncate"><span className="font-medium">Email:</span> {inquiry.email}</p>
                                 {inquiry.phone && <p><span className="font-medium">Telefon:</span> {inquiry.phone}</p>}
-                                <p><span className="font-medium">Adresă:</span> {inquiry.address}</p>
+                                <p className="break-words"><span className="font-medium">Adresă:</span> {inquiry.address}</p>
                                 {inquiry.city && <p><span className="font-medium">Oraș:</span> {inquiry.city}</p>}
                                 {inquiry.county && <p><span className="font-medium">Județ:</span> {inquiry.county}</p>}
                                 {inquiry.google_maps_link && (
                                   <p>
                                     <span className="font-medium">Google Maps:</span>{' '}
-                                    <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                    <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
                                       Vezi locația
                                     </a>
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <Badge variant={inquiry.status === 'pending' ? 'default' : inquiry.status === 'approved' ? 'default' : 'secondary'}>
+                            <Badge variant={inquiry.status === 'pending' ? 'default' : inquiry.status === 'approved' ? 'default' : 'secondary'} className="self-start sm:self-auto text-xs">
                               {inquiry.status === 'pending' ? 'În așteptare' : 
                                inquiry.status === 'reviewed' ? 'Revizuit' :
                                inquiry.status === 'contacted' ? 'Contactat' :
@@ -1906,27 +1946,27 @@ const Admin: React.FC = () => {
                           </div>
                           
                           {inquiry.description && (
-                            <div className="mb-4">
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{inquiry.description}</p>
+                            <div className="mb-3 sm:mb-4">
+                              <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">{inquiry.description}</p>
                             </div>
                           )}
 
                           {inquiry.images && inquiry.images.length > 0 && (
-                            <div className="mb-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Poze:</p>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div className="mb-3 sm:mb-4">
+                              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Poze:</p>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                 {inquiry.images.map((img: string, idx: number) => (
-                                  <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                                  <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-20 sm:h-24 object-cover rounded-lg" />
                                 ))}
                               </div>
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between pt-4 border-t">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 sm:pt-4 border-t">
                             <p className="text-xs text-gray-500">
                               Trimis pe {new Date(inquiry.created_at).toLocaleString('ro-RO')}
                             </p>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1934,9 +1974,11 @@ const Admin: React.FC = () => {
                                   setSelectedInquiry(inquiry);
                                   setIsInquiryModalOpen(true);
                                 }}
+                                className="text-xs sm:text-sm flex-1 sm:flex-initial"
                               >
-                                <Eye className="w-4 h-4 mr-2" />
-                                Vezi Detalii
+                                <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Vezi Detalii</span>
+                                <span className="sm:hidden">Detalii</span>
                               </Button>
                               <Button
                                 size="sm"
@@ -1944,9 +1986,11 @@ const Admin: React.FC = () => {
                                 onClick={() => {
                                   window.location.href = `mailto:${inquiry.email}?subject=Re: Cerere Magazin - ${inquiry.shop_name}`;
                                 }}
+                                className="text-xs sm:text-sm flex-1 sm:flex-initial"
                               >
-                                <Mail className="w-4 h-4 mr-2" />
-                                Răspunde
+                                <Mail className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Răspunde</span>
+                                <span className="sm:hidden">Mail</span>
                               </Button>
                             </div>
                           </div>
