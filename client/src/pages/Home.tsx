@@ -1593,7 +1593,7 @@ export default function Home() {
         title="Fish Trophy - Platforma Pescarilor din România"
         description="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii. Hărți interactive și comunitate activă."
         keywords="pescuit, romania, locatii pescuit, recorduri pescuit, harta pescuit, rauri romania, lacuri romania, balti pescuit, specii pesti, tehnici pescuit, echipament pescuit, platforma pescarilor, comunitate pescuit"
-        image="https://fishtrophy.ro/api/og?title=Fish%20Trophy&subtitle=Platforma%20Pescarilor%20din%20Rom%C3%A2nia&domain=fishtrophy.ro"
+        image="https://fishtrophy.ro/socialmedia_banner.png"
         url="https://fishtrophy.ro"
         type="website"
         structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}

@@ -22,7 +22,7 @@ export default function SEOHead({
   title = 'Fish Trophy - Platforma Pescarilor din România',
   description = 'Descoperă cele mai bune locații de pescuit din România, urmărește recordurile și concurează cu alții pescari pasionați. Hărți interactive, ghiduri complete și comunitate activă.',
   keywords = 'pescuit, romania, locatii pescuit, recorduri pescuit, harta pescuit, rauri romania, lacuri romania, balti pescuit, specii pesti, tehnici pescuit, echipament pescuit',
-  image = 'https://fishtrophy.ro/api/og?title=Fish%20Trophy&subtitle=Platforma%20Pescarilor%20din%20Rom%C3%A2nia&domain=fishtrophy.ro',
+  image = 'https://fishtrophy.ro/socialmedia_banner.png',
   url = 'https://fishtrophy.ro',
   type = 'website',
   author = 'Fish Trophy',
@@ -64,7 +64,7 @@ export default function SEOHead({
       <meta property="og:image" content={image} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:image:type" content="image/svg+xml" />
+      <meta property="og:image:type" content="image/png" />
       <meta property="og:image:alt" content={title} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content="Fish Trophy" />
