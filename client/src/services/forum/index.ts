@@ -1,0 +1,90 @@
+/**
+ * Forum Services - Central Export
+ * 
+ * Complete API layer for the Fish Trophy Forum
+ * All services use Supabase client and return ApiResponse<T>
+ */
+
+// Export all types
+export * from './types'
+
+// Reputation System
+export {
+    calculateReputationPower,
+    calculateAwardedPoints,
+    validateComment,
+    awardReputation,
+    adminAwardReputation,
+    getUserReputationLogs,
+    getAllUserReputationLogs,
+    getUserReputationStats,
+    REPUTATION_POWER_THRESHOLDS
+} from './reputation'
+
+// Categories Management
+export {
+    getCategoriesWithHierarchy,
+    getCategoryById,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    reorderCategories,
+    createSubforum,
+    getSubcategories,
+    createSubcategory
+} from './categories'
+
+// Marketplace
+export {
+    checkSalesEligibility,
+    getSellerRating,
+    hasVerifiedSellerBadge
+} from './marketplace'
+
+// BBCode Parser
+export {
+    parseBBCode,
+    stripBBCode
+} from './bbcode'
+
+// Search
+export {
+    searchForum,
+    getTrendingTopics,
+    getSearchSuggestions
+} from './search'
+
+// Topics
+export {
+    getTopics,
+    getTopicById,
+    createTopic,
+    updateTopic,
+    toggleTopicPin,
+    toggleTopicLock,
+    deleteTopic
+} from './topics'
+
+// Posts
+export {
+    getPosts,
+    getPostById,
+    createPost,
+    updatePost,
+    deletePost,
+    getUserPosts,
+    quotePost
+} from './posts'
+
+// Moderation
+export {
+    restrictUser,
+    removeRestriction,
+    getUserRestrictions,
+    hasActiveRestriction,
+    createReport,
+    getReports,
+    updateReportStatus,
+    moderatePost,
+    getModerationLog
+} from './moderation'

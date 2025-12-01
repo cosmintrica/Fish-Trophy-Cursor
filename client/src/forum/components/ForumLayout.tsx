@@ -4,12 +4,37 @@ import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare } from 'lu
 import { useTheme } from '../contexts/ThemeContext';
 import SimpleLoginModal from './SimpleLoginModal';
 import BackToTop from '@/components/BackToTop';
+import ForumSearch from './ForumSearch';
+import { useToast } from '../contexts/ToastContext';
 
 export interface ForumUser {
   id: string;
   username: string;
   email: string;
+  photo_url?: string; // Avatar din profiles
   isAdmin?: boolean;
+}
+
+/**
+ * Helper function pentru a converti forumUser din useAuth în ForumUser pentru ForumLayout
+ * Asigură consistența și evită duplicarea codului
+ * 
+ * IMPORTANT: Această funcție este folosită de TOATE paginile forum pentru a asigura
+ * că header-ul este identic peste tot (inclusiv avatar-ul).
+ */
+export function forumUserToLayoutUser(forumUser: any): ForumUser | null {
+  if (!forumUser) return null;
+  
+  // Folosește photo_url din profiles (avatar_url din forumUser sau user_metadata)
+  const photoUrl = forumUser.photo_url || forumUser.avatar_url || null;
+  
+  return {
+    id: forumUser.id || forumUser.user_id,
+    username: forumUser.username || 'Unknown',
+    email: forumUser.email || '',
+    photo_url: photoUrl,
+    isAdmin: forumUser.isAdmin || false
+  };
 }
 
 interface ForumLayoutProps {
@@ -19,10 +44,26 @@ interface ForumLayoutProps {
   onLogout: () => void;
 }
 
-export default function ForumLayout({ children, user, onLogin, onLogout }: ForumLayoutProps) {
+/**
+ * ForumLayout - SINGURUL layout și header de navigare pentru toate paginile forum
+ * 
+ * IMPORTANT: Acesta este SINGURUL header de navigare folosit în întregul forum.
+ * Toate paginile forum (ForumHome, CategoryPage, TopicPage, etc.) folosesc acest layout.
+ * 
+ * NU crea alte header-uri de navigare! Orice modificare la header trebuie făcută AICI.
+ * 
+ * Header-ul include:
+ * - Logo și titlu forum
+ * - Navigare principală
+ * - Search bar
+ * - User menu / Login
+ * - Dark mode toggle
+ */
+export default function ForumLayout({ children, user, onLogin, onLogout, showWelcomeBanner = false }: ForumLayoutProps & { showWelcomeBanner?: boolean }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
+  // Toast is now provided globally via ToastProvider
 
   const generateUserColor = (name: string) => {
     const colors = [
@@ -43,13 +84,13 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease', overflowY: 'auto' }}>
-      {/* Header */}
+      {/* SINGURUL HEADER DE NAVIGARE PENTRU TOATE PAGINILE FORUM */}
       <header style={{ backgroundColor: theme.surface, borderBottom: `1px solid ${theme.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
         {/* Top Navigation */}
         <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem' }}>
-                    {/* Logo */}
-                    <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+            {/* Logo */}
+            <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy Forum"
@@ -60,57 +101,22 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                 }}
               />
               <div>
-              <div style={{
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                color: theme.text
-              }}>
-                Fish Trophy Forum
-              </div>
-              <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                Comunitatea pescarilor din România
-              </div>
+                <div style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '700',
+                  color: theme.text
+                }}>
+                  Fish Trophy Forum
+                </div>
+                <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
+                  Comunitatea pescarilor din România
+                </div>
               </div>
             </Link>
 
-            {/* Search Bar */}
-            <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
-              <div style={{ position: 'relative' }}>
-                <Search style={{
-                  position: 'absolute',
-                  left: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '1rem',
-                  height: '1rem',
-                  color: '#9ca3af'
-                }} />
-                <input
-                  type="text"
-                  placeholder="Caută în forum..."
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem 0.5rem 2.5rem',
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    backgroundColor: theme.background,
-                    color: theme.text
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = theme.primary;
-                    e.target.style.backgroundColor = theme.surface;
-                    e.target.style.boxShadow = `0 0 0 3px ${theme.primary}20`;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = theme.border;
-                    e.target.style.backgroundColor = theme.background;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+            {/* Search Bar - Hidden on mobile */}
+            <div className="hidden md:block" style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
+              {/* Search will be in navigation bar below */}
             </div>
 
             {/* User Menu / Login */}
@@ -144,21 +150,24 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
               {user ? (
                 <div style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {/* Admin Badge */}
+                    {/* Admin Badge & Link */}
                     {user.isAdmin && (
-                      <div style={{
-                        padding: '0.25rem 0.5rem',
-                        backgroundColor: '#dc2626',
-                        color: 'white',
-                        borderRadius: '0.375rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        🔧 ADMIN
-                      </div>
+                      <Link to="/admin" style={{ textDecoration: 'none' }}>
+                        <div style={{
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: '#dc2626',
+                          color: 'white',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: 'pointer'
+                        }}>
+                          🔧 ADMIN
+                        </div>
+                      </Link>
                     )}
 
                     <Bell
@@ -177,13 +186,15 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                         e.currentTarget.style.color = '#6b7280';
                       }}
                     />
-                    <div
-                      onClick={() => alert(`Profil utilizator: ${user.username} - în dezvoltare`)}
+                    <Link
+                      to={`/forum/user/${user.id}`}
                       style={{
                         width: '2rem',
                         height: '2rem',
                         borderRadius: '50%',
-                        background: user.isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(user.username),
+                        background: user.photo_url 
+                          ? `url(${user.photo_url}) center/cover`
+                          : (user.isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(user.username)),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -192,7 +203,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                         fontWeight: '600',
                         cursor: 'pointer',
                         border: user.isAdmin ? '2px solid #fbbf24' : 'none',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        textDecoration: 'none',
+                        overflow: 'hidden'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'scale(1.1)';
@@ -201,8 +214,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                         e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
-                      {user.username.charAt(0).toUpperCase()}
-                    </div>
+                      {!user.photo_url && user.username.charAt(0).toUpperCase()}
+                    </Link>
                   </div>
                 </div>
               ) : (
@@ -246,37 +259,68 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
               </button>
             </div>
           </div>
+
+          {/* Mobile Menu Overlay */}
+          {showMobileMenu && (
+            <div className="lg:hidden" style={{
+              position: 'absolute',
+              top: '4rem',
+              left: 0,
+              right: 0,
+              backgroundColor: theme.surface,
+              borderBottom: `1px solid ${theme.border}`,
+              padding: '1rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              zIndex: 50
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <ForumSearch />
+                </div>
+                <Link to="/forum" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>🏠 Acasă Forum</Link>
+                <Link to="/forum/recent" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>📝 Postări Recente</Link>
+                <Link to="/forum/members" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>👥 Membri Activi</Link>
+                <Link to="/forum/rules" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>📜 Regulament</Link>
+                <a href="https://fishtrophy.ro" style={{ color: theme.secondary, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>🎣 Fish Trophy</a>
+                {user?.isAdmin && (
+                  <Link to="/admin" onClick={() => setShowMobileMenu(false)} style={{ color: '#dc2626', textDecoration: 'none', padding: '0.5rem', fontWeight: '600' }}>🔧 Admin Panel</Link>
+                )}
+              </div>
+            </div>
+          )}
         </nav>
 
-        {/* Hero Section */}
-        <div style={{
-          background: isDarkMode
-            ? 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)'
-            : 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #e0e7ff 100%)',
-          borderTop: `1px solid ${theme.border}`
-        }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', textAlign: 'left' }}>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: '700',
-              color: theme.text,
-              marginBottom: '0.5rem'
-            }}>
-              Bine ai venit pe Forumul Fish Trophy
-            </h1>
-            <p style={{
-              fontSize: '1.125rem',
-              color: theme.textSecondary,
-              maxWidth: '800px'
-            }}>
-              Împărtășește experiențe, găsește sfaturi și conectează-te cu alți pescari pasionați din România.
-            </p>
+        {/* Hero Section - doar pe homepage */}
+        {showWelcomeBanner && (
+          <div style={{
+            background: isDarkMode
+              ? 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)'
+              : 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #e0e7ff 100%)',
+            borderTop: `1px solid ${theme.border}`
+          }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', textAlign: 'left' }}>
+              <h1 style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                color: theme.text,
+                marginBottom: '0.5rem'
+              }}>
+                Bine ai venit pe Forumul Fish Trophy
+              </h1>
+              <p style={{
+                fontSize: '1.125rem',
+                color: theme.textSecondary,
+                maxWidth: '800px'
+              }}>
+                Împărtășește experiențe, găsește sfaturi și conectează-te cu alți pescari pasionați din România.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
       </header>
 
-      {/* Navigation Bar */}
+      {/* Navigation Bar with Search */}
       <div style={{
         backgroundColor: theme.background,
         borderBottom: `1px solid ${theme.border}`,
@@ -286,62 +330,82 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '2rem',
-            fontSize: '0.875rem'
+            gap: '1.5rem',
+            flexWrap: 'wrap'
           }}>
-            <Link
-              to="/forum"
-              style={{
-                color: theme.primary,
-                textDecoration: 'none',
-                fontWeight: '500',
-                transition: 'color 0.2s'
-              }}
-            >
-              🏠 Acasă Forum
-            </Link>
-            <Link
-              to="/forum/recent"
-              style={{
-                color: theme.text,
-                textDecoration: 'none',
-                fontWeight: '500',
-                transition: 'color 0.2s'
-              }}
-            >
-              📝 Postări Recente
-            </Link>
-            <Link
-              to="/forum/members"
-              style={{
-                color: theme.text,
-                textDecoration: 'none',
-                fontWeight: '500',
-                transition: 'color 0.2s'
-              }}
-            >
-              👥 Membri Activi
-            </Link>
-            <a
-              href="https://fishtrophy.ro"
-              style={{
-                color: theme.secondary,
-                textDecoration: 'none',
-                fontWeight: '500',
-                transition: 'color 0.2s'
-              }}
-            >
-              🎣 Fish Trophy
-            </a>
-            <div
-              className="mobile-hidden"
-              style={{
-                marginLeft: 'auto',
-                fontSize: '0.75rem',
-                color: theme.textSecondary
-              }}
-            >
-              Bun venit pe forumul oficial Fish Trophy
+            {/* Menu Links */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.5rem',
+              fontSize: '0.875rem',
+              flex: 1
+            }}>
+              <Link
+                to="/forum"
+                style={{
+                  color: theme.primary,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                🏠 Acasă Forum
+              </Link>
+              <Link
+                to="/forum/recent"
+                style={{
+                  color: theme.text,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                📝 Postări Recente
+              </Link>
+              <Link
+                to="/forum/members"
+                style={{
+                  color: theme.text,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                👥 Membri Activi
+              </Link>
+              <Link
+                to="/forum/rules"
+                style={{
+                  color: theme.text,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                📜 Regulament
+              </Link>
+              <a
+                href="https://fishtrophy.ro"
+                style={{
+                  color: theme.secondary,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                🎣 Fish Trophy
+              </a>
+            </div>
+            
+            {/* Search Bar */}
+            <div style={{ flex: '0 0 300px', minWidth: '200px' }}>
+              <ForumSearch />
             </div>
           </div>
         </div>
@@ -353,15 +417,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
       </main>
 
       {/* Footer - Modern Design (same as main site) */}
-      <footer style={{ 
-        background: 'linear-gradient(to bottom, #f9fafb, #ffffff)',
+      <footer style={{
+        background: `linear-gradient(to bottom, ${theme.surface}, ${theme.background})`,
         borderTop: `1px solid ${theme.border}`,
-        marginTop: '4rem'
+        marginTop: '4rem',
+        color: theme.text
       }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '3rem 1rem' }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
             gap: '2rem',
             marginBottom: '2rem'
           }}>
@@ -370,30 +435,30 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                 <img src="/icon_free.png" alt="Fish Trophy" style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }} />
                 <div>
-                  <span style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: '700', 
+                  <span style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
                     background: 'linear-gradient(to right, #2563eb, #4f46e5)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
                   }}>Fish Trophy</span>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Platforma pescarilor din România</p>
+                  <p style={{ fontSize: '0.875rem', color: theme.textSecondary, marginTop: '0.25rem' }}>Platforma pescarilor din România</p>
                 </div>
               </div>
-              <p style={{ color: '#4b5563', maxWidth: '32rem', lineHeight: '1.6', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+              <p style={{ color: theme.textSecondary, maxWidth: '32rem', lineHeight: '1.6', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                 Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <a 
-                  href="mailto:contact@fishtrophy.ro" 
+                <a
+                  href="mailto:contact@fishtrophy.ro"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     padding: '0.5rem 1rem',
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    color: '#374151',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    color: theme.text,
                     borderRadius: '0.5rem',
                     fontSize: '0.875rem',
                     fontWeight: '500',
@@ -402,12 +467,12 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f9fafb';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.borderColor = theme.primary;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.backgroundColor = theme.surface;
+                    e.currentTarget.style.borderColor = theme.border;
                   }}
                 >
                   <svg style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,109 +485,109 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
 
             {/* Navigation */}
             <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigare</h3>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigare</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <li>
-                  <a 
-                    href="/" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Acasă
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="/species" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/species"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Specii
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="/records" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/records"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Recorduri
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="/submission-guide" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/submission-guide"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Ghid Submisie
                   </a>
                 </li>
@@ -531,94 +596,94 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
 
             {/* Community & Social */}
             <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comunitate</h3>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comunitate</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <li>
-                  <a 
-                    href="/profile" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/profile"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Profilul meu
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="/leaderboards" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/leaderboards"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Clasamente
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="/fishing-shops" 
-                    style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563', 
-                      textDecoration: 'none', 
+                  <a
+                    href="/fishing-shops"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: theme.textSecondary,
+                      textDecoration: 'none',
                       transition: 'color 0.2s',
                       display: 'flex',
                       alignItems: 'center'
-                    }} 
+                    }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#2563eb';
+                      e.currentTarget.style.color = theme.primary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '1';
-                    }} 
+                    }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#4b5563';
+                      e.currentTarget.style.color = theme.textSecondary;
                       const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
                       if (dot) dot.style.opacity = '0';
                     }}
                   >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: '#2563eb', borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
+                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
                     Magazine
                   </a>
                 </li>
               </ul>
 
               <div>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#111827', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Urmărește-ne</h4>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Urmărește-ne</h4>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <a 
-                    href="https://www.facebook.com/fishtrophy.ro" 
-                    target="_blank" 
+                  <a
+                    href="https://www.facebook.com/fishtrophy.ro"
+                    target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       width: '2.5rem',
@@ -645,12 +710,12 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
                   </a>
-                  <a 
-                    href="https://www.instagram.com/fishtrophy.ro" 
-                    target="_blank" 
+                  <a
+                    href="https://www.instagram.com/fishtrophy.ro"
+                    target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       width: '2.5rem',
@@ -677,12 +742,12 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                     </svg>
                   </a>
-                  <a 
-                    href="https://x.com/fishtrophy_ro" 
-                    target="_blank" 
+                  <a
+                    href="https://x.com/fishtrophy_ro"
+                    target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       width: '2.5rem',
@@ -709,7 +774,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
                     }}
                   >
                     <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                     </svg>
                   </a>
                 </div>
@@ -718,14 +783,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout }: Forum
           </div>
 
           {/* Bottom Section */}
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '2.5rem' }}>
+          <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: '1.5rem', marginTop: '2.5rem' }}>
             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: theme.textSecondary }}>
                 <span style={{ fontWeight: '500' }}>© 2025 Fish Trophy</span>
-                <span style={{ color: '#d1d5db' }}>•</span>
+                <span style={{ color: theme.border }}>•</span>
                 <span>Toate drepturile rezervate</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', color: '#4b5563' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', color: theme.textSecondary }}>
                 <span>Făcut cu</span>
                 <span style={{ color: '#ef4444', fontSize: '1.125rem', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>❤️</span>
                 <span>în România</span>

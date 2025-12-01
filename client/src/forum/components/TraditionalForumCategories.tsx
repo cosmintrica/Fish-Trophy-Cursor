@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, Users, Clock } from 'lucide-react';
-import { forumStorage, ForumCategory } from '../services/forumService';
+import { useCategories } from '../hooks/useCategories';
 import { useTheme } from '../contexts/ThemeContext';
+import type { ForumCategory } from '../types/forum';
 
 interface TraditionalForumCategoriesProps {
   onSubcategoryClick: (subcategoryId: string) => void;
@@ -12,21 +13,22 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
   const [loading, setLoading] = useState(true);
   const { theme } = useTheme();
 
-  const loadCategories = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 200)); // Simulăm loading
-    const cats = forumStorage.getCategories();
-    setCategories(cats);
-    setLoading(false);
-  };
+  const { categories, loading: categoriesLoading } = useCategories();
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (categories) {
+      setCategories(categories);
+      setLoading(false);
+    } else {
+      setLoading(categoriesLoading);
+    }
+  }, [categories, categoriesLoading]);
 
   const handleToggleCollapse = (categoryId: string) => {
-    forumStorage.toggleCategoryCollapse(categoryId);
-    loadCategories(); // Reîncarcă pentru a reflecta starea
+    // Toggle collapse state (poate fi implementat cu localStorage sau state local)
+    setCategories(prev => prev.map(cat => 
+      cat.id === categoryId ? { ...cat, isCollapsed: !cat.isCollapsed } : cat
+    ));
   };
 
   const formatTime = (timeStr: string) => {

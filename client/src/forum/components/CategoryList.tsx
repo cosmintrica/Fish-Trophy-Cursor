@@ -66,7 +66,7 @@ export default function CategoryList({ categories, loading }: CategoryListProps)
             {category.subcategories && category.subcategories.length > 0 ? (
               category.subcategories.map((subcategory) => (
                 <div key={subcategory.id} className="hover:bg-gray-50 transition-colors">
-                  <a href={`/forum/category/${subcategory.id}`} className="block p-6">
+                  <a href={`/forum/category/${subcategory.slug || subcategory.id}`} className="block p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
                         {/* Icon subcategorie */}

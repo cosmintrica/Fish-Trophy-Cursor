@@ -1,44 +1,31 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, Eye } from 'lucide-react';
-import { forumStorage, ForumCategory } from '../services/forumService';
+import { useCategories } from '../hooks/useCategories';
 import { useTheme } from '../contexts/ThemeContext';
+import type { ForumCategory } from '../types/forum';
 
 interface MobileOptimizedCategoriesProps {
   onSubcategoryClick: (subcategoryId: string) => void;
 }
 
 export default function MobileOptimizedCategories({ onSubcategoryClick }: MobileOptimizedCategoriesProps) {
-  const [categories, setCategories] = useState<ForumCategory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { theme } = useTheme();
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 1024); // Măresc threshold-ul pentru mobile
-    };
+  // Try Supabase first
+  const { categories: supabaseCategories, loading: supabaseLoading, error } = useCategories();
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+  // Local state for collapse
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const loadCategories = async () => {
-    setLoading(true);
-    // Loading instant - fără delay artificial
-    const cats = forumStorage.getCategories();
-    setCategories(cats);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  const categories = supabaseCategories || [];
+  const loading = supabaseLoading && categories.length === 0;
 
   const handleToggleCollapse = (categoryId: string) => {
-    forumStorage.toggleCategoryCollapse(categoryId);
-    loadCategories();
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
   };
 
   if (loading) {
@@ -95,7 +82,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
               onTouchEnd={(e) => e.currentTarget.style.backgroundColor = theme.surface}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                {category.isCollapsed ? (
+                {collapsedCategories[category.id] ? (
                   <ChevronRight style={{ width: '0.875rem', height: '0.875rem', color: theme.textSecondary }} />
                 ) : (
                   <ChevronDown style={{ width: '0.875rem', height: '0.875rem', color: theme.textSecondary }} />
@@ -120,7 +107,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                   borderRadius: '0.25rem'
                 }}>
                   <MessageSquare style={{ width: '0.625rem', height: '0.625rem' }} />
-                  <span>{category.totalTopics}</span>
+                  <span>{category.totalTopics ?? 0}</span>
                 </div>
               </div>
 
@@ -130,7 +117,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
             </div>
 
             {/* Mobile Subcategories */}
-            {!category.isCollapsed && (
+            {!collapsedCategories[category.id] && (
               <div style={{ backgroundColor: theme.background }}>
                 {category.subcategories.map((subcategory) => (
                   <div
@@ -141,7 +128,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                       cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
-                    onClick={() => onSubcategoryClick(subcategory.id)}
+                    onClick={() => onSubcategoryClick(subcategory.slug || subcategory.id)}
                     onTouchStart={(e) => e.currentTarget.style.backgroundColor = theme.surfaceHover}
                     onTouchEnd={(e) => e.currentTarget.style.backgroundColor = theme.background}
                   >
@@ -234,7 +221,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
           >
             {/* Category Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {category.isCollapsed ? (
+              {collapsedCategories[category.id] ? (
                 <ChevronRight style={{ width: '1rem', height: '1rem', color: theme.textSecondary }} />
               ) : (
                 <ChevronDown style={{ width: '1rem', height: '1rem', color: theme.textSecondary }} />
@@ -254,10 +241,10 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
 
             {/* Stats */}
             <div style={{ textAlign: 'center', fontSize: '0.875rem', fontWeight: '500', color: theme.text }}>
-              {category.totalTopics.toLocaleString('ro-RO')}
+              {(category.totalTopics ?? 0).toLocaleString('ro-RO')}
             </div>
             <div style={{ textAlign: 'center', fontSize: '0.875rem', fontWeight: '500', color: theme.text }}>
-              {category.totalPosts.toLocaleString('ro-RO')}
+              {(category.totalPosts ?? 0).toLocaleString('ro-RO')}
             </div>
             <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
               {category.lastPost ? (
@@ -277,7 +264,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
           </div>
 
           {/* Subcategories */}
-          {!category.isCollapsed && (
+          {!collapsedCategories[category.id] && (
             <div>
               {category.subcategories.map((subcategory, index) => (
                 <div
@@ -294,7 +281,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                     gap: '0.75rem',
                     alignItems: 'center'
                   }}
-                  onClick={() => onSubcategoryClick(subcategory.id)}
+                  onClick={() => onSubcategoryClick(subcategory.slug || subcategory.id)}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.surfaceHover}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.surface}
                 >

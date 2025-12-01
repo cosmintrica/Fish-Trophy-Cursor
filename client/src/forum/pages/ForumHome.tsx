@@ -1,24 +1,37 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
-import { forumStorage } from '../services/forumService';
-import ForumLayout, { ForumUser } from '../components/ForumLayout';
+
+import { useCategories } from '../hooks/useCategories';
+import { useForumStats } from '../hooks/useForumStats';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import MobileOptimizedCategories from '../components/MobileOptimizedCategories';
+import ForumSeeder from '../components/ForumSeeder';
+import ActiveViewers from '../components/ActiveViewers';
 
 export default function ForumHome() {
   const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
-  const [forumStats, setForumStats] = useState({
-    totalTopics: 0,
-    totalPosts: 0,
-    totalMembers: 1247,
-    onlineUsers: 47
-  });
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const stats = forumStorage.getForumStats();
-    setForumStats(stats);
-  }, []);
+  // Use Supabase categories
+  const { categories, loading, error } = useCategories();
+  
+  // Real stats from database
+  const { stats: forumStatsData, loading: statsLoading } = useForumStats();
+  const { users: onlineUsers, loading: onlineUsersLoading } = useOnlineUsers();
+
+  // Categories loaded
+
+  // Real stats from database
+  const forumStats = {
+    totalTopics: forumStatsData?.total_topics || 0,
+    totalPosts: forumStatsData?.total_posts || 0,
+    totalMembers: forumStatsData?.total_users || 0,
+    onlineUsers: forumStatsData?.online_users || 0
+  };
 
   const handleLogin = () => {
     // Login handled by ForumLayout
@@ -29,15 +42,26 @@ export default function ForumHome() {
   };
 
   const handleSubcategoryClick = (subcategoryId: string) => {
-    window.location.href = `/forum/category/${subcategoryId}`;
+    // subcategoryId este de fapt slug-ul acum
+    navigate(`/forum/category/${subcategoryId}`);
   };
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } as ForumUser : null} onLogin={handleLogin} onLogout={handleLogout}>
+    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={handleLogin} onLogout={handleLogout} showWelcomeBanner={true}>
       {/* Main Content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+
+
         {/* Mobile Optimized Forum Categories */}
         <MobileOptimizedCategories onSubcategoryClick={handleSubcategoryClick} />
+
+        {/* Auto-Seeder for empty database */}
+        <ForumSeeder />
+
+        {/* Active Viewers pe Forum */}
+        <div style={{ marginTop: '1.5rem' }}>
+          <ActiveViewers categoryId={undefined} subcategoryId={undefined} topicId={undefined} />
+        </div>
 
         {/* Activitate și Statistici Forum */}
         <div style={{
@@ -80,32 +104,26 @@ export default function ForumHome() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
                   {forumStats.totalTopics}
-              </div>
+                </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Topicuri</div>
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.accent, marginBottom: '0.25rem' }}>
                   {forumStats.totalPosts}
-              </div>
+                </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Postări</div>
-            </div>
+              </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
-                  {forumStats.onlineUsers + 3}
-          </div>
+                  {forumStats.onlineUsers}
+                </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
+              </div>
             </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#7c3aed', marginBottom: '0.25rem' }}>
-                  2,847
-            </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Record Online</div>
-          </div>
-        </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
               {/* Utilizatori Online */}
-                <div>
+              <div>
                 <h4 style={{
                   fontSize: '0.875rem',
                   fontWeight: '600',
@@ -121,57 +139,56 @@ export default function ForumHome() {
                     backgroundColor: theme.secondary,
                     borderRadius: '50%'
                   }} />
-                  Utilizatori Online ({forumStats.onlineUsers + 3})
+                  Utilizatori Online ({forumStats.onlineUsers})
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {[
-                    { name: 'FishTrophyAdmin', rank: 'administrator' },
-                    { name: 'ForumModerator', rank: 'moderator' },
-                    { name: 'PescarExpert', rank: 'expert' },
-                    { name: 'CrapMaster', rank: 'maestru' },
-                    { name: 'TroutHunter', rank: 'pescar' },
-                    { name: 'VIPAngler', rank: 'vip' },
-                    { name: 'FeederPro', rank: 'expert' },
-                    { name: 'SpinningAce', rank: 'pescar' },
-                    { name: 'MomeliBoss', rank: 'maestru' },
-                    { name: 'SnagovGuide', rank: 'expert' }
-                  ].map((user) => (
-                    <div
-                      key={user.name}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.375rem',
-                        fontSize: '0.75rem',
-                        padding: '0.375rem 0.5rem',
-                        backgroundColor: '#f0f9ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: '0.375rem',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#dbeafe';
-                        e.currentTarget.style.borderColor = '#3b82f6';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f0f9ff';
-                        e.currentTarget.style.borderColor = '#bfdbfe';
-                      }}
-                    >
-                      <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.name}</span>
-                      <span className={`user-rank rank-${user.rank}`} style={{ fontSize: '0.625rem' }}>
-                        {user.rank}
-                      </span>
+                  {onlineUsersLoading ? (
+                    <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Se încarcă utilizatorii online...</div>
+                  ) : onlineUsers.length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
+                  ) : (
+                    onlineUsers.map((user) => (
+                      <div
+                        key={user.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          fontSize: '0.75rem',
+                          padding: '0.375rem 0.5rem',
+                          backgroundColor: '#f0f9ff',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '0.375rem',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#dbeafe';
+                          e.currentTarget.style.borderColor = '#3b82f6';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f0f9ff';
+                          e.currentTarget.style.borderColor = '#bfdbfe';
+                        }}
+                      >
+                        <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>
+                        <span className={`user-rank rank-${user.rank}`} style={{ fontSize: '0.625rem' }}>
+                          {user.rank}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
-                  ))}
-              </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                  Cei mai mulți utilizatori online: <strong>2,847</strong> (15 Aug 2024, 14:23)
+                  {forumStatsData?.newest_user && (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
               {/* Legendă Ranguri și Informații */}
-            <div>
+              <div>
                 <h4 style={{
                   fontSize: '0.875rem',
                   fontWeight: '600',
@@ -191,17 +208,13 @@ export default function ForumHome() {
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[
-                    { rank: 'pescar-nou', label: '🆕 Pescar Nou', desc: '0-1 lună', color: '#94a3b8' },
-                    { rank: 'pescar-activ', label: '🎣 Pescar Activ', desc: '1-3 luni', color: '#059669' },
-                    { rank: 'pescar-experimentat', label: '🐟 Pescar Experimentat', desc: '3-6 luni', color: '#0891b2' },
-                    { rank: 'pescar-veteran', label: '🏆 Pescar Veteran', desc: '6-12 luni', color: '#d97706' },
-                    { rank: 'pescar-senior', label: '👑 Pescar Senior', desc: '1-2 ani', color: '#dc2626' },
-                    { rank: 'pescar-elite', label: '🌟 Pescar Elite', desc: '2-3 ani', color: '#7c3aed' },
-                    { rank: 'maestru-pescar', label: '💎 Maestru Pescar', desc: '3+ ani', color: '#1e40af' },
-                    { rank: 'legenda', label: '🔥 Legendă', desc: '5+ ani', color: '#ef4444' },
-                    { rank: 'moderator', label: '🟣 Moderator', desc: 'Staff forum', color: '#7c3aed' },
-                    { rank: 'administrator', label: '🔴 Administrator', desc: 'Fish Trophy Team', color: '#ef4444' },
-                    { rank: 'vip', label: '🟡 VIP Member', desc: 'Membru premium', color: '#f59e0b' }
+                    { rank: 'ou_de_peste', label: '🥚 Ou de Pește', desc: '0-10 postări', color: '#9ca3af' },
+                    { rank: 'puiet', label: '🐟 Puiet', desc: '11-50 postări', color: '#60a5fa' },
+                    { rank: 'pui_de_crap', label: '🐠 Pui de Crap', desc: '51-100 postări', color: '#34d399' },
+                    { rank: 'crap_junior', label: '🎣 Crap Junior', desc: '101-500 postări', color: '#fbbf24' },
+                    { rank: 'crap_senior', label: '🏆 Crap Senior', desc: '501-1000 postări', color: '#fb923c' },
+                    { rank: 'maestru_pescar', label: '💎 Maestru Pescar', desc: '1001-5000 postări', color: '#f472b6' },
+                    { rank: 'legenda_apelor', label: '👑 Legenda Apelor', desc: '5001+ postări', color: '#a78bfa' }
                   ].map((item) => (
                     <div key={item.rank} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <span style={{
@@ -217,27 +230,29 @@ export default function ForumHome() {
                       </span>
                     </div>
                   ))}
-            </div>
+                </div>
 
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, lineHeight: '1.4' }}>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Cel mai nou membru:</strong> DebutantFericit
-                  </div>
+                  {forumStatsData?.newest_user && (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
+                    </div>
+                  )}
                   <div style={{ marginBottom: '0.5rem' }}>
                     <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
                   </div>
                   <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Staff online:</strong> 2 (Admin + Moderator)
+                    <strong>Utilizatori online:</strong> {forumStats.onlineUsers}
                   </div>
-            <div>
-                    <strong>Membri VIP activi:</strong> 1
+                  <div>
+                    <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-              </div>
-            </div>
-          </div>
+        </div>
+      </div>
     </ForumLayout>
   );
 }

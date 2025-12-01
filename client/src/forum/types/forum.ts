@@ -52,6 +52,7 @@ export interface ForumPost {
 
 export interface ForumSubcategory {
   id: string;
+  slug?: string; // Slug pentru URL-uri frumoase (ex: pescuit-nocturn)
   name: string;
   description: string;
   topicCount: number;

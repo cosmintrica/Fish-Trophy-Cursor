@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, MessageSquare, Send } from 'lucide-react';
-import { forumStorage } from '../services/forumService';
+import { useCreateTopic } from '../hooks/useTopics';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
+import { useToast } from '../contexts/ToastContext';
 
 interface CreateTopicModalProps {
   isOpen: boolean;
@@ -24,22 +27,62 @@ export default function CreateTopicModal({
 }: CreateTopicModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resolvedSubcategoryId, setResolvedSubcategoryId] = useState<string | null>(null);
+  const { create, creating, error: createError } = useCreateTopic();
+  const { forumUser } = useAuth();
+  const { showToast } = useToast();
+
+  // Rezolvă slug-ul în UUID
+  useEffect(() => {
+    const resolveSubcategoryId = async () => {
+      if (!categoryId) {
+        setResolvedSubcategoryId(null);
+        return;
+      }
+      
+      // Verifică dacă e UUID sau slug
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
+      
+      if (isUUID) {
+        setResolvedSubcategoryId(categoryId);
+      } else {
+        const { data } = await supabase
+          .from('forum_subcategories')
+          .select('id')
+          .eq('slug', categoryId)
+          .single();
+        setResolvedSubcategoryId(data?.id || null);
+      }
+    };
+    
+    resolveSubcategoryId();
+  }, [categoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !content.trim()) {
-      alert('Te rog completează titlul și conținutul!');
+      showToast('Te rog completează titlul și conținutul!', 'warning');
       return;
     }
 
-    setIsSubmitting(true);
+    if (!forumUser) {
+      showToast('Trebuie să fii autentificat pentru a crea un topic!', 'warning');
+      return;
+    }
 
-    try {
-      // Creare instant - fără delay artificial
-      forumStorage.createTopic(categoryId, title.trim(), content.trim(), user.username, user.rank);
+    if (!resolvedSubcategoryId) {
+      showToast('Eroare: Subcategoria nu a fost găsită!', 'error');
+      return;
+    }
 
+    const result = await create({
+      subcategory_id: resolvedSubcategoryId,
+      title: title.trim(),
+      content: content.trim()
+    });
+
+    if (result.success) {
       // Reset form
       setTitle('');
       setContent('');
@@ -49,13 +92,10 @@ export default function CreateTopicModal({
       onClose();
 
       // Show success message
-      alert('Topic creat cu succes!');
-
-    } catch (error) {
-      console.error('Error creating topic:', error);
-      alert('A apărut o eroare la crearea topicului!');
-    } finally {
-      setIsSubmitting(false);
+      showToast('Topic creat cu succes!', 'success');
+    } else {
+      console.error('Error creating topic:', result.error);
+      showToast(result.error?.message || 'A apărut o eroare la crearea topicului!', 'error');
     }
   };
 
@@ -246,13 +286,13 @@ export default function CreateTopicModal({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !title.trim() || !content.trim()}
+                disabled={creating || !title.trim() || !content.trim()}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.5rem 1rem',
-                  background: isSubmitting || !title.trim() || !content.trim()
+                  background: creating || !title.trim() || !content.trim()
                     ? '#9ca3af'
                     : 'linear-gradient(135deg, #2563eb, #4f46e5)',
                   color: 'white',
@@ -260,11 +300,11 @@ export default function CreateTopicModal({
                   borderRadius: '0.5rem',
                   fontSize: '0.875rem',
                   fontWeight: '500',
-                  cursor: isSubmitting || !title.trim() || !content.trim() ? 'not-allowed' : 'pointer',
+                  cursor: creating || !title.trim() || !content.trim() ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s'
                 }}
               >
-                {isSubmitting ? (
+                {creating ? (
                   <>
                     <div
                       style={{

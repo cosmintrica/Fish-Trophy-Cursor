@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Heart, MessageSquare, Quote, MoreHorizontal, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
+import ReputationButtons from './ReputationButtons';
 
 interface MessageContainerProps {
   post: {
     id: string;
     content: string;
     author: string;
+    authorId?: string; // ID-ul utilizatorului autorului (pentru reputație)
     authorRank: string;
     authorAvatar?: string;
     createdAt: string;
@@ -20,6 +22,7 @@ interface MessageContainerProps {
   onRespectChange?: (postId: string, delta: number, comment: string) => void;
   onReply?: (postId: string) => void;
   onQuote?: (postId: string) => void;
+  onReputationChange?: () => void; // Callback când se schimbă reputația
 }
 
 export default function MessageContainer({
@@ -27,7 +30,8 @@ export default function MessageContainer({
   isOriginalPost = false,
   onRespectChange,
   onReply,
-  onQuote
+  onQuote,
+  onReputationChange
 }: MessageContainerProps) {
   const { theme } = useTheme();
   const { forumUser } = useAuth();
@@ -56,7 +60,7 @@ export default function MessageContainer({
       'maestru': '🏆 Pescar Veteran',
       'moderator': '🟣 Moderator',
       'administrator': '🔴 Administrator',
-      'vip': '🟡 VIP Member'
+      'founder': '👑 Founder'
     };
     return seniorityRanks[rank as keyof typeof seniorityRanks] || '🎣 Pescar';
   };
@@ -439,17 +443,14 @@ export default function MessageContainer({
               )}
             </div>
 
-            {/* Like/Dislike stats */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: theme.textSecondary }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <ThumbsUp style={{ width: '0.875rem', height: '0.875rem', color: theme.secondary }} />
-                <span>{post.likes}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <ThumbsDown style={{ width: '0.875rem', height: '0.875rem', color: '#dc2626' }} />
-                <span>{post.dislikes}</span>
-              </div>
-            </div>
+            {/* Reputation Buttons */}
+            {post.authorId && (
+              <ReputationButtons
+                postId={post.id}
+                receiverUserId={post.authorId}
+                onReputationChange={onReputationChange}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -7,8 +7,7 @@ Acest folder conține toate componentele și paginile pentru secțiunea forum a 
 ```
 forum/
 ├── components/           # Componente React pentru forum
-│   ├── ForumHeader.tsx   # Header separat pentru forum
-│   ├── ForumLayout.tsx   # Layout principal forum
+│   ├── ForumLayout.tsx   # Layout principal forum (SINGURUL header de navigare)
 │   ├── ForumSidebar.tsx  # Sidebar cu statistici
 │   ├── CategoryList.tsx  # Lista categorii
 │   └── ...               # Alte componente
@@ -38,7 +37,7 @@ Forum-ul are un design complet separat de site-ul principal Fish Trophy:
 
 ### Import Componente
 ```typescript
-import { ForumHome, ForumHeader, CategoryList } from './forum';
+import { ForumHome, ForumLayout, CategoryList } from './forum';
 ```
 
 ### Configurare Rute

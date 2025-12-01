@@ -33,31 +33,43 @@ export const useAuthProvider = () => {
   useEffect(() => {
     // Când utilizatorul principal se schimbă, actualizează forumUser
     if (mainAuth.user) {
-      const displayName = mainAuth.user.user_metadata?.display_name ||
-                         mainAuth.user.user_metadata?.full_name ||
-                         mainAuth.user.email?.split('@')[0] ||
-                         'Utilizator';
+      const loadUserData = async () => {
+        const displayName = mainAuth.user.user_metadata?.display_name ||
+                           mainAuth.user.user_metadata?.full_name ||
+                           mainAuth.user.email?.split('@')[0] ||
+                           'Utilizator';
 
-      const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+        const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+        const isFounder = isAdmin; // Founder = creator/admin
 
-      const newForumUser: ForumUser = {
-        id: mainAuth.user.id,
-        username: displayName,
-        email: mainAuth.user.email,
-        avatar_url: mainAuth.user.user_metadata?.avatar_url || null,
-        rank: isAdmin ? 'vip' : 'pescar',
-        post_count: 0,
-        topic_count: 0,
-        reputation_points: isAdmin ? 999 : 100,
-        badges: isAdmin ? ['Administrator', 'Expert Pescuit', 'VIP Member'] : ['Pescar Nou'],
-        isAdmin: isAdmin,
-        canModerateRespect: isAdmin,
-        canDeletePosts: isAdmin,
-        canBanUsers: isAdmin,
-        canEditAnyPost: isAdmin
+        // Obține photo_url din profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('photo_url')
+          .eq('id', mainAuth.user.id)
+          .maybeSingle();
+
+        const newForumUser: ForumUser = {
+          id: mainAuth.user.id,
+          username: displayName,
+          email: mainAuth.user.email,
+          avatar_url: profile?.photo_url || mainAuth.user.user_metadata?.avatar_url || null,
+          rank: isFounder ? 'founder' : 'pescar',
+          post_count: 0,
+          topic_count: 0,
+          reputation_points: isAdmin ? 999 : 100,
+          badges: isFounder ? ['Founder', 'Administrator', 'Expert Pescuit'] : ['Pescar Nou'],
+          isAdmin: isAdmin,
+          canModerateRespect: isAdmin,
+          canDeletePosts: isAdmin,
+          canBanUsers: isAdmin,
+          canEditAnyPost: isAdmin
+        };
+
+        setForumUser(newForumUser);
       };
 
-      setForumUser(newForumUser);
+      loadUserData();
     } else {
       setForumUser(null);
     }
@@ -77,7 +89,17 @@ export const useAuthProvider = () => {
       }
 
       if (data) {
-        setForumUser(data);
+        // Obține photo_url din profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('photo_url')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        setForumUser({
+          ...data,
+          photo_url: profile?.photo_url || data.avatar_url || null
+        });
       } else {
         // Create forum user if doesn't exist
         await createForumUser(userId);
