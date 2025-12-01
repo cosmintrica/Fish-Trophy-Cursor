@@ -481,11 +481,31 @@ const Admin: React.FC = () => {
             recordsCount[r.user_id] = (recordsCount[r.user_id] || 0) + 1;
           });
 
-          // Combine data
-          const usersWithData = usersWithSignIn.map(user => ({
-            ...user,
-            records: [{ count: recordsCount[user.id] || 0 }]
-          }));
+          // Load username from profiles for each user
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, email, phone, created_at')
+            .in('id', usersWithSignIn.map(u => u.id));
+
+          // Create a map of profile data by user ID
+          const profilesMap = new Map();
+          profilesData?.forEach(profile => {
+            profilesMap.set(profile.id, profile);
+          });
+
+          // Combine data with profile info
+          const usersWithData = usersWithSignIn.map(user => {
+            const profile = profilesMap.get(user.id);
+            return {
+              ...user,
+              username: profile?.username || null,
+              display_name: profile?.display_name || user.display_name || null,
+              email: profile?.email || user.email || null,
+              phone: profile?.phone || null,
+              created_at: profile?.created_at || user.created_at,
+              records: [{ count: recordsCount[user.id] || 0 }]
+            };
+          });
 
           setUsers(usersWithData);
         } else {
@@ -777,11 +797,30 @@ const Admin: React.FC = () => {
   };
 
   // Handle view user profile
-  const handleViewUserProfile = (user: any) => {
+  const handleViewUserProfile = async (user: any) => {
+    // First check if username is already in user object
     if (user.username) {
       window.open(`/profile/${user.username}`, '_blank');
-    } else {
-      toast.error('Utilizatorul nu are username setat');
+      return;
+    }
+
+    // If no username, try to get it from profile
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData?.username) {
+        window.open(`/profile/${profileData.username}`, '_blank');
+      } else {
+        // Fallback: use ID as profile identifier (PublicProfile now supports UUID)
+        window.open(`/profile/${user.id}`, '_blank');
+      }
+    } catch (error) {
+      // Fallback: use ID as profile identifier
+      window.open(`/profile/${user.id}`, '_blank');
     }
   };
 
@@ -833,7 +872,7 @@ const Admin: React.FC = () => {
   const handleCreateBackup = async () => {
     setIsCreatingBackup(true);
     setBackupData(null);
-    
+
     try {
       const response = await fetch('/.netlify/functions/backup', {
         method: 'POST',
@@ -871,7 +910,7 @@ const Admin: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast.success('Backup descărcat cu succes!');
   };
 
@@ -945,9 +984,8 @@ const Admin: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className={`w-full lg:w-56 flex-shrink-0 transition-all duration-300 ${
-            isMobileMenuOpen ? 'block' : 'hidden lg:block'
-          }`}>
+          <div className={`w-full lg:w-56 flex-shrink-0 transition-all duration-300 ${isMobileMenuOpen ? 'block' : 'hidden lg:block'
+            }`}>
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2 sm:p-3">
               <nav className="space-y-1">
                 {menuItems.map((item) => {
@@ -959,11 +997,10 @@ const Admin: React.FC = () => {
                         setActiveSection(item.id);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-left transition-colors text-xs sm:text-sm ${
-                        activeSection === item.id
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-left transition-colors text-xs sm:text-sm ${activeSection === item.id
                           ? 'bg-blue-50 text-blue-700 font-medium'
                           : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="text-xs sm:text-sm truncate">{item.label}</span>
@@ -980,1029 +1017,1043 @@ const Admin: React.FC = () => {
               <TabsList className="hidden">
               </TabsList>
 
-          {/* Analytics & Status Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid gap-4 sm:gap-6">
-              {/* Traffic Analytics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="text-base sm:text-lg">Trafic Website</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={updateAnalyticsStats}
-                      className="text-xs w-full sm:w-auto"
-                    >
-                      Actualizează
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    Statistici reale din baza de date
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
-                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Page Views</div>
-                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Total vizualizări</div>
-                    </div>
-                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
-                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Vizitatori Unici</div>
-                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Utilizatori diferiți</div>
-                    </div>
-                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
-                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Sesiuni</div>
-                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Sesiuni active</div>
-                    </div>
-                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
-                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Bounce Rate</div>
-                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">% care pleacă rapid</div>
-                    </div>
-                    <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                      <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
-                      <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Timp Mediu</div>
-                      <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Timp pe sesiune</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            {/* Detailed Analytics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-              {/* Device Statistics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Dispozitive
-                  </CardTitle>
-                  <CardDescription>
-                    Distribuția pe tipuri de dispozitive
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(trafficData.deviceStats)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([device, count]) => {
-                      const total = Object.values(trafficData.deviceStats).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={device} className="flex items-center justify-between">
-                          <span className="text-sm capitalize">{device}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
-                          </div>
+              {/* Analytics & Status Tab */}
+              <TabsContent value="analytics" className="space-y-6">
+                <div className="grid gap-4 sm:gap-6">
+                  {/* Traffic Analytics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+                          <span className="text-base sm:text-lg">Trafic Website</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Browser Statistics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Browsere
-                  </CardTitle>
-                  <CardDescription>
-                    Distribuția pe browsere
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(trafficData.browserStats)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([browser, count]) => {
-                      const total = Object.values(trafficData.browserStats).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={browser} className="flex items-center justify-between">
-                          <span className="text-sm">{browser}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div
-                                className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
-                          </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={updateAnalyticsStats}
+                          className="text-xs w-full sm:w-auto"
+                        >
+                          Actualizează
+                        </Button>
+                      </CardTitle>
+                      <CardDescription>
+                        Statistici reale din baza de date
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Page Views</div>
+                          <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Total vizualizări</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Operating Systems */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Database className="w-5 h-5" />
-                    Sisteme de Operare
-                  </CardTitle>
-                  <CardDescription>
-                    Distribuția pe OS
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(trafficData.osStats)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([os, count]) => {
-                      const total = Object.values(trafficData.osStats).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={os} className="flex items-center justify-between">
-                          <span className="text-sm">{os}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div
-                                className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
-                          </div>
+                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Vizitatori Unici</div>
+                          <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Utilizatori diferiți</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Romanian Cities */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    Orașe din România
-                  </CardTitle>
-                  <CardDescription>
-                    Distribuția pe orașe românești
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(trafficData.cityStats)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([city, count]) => {
-                      const total = Object.values(trafficData.cityStats).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      const cityColor = generateRandomColor(city);
-                      return (
-                        <div key={city} className="flex items-center justify-between">
-                          <span className="text-sm">{city}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div
-                                className={`${cityColor} h-2 rounded-full transition-all duration-300`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
-                          </div>
+                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Sesiuni</div>
+                          <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Sesiuni active</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Referrers - Mobile Optimized */}
-              <Card>
-                <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-base sm:text-lg">Surse de Trafic</span>
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    De unde vin vizitatorii
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2 sm:space-y-3">
-                    {Object.entries(trafficData.referrerStats)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([referrer, count]) => {
-                      const total = Object.values(trafficData.referrerStats).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={referrer} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                          <span className="text-xs sm:text-sm truncate">{referrer}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
-                              <div
-                                className="bg-red-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
-                          </div>
+                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Bounce Rate</div>
+                          <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">% care pleacă rapid</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Most Visited Pages - Mobile Optimized */}
-              <Card>
-                <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-base sm:text-lg">Cele mai vizitate pagini</span>
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Top 10 pagini cu cele mai multe vizite
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2 sm:space-y-3">
-                    {Object.entries(trafficData.pageViewsStats || {})
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([page, count]) => {
-                      const total = Object.values(trafficData.pageViewsStats || {}).reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <div key={page} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                          <span className="text-xs sm:text-sm font-mono truncate">{page}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
-                              <div
-                                className="bg-indigo-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{count}</span>
-                          </div>
+                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Timp Mediu</div>
+                          <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Timp pe sesiune</div>
                         </div>
-                      );
-                    })}
-                    {Object.keys(trafficData.pageViewsStats || {}).length === 0 && (
-                      <div className="text-center py-6 sm:py-8 text-muted-foreground">
-                        <ExternalLink className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs sm:text-sm">Nu există date de trafic încă</p>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
 
-              {/* Timeline Chart - Mobile Optimized */}
-              <Card className="md:col-span-2 lg:col-span-3">
-                <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                    <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-lg sm:text-xl">Evoluția Traficului</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <select
-                        value={trafficData.selectedPeriod}
-                        onChange={(e) => handlePeriodChange(e.target.value)}
-                        className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
-                      >
-                        <option value="1h">Ultima oră</option>
-                        <option value="24h">Ultimele 24 ore</option>
-                        <option value="7d">Ultima săptămână</option>
-                        <option value="30d">Ultimele 30 zile</option>
-                        <option value="1y">Ultimul an</option>
-                        <option value="custom">Perioadă custom</option>
-                      </select>
-                      {trafficData.selectedPeriod === 'custom' && (
-                        <div className="flex gap-1 sm:gap-2">
-                          <input
-                            type="date"
-                            value={trafficData.customStartDate}
-                            onChange={(e) => setTrafficData(prev => ({ ...prev, customStartDate: e.target.value }))}
-                            className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
-                          />
-                          <input
-                            type="date"
-                            value={trafficData.customEndDate}
-                            onChange={(e) => setTrafficData(prev => ({ ...prev, customEndDate: e.target.value }))}
-                            className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    {getPeriodDescription(trafficData.selectedPeriod)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="h-64 sm:h-80 md:h-96">
-                    {memoizedTrafficData.length > 0 ? (
-                      <div className="h-full flex flex-col">
-                        {/* Metric Filters - Mobile Optimized */}
-                        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-4 text-xs sm:text-sm">
-                          <button
-                            onClick={() => setShowPageViews(!showPageViews)}
-                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
-                              showPageViews
-                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                : 'bg-gray-100 text-gray-500 border border-gray-300'
-                            }`}
-                          >
-                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showPageViews ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-                            <span className="hidden sm:inline">Page Views</span>
-                            <span className="sm:hidden">Views</span>
-                          </button>
-                          <button
-                            onClick={() => setShowUniqueVisitors(!showUniqueVisitors)}
-                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
-                              showUniqueVisitors
-                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                : 'bg-gray-100 text-gray-500 border border-gray-300'
-                            }`}
-                          >
-                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showUniqueVisitors ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                            <span className="hidden sm:inline">Vizitatori Unici</span>
-                            <span className="sm:hidden">Unici</span>
-                          </button>
-                          <button
-                            onClick={() => setShowSessions(!showSessions)}
-                            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${
-                              showSessions
-                                ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                                : 'bg-gray-100 text-gray-500 border border-gray-300'
-                            }`}
-                          >
-                            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showSessions ? 'bg-orange-500' : 'bg-gray-400'}`}></div>
-                            <span className="hidden sm:inline">Sesiuni</span>
-                            <span className="sm:hidden">Ses</span>
-                          </button>
-                        </div>
+                </div>
 
-                        {/* Line Chart - Mobile Optimized */}
-                        <div className="flex-1 relative px-1 sm:px-2 md:px-4 lg:px-6 py-2 sm:py-4">
-                          <div className="w-full overflow-x-auto">
-                            <svg className="w-full h-[200px] sm:h-[250px] md:h-[300px] min-w-[800px] sm:min-w-0" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
-                            {/* Y-axis grid lines */}
-                            {[0, 20, 40, 60, 80, 100].map((percent, i) => (
-                              <line
-                                key={i}
-                                x1="60"
-                                y1={160 - (percent * 1.2)}
-                                x2="840"
-                                y2={160 - (percent * 1.2)}
-                                stroke="#f3f4f6"
-                                strokeWidth="1"
+                {/* Detailed Analytics */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+                  {/* Device Statistics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Dispozitive
+                      </CardTitle>
+                      <CardDescription>
+                        Distribuția pe tipuri de dispozitive
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(trafficData.deviceStats)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([device, count]) => {
+                            const total = Object.values(trafficData.deviceStats).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <div key={device} className="flex items-center justify-between">
+                                <span className="text-sm capitalize">{device}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-muted rounded-full h-2">
+                                    <div
+                                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Browser Statistics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="w-5 h-5" />
+                        Browsere
+                      </CardTitle>
+                      <CardDescription>
+                        Distribuția pe browsere
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(trafficData.browserStats)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([browser, count]) => {
+                            const total = Object.values(trafficData.browserStats).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <div key={browser} className="flex items-center justify-between">
+                                <span className="text-sm">{browser}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-muted rounded-full h-2">
+                                    <div
+                                      className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Operating Systems */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Database className="w-5 h-5" />
+                        Sisteme de Operare
+                      </CardTitle>
+                      <CardDescription>
+                        Distribuția pe OS
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(trafficData.osStats)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([os, count]) => {
+                            const total = Object.values(trafficData.osStats).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <div key={os} className="flex items-center justify-between">
+                                <span className="text-sm">{os}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-muted rounded-full h-2">
+                                    <div
+                                      className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Romanian Cities */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5" />
+                        Orașe din România
+                      </CardTitle>
+                      <CardDescription>
+                        Distribuția pe orașe românești
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(trafficData.cityStats)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([city, count]) => {
+                            const total = Object.values(trafficData.cityStats).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            const cityColor = generateRandomColor(city);
+                            return (
+                              <div key={city} className="flex items-center justify-between">
+                                <span className="text-sm">{city}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-muted rounded-full h-2">
+                                    <div
+                                      className={`${cityColor} h-2 rounded-full transition-all duration-300`}
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Referrers - Mobile Optimized */}
+                  <Card>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="text-base sm:text-lg">Surse de Trafic</span>
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        De unde vin vizitatorii
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 sm:space-y-3">
+                        {Object.entries(trafficData.referrerStats)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([referrer, count]) => {
+                            const total = Object.values(trafficData.referrerStats).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <div key={referrer} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm truncate">{referrer}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
+                                    <div
+                                      className="bg-red-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Most Visited Pages - Mobile Optimized */}
+                  <Card>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="text-base sm:text-lg">Cele mai vizitate pagini</span>
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        Top 10 pagini cu cele mai multe vizite
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 sm:space-y-3">
+                        {Object.entries(trafficData.pageViewsStats || {})
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([page, count]) => {
+                            const total = Object.values(trafficData.pageViewsStats || {}).reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <div key={page} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm font-mono truncate">{page}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
+                                    <div
+                                      className="bg-indigo-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{count}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        {Object.keys(trafficData.pageViewsStats || {}).length === 0 && (
+                          <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                            <ExternalLink className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-xs sm:text-sm">Nu există date de trafic încă</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Timeline Chart - Mobile Optimized */}
+                  <Card className="md:col-span-2 lg:col-span-3">
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                          <span className="text-lg sm:text-xl">Evoluția Traficului</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <select
+                            value={trafficData.selectedPeriod}
+                            onChange={(e) => handlePeriodChange(e.target.value)}
+                            className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
+                          >
+                            <option value="1h">Ultima oră</option>
+                            <option value="24h">Ultimele 24 ore</option>
+                            <option value="7d">Ultima săptămână</option>
+                            <option value="30d">Ultimele 30 zile</option>
+                            <option value="1y">Ultimul an</option>
+                            <option value="custom">Perioadă custom</option>
+                          </select>
+                          {trafficData.selectedPeriod === 'custom' && (
+                            <div className="flex gap-1 sm:gap-2">
+                              <input
+                                type="date"
+                                value={trafficData.customStartDate}
+                                onChange={(e) => setTrafficData(prev => ({ ...prev, customStartDate: e.target.value }))}
+                                className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
                               />
-                            ))}
+                              <input
+                                type="date"
+                                value={trafficData.customEndDate}
+                                onChange={(e) => setTrafficData(prev => ({ ...prev, customEndDate: e.target.value }))}
+                                className="px-1 sm:px-2 py-1.5 sm:py-1 text-xs sm:text-sm border rounded-md bg-background"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        {getPeriodDescription(trafficData.selectedPeriod)}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="h-64 sm:h-80 md:h-96">
+                        {memoizedTrafficData.length > 0 ? (
+                          <div className="h-full flex flex-col">
+                            {/* Metric Filters - Mobile Optimized */}
+                            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-4 text-xs sm:text-sm">
+                              <button
+                                onClick={() => setShowPageViews(!showPageViews)}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showPageViews
+                                    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  }`}
+                              >
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showPageViews ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                                <span className="hidden sm:inline">Page Views</span>
+                                <span className="sm:hidden">Views</span>
+                              </button>
+                              <button
+                                onClick={() => setShowUniqueVisitors(!showUniqueVisitors)}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showUniqueVisitors
+                                    ? 'bg-green-100 text-green-700 border border-green-300'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  }`}
+                              >
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showUniqueVisitors ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                <span className="hidden sm:inline">Vizitatori Unici</span>
+                                <span className="sm:hidden">Unici</span>
+                              </button>
+                              <button
+                                onClick={() => setShowSessions(!showSessions)}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showSessions
+                                    ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  }`}
+                              >
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showSessions ? 'bg-orange-500' : 'bg-gray-400'}`}></div>
+                                <span className="hidden sm:inline">Sesiuni</span>
+                                <span className="sm:hidden">Ses</span>
+                              </button>
+                            </div>
 
-                            {/* Y-axis labels */}
-                            {[0, 20, 40, 60, 80, 100].map((percent, i) => {
-                              const maxValue = Math.max(
-                                ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
-                                1
-                              );
-                              const value = Math.round((maxValue * percent) / 100);
-                              return (
-                                <text
-                                  key={i}
-                                  x="55"
-                                  y={160 - (percent * 1.2) + 3}
-                                  textAnchor="end"
-                                  fontSize="10"
-                                  fill="#6b7280"
-                                >
-                                  {value}
-                                </text>
-                              );
-                            })}
-
-                            {/* X-axis */}
-                            <line x1="60" y1="160" x2="840" y2="160" stroke="#374151" strokeWidth="2" />
-
-                            {/* Data points and lines */}
-                            {[
-                              { metric: 'page_views', color: '#3b82f6', show: showPageViews },
-                              { metric: 'unique_visitors', color: '#10b981', show: showUniqueVisitors },
-                              { metric: 'sessions', color: '#f59e0b', show: showSessions }
-                            ].filter(item => item.show).map((item) => {
-                              const { metric, color } = item;
-                              const maxValue = Math.max(
-                                ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
-                                1
-                              );
-
-                              const points = memoizedTrafficData.map((point, index) => {
-                                const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
-                                const x = 60 + (index * spacing);
-                                const value = point[metric] || 0;
-                                const y = 160 - ((value / maxValue) * 120);
-                                return { x, y, value };
-                              });
-
-                              return (
-                                <g key={metric}>
-                                  {/* Line */}
-                                  <polyline
-                                    points={points.map(p => `${p.x},${p.y}`).join(' ')}
-                                    fill="none"
-                                    stroke={color}
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                  {/* Data points */}
-                                  {points.map((point, index) => (
-                                    <circle
-                                      key={index}
-                                      cx={point.x}
-                                      cy={point.y}
-                                      r="4"
-                                      fill={color}
-                                      stroke="white"
-                                      strokeWidth="2"
-                                      style={{ cursor: 'pointer' }}
-                                      onMouseEnter={() => setHoveredPoint({
-                                        x: point.x,
-                                        y: point.y,
-                                        data: memoizedTrafficData[index],
-                                        metric: metric
-                                      })}
-                                      onMouseLeave={() => setHoveredPoint(null)}
+                            {/* Line Chart - Mobile Optimized */}
+                            <div className="flex-1 relative px-1 sm:px-2 md:px-4 lg:px-6 py-2 sm:py-4">
+                              <div className="w-full overflow-x-auto">
+                                <svg className="w-full h-[200px] sm:h-[250px] md:h-[300px] min-w-[800px] sm:min-w-0" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
+                                  {/* Y-axis grid lines */}
+                                  {[0, 20, 40, 60, 80, 100].map((percent, i) => (
+                                    <line
+                                      key={i}
+                                      x1="60"
+                                      y1={160 - (percent * 1.2)}
+                                      x2="840"
+                                      y2={160 - (percent * 1.2)}
+                                      stroke="#f3f4f6"
+                                      strokeWidth="1"
                                     />
                                   ))}
-                                </g>
-                              );
-                            })}
 
-                            {/* X-axis labels - show every 2nd or 3rd label to avoid overlap */}
-                            {memoizedTrafficData.map((point, index) => {
-                              const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
-                              const x = 60 + (index * spacing);
-                              // Show every 2nd label if more than 10 points, every 3rd if more than 20
-                              const showLabel = memoizedTrafficData.length <= 10 ||
-                                             (memoizedTrafficData.length <= 20 && index % 2 === 0) ||
-                                             (memoizedTrafficData.length > 20 && index % 3 === 0);
+                                  {/* Y-axis labels */}
+                                  {[0, 20, 40, 60, 80, 100].map((percent, i) => {
+                                    const maxValue = Math.max(
+                                      ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
+                                      1
+                                    );
+                                    const value = Math.round((maxValue * percent) / 100);
+                                    return (
+                                      <text
+                                        key={i}
+                                        x="55"
+                                        y={160 - (percent * 1.2) + 3}
+                                        textAnchor="end"
+                                        fontSize="10"
+                                        fill="#6b7280"
+                                      >
+                                        {value}
+                                      </text>
+                                    );
+                                  })}
 
-                              if (!showLabel) return null;
+                                  {/* X-axis */}
+                                  <line x1="60" y1="160" x2="840" y2="160" stroke="#374151" strokeWidth="2" />
 
-                              return (
-                                <text
-                                  key={index}
-                                  x={x}
-                                  y="180"
-                                  textAnchor="middle"
-                                  fontSize="9"
-                                  fill="#6b7280"
-                                >
-                                  {convertToRomaniaTime(point.time_period)}
-                                </text>
-                              );
-                            })}
+                                  {/* Data points and lines */}
+                                  {[
+                                    { metric: 'page_views', color: '#3b82f6', show: showPageViews },
+                                    { metric: 'unique_visitors', color: '#10b981', show: showUniqueVisitors },
+                                    { metric: 'sessions', color: '#f59e0b', show: showSessions }
+                                  ].filter(item => item.show).map((item) => {
+                                    const { metric, color } = item;
+                                    const maxValue = Math.max(
+                                      ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
+                                      1
+                                    );
 
-                            {/* Tooltip */}
-                            {hoveredPoint && (
-                              <g>
-                                {/* Tooltip background with shadow */}
-                                <rect
-                                  x={hoveredPoint.x - 25}
-                                  y={hoveredPoint.y - 35}
-                                  width="50"
-                                  height="30"
-                                  fill="rgba(0, 0, 0, 0.9)"
-                                  rx="6"
-                                  ry="6"
-                                  stroke="rgba(255, 255, 255, 0.2)"
-                                  strokeWidth="1"
-                                />
-                                {/* Tooltip value */}
-                                <text
-                                  x={hoveredPoint.x}
-                                  y={hoveredPoint.y - 20}
-                                  textAnchor="middle"
-                                  fontSize="11"
-                                  fill="white"
-                                  fontWeight="bold"
-                                >
-                                  {hoveredPoint.data[hoveredPoint.metric] || 0}
-                                </text>
-                                {/* Tooltip label */}
-                                <text
-                                  x={hoveredPoint.x}
-                                  y={hoveredPoint.y - 8}
-                                  textAnchor="middle"
-                                  fontSize="8"
-                                  fill="#e5e7eb"
-                                >
-                                  {hoveredPoint.metric === 'page_views' && 'Vizualizări'}
-                                  {hoveredPoint.metric === 'unique_visitors' && 'Vizitatori'}
-                                  {hoveredPoint.metric === 'sessions' && 'Sesiuni'}
-                                </text>
-                                {/* Tooltip arrow */}
-                                <polygon
-                                  points={`${hoveredPoint.x - 4},${hoveredPoint.y - 5} ${hoveredPoint.x + 4},${hoveredPoint.y - 5} ${hoveredPoint.x},${hoveredPoint.y - 1}`}
-                                  fill="rgba(0, 0, 0, 0.9)"
-                                />
-                              </g>
-                            )}
-                          </svg>
+                                    const points = memoizedTrafficData.map((point, index) => {
+                                      const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
+                                      const x = 60 + (index * spacing);
+                                      const value = point[metric] || 0;
+                                      const y = 160 - ((value / maxValue) * 120);
+                                      return { x, y, value };
+                                    });
+
+                                    return (
+                                      <g key={metric}>
+                                        {/* Line */}
+                                        <polyline
+                                          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+                                          fill="none"
+                                          stroke={color}
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                        {/* Data points */}
+                                        {points.map((point, index) => (
+                                          <circle
+                                            key={index}
+                                            cx={point.x}
+                                            cy={point.y}
+                                            r="4"
+                                            fill={color}
+                                            stroke="white"
+                                            strokeWidth="2"
+                                            style={{ cursor: 'pointer' }}
+                                            onMouseEnter={() => setHoveredPoint({
+                                              x: point.x,
+                                              y: point.y,
+                                              data: memoizedTrafficData[index],
+                                              metric: metric
+                                            })}
+                                            onMouseLeave={() => setHoveredPoint(null)}
+                                          />
+                                        ))}
+                                      </g>
+                                    );
+                                  })}
+
+                                  {/* X-axis labels - show every 2nd or 3rd label to avoid overlap */}
+                                  {memoizedTrafficData.map((point, index) => {
+                                    const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
+                                    const x = 60 + (index * spacing);
+                                    // Show every 2nd label if more than 10 points, every 3rd if more than 20
+                                    const showLabel = memoizedTrafficData.length <= 10 ||
+                                      (memoizedTrafficData.length <= 20 && index % 2 === 0) ||
+                                      (memoizedTrafficData.length > 20 && index % 3 === 0);
+
+                                    if (!showLabel) return null;
+
+                                    return (
+                                      <text
+                                        key={index}
+                                        x={x}
+                                        y="180"
+                                        textAnchor="middle"
+                                        fontSize="9"
+                                        fill="#6b7280"
+                                      >
+                                        {convertToRomaniaTime(point.time_period)}
+                                      </text>
+                                    );
+                                  })}
+
+                                  {/* Tooltip */}
+                                  {hoveredPoint && (
+                                    <g>
+                                      {/* Tooltip background with shadow */}
+                                      <rect
+                                        x={hoveredPoint.x - 25}
+                                        y={hoveredPoint.y - 35}
+                                        width="50"
+                                        height="30"
+                                        fill="rgba(0, 0, 0, 0.9)"
+                                        rx="6"
+                                        ry="6"
+                                        stroke="rgba(255, 255, 255, 0.2)"
+                                        strokeWidth="1"
+                                      />
+                                      {/* Tooltip value */}
+                                      <text
+                                        x={hoveredPoint.x}
+                                        y={hoveredPoint.y - 20}
+                                        textAnchor="middle"
+                                        fontSize="11"
+                                        fill="white"
+                                        fontWeight="bold"
+                                      >
+                                        {hoveredPoint.data[hoveredPoint.metric] || 0}
+                                      </text>
+                                      {/* Tooltip label */}
+                                      <text
+                                        x={hoveredPoint.x}
+                                        y={hoveredPoint.y - 8}
+                                        textAnchor="middle"
+                                        fontSize="8"
+                                        fill="#e5e7eb"
+                                      >
+                                        {hoveredPoint.metric === 'page_views' && 'Vizualizări'}
+                                        {hoveredPoint.metric === 'unique_visitors' && 'Vizitatori'}
+                                        {hoveredPoint.metric === 'sessions' && 'Sesiuni'}
+                                      </text>
+                                      {/* Tooltip arrow */}
+                                      <polygon
+                                        points={`${hoveredPoint.x - 4},${hoveredPoint.y - 5} ${hoveredPoint.x + 4},${hoveredPoint.y - 5} ${hoveredPoint.x},${hoveredPoint.y - 1}`}
+                                        fill="rgba(0, 0, 0, 0.9)"
+                                      />
+                                    </g>
+                                  )}
+                                </svg>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                    ) : (
-                      <div className="h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-muted-foreground">Nu există date de trafic pentru această perioadă</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Datele vor apărea când utilizatorii vor naviga pe site
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* System Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="w-5 h-5" />
-                  Informații Sistem
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Frontend:</span>
-                    <p className="font-medium">React + Vite + TypeScript</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Backend:</span>
-                    <p className="font-medium">Supabase + Netlify</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Hărți:</span>
-                    <p className="font-medium">MapLibre GL + OSM</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">UI:</span>
-                    <p className="font-medium">Tailwind + shadcn/ui</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Records Moderation Tab */}
-          <TabsContent value="records" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Recorduri în Așteptare
-                </CardTitle>
-                <CardDescription>
-                  {pendingRecords.length} recorduri necesită moderare
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {isLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="mt-2 text-sm text-muted-foreground">Se încarcă recordurile...</p>
-                    </div>
-                  ) : pendingRecords.length === 0 ? (
-                    <div className="text-center py-8">
-                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                      <p className="text-muted-foreground">Nu există recorduri în așteptare</p>
-                    </div>
-                  ) : (
-                    pendingRecords.map((record) => (
-                      <div key={record.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div className="space-y-1 flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm sm:text-base">{record.species_name} - {record.weight} kg</h4>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                              {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Lungime: {record.length} cm • Data: {new Date(record.date_caught).toLocaleDateString('ro-RO')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Trimis: {new Date(record.created_at).toLocaleString('ro-RO')}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleApproveRecord(record.id)}
-                              className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
-                            >
-                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                              <span className="hidden sm:inline">Aprobă</span>
-                              <span className="sm:hidden">✓</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRejectRecord(record.id)}
-                              className="text-red-600 hover:text-red-700 text-xs sm:text-sm flex-1 sm:flex-initial"
-                            >
-                              <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                              <span className="hidden sm:inline">Respinge</span>
-                              <span className="sm:hidden">✕</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleViewRecordDetails(record)}
-                              className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                            >
-                              <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                              <span className="hidden sm:inline">Detalii</span>
-                              <span className="sm:hidden">👁</span>
-                            </Button>
-                          </div>
-                        </div>
-                    </div>
-                  ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Rejected Records Tab */}
-          <TabsContent value="rejected" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-red-500" />
-                  Recorduri Respinse
-                </CardTitle>
-                <CardDescription>
-                  {rejectedRecords.length} recorduri au fost respinse
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {isLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-                      <p className="mt-2 text-sm text-muted-foreground">Se încarcă recordurile respinse...</p>
-                    </div>
-                  ) : rejectedRecords.length === 0 ? (
-                    <div className="text-center py-8">
-                      <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-muted-foreground">Nu există recorduri respinse</p>
-                    </div>
-                  ) : (
-                    rejectedRecords.map((record) => (
-                      <div key={record.id} className="border border-red-200 rounded-lg p-4 space-y-3 bg-red-50">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div className="space-y-1 flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm sm:text-base text-red-800">
-                              {record.species_name} - {record.weight} kg
-                            </h4>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                              {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Respinse pe {new Date(record.verified_at).toLocaleDateString('ro-RO')}
-                            </p>
-                            {record.rejection_reason && (
-                              <p className="text-xs text-red-600 font-medium">
-                                Motiv: {record.rejection_reason}
+                        ) : (
+                          <div className="h-full flex items-center justify-center">
+                            <div className="text-center">
+                              <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                              <p className="text-muted-foreground">Nu există date de trafic pentru această perioadă</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Datele vor apărea când utilizatorii vor naviga pe site
                               </p>
-                            )}
+                            </div>
                           </div>
-                          <Badge variant="destructive" className="self-start sm:self-auto text-xs">Respinse</Badge>
-                        </div>
-                        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleApproveRecord(record.id)}
-                            className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
-                          >
-                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                            <span className="hidden sm:inline">Aprobă</span>
-                            <span className="sm:hidden">✓</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleViewRecordDetails(record)}
-                            className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                          >
-                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                            <span className="hidden sm:inline">Detalii</span>
-                            <span className="sm:hidden">👁</span>
-                          </Button>
-                        </div>
+                        )}
                       </div>
-                    ))
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Locations Management Tab */}
-          <TabsContent value="locations" className="space-y-6">
-            <MapEditor onLocationUpdate={() => {
-              // Refresh any related data if needed
-            }} />
-          </TabsContent>
-
-          {/* Users Management Tab */}
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Gestionare Utilizatori ({users.length})
-                </CardTitle>
-                <CardDescription>
-                  Lista tuturor utilizatorilor din baza de date
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <div className="space-y-3 sm:space-y-4 min-w-0">
-                  {users.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="w-12 h-12 mx-auto mb-4" />
-                      <p>Nu există utilizatori în baza de date</p>
+                {/* System Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="w-5 h-5" />
+                      Informații Sistem
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Frontend:</span>
+                        <p className="font-medium">React + Vite + TypeScript</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Backend:</span>
+                        <p className="font-medium">Supabase + Netlify</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Hărți:</span>
+                        <p className="font-medium">MapLibre GL + OSM</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">UI:</span>
+                        <p className="font-medium">Tailwind + shadcn/ui</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="grid gap-3 sm:gap-4">
-                      {users.map((user) => (
-                        <div key={user.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors w-full">
-                          <div className="flex flex-col gap-3">
-                            {/* Top row - Avatar and basic info */}
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span className="text-blue-600 font-medium text-sm sm:text-base">
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Records Moderation Tab */}
+              <TabsContent value="records" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5" />
+                      Recorduri în Așteptare
+                    </CardTitle>
+                    <CardDescription>
+                      {pendingRecords.length} recorduri necesită moderare
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {isLoading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                          <p className="mt-2 text-sm text-muted-foreground">Se încarcă recordurile...</p>
+                        </div>
+                      ) : pendingRecords.length === 0 ? (
+                        <div className="text-center py-8">
+                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                          <p className="text-muted-foreground">Nu există recorduri în așteptare</p>
+                        </div>
+                      ) : (
+                        pendingRecords.map((record) => (
+                          <div key={record.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <h4 className="font-semibold text-sm sm:text-base">{record.species_name} - {record.weight} kg</h4>
+                                <p className="text-xs sm:text-sm text-muted-foreground">
+                                  {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Lungime: {record.length} cm • Data: {new Date(record.date_caught).toLocaleDateString('ro-RO')}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Trimis: {new Date(record.created_at).toLocaleString('ro-RO')}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleApproveRecord(record.id)}
+                                  className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
+                                >
+                                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                  <span className="hidden sm:inline">Aprobă</span>
+                                  <span className="sm:hidden">✓</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRejectRecord(record.id)}
+                                  className="text-red-600 hover:text-red-700 text-xs sm:text-sm flex-1 sm:flex-initial"
+                                >
+                                  <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                  <span className="hidden sm:inline">Respinge</span>
+                                  <span className="sm:hidden">✕</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleViewRecordDetails(record)}
+                                  className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                >
+                                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                  <span className="hidden sm:inline">Detalii</span>
+                                  <span className="sm:hidden">👁</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Rejected Records Tab */}
+              <TabsContent value="rejected" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-500" />
+                      Recorduri Respinse
+                    </CardTitle>
+                    <CardDescription>
+                      {rejectedRecords.length} recorduri au fost respinse
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {isLoading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                          <p className="mt-2 text-sm text-muted-foreground">Se încarcă recordurile respinse...</p>
+                        </div>
+                      ) : rejectedRecords.length === 0 ? (
+                        <div className="text-center py-8">
+                          <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-muted-foreground">Nu există recorduri respinse</p>
+                        </div>
+                      ) : (
+                        rejectedRecords.map((record) => (
+                          <div key={record.id} className="border border-red-200 rounded-lg p-4 space-y-3 bg-red-50">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <h4 className="font-semibold text-sm sm:text-base text-red-800">
+                                  {record.species_name} - {record.weight} kg
+                                </h4>
+                                <p className="text-xs sm:text-sm text-muted-foreground">
+                                  {record.location_name} • {record.profiles?.display_name || 'Utilizator necunoscut'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Respinse pe {new Date(record.verified_at).toLocaleDateString('ro-RO')}
+                                </p>
+                                {record.rejection_reason && (
+                                  <p className="text-xs text-red-600 font-medium">
+                                    Motiv: {record.rejection_reason}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge variant="destructive" className="self-start sm:self-auto text-xs">Respinse</Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleApproveRecord(record.id)}
+                                className="text-green-600 hover:text-green-700 text-xs sm:text-sm flex-1 sm:flex-initial"
+                              >
+                                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                <span className="hidden sm:inline">Aprobă</span>
+                                <span className="sm:hidden">✓</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleViewRecordDetails(record)}
+                                className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                              >
+                                <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                <span className="hidden sm:inline">Detalii</span>
+                                <span className="sm:hidden">👁</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Locations Management Tab */}
+              <TabsContent value="locations" className="space-y-6">
+                <MapEditor onLocationUpdate={() => {
+                  // Refresh any related data if needed
+                }} />
+              </TabsContent>
+
+              {/* Users Management Tab */}
+              <TabsContent value="users" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Gestionare Utilizatori ({users.length})
+                    </CardTitle>
+                    <CardDescription>
+                      Lista tuturor utilizatorilor din baza de date
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <div className="space-y-3 sm:space-y-4 min-w-0">
+                      {users.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users className="w-12 h-12 mx-auto mb-4" />
+                          <p>Nu există utilizatori în baza de date</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {/* Header Row */}
+                          <div className="grid grid-cols-[40px_minmax(120px,1fr)_minmax(150px,2fr)_80px_100px_80px] gap-3 px-3 py-2 bg-gray-50 rounded-lg border text-xs font-medium text-gray-600">
+                            <div></div>
+                            <div>Nume</div>
+                            <div>Email</div>
+                            <div>Recorduri</div>
+                            <div>Ultima activitate</div>
+                            <div className="text-center">Acțiuni</div>
+                          </div>
+
+                          {/* User Rows */}
+                          {users.map((user) => (
+                            <div key={user.id} className="grid grid-cols-[40px_minmax(120px,1fr)_minmax(150px,2fr)_80px_100px_80px] gap-3 items-center px-3 py-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                              {/* Avatar */}
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 font-medium text-xs">
                                   {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                                 </span>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <h3 className="font-medium text-sm sm:text-base break-words">{user.display_name || 'Fără nume'}</h3>
-                                <p className="text-xs sm:text-sm text-gray-600 break-all">{user.email}</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Membru din {new Date(user.created_at).toLocaleDateString('ro-RO')}
-                                </p>
-                                {user.last_sign_in_at && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Ultima conectare: {new Date(user.last_sign_in_at).toLocaleDateString('ro-RO', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      year: 'numeric'
-                                    })}
-                                  </p>
+
+                              {/* Name & Username */}
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm truncate" title={user.display_name || 'Fără nume'}>
+                                  {user.display_name || 'Fără nume'}
+                                </div>
+                                {user.username && (
+                                  <div className="text-xs text-gray-500 truncate" title={`@${user.username}`}>
+                                    @{user.username}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                            
-                            {/* Bottom row - Stats and actions */}
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                              <div className="text-left">
-                                <p className="text-xs sm:text-sm font-medium">{user.records?.[0]?.count || 0} recorduri</p>
-                                {user.phone && (
-                                  <p className="text-xs text-gray-500">
-                                    {user.phone}
-                                  </p>
+
+                              {/* Email */}
+                              <div className="text-xs text-gray-600 truncate min-w-0" title={user.email}>
+                                {user.email}
+                              </div>
+
+                              {/* Records Count */}
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.records?.[0]?.count || 0}
+                              </div>
+
+                              {/* Last Sign In */}
+                              <div className="text-xs text-gray-500">
+                                {user.last_sign_in_at ? (
+                                  new Date(user.last_sign_in_at).toLocaleDateString('ro-RO', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })
+                                ) : (
+                                  <span className="text-gray-400">-</span>
                                 )}
                               </div>
-                              <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+
+                              {/* Actions */}
+                              <div className="flex gap-1 justify-center flex-shrink-0">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleViewUserDetails(user)}
-                                  className="text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+                                  className="text-xs px-2 h-7"
+                                  title="Vezi detalii"
                                 >
-                                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                                  <span className="hidden sm:inline">Vezi</span>
+                                  <Eye className="w-3 h-3" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleViewUserProfile(user)}
-                                  className="text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+                                  className="text-xs px-2 h-7"
+                                  title="Vezi profil public"
+                                  disabled={!user.username}
                                 >
-                                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                                  <span className="hidden sm:inline">Profil</span>
+                                  <ExternalLink className="w-3 h-3" />
                                 </Button>
                               </div>
                             </div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* Backup Tab */}
-          <TabsContent value="backup" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="w-5 h-5" />
-                  Backup Baza de Date
-                </CardTitle>
-                <CardDescription>
-                  Creează un backup complet al bazei de date. Backup-ul include toate tabelele importante.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">ℹ️ Informații</h4>
-                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                    <li>Backup-ul include: profiles, records, fishing_locations, fish_species, user_gear, catches, private_messages</li>
-                    <li>Backup-ul va fi descărcat ca fișier JSON</li>
-                    <li>Recomandat: Fă backup înainte de modificări majore</li>
-                    <li>Backup-ul este salvat local pe computerul tău</li>
-                  </ul>
-                </div>
-
-                <Button
-                  onClick={handleCreateBackup}
-                  disabled={isCreatingBackup}
-                  className="w-full sm:w-auto text-xs sm:text-sm"
-                  size="lg"
-                >
-                  {isCreatingBackup ? (
-                    <>
-                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin sm:mr-2" />
-                      <span className="hidden sm:inline">Se creează backup-ul...</span>
-                      <span className="sm:hidden">Se creează...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                      Creează Backup
-                    </>
-                  )}
-                </Button>
-
-                {backupData && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
-                    <h4 className="font-semibold text-green-900">✅ Backup creat cu succes!</h4>
-                    <div className="text-sm text-green-800 space-y-1">
-                      <p><span className="font-medium">Tabele:</span> {backupData.summary.successful_tables}/{backupData.summary.total_tables}</p>
-                      <p><span className="font-medium">Înregistrări:</span> {backupData.summary.total_records.toLocaleString('ro-RO')}</p>
-                      <p><span className="font-medium">Mărime:</span> {(backupData.summary.backup_size_bytes / 1024 / 1024).toFixed(2)} MB</p>
-                      <p><span className="font-medium">Data:</span> {new Date(backupData.metadata.created_at).toLocaleString('ro-RO')}</p>
+              {/* Backup Tab */}
+              <TabsContent value="backup" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="w-5 h-5" />
+                      Backup Baza de Date
+                    </CardTitle>
+                    <CardDescription>
+                      Creează un backup complet al bazei de date. Backup-ul include toate tabelele importante.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">ℹ️ Informații</h4>
+                      <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                        <li>Backup-ul include: profiles, records, fishing_locations, fish_species, user_gear, catches, private_messages</li>
+                        <li>Backup-ul va fi descărcat ca fișier JSON</li>
+                        <li>Recomandat: Fă backup înainte de modificări majore</li>
+                        <li>Backup-ul este salvat local pe computerul tău</li>
+                      </ul>
                     </div>
+
                     <Button
-                      onClick={handleDownloadBackup}
-                      variant="outline"
+                      onClick={handleCreateBackup}
+                      disabled={isCreatingBackup}
                       className="w-full sm:w-auto text-xs sm:text-sm"
+                      size="lg"
                     >
-                      <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                      Descarcă Backup
+                      {isCreatingBackup ? (
+                        <>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin sm:mr-2" />
+                          <span className="hidden sm:inline">Se creează backup-ul...</span>
+                          <span className="sm:hidden">Se creează...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                          Creează Backup
+                        </>
+                      )}
                     </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Shop Inquiries Tab */}
-          <TabsContent value="shops" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Store className="w-5 h-5" />
-                  Mesaje de la Magazine de Pescuit
-                </CardTitle>
-                <CardDescription>
-                  Cereri și mesaje de la proprietarii de magazine care doresc să se adauge pe platformă
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {shopInquiries.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Nu există mesaje de la magazine momentan.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {shopInquiries.map((inquiry) => (
-                      <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-3 sm:p-4 md:p-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                                {inquiry.shop_name}
-                              </h3>
-                              <div className="space-y-1 text-xs sm:text-sm text-gray-600">
-                                <p><span className="font-medium">Proprietar:</span> {inquiry.owner_name}</p>
-                                <p className="truncate"><span className="font-medium">Email:</span> {inquiry.email}</p>
-                                {inquiry.phone && <p><span className="font-medium">Telefon:</span> {inquiry.phone}</p>}
-                                <p className="break-words"><span className="font-medium">Adresă:</span> {inquiry.address}</p>
-                                {inquiry.city && <p><span className="font-medium">Oraș:</span> {inquiry.city}</p>}
-                                {inquiry.county && <p><span className="font-medium">Județ:</span> {inquiry.county}</p>}
-                                {inquiry.google_maps_link && (
-                                  <p>
-                                    <span className="font-medium">Google Maps:</span>{' '}
-                                    <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-                                      Vezi locația
-                                    </a>
-                                  </p>
-                                )}
+                    {backupData && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                        <h4 className="font-semibold text-green-900">✅ Backup creat cu succes!</h4>
+                        <div className="text-sm text-green-800 space-y-1">
+                          <p><span className="font-medium">Tabele:</span> {backupData.summary.successful_tables}/{backupData.summary.total_tables}</p>
+                          <p><span className="font-medium">Înregistrări:</span> {backupData.summary.total_records.toLocaleString('ro-RO')}</p>
+                          <p><span className="font-medium">Mărime:</span> {(backupData.summary.backup_size_bytes / 1024 / 1024).toFixed(2)} MB</p>
+                          <p><span className="font-medium">Data:</span> {new Date(backupData.metadata.created_at).toLocaleString('ro-RO')}</p>
+                        </div>
+                        <Button
+                          onClick={handleDownloadBackup}
+                          variant="outline"
+                          className="w-full sm:w-auto text-xs sm:text-sm"
+                        >
+                          <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                          Descarcă Backup
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Shop Inquiries Tab */}
+              <TabsContent value="shops" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Store className="w-5 h-5" />
+                      Mesaje de la Magazine de Pescuit
+                    </CardTitle>
+                    <CardDescription>
+                      Cereri și mesaje de la proprietarii de magazine care doresc să se adauge pe platformă
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {shopInquiries.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Nu există mesaje de la magazine momentan.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {shopInquiries.map((inquiry) => (
+                          <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-3 sm:p-4 md:p-6">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                                    {inquiry.shop_name}
+                                  </h3>
+                                  <div className="space-y-1 text-xs sm:text-sm text-gray-600">
+                                    <p><span className="font-medium">Proprietar:</span> {inquiry.owner_name}</p>
+                                    <p className="truncate"><span className="font-medium">Email:</span> {inquiry.email}</p>
+                                    {inquiry.phone && <p><span className="font-medium">Telefon:</span> {inquiry.phone}</p>}
+                                    <p className="break-words"><span className="font-medium">Adresă:</span> {inquiry.address}</p>
+                                    {inquiry.city && <p><span className="font-medium">Oraș:</span> {inquiry.city}</p>}
+                                    {inquiry.county && <p><span className="font-medium">Județ:</span> {inquiry.county}</p>}
+                                    {inquiry.google_maps_link && (
+                                      <p>
+                                        <span className="font-medium">Google Maps:</span>{' '}
+                                        <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                                          Vezi locația
+                                        </a>
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <Badge variant={inquiry.status === 'pending' ? 'default' : inquiry.status === 'approved' ? 'default' : 'secondary'} className="self-start sm:self-auto text-xs">
+                                  {inquiry.status === 'pending' ? 'În așteptare' :
+                                    inquiry.status === 'reviewed' ? 'Revizuit' :
+                                      inquiry.status === 'contacted' ? 'Contactat' :
+                                        inquiry.status === 'approved' ? 'Aprobat' : 'Respins'}
+                                </Badge>
                               </div>
-                            </div>
-                            <Badge variant={inquiry.status === 'pending' ? 'default' : inquiry.status === 'approved' ? 'default' : 'secondary'} className="self-start sm:self-auto text-xs">
-                              {inquiry.status === 'pending' ? 'În așteptare' : 
-                               inquiry.status === 'reviewed' ? 'Revizuit' :
-                               inquiry.status === 'contacted' ? 'Contactat' :
-                               inquiry.status === 'approved' ? 'Aprobat' : 'Respins'}
-                            </Badge>
-                          </div>
-                          
-                          {inquiry.description && (
-                            <div className="mb-3 sm:mb-4">
-                              <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">{inquiry.description}</p>
-                            </div>
-                          )}
 
-                          {inquiry.images && inquiry.images.length > 0 && (
-                            <div className="mb-3 sm:mb-4">
-                              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Poze:</p>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {inquiry.images.map((img: string, idx: number) => (
-                                  <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-20 sm:h-24 object-cover rounded-lg" />
-                                ))}
+                              {inquiry.description && (
+                                <div className="mb-3 sm:mb-4">
+                                  <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">{inquiry.description}</p>
+                                </div>
+                              )}
+
+                              {inquiry.images && inquiry.images.length > 0 && (
+                                <div className="mb-3 sm:mb-4">
+                                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Poze:</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    {inquiry.images.map((img: string, idx: number) => (
+                                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-20 sm:h-24 object-cover rounded-lg" />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 sm:pt-4 border-t">
+                                <p className="text-xs text-gray-500">
+                                  Trimis pe {new Date(inquiry.created_at).toLocaleString('ro-RO')}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedInquiry(inquiry);
+                                      setIsInquiryModalOpen(true);
+                                    }}
+                                    className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                  >
+                                    <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Vezi Detalii</span>
+                                    <span className="sm:hidden">Detalii</span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      window.location.href = `mailto:${inquiry.email}?subject=Re: Cerere Magazin - ${inquiry.shop_name}`;
+                                    }}
+                                    className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                  >
+                                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Răspunde</span>
+                                    <span className="sm:hidden">Mail</span>
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          )}
-
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 sm:pt-4 border-t">
-                            <p className="text-xs text-gray-500">
-                              Trimis pe {new Date(inquiry.created_at).toLocaleString('ro-RO')}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedInquiry(inquiry);
-                                  setIsInquiryModalOpen(true);
-                                }}
-                                className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                              >
-                                <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Vezi Detalii</span>
-                                <span className="sm:hidden">Detalii</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  window.location.href = `mailto:${inquiry.email}?subject=Re: Cerere Magazin - ${inquiry.shop_name}`;
-                                }}
-                                className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                              >
-                                <Mail className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Răspunde</span>
-                                <span className="sm:hidden">Mail</span>
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

@@ -259,11 +259,21 @@ const PublicProfile = () => {
 
       // 1. Fetch Profile (Single Request)
       // We fetch all public fields needed. Privacy filtering is done in UI or via RLS if strict.
-      const { data: profileDataRaw, error: profileError } = await supabase
+      // Support both username and ID (UUID) for profile access
+      let query = supabase
         .from('profiles')
-        .select('*')
-        .eq('username', username?.toLowerCase())
-        .single();
+        .select('*');
+      
+      // Check if username is a UUID (ID) or a username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username || '');
+      
+      if (isUUID) {
+        query = query.eq('id', username);
+      } else {
+        query = query.eq('username', username?.toLowerCase());
+      }
+      
+      const { data: profileDataRaw, error: profileError } = await query.single();
 
       if (profileError) throw profileError;
       if (!profileDataRaw) throw new Error('Profile not found');
