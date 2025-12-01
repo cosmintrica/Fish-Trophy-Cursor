@@ -10,7 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 export interface ForumUser {
   id: string;
   username: string;
-  email: string;
+  email?: string; // Optional pentru compatibilitate cu forum/types/forum.ts
   photo_url?: string; // Avatar din profiles
   isAdmin?: boolean;
 }

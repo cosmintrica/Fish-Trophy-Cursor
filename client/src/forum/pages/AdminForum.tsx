@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
-import type { ForumUser } from '../types/forum';
 
 export default function AdminForum() {
   const { forumUser } = useAuth();
@@ -87,7 +86,7 @@ export default function AdminForum() {
   }
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: true } as ForumUser : null} onLogin={() => { }} onLogout={() => { }}>
+    <ForumLayout user={forumUserToLayoutUser(forumUser ? { ...forumUser, isAdmin: true } : null)} onLogin={() => { }} onLogout={() => { }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: '700', color: theme.text, marginBottom: '2rem' }}>
           🔧 Admin Panel Forum

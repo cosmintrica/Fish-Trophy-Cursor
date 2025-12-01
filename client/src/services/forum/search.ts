@@ -105,14 +105,24 @@ export async function searchForum(
             const { data: topics } = await query
 
             if (topics) {
-                results.push(...topics.map(t => ({
-                    id: t.id,
-                    type: 'topic' as const,
-                    title: t.title,
-                    username: (t.user && !Array.isArray(t.user) ? t.user.username : undefined) || (Array.isArray(t.user) && t.user[0]?.username),
-                    created_at: t.created_at,
-                    excerpt: t.title
-                })))
+                results.push(...topics.map(t => {
+                    let username: string | undefined;
+                    if (t.user) {
+                        if (Array.isArray(t.user)) {
+                            username = t.user[0]?.username;
+                        } else {
+                            username = (t.user as { username?: string }).username;
+                        }
+                    }
+                    return {
+                        id: t.id,
+                        type: 'topic' as const,
+                        title: t.title,
+                        username,
+                        created_at: t.created_at,
+                        excerpt: t.title
+                    };
+                }))
             }
         }
 
@@ -224,14 +234,24 @@ export async function getTrendingTopics(limit = 10): Promise<ApiResponse<SearchR
             return { error: { message: error.message, code: error.code } }
         }
 
-        const results: SearchResult[] = (data || []).map(t => ({
-            id: t.id,
-            type: 'topic',
-            title: t.title,
-            username: (t.user && !Array.isArray(t.user) ? t.user.username : undefined) || (Array.isArray(t.user) && t.user[0]?.username),
-            created_at: t.created_at,
-            excerpt: `${t.reply_count} răspunsuri · ${t.view_count} vizualizări`
-        }))
+        const results: SearchResult[] = (data || []).map(t => {
+            let username: string | undefined;
+            if (t.user) {
+                if (Array.isArray(t.user)) {
+                    username = t.user[0]?.username;
+                } else {
+                    username = (t.user as { username?: string }).username;
+                }
+            }
+            return {
+                id: t.id,
+                type: 'topic',
+                title: t.title,
+                username,
+                created_at: t.created_at,
+                excerpt: `${t.reply_count} răspunsuri · ${t.view_count} vizualizări`
+            };
+        })
 
         return { data: results }
     } catch (error) {

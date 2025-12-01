@@ -8,7 +8,7 @@ import MessageContainer from '../components/MessageContainer';
 import ActiveViewers from '../components/ActiveViewers';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import type { ForumTopic, ForumPost, ForumUser } from '../types/forum';
+import type { ForumTopic, ForumPost } from '../types/forum';
 
 export default function TopicPage() {
   const { topicId } = useParams();
@@ -164,7 +164,7 @@ export default function TopicPage() {
   }, [topic]);
 
   return (
-    <ForumLayout user={forumUser ? { id: forumUser.id, username: forumUser.username, email: '', isAdmin: false } as ForumUser : null} onLogin={() => { }} onLogout={() => { }}>
+    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>

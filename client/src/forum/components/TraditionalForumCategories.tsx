@@ -10,13 +10,13 @@ interface TraditionalForumCategoriesProps {
 
 export default function TraditionalForumCategories({ onSubcategoryClick }: TraditionalForumCategoriesProps) {
   const [loading, setLoading] = useState(true);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const { theme } = useTheme();
 
   const { categories, loading: categoriesLoading } = useCategories();
 
   useEffect(() => {
     if (categories) {
-      setCategories(categories);
       setLoading(false);
     } else {
       setLoading(categoriesLoading);
@@ -24,10 +24,10 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
   }, [categories, categoriesLoading]);
 
   const handleToggleCollapse = (categoryId: string) => {
-    // Toggle collapse state (poate fi implementat cu localStorage sau state local)
-    setCategories(prev => prev.map(cat => 
-      cat.id === categoryId ? { ...cat, isCollapsed: !cat.isCollapsed } : cat
-    ));
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
   };
 
   const formatTime = (timeStr: string) => {
@@ -101,7 +101,7 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
           >
             {/* Category Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {category.isCollapsed ? (
+              {collapsedCategories[category.id] ? (
                 <ChevronRight style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />
               ) : (
                 <ChevronDown style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />
@@ -150,7 +150,7 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
           </div>
 
           {/* Subcategories */}
-          {!category.isCollapsed && (
+          {!collapsedCategories[category.id] && (
             <div>
               {category.subcategories.map((subcategory, index) => (
                 <div 
