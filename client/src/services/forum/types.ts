@@ -111,6 +111,17 @@ export interface ForumSubcategory {
     moderator_only: boolean
     created_at: string
     updated_at: string
+    topicCount?: number
+    postCount?: number
+    lastPost?: {
+        topicId: string
+        topicTitle: string
+        author: string
+        time: string
+        created_at?: string
+        user_name?: string
+        topic_title?: string
+    }
 }
 
 export interface ForumUser {
@@ -313,6 +324,15 @@ export interface CategoryUpdateParams extends Partial<CategoryCreateParams> {
 export interface CategoryWithChildren extends ForumCategory {
     subforums: ForumSubforum[]
     subcategories: ForumSubcategory[]
+    lastPost?: {
+        topicId: string
+        topicTitle: string
+        author: string
+        time: string
+        created_at?: string
+        user_name?: string
+        topic_title?: string
+    }
 }
 
 // Topics & Posts
@@ -326,6 +346,7 @@ export interface TopicCreateParams {
 export interface PostCreateParams {
     topic_id: string
     content: string
+    reply_to_post_id?: string
 }
 
 export interface PostUpdateParams {

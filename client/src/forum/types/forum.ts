@@ -7,6 +7,7 @@ export interface ForumUser {
   post_count: number;
   topic_count: number;
   reputation_points: number;
+  reputation_power?: number;
   badges: string[];
   isAdmin?: boolean;
   canModerateRespect?: boolean;

@@ -48,7 +48,6 @@ export default function RecentPosts() {
           author: usersMap.get(post.user_id) || { username: 'Unknown', avatar_url: null }
         }));
 
-        if (error) throw error;
         setPosts(data || []);
       } catch (error) {
         console.error('Error loading recent posts:', error);

@@ -8,10 +8,11 @@ import MessageContainer from '../components/MessageContainer';
 import ActiveViewers from '../components/ActiveViewers';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import type { ForumTopic, ForumPost } from '../types/forum';
+import type { ForumTopic, ForumPost, ForumUser } from '../types/forum';
 
 export default function TopicPage() {
   const { topicId } = useParams();
+  const navigate = useNavigate();
   const { forumUser } = useAuth();
   const page = 1; // Default to page 1 for now
 

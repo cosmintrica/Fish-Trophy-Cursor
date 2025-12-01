@@ -109,7 +109,7 @@ export async function searchForum(
                     id: t.id,
                     type: 'topic' as const,
                     title: t.title,
-                    username: t.user?.username,
+                    username: (t.user && !Array.isArray(t.user) ? t.user.username : undefined) || (Array.isArray(t.user) && t.user[0]?.username),
                     created_at: t.created_at,
                     excerpt: t.title
                 })))
@@ -228,7 +228,7 @@ export async function getTrendingTopics(limit = 10): Promise<ApiResponse<SearchR
             id: t.id,
             type: 'topic',
             title: t.title,
-            username: t.user?.username,
+            username: (t.user && !Array.isArray(t.user) ? t.user.username : undefined) || (Array.isArray(t.user) && t.user[0]?.username),
             created_at: t.created_at,
             excerpt: `${t.reply_count} răspunsuri · ${t.view_count} vizualizări`
         }))

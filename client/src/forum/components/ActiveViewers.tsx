@@ -15,6 +15,8 @@ interface Viewer {
   user_id?: string;
   session_id?: string;
   username?: string;
+  display_name?: string;
+  photo_url?: string;
   rank?: string; // Rang de vechime (ou_de_peste, puiet, etc.)
   role_name?: string; // Rol (admin, moderator, etc.)
   role_display_name?: string;

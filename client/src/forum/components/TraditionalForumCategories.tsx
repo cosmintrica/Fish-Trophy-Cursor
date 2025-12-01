@@ -9,7 +9,6 @@ interface TraditionalForumCategoriesProps {
 }
 
 export default function TraditionalForumCategories({ onSubcategoryClick }: TraditionalForumCategoriesProps) {
-  const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const { theme } = useTheme();
 
