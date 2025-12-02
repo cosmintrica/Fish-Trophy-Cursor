@@ -14,7 +14,6 @@ interface FishingRecord {
   species_id: string;
   location_id: string;
   weight: number;
-  length_cm?: number; // Optional for compatibility
   length?: number; // records table uses 'length', not 'length_cm'
   captured_at: string;
   notes?: string;
