@@ -215,7 +215,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
   const draggedFeatureIdRef = useRef<string | null>(null);
   const draggedFeatureTypeRef = useRef<MapLocationType | null>(null);
   const dragStartPointRef = useRef<{ x: number; y: number } | null>(null);
-  const [_layersWithListenersRef] = useRef<Set<string>>(new Set()); // Track layers with listeners
+  const _layersWithListenersRef = useRef<Set<string>>(new Set()); // Track layers with listeners
   const hasDraggedRef = useRef(false); // Track if a drag actually occurred
 
 
