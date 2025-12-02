@@ -14,7 +14,7 @@
 
 ```bash
 Key: DATABASE_URL
-Value: postgresql://username:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
+Value: postgresql://username:password@host.supabase.co:5432/postgres?sslmode=require
 Secret: ✅ (bifează "Contains secret values")
 Scope: All scopes
 ```
@@ -109,8 +109,8 @@ Scope: All scopes
 ## 🎯 **Unde găsești valorile:**
 
 ### **DATABASE_URL:**
-- Mergi în **Neon Console**
-- Click **"Connect"** button
+- Mergi în **Supabase Dashboard**
+- Click **Settings** → **Database**
 - Copiază connection string-ul
 
 ### **Firebase Values:**

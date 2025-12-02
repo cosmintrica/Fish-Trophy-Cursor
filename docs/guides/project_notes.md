@@ -158,7 +158,7 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 ## 🏗️ Architecture
 - **Frontend**: React + Vite + TypeScript
 - **Backend**: Netlify Functions (Node.js/TypeScript)
-- **Database**: PostgreSQL cu Drizzle ORM (Neon)
+- **Database**: PostgreSQL cu Supabase
 - **Deployment**: Netlify
 - **Package Manager**: npm (migrat de la pnpm)
 
@@ -279,7 +279,7 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 
 ## 🎯 Current Focus Areas
 1. **✅ Netlify Deployment**: Deployment complet și funcțional
-2. **✅ Database Integration**: Integrare completă cu PostgreSQL (Neon)
+2. **✅ Database Integration**: Integrare completă cu PostgreSQL (Supabase)
 3. **✅ User Profiles**: Funcționalități complete pentru profiluri utilizatori
 4. **✅ Geolocation**: Servicii de geocoding pentru locații
 5. **✅ Security**: Sistem complet securizat cu environment variables
@@ -326,7 +326,7 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 ## 📊 Next Steps
 1. **✅ Netlify Deployment**: Deployment complet și funcțional
 2. **✅ Environment Variables**: Toate variabilele configurate pe Netlify
-3. **✅ Database Testing**: Conexiune cu Neon database funcțională
+3. **✅ Database Testing**: Conexiune cu Supabase database funcțională
 4. **✅ Security Hardening**: Sistem complet securizat
 5. **✅ Mobile Optimization**: Harta și UX optimizate pentru mobil
 6. **✅ UI/UX Fixes**: Popup-uri simplificate și marker borders restaurate
@@ -386,7 +386,7 @@ Proiect pentru aplicația Fish Trophy - o platformă pentru pescari să își î
 - **Rezultat**: Performanță smooth pe toate dispozitivele mobile
 
 ### ✅ DEPENDENȚE ȘI CONFIGURAȚII
-- Instalat `@netlify/neon` și `firebase-admin`
+- Instalat `firebase-admin`
 - Fixat `netlify.toml` pentru build corect
 - Linkat proiectul la Netlify
 - Rezolvat conflictele de rute API

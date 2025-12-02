@@ -1,5 +1,5 @@
 -- Migration: Add visibility fields for profile information
--- Created: 2025-01-28
+-- Created: 2025-11-28
 
 -- Add visibility columns for profile fields
 ALTER TABLE public.profiles 

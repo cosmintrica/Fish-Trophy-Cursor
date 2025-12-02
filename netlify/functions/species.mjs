@@ -14,7 +14,10 @@ const cors = () => ({
 
 const ok = (data, init = {}) => ({
   statusCode: 200,
-  headers: cors(),
+  headers: {
+    ...cors(),
+    'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600'
+  },
   body: JSON.stringify(data),
   ...init
 });

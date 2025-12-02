@@ -1,5 +1,5 @@
 -- Migration: Add Catches (Jurnal de Capturi) with Social Features
--- Created: 2025-01-28
+-- Created: 2025-11-28
 -- Description: Complete social fishing journal system with likes, comments, and shares
 
 -- =============================================

@@ -10,7 +10,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { deriveKeyFromUsers, encryptMessage, decryptMessage } from '@/lib/encryption';
-import { setActiveThread } from '@/hooks/useRealtimeMessages';
+import { setActiveThread, notifyUnreadCountChange } from '@/hooks/useRealtimeMessages';
 
 interface Message {
   id: string;
@@ -44,11 +44,13 @@ const Messages = () => {
   const [searchParams] = useSearchParams();
   const context = (searchParams.get('context') || 'site') as 'site' | 'forum';
   const toUsername = searchParams.get('to'); // New: support ?to=username
+  const threadParam = searchParams.get('thread'); // Support ?thread=thread_id
   const [activeTab, setActiveTab] = useState<'inbox' | 'archived'>('inbox');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [threadMessages, setThreadMessages] = useState<Message[]>([]); // All messages in thread
+  const [loadingThread, setLoadingThread] = useState(false); // Loading state for thread
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -63,27 +65,46 @@ const Messages = () => {
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Smart auto-scroll: scroll to bottom of messages container (not the whole page)
+  // Simple scroll to bottom - instant, no animation
   const scrollToBottom = () => {
     if (!messagesContainerRef.current) return;
-    
     const container = messagesContainerRef.current;
-    // Scroll to bottom of the container
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    });
+    container.scrollTop = container.scrollHeight;
   };
 
-  // Auto-scroll when thread messages change (only if there are messages)
+  // Track when messages are ready to prevent scroll flash
+  const [messagesReady, setMessagesReady] = useState(false);
+
+  // Track last thread ID to prevent unnecessary scrolls
+  const lastThreadIdRef = useRef<string | null>(null);
+  const hasScrolledToBottomRef = useRef(false);
+
+  // Auto-scroll when thread messages load - hide during load to prevent scroll flash
+  // Only scroll when thread actually changes or when new messages arrive
   useEffect(() => {
     if (threadMessages.length > 0 && selectedMessage) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+      const currentThreadId = selectedMessage.thread_root_id || selectedMessage.id;
+      const isNewThread = lastThreadIdRef.current !== currentThreadId;
+      
+      // Only scroll if it's a new thread or if we haven't scrolled yet
+      if (isNewThread || !hasScrolledToBottomRef.current) {
+        lastThreadIdRef.current = currentThreadId;
+        setMessagesReady(false); // Hide during scroll
+        requestAnimationFrame(() => {
+          scrollToBottom();
+          setMessagesReady(true); // Show after scroll
+          hasScrolledToBottomRef.current = true;
+        });
+      } else {
+        // Thread hasn't changed, just ensure messages are visible
+        setMessagesReady(true);
+      }
+    } else {
+      setMessagesReady(true);
+      lastThreadIdRef.current = null;
+      hasScrolledToBottomRef.current = false;
     }
-  }, [threadMessages.length, selectedMessage?.id]);
+  }, [threadMessages.length, selectedMessage?.id, selectedMessage?.thread_root_id]);
 
   // Auto-focus textarea when thread is selected - REMOVED (user requested)
   // useEffect(() => {
@@ -96,12 +117,32 @@ const Messages = () => {
 
   useEffect(() => {
     if (user) {
-      loadMessages();
-      if (selectedMessage && selectedMessage.id !== 'new') {
-        loadThread(selectedMessage.thread_root_id || selectedMessage.id);
+      // Check if params actually changed to prevent unnecessary reloads
+      const currentParams = {
+        user: user.id,
+        activeTab,
+        context
+      };
+      
+      const lastParams = lastLoadParamsRef.current;
+      const paramsChanged = !lastParams || 
+        lastParams.user !== currentParams.user ||
+        lastParams.activeTab !== currentParams.activeTab ||
+        lastParams.context !== currentParams.context;
+
+      if (paramsChanged) {
+        // Clear messages immediately when context changes to prevent showing wrong messages
+        setMessages([]);
+        setSelectedMessage(null);
+        setThreadMessages([]);
+        setLoading(true);
+        lastLoadParamsRef.current = currentParams;
+        loadMessages();
       }
+    } else {
+      lastLoadParamsRef.current = null;
     }
-  }, [user, activeTab, context]);
+  }, [user?.id, activeTab, context]);
 
   // Register active thread with global Realtime hook
   useEffect(() => {
@@ -120,7 +161,7 @@ const Messages = () => {
       onNewMessage: (message: Message) => {
         // Only process messages for current context
         if (message.context !== context) return;
-        
+
         // Check if message already exists to avoid duplicates
         setThreadMessages(prev => {
           const exists = prev.some(msg => msg.id === message.id);
@@ -129,14 +170,14 @@ const Messages = () => {
           }
           return [...prev, message];
         });
-        
+
         // Auto-scroll to bottom
         setTimeout(() => {
           scrollToBottom();
         }, 100);
-        
-        // Play sound if enabled
-        if (soundEnabled) {
+
+        // Play sound ONLY for received messages (not sent by current user)
+        if (soundEnabled && message.sender_id !== user.id) {
           playNotificationSound();
         }
       },
@@ -145,6 +186,14 @@ const Messages = () => {
         if (activeTab === 'inbox') {
           loadMessages();
         }
+      },
+      onMessageRead: (messageId: string, readAt: string) => {
+        // Update checkmarks instantly when message is read
+        setThreadMessages(prev => prev.map(msg => 
+          msg.id === messageId
+            ? { ...msg, is_read: true, read_at: readAt }
+            : msg
+        ));
       }
     });
 
@@ -153,14 +202,57 @@ const Messages = () => {
     };
   }, [user, selectedMessage?.id, selectedMessage?.thread_root_id, selectedMessage?.sender_id, selectedMessage?.recipient_id, context, soundEnabled]);
 
+  // Track current load request to prevent race conditions (mixing data)
+  const loadRequestIdRef = useRef(0);
+  const lastLoadParamsRef = useRef<{ user: string | null; activeTab: string; context: string } | null>(null);
+
+  // Load messages from database with ROBUST caching
   const loadMessages = async () => {
     if (!user) return;
 
-    setLoading(true);
+    // Get current context at the start of the function to prevent race conditions
+    const currentContext = (searchParams.get('context') || 'site') as 'site' | 'forum';
+    
+    // Increment request ID - any previous pending requests will be ignored
+    const currentRequestId = ++loadRequestIdRef.current;
+
+    const cacheKey = `msg_cache_v1_${user.id}_${currentContext}_${activeTab}`;
+    let loadedFromCache = false;
+
+    // 1. Try to load from cache FIRST (instant)
+    // BUT: Only if we're still on the same context (double-check to prevent race conditions)
+    try {
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        const cached = JSON.parse(cachedData);
+        // Valid cache (1 hour) AND verify context matches
+        if (cached.timestamp && Date.now() - cached.timestamp < 60 * 60 * 1000) {
+          // CRITICAL: Double-check we're still on the same context and request
+          // Re-check context from URL to ensure it hasn't changed
+          const contextAtCheck = (searchParams.get('context') || 'site') as 'site' | 'forum';
+          if (contextAtCheck === currentContext && currentRequestId === loadRequestIdRef.current) {
+            // Verify cached messages are for correct context
+            const allMatchContext = cached.messages?.every((msg: Message) => msg.context === currentContext) ?? false;
+            if (allMatchContext) {
+              setMessages(cached.messages);
+              setLoading(false); // Show cached data instantly
+              loadedFromCache = true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Cache read error', e);
+    }
+
+    // 2. Show loading ONLY if we didn't load from cache
+    if (!loadedFromCache) {
+      setLoading(true);
+    }
+
     try {
       let query;
-      
-      // Load directly from private_messages to get encryption fields
+
       if (activeTab === 'inbox') {
         // Inbox: combine both received and sent messages (all conversations)
         query = supabase
@@ -170,11 +262,13 @@ const Messages = () => {
             sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
             recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
           `)
-          .eq('context', context)
-          .or(`and(recipient_id.eq.${user.id},is_deleted_by_recipient.eq.false,is_archived_by_recipient.eq.false),and(sender_id.eq.${user.id},is_deleted_by_sender.eq.false,is_archived_by_sender.eq.false)`)
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .eq('context', currentContext) // Strict context filtering - use currentContext
+          .eq('is_archived_by_sender', false) // Not archived
+          .eq('is_archived_by_recipient', false) // Not archived
           .order('created_at', { ascending: false });
       } else {
-        // Archived: messages archived by user
+        // Archived messages
         query = supabase
           .from('private_messages')
           .select(`
@@ -182,29 +276,32 @@ const Messages = () => {
             sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
             recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
           `)
-          .eq('context', context)
-          .or(`and(sender_id.eq.${user.id},is_archived_by_sender.eq.true,is_deleted_by_sender.eq.false),and(recipient_id.eq.${user.id},is_archived_by_recipient.eq.true,is_deleted_by_recipient.eq.false)`)
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .eq('context', currentContext) // Strict context filtering - use currentContext
+          .or(`and(sender_id.eq.${user.id},is_archived_by_sender.eq.true),and(recipient_id.eq.${user.id},is_archived_by_recipient.eq.true)`)
           .order('created_at', { ascending: false });
       }
 
       const { data, error } = await query;
 
+      // CRITICAL: Check if we are still on the same request
+      if (currentRequestId !== loadRequestIdRef.current) {
+        console.log('🚫 Ignoring stale request result');
+        return;
+      }
+
       if (error) throw error;
-      
-      // Decrypt messages if encrypted and format with profile data
+
+      // Decrypt messages
       const decryptedMessages = await Promise.all((data || []).map(async (msg: any) => {
         let decryptedContent = msg.content;
-        
-        // If message is encrypted, decrypt it
+
         if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
           try {
             const key = await deriveKeyFromUsers(msg.sender_id, msg.recipient_id);
             decryptedContent = await decryptMessage(msg.encrypted_content, msg.encryption_iv, key);
           } catch (decryptError: any) {
-            // Decryption failed - log error and show placeholder
-            console.error('Decryption error:', decryptError);
-            console.error('Message ID:', msg.id, 'Sender:', msg.sender_id, 'Recipient:', msg.recipient_id);
-            decryptedContent = '[Eroare la decriptare - mesajul nu poate fi citit]';
+            decryptedContent = '[Eroare la decriptare]';
           }
         }
 
@@ -219,7 +316,7 @@ const Messages = () => {
           recipient_avatar: (msg.recipient?.photo_url && msg.recipient.photo_url.trim() !== '') ? msg.recipient.photo_url : (msg.recipient_avatar && msg.recipient_avatar.trim() !== '' ? msg.recipient_avatar : undefined)
         };
       }));
-      
+
       // Group by thread_root_id to show only one message per thread
       const threadMap = new Map<string, Message>();
       decryptedMessages.forEach((msg: Message) => {
@@ -228,24 +325,33 @@ const Messages = () => {
           threadMap.set(rootId, msg);
         }
       });
-      
-      const sortedMessages = Array.from(threadMap.values()).sort((a, b) => 
+
+      const sortedMessages = Array.from(threadMap.values()).sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-      
-      setMessages(sortedMessages);
-      
-      // Auto-select first conversation if none is selected and messages exist
-      if (sortedMessages.length > 0 && !selectedMessage && !toUsername) {
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          handleMessageClick(sortedMessages[0]);
-        }, 100);
+
+      // CRITICAL: Only update state if we're still on the same context
+      if (currentContext === context && currentRequestId === loadRequestIdRef.current) {
+        setMessages(sortedMessages);
+        setLoading(false);
+
+        // 3. Save to cache (only if still on same context)
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            messages: sortedMessages,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          console.error('Cache save error', e);
+        }
+
       }
+
     } catch (error: any) {
-      toast.error('Eroare la încărcarea mesajelor');
-    } finally {
-      setLoading(false);
+      if (currentRequestId === loadRequestIdRef.current) {
+        toast.error('Eroare la încărcarea mesajelor');
+        setLoading(false);
+      }
     }
   };
 
@@ -279,6 +385,9 @@ const Messages = () => {
       return;
     }
 
+    setLoadingThread(true);
+    setThreadMessages([]); // Clear messages instantly
+
     try {
       const { data, error } = await supabase
         .from('private_messages')
@@ -295,7 +404,7 @@ const Messages = () => {
       // Decrypt messages if encrypted
       const formattedMessages: Message[] = await Promise.all((data || []).map(async (msg: any) => {
         let decryptedContent = msg.content;
-        
+
         // If message is encrypted, decrypt it
         if (msg.is_encrypted && msg.encrypted_content && msg.encryption_iv) {
           try {
@@ -325,13 +434,20 @@ const Messages = () => {
         } as Message;
       }));
 
+      // Set messages with a small delay for smooth animation
       setThreadMessages(formattedMessages);
-      
+      setLoadingThread(false);
+
       // Auto-scroll to bottom when thread is loaded (only if there are messages)
       if (formattedMessages.length > 0) {
-        setTimeout(() => {
-          scrollToBottom();
-        }, 100);
+        // Small delay to ensure DOM is updated
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            scrollToBottom();
+          }, 50);
+        });
+      } else {
+        setLoadingThread(false);
       }
 
       // Mark as read if recipient
@@ -360,12 +476,15 @@ const Messages = () => {
                 .eq('recipient_id', user.id);
             }
           }
+          // Notify unread count change instantly (before Realtime UPDATE event)
+          notifyUnreadCountChange();
           loadMessages(); // Refresh list
         }
       }
     } catch (error: any) {
       console.error('Error loading thread:', error);
       toast.error('Eroare la încărcarea conversației');
+      setLoadingThread(false);
     }
   };
 
@@ -476,7 +595,7 @@ const Messages = () => {
     setSendingReply(true);
     try {
       const isNewMessage = selectedMessage.id === 'new';
-      const recipientId = isNewMessage 
+      const recipientId = isNewMessage
         ? (recipientProfile?.id || selectedMessage.recipient_id)
         : (selectedMessage.sender_id === user.id ? selectedMessage.recipient_id : selectedMessage.sender_id);
 
@@ -489,7 +608,7 @@ const Messages = () => {
       let encryptedContent: string | null = null;
       let encryptionIv: string | null = null;
       let plainContent: string | null = null;
-      
+
       try {
         if (!user?.id || !recipientId) {
           throw new Error('ID-uri utilizator lipsă');
@@ -596,7 +715,7 @@ const Messages = () => {
           onNewMessage: (message: Message) => {
             // Only process messages for current context
             if (message.context !== context) return;
-            
+
             // Check if message already exists to avoid duplicates
             setThreadMessages(prev => {
               const exists = prev.some(msg => msg.id === message.id);
@@ -605,14 +724,14 @@ const Messages = () => {
               }
               return [...prev, message];
             });
-            
+
             // Auto-scroll to bottom
             setTimeout(() => {
               scrollToBottom();
             }, 100);
-            
-            // Play sound if enabled
-            if (soundEnabled) {
+
+            // Play sound ONLY for received messages (not sent by current user)
+            if (soundEnabled && message.sender_id !== user.id) {
               playNotificationSound();
             }
           },
@@ -650,7 +769,6 @@ const Messages = () => {
       setTimeout(() => {
         loadMessages();
       }, 200);
-      toast.success('Mesaj trimis!');
     } catch (error: any) {
       console.error('Error sending reply:', error);
       toast.error('Eroare la trimiterea mesajului: ' + (error.message || 'Necunoscută'));
@@ -667,6 +785,20 @@ const Messages = () => {
       navigate('/messages?context=' + context);
     }
   };
+
+  // Handle ?thread=thread_id parameter - open specific thread
+  useEffect(() => {
+    if (threadParam && messages.length > 0 && !selectedMessage) {
+      const threadMessage = messages.find(m => 
+        (m.thread_root_id || m.id) === threadParam
+      );
+      if (threadMessage) {
+        handleMessageClick(threadMessage);
+        // Clear thread param from URL
+        navigate(`/messages?context=${context}`, { replace: true });
+      }
+    }
+  }, [threadParam, messages, selectedMessage, context, navigate]);
 
   const handleArchive = async (messageId: string, isSender: boolean) => {
     try {
@@ -712,7 +844,7 @@ const Messages = () => {
 
   const handleDelete = async (messageId: string, isSender: boolean) => {
     if (isDeleting) return; // Prevent multiple clicks
-    
+
     setIsDeleting(true);
     try {
       // Get the thread root ID to delete all messages in the thread
@@ -741,7 +873,7 @@ const Messages = () => {
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
 
       if (updateError) throw updateError;
-      
+
       // Check if both parties have deleted the messages, then permanently delete
       // Get all messages in thread after the update
       const { data: threadMessages, error: checkError } = await supabase
@@ -772,15 +904,15 @@ const Messages = () => {
           }
         }
       }
-      
+
       toast.success('Conversație ștearsă');
-      
+
       // Clear selected message and thread
       if (selectedMessage && (selectedMessage.thread_root_id === threadRootId || selectedMessage.id === threadRootId)) {
         setSelectedMessage(null);
         setThreadMessages([]);
       }
-      
+
       // Reload messages to update UI
       await loadMessages();
     } catch (error) {
@@ -809,16 +941,16 @@ const Messages = () => {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       oscillator.frequency.value = 800; // Higher pitch for notification
       oscillator.type = 'sine';
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-      
+
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.2);
     } catch (error) {
@@ -829,7 +961,7 @@ const Messages = () => {
   // Update browser tab notification badge
   const updateBrowserTabNotification = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('private_messages')
@@ -842,7 +974,7 @@ const Messages = () => {
 
       if (!error) {
         const unreadCount = data?.length || 0;
-        
+
         // Update document title
         if (unreadCount > 0) {
           document.title = `(${unreadCount > 99 ? '99+' : unreadCount}) Mesaje - Fish Trophy`;
@@ -856,27 +988,27 @@ const Messages = () => {
   };
 
   // Calculate unread count only for inbox messages
-  const unreadCount = activeTab === 'inbox' 
+  const unreadCount = activeTab === 'inbox'
     ? messages.filter(m => !m.is_read && m.recipient_id === user.id).length
     : 0;
   const isSender = (msg: Message) => msg.sender_id === user.id;
-  const otherUser = selectedMessage 
-    ? (isSender(selectedMessage) 
-        ? { name: selectedMessage.recipient_name, username: selectedMessage.recipient_username, avatar: selectedMessage.recipient_avatar }
-        : { name: selectedMessage.sender_name, username: selectedMessage.sender_username, avatar: selectedMessage.sender_avatar })
+  const otherUser = selectedMessage
+    ? (isSender(selectedMessage)
+      ? { name: selectedMessage.recipient_name, username: selectedMessage.recipient_username, avatar: selectedMessage.recipient_avatar }
+      : { name: selectedMessage.sender_name, username: selectedMessage.sender_username, avatar: selectedMessage.sender_avatar })
     : recipientProfile
-    ? { name: recipientProfile.display_name, username: recipientProfile.username, avatar: recipientProfile.photo_url }
-    : null;
+      ? { name: recipientProfile.display_name, username: recipientProfile.username, avatar: recipientProfile.photo_url }
+      : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 lg:px-6 xl:px-8 py-6">
+    <div className="bg-gray-50 flex flex-col h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] lg:h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-2 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-4 lg:py-6 gap-2 sm:gap-4 min-h-0 overflow-hidden">
         {/* Messages List - Mobile: hidden when thread selected, Desktop: always visible */}
-        <div className={`${selectedMessage ? 'hidden lg:flex' : 'flex'} lg:w-1/3 border-r border-gray-200 bg-white rounded-lg shadow-sm flex-col min-h-[600px] max-h-[calc(100vh-8rem)]`}>
-          <div className="p-4 border-b border-gray-200 shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">Mesaje</h1>
-              <div className="flex gap-2">
+        <div className={`${selectedMessage ? 'hidden lg:flex' : 'flex'} lg:w-1/3 border-r border-gray-200 bg-white rounded-lg shadow-sm flex-col flex-shrink-0 h-full lg:h-[calc(100vh-8rem)]`}>
+          <div className="p-3 sm:p-4 border-b border-gray-200 shrink-0">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mesaje</h1>
+              <div className="flex gap-1 sm:gap-2">
                 <Button
                   variant={context === 'site' ? 'default' : 'outline'}
                   size="sm"
@@ -921,67 +1053,66 @@ const Messages = () => {
               </div>
             ) : (
               <>
-              <div className="divide-y flex-1">
-                {messages.map((message) => {
-                  const isMsgSender = isSender(message);
-                  const otherUserInList = isMsgSender 
-                    ? { name: message.recipient_name, avatar: message.recipient_avatar }
-                    : { name: message.sender_name, avatar: message.sender_avatar };
-                  
-                  return (
-                    <div
-                      key={message.thread_root_id || message.id}
-                      onClick={() => handleMessageClick(message)}
-                      className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                        selectedMessage?.thread_root_id === (message.thread_root_id || message.id) 
-                          ? 'bg-blue-50 border-l-4 border-blue-600' 
+                <div className="divide-y flex-1">
+                  {messages.map((message) => {
+                    const isMsgSender = isSender(message);
+                    const otherUserInList = isMsgSender
+                      ? { name: message.recipient_name, avatar: message.recipient_avatar }
+                      : { name: message.sender_name, avatar: message.sender_avatar };
+
+                    return (
+                      <div
+                        key={message.thread_root_id || message.id}
+                        onClick={() => handleMessageClick(message)}
+                        className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMessage?.thread_root_id === (message.thread_root_id || message.id)
+                          ? 'bg-blue-50 border-l-4 border-blue-600'
                           : ''
-                      } ${!message.is_read && message.recipient_id === user.id ? 'font-semibold' : ''}`}
-                    >
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <Avatar className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
-                          <AvatarImage src={otherUserInList.avatar} />
-                          <AvatarFallback>
-                            {otherUserInList.name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {otherUserInList.name || 'Utilizator'}
+                          } ${!message.is_read && message.recipient_id === user.id ? 'font-semibold' : ''}`}
+                      >
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <Avatar className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+                            <AvatarImage src={otherUserInList.avatar} />
+                            <AvatarFallback>
+                              {otherUserInList.name?.charAt(0) || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {otherUserInList.name || 'Utilizator'}
+                              </p>
+                              {!message.is_read && message.recipient_id === user.id && (
+                                <span className="w-2.5 h-2.5 bg-red-500 rounded-full shrink-0 ml-2"></span>
+                              )}
+                            </div>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate mt-0.5">
+                              {message.content ? message.content.substring(0, 60).trim() : message.subject || '(Fără mesaj)'}
+                              {message.content && message.content.length > 60 ? '...' : ''}
                             </p>
-                            {!message.is_read && message.recipient_id === user.id && (
-                              <span className="w-2.5 h-2.5 bg-red-500 rounded-full shrink-0 ml-2"></span>
-                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(message.created_at).toLocaleDateString('ro-RO', {
+                                day: 'numeric',
+                                month: 'short',
+                                ...(new Date(message.created_at).getFullYear() !== new Date().getFullYear() && { year: 'numeric' })
+                              })}
+                            </p>
                           </div>
-                          <p className="text-xs sm:text-sm text-gray-600 truncate mt-0.5">
-                            {message.content ? message.content.substring(0, 60).trim() : message.subject || '(Fără mesaj)'}
-                            {message.content && message.content.length > 60 ? '...' : ''}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {new Date(message.created_at).toLocaleDateString('ro-RO', { 
-                              day: 'numeric', 
-                              month: 'short',
-                              ...(new Date(message.created_at).getFullYear() !== new Date().getFullYear() && { year: 'numeric' })
-                            })}
-                          </p>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               </>
             )}
           </div>
         </div>
 
         {/* Thread View - Instagram/WhatsApp Style */}
-        <div className={`${selectedMessage ? 'flex' : 'hidden lg:flex'} flex-1 flex flex-col bg-white rounded-lg shadow-sm min-h-[600px] max-h-[calc(100vh-8rem)] ml-0 lg:ml-4`}>
+        <div className={`${selectedMessage ? 'flex' : 'hidden lg:flex'} flex-1 flex flex-col bg-white rounded-lg shadow-sm h-full min-h-0 lg:h-[calc(100vh-8rem)] ml-0 lg:ml-0 overflow-hidden`}>
           {selectedMessage && selectedMessage.id === 'new' ? (
             <>
               {/* Header for new message */}
-              <div className="p-2 sm:p-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1016,9 +1147,9 @@ const Messages = () => {
               </div>
 
               {/* Empty messages container for new message */}
-              <div 
+              <div
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0 flex items-center justify-center" 
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0 flex items-center justify-center"
                 style={{ scrollBehavior: 'smooth' }}
               >
                 <div className="text-center text-gray-500">
@@ -1028,14 +1159,14 @@ const Messages = () => {
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0 pb-2 sm:pb-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 bg-white shrink-0 pb-safe">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Scrie un mesaj..."
-                    className="min-h-[44px] max-h-[120px] resize-none text-sm sm:text-base"
+                    placeholder="Scrie mesaj..."
+                    className="flex-1 min-h-[44px] max-h-[120px] resize-none text-sm sm:text-base py-2.5 px-3"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1063,7 +1194,7 @@ const Messages = () => {
           ) : selectedMessage && selectedMessage.id !== 'new' ? (
             <>
               {/* Header */}
-              <div className="p-2 sm:p-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1147,19 +1278,43 @@ const Messages = () => {
               </div>
 
               {/* Messages Container - Scrollable */}
-              <div 
+              <div
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0" 
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0"
                 style={{ scrollBehavior: 'smooth' }}
               >
                 <div className="space-y-2 sm:space-y-3 max-w-3xl mx-auto">
-                  {threadMessages.map((msg) => {
-                    const isMsgFromMe = msg.sender_id === user.id;
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex ${isMsgFromMe ? 'justify-end' : 'justify-start'} animate-in fade-in-0 slide-in-from-bottom-2 duration-200`}
-                      >
+                  {loadingThread ? (
+                    // Skeleton loader
+                    <>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'} animate-pulse`}>
+                          <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${i % 2 === 0 ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {i % 2 !== 0 && (
+                              <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                            )}
+                            <div className={`flex flex-col ${i % 2 === 0 ? 'items-end' : 'items-start'}`}>
+                              <div className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${i % 2 === 0 ? 'bg-gray-300' : 'bg-gray-200'} w-32 sm:w-40 h-12`} />
+                              <div className="w-16 h-4 bg-gray-200 rounded mt-1" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    threadMessages.map((msg, index) => {
+                      const isMsgFromMe = msg.sender_id === user.id;
+                      // Only animate first 20 messages to avoid long delays
+                      const shouldAnimate = index < 20;
+                      const animationDelay = shouldAnimate ? index * 0.01 : 0;
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex ${isMsgFromMe ? 'justify-end' : 'justify-start'}`}
+                          style={shouldAnimate ? {
+                            animation: `fadeInUp 0.2s ease-out ${animationDelay}s both`
+                          } : {}}
+                        >
                         <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${isMsgFromMe ? 'flex-row-reverse' : 'flex-row'}`}>
                           {/* Avatar - only show for received messages */}
                           {!isMsgFromMe && (
@@ -1170,15 +1325,14 @@ const Messages = () => {
                               </AvatarFallback>
                             </Avatar>
                           )}
-                          
+
                           {/* Message Bubble */}
                           <div className={`flex flex-col ${isMsgFromMe ? 'items-end' : 'items-start'}`}>
                             <div
-                              className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${
-                                isMsgFromMe
-                                  ? 'bg-blue-600 text-white rounded-br-sm'
-                                  : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-                              }`}
+                              className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${isMsgFromMe
+                                ? 'bg-blue-600 text-white rounded-br-sm'
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
+                                }`}
                             >
                               <p className={`text-sm sm:text-base whitespace-pre-wrap break-words ${isMsgFromMe ? 'text-white' : 'text-gray-900'}`}>
                                 {msg.content}
@@ -1186,23 +1340,23 @@ const Messages = () => {
                             </div>
                             <div className={`flex items-center gap-1 mt-1 px-1 ${isMsgFromMe ? 'justify-end' : 'justify-start'}`}>
                               <span className="text-xs text-gray-500">
-                                {new Date(msg.created_at).toLocaleTimeString('ro-RO', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
+                                {new Date(msg.created_at).toLocaleTimeString('ro-RO', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
                                 })}
                               </span>
                               {/* WhatsApp-style read indicators (only for sent messages) */}
                               {isMsgFromMe && (
-                                <div 
+                                <div
                                   className="flex items-center cursor-help"
                                   title={
                                     msg.is_read && msg.read_at
-                                      ? `Citit: ${new Date(msg.read_at).toLocaleString('ro-RO', { 
-                                          day: 'numeric', 
-                                          month: 'short', 
-                                          hour: '2-digit', 
-                                          minute: '2-digit' 
-                                        })}`
+                                      ? `Citit: ${new Date(msg.read_at).toLocaleString('ro-RO', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}`
                                       : 'Livrat (necitit)'
                                   }
                                 >
@@ -1229,13 +1383,26 @@ const Messages = () => {
                         </div>
                       </div>
                     );
-                  })}
+                    })
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
+                <style>{`
+                  @keyframes fadeInUp {
+                    from {
+                      opacity: 0;
+                      transform: translateY(10px);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+                  }
+                `}</style>
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="p-2 sm:p-3 border-t border-gray-200 bg-white shrink-0 pb-2 sm:pb-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 bg-white shrink-0 pb-safe">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
@@ -1247,8 +1414,8 @@ const Messages = () => {
                         handleSendReply();
                       }
                     }}
-                    placeholder="Scrie un mesaj..."
-                    className="flex-1 min-h-[40px] max-h-24 resize-none text-sm sm:text-base py-2 px-3"
+                    placeholder="Scrie mesaj..."
+                    className="flex-1 min-h-[44px] max-h-24 resize-none text-sm sm:text-base py-2.5 px-3"
                     rows={1}
                   />
                   <Button

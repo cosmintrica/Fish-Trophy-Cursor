@@ -12,9 +12,25 @@ const cors = () => ({
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
 });
 
-const ok = (data, init = {}) => ({
+// Helper to get cache headers based on method
+const getCacheHeaders = (method) => {
+  if (method === 'GET') {
+    return {
+      'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=300'
+    };
+  }
+  // POST/PUT/DELETE should not be cached
+  return {
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
+  };
+};
+
+const ok = (data, init = {}, method = 'GET') => ({
   statusCode: 200,
-  headers: cors(),
+  headers: {
+    ...cors(),
+    ...getCacheHeaders(method)
+  },
   body: JSON.stringify(data),
   ...init
 });
@@ -103,7 +119,7 @@ export const handler = async (event) => {
         return bad('Failed to fetch records', 500);
       }
 
-      return ok({ success: true, data: data || [] });
+      return ok({ success: true, data: data || [] }, {}, 'GET');
     }
 
     // POST /api/records - Create new record
@@ -154,7 +170,7 @@ export const handler = async (event) => {
         return bad('Failed to create record', 500);
       }
 
-      return ok({ success: true, data });
+      return ok({ success: true, data }, {}, 'POST');
     }
 
     // PUT /api/records/:id/approve - Approve record (admin/moderator)
@@ -196,7 +212,7 @@ export const handler = async (event) => {
         return bad('Failed to approve record', 500);
       }
 
-      return ok({ success: true, data });
+      return ok({ success: true, data }, {}, 'PUT');
     }
 
     // PUT /api/records/:id - Update record (owner or admin)
@@ -267,7 +283,7 @@ export const handler = async (event) => {
         return bad('Failed to update record', 500);
       }
 
-      return ok({ success: true, data });
+      return ok({ success: true, data }, {}, 'PUT');
     }
 
     // PUT /api/records/:id/reject - Reject record (admin/moderator)
@@ -313,7 +329,7 @@ export const handler = async (event) => {
         return bad('Failed to reject record', 500);
       }
 
-      return ok({ success: true, data });
+      return ok({ success: true, data }, {}, 'PUT');
     }
 
     return bad('Not found', 404);

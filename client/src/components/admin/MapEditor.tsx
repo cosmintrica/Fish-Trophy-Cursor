@@ -3,14 +3,14 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { DatabaseFishingLocation, loadFishingMarkers, getLocationDetails, FishingMarker } from '@/services/fishingLocations';
+import { DatabaseFishingLocation, loadFishingMarkers, FishingMarker } from '@/services/fishingLocations';
 import { loadAJVPSOfficeMarkers, getAJVPSOfficeDetails, AJVPSOfficeMarker } from '@/services/ajvpsOffices';
 import { loadAccommodationMarkers, getAccommodationDetails, AccommodationMarker } from '@/services/accommodations';
 import { MapLocationType, loadShopMarkers } from '@/services/mapLocations';
 import type * as GeoJSON from 'geojson';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, X, Edit2, Trash2, Plus, MapPin, ExternalLink, Loader2, Layers } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Save, X, Edit2, Trash2, Plus, MapPin, ExternalLink, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -197,25 +197,25 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
   const [selectedLocation, setSelectedLocation] = useState<DatabaseFishingLocation | null>(null);
   const [selectedLocationType, setSelectedLocationType] = useState<MapLocationType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [draggedMarkerId, setDraggedMarkerId] = useState<string | null>(null);
+  const [_draggedMarkerId, _setDraggedMarkerId] = useState<string | null>(null);
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, { lat: number; lng: number }>>(new Map());
   const [hoverTooltip, setHoverTooltip] = useState<{ id: string; name: string; county: string; x: number; y: number } | null>(null);
   const [mapClickPosition, setMapClickPosition] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null);
   const [showLocationMenu, setShowLocationMenu] = useState(false);
-  const [mapClickHoldTimer, setMapClickHoldTimer] = useState<NodeJS.Timeout | null>(null);
+  const [_mapClickHoldTimer, _setMapClickHoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [isHolding, setIsHolding] = useState(false);
   const tempMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const [isDraggingMarker, setIsDraggingMarker] = useState(false);
+  const [_isDraggingMarker, _setIsDraggingMarker] = useState(false);
   const [isLoadingGoogleMaps, setIsLoadingGoogleMaps] = useState(false);
   const [counties, setCounties] = useState<{ id: string; name: string }[]>([]);
   const [activeLocationType, setActiveLocationType] = useState<MapLocationType | 'all' | 'river' | 'lake' | 'balti_salbatic' | 'private_pond'>('all');
   const [mapStyle, setMapStyle] = useState<'osm' | 'satellite' | 'hybrid'>('osm');
-  const [showMapStyleDropdown, setShowMapStyleDropdown] = useState(false);
+  const [_showMapStyleDropdown, _setShowMapStyleDropdown] = useState(false);
   const isDraggingRef = useRef(false);
   const draggedFeatureIdRef = useRef<string | null>(null);
   const draggedFeatureTypeRef = useRef<MapLocationType | null>(null);
   const dragStartPointRef = useRef<{ x: number; y: number } | null>(null);
-  const layersWithListenersRef = useRef<Set<string>>(new Set()); // Track layers with listeners
+  const [_layersWithListenersRef] = useRef<Set<string>>(new Set()); // Track layers with listeners
   const hasDraggedRef = useRef(false); // Track if a drag actually occurred
 
 
@@ -380,8 +380,8 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
     if (!mapInstanceRef.current) return;
 
     const map = mapInstanceRef.current;
-    let holdTimer: NodeJS.Timeout | null = null;
-    let holdingIndicatorTimer: NodeJS.Timeout | null = null;
+    let holdTimer: ReturnType<typeof setTimeout> | null = null;
+    let holdingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
     let mouseDownTime = 0;
     let mouseDownPosition: { x: number; y: number } | null = null;
     let hasMoved = false;
@@ -872,7 +872,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
       }
     };
 
-    const handleClick = async (e: maplibregl.MapMouseEvent) => {
+    const handleClick = async (_e: maplibregl.MapMouseEvent) => {
       // Click logic is now handled in handleMouseUp to correctly distinguish between drag and click
       // We keep this empty or remove it, but removing it requires updating the useEffect cleanup
       // So we just leave it empty or return
@@ -1273,7 +1273,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
   }, [isEditMode, fishingMarkers.length, shopMarkers.length, ajvpsMarkers.length, accommodationMarkers.length, activeLocationType]);
 
   // Handle location click
-  const handleLocationClick = (location: DatabaseFishingLocation) => {
+  const _handleLocationClick = (location: DatabaseFishingLocation) => {
     setSelectedLocation(location);
     setFormData({
       name: location.name,

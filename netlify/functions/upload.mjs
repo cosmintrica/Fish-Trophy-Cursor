@@ -60,9 +60,14 @@ export const handler = async (event) => {
         });
       });
 
+      let username = '';
+      let subCategory = '';
+
       bb.on('field', (fieldname, value) => {
         if (fieldname === 'fileName') fileName = value;
         if (fieldname === 'category') category = value;
+        if (fieldname === 'subCategory') subCategory = value;
+        if (fieldname === 'username') username = value;
       });
 
       bb.on('finish', async () => {
@@ -71,8 +76,22 @@ export const handler = async (event) => {
             throw new Error('No file received');
           }
 
-          // Upload to R2
-          const key = `${category}/${fileName}`;
+          if (!username) {
+            throw new Error('Username is required');
+          }
+
+          // New structure: username/category/subCategory/fileName
+          // Examples:
+          // - username/records/images/record-1_timestamp_file.jpg
+          // - username/journal/videos/catch-2_timestamp_file.mp4
+          // - username/forum/posts/post-3_timestamp_file.jpg
+          let key;
+          if (subCategory) {
+            key = `${username}/${category}/${subCategory}/${fileName}`;
+          } else {
+            // Fallback for old structure (backward compatibility)
+            key = `${category}/${fileName}`;
+          }
 
           const putCommand = new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
@@ -89,7 +108,8 @@ export const handler = async (event) => {
             statusCode: 200,
             headers: {
               'Access-Control-Allow-Origin': '*',
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
             },
             body: JSON.stringify({
               success: true,

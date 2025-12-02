@@ -10,6 +10,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
 import { CompleteGoogleProfileModal } from '@/components/CompleteGoogleProfileModal';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
+import { MessageNotificationManager } from '@/components/MessageNotificationManager';
 
 // Initialize analytics
 analytics;
@@ -165,6 +166,7 @@ function App() {
               </ProfileCompletionWrapper>
             </AnalyticsWrapper>
           </RealtimeMessagesWrapper>
+          <MessageNotificationManager />
         </Router>
         <Toaster
           position="bottom-right"
@@ -174,7 +176,8 @@ function App() {
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-            }
+            },
+            className: 'toast-message'
           }}
         />
       </AuthProvider>

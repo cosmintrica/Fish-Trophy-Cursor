@@ -6,15 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-interface RecordSubmissionModalProps {
+interface CatchSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  locationId?: string;
-  locationName?: string;
+  onSuccess?: () => void;
 }
 
 interface Species {
@@ -30,19 +28,17 @@ interface FishingLocation {
   county: string;
 }
 
-const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
+const CatchSubmissionModal: React.FC<CatchSubmissionModalProps> = ({
   isOpen,
   onClose,
-  locationId,
-  locationName
+  onSuccess
 }) => {
   const { user } = useAuth();
   const [userUsername, setUserUsername] = useState<string | null>(null);
-  const { trackRecordSubmission } = useAnalytics();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [species, setSpecies] = useState<Species[]>([]);
   const [locations, setLocations] = useState<FishingLocation[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState(locationId || '');
+  const [selectedLocation, setSelectedLocation] = useState('');
 
   // State for limited display and search
   const [showAllSpecies, setShowAllSpecies] = useState(false);
@@ -54,26 +50,17 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     species_id: '',
     weight: '',
     length_cm: '',
-    date_caught: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:MM format
+    captured_at: new Date().toISOString().slice(0, 16),
     notes: '',
     photo_files: [] as File[],
     video_file: null as File | null,
     photo_urls: [] as string[],
-    video_url: ''
+    video_url: '',
+    is_public: true
   });
 
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<{ photos?: string[]; video?: string }>({});
-
-  // Sync location props with state
-  useEffect(() => {
-    if (locationId) {
-      setSelectedLocation(locationId);
-      if (locationName) {
-        setLocationSearchTerm(locationName);
-      }
-    }
-  }, [locationId, locationName, isOpen]);
 
   // Load username from profile
   useEffect(() => {
@@ -109,7 +96,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       if (error) throw error;
       setSpecies(data || []);
     } catch (error) {
-      console.error('Error loading species from Supabase:', error);
+      console.error('Error loading species:', error);
       setSpecies([]);
     }
   };
@@ -124,33 +111,32 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       if (error) throw error;
       setLocations(data || []);
     } catch (error) {
-      console.error('Error loading locations from Supabase:', error);
+      console.error('Error loading locations:', error);
       setLocations([]);
     }
   };
 
-  // Helper function to remove diacritics
-  const removeDiacritics = (str: string) => {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  };
-
-  // Get filtered species based on search and display limit
+  // Filter species based on search term
   const getFilteredSpecies = () => {
-    // Only show results when searching
-    if (!speciesSearchTerm.trim()) {
-      return [];
-    }
+    if (!speciesSearchTerm.trim()) return [];
 
-    const searchTerm = removeDiacritics(speciesSearchTerm.toLowerCase());
+    const searchTerm = speciesSearchTerm.toLowerCase();
+    let filtered = species.filter(s =>
+      s.name.toLowerCase().includes(searchTerm) ||
+      (s.scientific_name && s.scientific_name.toLowerCase().includes(searchTerm))
+    );
 
-    let filtered = species.filter(s => {
-      const name = removeDiacritics(s.name?.toLowerCase() || '');
-      const scientificName = removeDiacritics(s.scientific_name?.toLowerCase() || '');
+    filtered.sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      const aStartsWith = aName.startsWith(searchTerm);
+      const bStartsWith = bName.startsWith(searchTerm);
 
-      return name.includes(searchTerm) || scientificName.includes(searchTerm);
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      return 0;
     });
 
-    // Apply display limit (show only first 10 if not showing all)
     if (!showAllSpecies) {
       filtered = filtered.slice(0, 10);
     }
@@ -158,72 +144,28 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     return filtered;
   };
 
-  // Get filtered locations based on search and display limit
+  // Filter locations based on search term
   const getFilteredLocations = () => {
-    // Only show results when searching
-    if (!locationSearchTerm.trim()) {
-      return [];
-    }
+    if (!locationSearchTerm.trim()) return [];
 
-    const searchTerm = removeDiacritics(locationSearchTerm.toLowerCase());
+    const searchTerm = locationSearchTerm.toLowerCase();
+    let filtered = locations.filter(l =>
+      l.name.toLowerCase().includes(searchTerm) ||
+      l.county.toLowerCase().includes(searchTerm) ||
+      l.type.toLowerCase().includes(searchTerm)
+    );
 
-    let filtered = locations.filter(l => {
-      const name = removeDiacritics(l.name?.toLowerCase() || '');
-      const type = removeDiacritics(l.type?.toLowerCase() || '');
-      const county = removeDiacritics(l.county?.toLowerCase() || '');
-
-      return name.includes(searchTerm) || type.includes(searchTerm) || county.includes(searchTerm);
-    });
-
-    // Smart prioritization based on search term
     filtered.sort((a, b) => {
-      const aName = removeDiacritics(a.name?.toLowerCase() || '');
-      const bName = removeDiacritics(b.name?.toLowerCase() || '');
-      const aType = removeDiacritics(a.type?.toLowerCase() || '');
-      const bType = removeDiacritics(b.type?.toLowerCase() || '');
-
-      // If searching for river names (Olt, Mures, etc.), prioritize rivers
-      const riverNames = ['olt', 'mures', 'dunare', 'siret', 'prut', 'arges', 'jijia', 'buzau', 'ialomita', 'teleorman'];
-      const isSearchingForRiver = riverNames.some(riverName => searchTerm.includes(riverName));
-
-      if (isSearchingForRiver) {
-        const aIsRiver = aType === 'rau' || aType === 'river';
-        const bIsRiver = bType === 'rau' || bType === 'river';
-
-        if (aIsRiver && !bIsRiver) return -1;
-        if (!aIsRiver && bIsRiver) return 1;
-      }
-
-      // If searching for lake names, prioritize lakes
-      const lakeNames = ['snagov', 'herastrau', 'cernica', 'tei', 'floreasca', 'morii', 'chitila', 'bucuresti'];
-      const isSearchingForLake = lakeNames.some(lakeName => searchTerm.includes(lakeName));
-
-      if (isSearchingForLake) {
-        const aIsLake = aType === 'lac' || aType === 'lake';
-        const bIsLake = bType === 'lac' || bType === 'lake';
-
-        if (aIsLake && !bIsLake) return -1;
-        if (!aIsLake && bIsLake) return 1;
-      }
-
-      // Default: prioritize exact name matches
-      const aExactMatch = aName === searchTerm;
-      const bExactMatch = bName === searchTerm;
-
-      if (aExactMatch && !bExactMatch) return -1;
-      if (!aExactMatch && bExactMatch) return 1;
-
-      // Then prioritize name starts with search term
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
       const aStartsWith = aName.startsWith(searchTerm);
       const bStartsWith = bName.startsWith(searchTerm);
 
       if (aStartsWith && !bStartsWith) return -1;
       if (!aStartsWith && bStartsWith) return 1;
-
       return 0;
     });
 
-    // Apply display limit (show only first 10 if not showing all)
     if (!showAllLocations) {
       filtered = filtered.slice(0, 10);
     }
@@ -231,7 +173,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     return filtered;
   };
 
-  const handleInputChange = (field: string, value: string | File | null) => {
+  const handleInputChange = (field: string, value: string | File | null | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -247,11 +189,9 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
     if (!files || files.length === 0) return;
 
-    // Validate file size
-    const maxSize = type === 'photo' ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for photos, 100MB for videos
+    const maxSize = type === 'photo' ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
     
     if (type === 'photo') {
-      // Handle multiple photos
       const validFiles: File[] = [];
       const previewUrlsArray: string[] = [];
       
@@ -261,7 +201,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
           return;
         }
         validFiles.push(file);
-        // Create optimized preview URL with reduced quality for performance
         const previewUrl = URL.createObjectURL(file);
         previewUrlsArray.push(previewUrl);
       });
@@ -280,14 +219,16 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         toast.success(`${validFiles.length} ${validFiles.length === 1 ? 'imagine' : 'imagini'} ${validFiles.length === 1 ? 'a fost' : 'au fost'} selectat${validFiles.length === 1 ? 'ă' : 'e'}. Se vor încărca la trimitere.`);
       }
     } else {
-      // Handle single video
       const file = files[0];
       if (file.size > maxSize) {
         toast.error(`Videoclipul este prea mare. Maxim 100MB.`);
         return;
       }
 
-      handleInputChange('video_file', file);
+      setFormData(prev => ({
+        ...prev,
+        video_file: file
+      }));
       
       const previewUrl = URL.createObjectURL(file);
       setPreviewUrls(prev => ({
@@ -312,7 +253,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
 
     setPreviewUrls(prev => {
       if (prev.photos) {
-        // Revoke the URL to free memory
         URL.revokeObjectURL(prev.photos[index]);
         const newPreviewUrls = [...prev.photos];
         newPreviewUrls.splice(index, 1);
@@ -325,8 +265,8 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     });
   };
 
-  // Upload file to R2 (called only when submitting the form)
-  const uploadFileToR2 = async (file: File, type: 'photo' | 'video', recordId?: string): Promise<string> => {
+  // Upload file to R2
+  const uploadFileToR2 = async (file: File, type: 'photo' | 'video', catchId?: string): Promise<string> => {
     if (!user) {
       throw new Error('Trebuie să fii autentificat');
     }
@@ -335,23 +275,23 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
       throw new Error('Username-ul nu este disponibil. Te rog reîncarcă pagina.');
     }
 
-    if (!recordId) {
-      throw new Error('ID-ul recordului nu este disponibil');
+    if (!catchId) {
+      throw new Error('ID-ul capturii nu este disponibil');
     }
 
     const timestamp = Date.now();
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const fileExtension = sanitizedFileName.split('.').pop() || '';
     const baseFileName = sanitizedFileName.replace(/\.[^/.]+$/, '');
-    const fileName = `${recordId}_${timestamp}_${baseFileName}.${fileExtension}`;
+    const fileName = `${catchId}_${timestamp}_${baseFileName}.${fileExtension}`;
     
-    // New structure: username/records/images or username/records/videos
+    // New structure: username/journal/images or username/journal/videos
     const category = type === 'photo' ? 'images' : 'videos';
-    // Note: fullPath is calculated in upload function, not used here
+    const fullPath = `${userUsername}/journal/${category}/${fileName}`;
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('category', 'records'); // Main category
+    formData.append('category', 'journal'); // Main category
     formData.append('subCategory', category); // images or videos
     formData.append('fileName', fileName);
     formData.append('username', userUsername);
@@ -408,7 +348,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   // Cleanup preview URLs when modal closes
   useEffect(() => {
     return () => {
-      // Cleanup preview URLs when component unmounts or modal closes
       if (previewUrls.photos) {
         previewUrls.photos.forEach(url => URL.revokeObjectURL(url));
       }
@@ -422,142 +361,114 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
     e.preventDefault();
 
     if (!user) {
-      toast.error('Trebuie să fii autentificat pentru a adăuga un record');
+      toast.error('Trebuie să fii autentificat pentru a adăuga o captură');
       return;
     }
 
-    if (isUploading) {
-      toast.error('Te rugăm să aștepți finalizarea încărcării fișierelor');
-      return;
-    }
-
-    if (!formData.species_id || !formData.weight || !formData.length_cm || !selectedLocation) {
-      toast.error('Completează toate câmpurile obligatorii');
-      return;
-    }
-
-    // Photos and video are required
-    if (formData.photo_files.length === 0) {
-      toast.error('Cel puțin o fotografie este obligatorie pentru trimiterea recordului');
-      return;
-    }
-
-    if (!formData.video_file) {
-      toast.error('Videoclipul este obligatoriu pentru trimiterea recordului');
+    // Only captured_at is required for catches
+    if (!formData.captured_at) {
+      toast.error('Data capturării este obligatorie');
       return;
     }
 
     setIsSubmitting(true);
     setIsUploading(true);
-    toast.loading('Se salvează recordul și se încarcă fișierele...', { id: 'submit-record' });
+    toast.loading('Se salvează captura și se încarcă fișierele...', { id: 'submit-catch' });
 
     try {
-      // First, insert record to get user_record_id from trigger
-      const recordData = {
-        species_id: formData.species_id,
-        weight: parseFloat(formData.weight),
-        length_cm: parseFloat(formData.length_cm),
-        location_id: selectedLocation,
-        date_caught: formData.date_caught,
-        notes: formData.notes || null
+      // First, insert catch to get user_catch_id from trigger
+      const catchData: any = {
+        user_id: user.id,
+        captured_at: formData.captured_at,
+        notes: formData.notes || null,
+        is_public: formData.is_public
       };
 
-      // Insert record first to get global_id
-      const { data: insertedRecord, error: insertError } = await supabase
-        .from('records')
-        .insert([recordData])
+      // Add optional fields if provided
+      if (formData.species_id) {
+        catchData.species_id = formData.species_id;
+      }
+      if (selectedLocation) {
+        catchData.location_id = selectedLocation;
+      }
+      if (formData.weight) {
+        catchData.weight = parseFloat(formData.weight);
+      }
+      if (formData.length_cm) {
+        catchData.length_cm = parseFloat(formData.length_cm);
+      }
+
+      // Insert catch first to get global_id
+      const { data: insertedCatch, error: insertError } = await supabase
+        .from('catches')
+        .insert([catchData])
         .select('id, global_id')
         .single();
 
       if (insertError) throw insertError;
-      if (!insertedRecord?.global_id) {
-        throw new Error('ID-ul recordului nu a fost generat. Te rog reîncearcă.');
+      if (!insertedCatch?.global_id) {
+        throw new Error('ID-ul capturii nu a fost generat. Te rog reîncearcă.');
       }
 
-      const recordId = `record-${insertedRecord.global_id}`;
+      const catchId = `catch-${insertedCatch.global_id}`;
 
-      // Now upload files to R2 with the correct record ID
+      // Now upload files to R2 with the correct catch ID
       let photoUrls: string[] = [];
       let videoUrl: string | null = null;
 
-      // Upload all photos
+      // Upload photos if any
       if (formData.photo_files.length > 0) {
         try {
-          const uploadPromises = formData.photo_files.map(file => uploadFileToR2(file, 'photo', recordId));
+          const uploadPromises = formData.photo_files.map(file => uploadFileToR2(file, 'photo', catchId));
           photoUrls = await Promise.all(uploadPromises);
         } catch (error: any) {
-          // Delete the record if upload fails
-          await supabase.from('records').delete().eq('id', insertedRecord.id);
+          // Delete the catch if upload fails
+          await supabase.from('catches').delete().eq('id', insertedCatch.id);
           toast.error(`Eroare la încărcarea imaginilor: ${error.message}`);
           setIsSubmitting(false);
           setIsUploading(false);
-          toast.dismiss('submit-record');
+          toast.dismiss('submit-catch');
           return;
         }
       }
 
+      // Upload video if provided
       if (formData.video_file) {
         try {
-          videoUrl = await uploadFileToR2(formData.video_file, 'video', recordId);
+          videoUrl = await uploadFileToR2(formData.video_file, 'video', catchId);
         } catch (error: any) {
-          // Delete the record if upload fails
-          await supabase.from('records').delete().eq('id', insertedRecord.id);
-          let errorMessage = error.message || 'Eroare necunoscută';
-          
-          // Try to parse JSON error from response
-          if (error.message && error.message.includes('{')) {
-            try {
-              const errorMatch = error.message.match(/\{.*\}/);
-              if (errorMatch) {
-                const errorData = JSON.parse(errorMatch[0]);
-                if (errorData.error) {
-                  errorMessage = errorData.error;
-                  if (errorData.details) {
-                    errorMessage += ` (${errorData.details})`;
-                  }
-                }
-              }
-            } catch (e) {
-              // Keep original error message
-            }
-          }
-          
-          toast.error(`Eroare la încărcarea videoclipului: ${errorMessage}`);
+          // Delete the catch if upload fails
+          await supabase.from('catches').delete().eq('id', insertedCatch.id);
+          toast.error(`Eroare la încărcarea videoclipului: ${error.message}`);
           setIsSubmitting(false);
           setIsUploading(false);
-          toast.dismiss('submit-record');
+          toast.dismiss('submit-catch');
           return;
         }
       }
 
-      // Update record with photo and video URLs
-      const updateData: any = {};
-      if (photoUrls.length > 0) {
-        updateData.photo_url = photoUrls[0];
-        updateData.photo_urls = photoUrls; // All photos as array (if column exists)
-      }
-      if (videoUrl) {
-        updateData.video_url = videoUrl;
-      }
+      // Update catch with photo and video URLs
+      if (photoUrls.length > 0 || videoUrl) {
+        const updateData: any = {};
+        if (photoUrls.length > 0) {
+          updateData.photo_url = photoUrls[0];
+        }
+        if (videoUrl) {
+          updateData.video_url = videoUrl;
+        }
 
-      const { error: updateError } = await supabase
-        .from('records')
-        .update(updateData)
-        .eq('id', insertedRecord.id);
+        const { error: updateError } = await supabase
+          .from('catches')
+          .update(updateData)
+          .eq('id', insertedCatch.id);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       setIsUploading(false);
 
-      toast.success('Record trimis cu succes! Va fi verificat de moderatori.', { id: 'submit-record' });
 
-      // Track record submission
-      trackRecordSubmission({
-        species: formData.species_id,
-        weight: formData.weight,
-        length: formData.length_cm,
-        location: selectedLocation
-      });
+      toast.success('Captură adăugată cu succes!', { id: 'submit-catch' });
 
       // Cleanup preview URLs
       if (previewUrls.photos) {
@@ -567,26 +478,32 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         URL.revokeObjectURL(previewUrls.video);
       }
 
-      onClose();
       // Reset form
       setFormData({
         species_id: '',
         weight: '',
         length_cm: '',
-        date_caught: new Date().toISOString().slice(0, 16),
+        captured_at: new Date().toISOString().slice(0, 16),
         notes: '',
         photo_files: [],
         video_file: null,
         photo_urls: [],
-        video_url: ''
+        video_url: '',
+        is_public: true
       });
       setPreviewUrls({});
-      setSelectedLocation(locationId || '');
-    } catch (error) {
-      console.error('Error submitting record:', error);
-      toast.error('Eroare la trimiterea recordului', { id: 'submit-record' });
+      setSelectedLocation('');
+      setSpeciesSearchTerm('');
+      setLocationSearchTerm('');
+
+      onSuccess?.();
+      onClose();
+    } catch (error: any) {
+      console.error('Error submitting catch:', error);
+      toast.error(error.message || 'Eroare la salvarea capturii', { id: 'submit-catch' });
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -598,7 +515,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Fish className="w-6 h-6 text-blue-600" />
-            Adaugă Record Nou
+            Adaugă Captură în Jurnal
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
@@ -609,13 +526,12 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Species and Location - Same Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Species Selection */}
+            {/* Species Selection - Optional */}
             <div className="space-y-2">
               <Label htmlFor="species" className="text-sm font-medium">
-                Specia de pește <span className="text-red-500">*</span>
+                Specia de pește (opțional)
               </Label>
 
-              {/* Search Input */}
               <div className="space-y-2 relative">
                 <div className="relative">
                   <Input
@@ -639,7 +555,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                   )}
                 </div>
 
-                {/* Species List */}
                 {speciesSearchTerm.trim() && !formData.species_id && (
                   <div className="max-h-48 overflow-y-auto border rounded-lg absolute z-50 w-full bg-white shadow-lg">
                     {getFilteredSpecies().length === 0 ? (
@@ -662,7 +577,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       ))
                     )}
 
-                    {/* Show More Button */}
                     {!showAllSpecies && getFilteredSpecies().length > 10 && (
                       <div className="p-3 text-center border-t">
                         <button
@@ -675,7 +589,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       </div>
                     )}
 
-                    {/* Show Less Button */}
                     {showAllSpecies && (
                       <div className="p-3 text-center border-t">
                         <button
@@ -692,13 +605,12 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
               </div>
             </div>
 
-            {/* Location Selection */}
+            {/* Location Selection - Optional */}
             <div className="space-y-2">
               <Label htmlFor="location" className="text-sm font-medium">
-                Locația de pescuit <span className="text-red-500">*</span>
+                Locația de pescuit (opțional)
               </Label>
 
-              {/* Search Input */}
               <div className="space-y-2 relative">
                 <div className="relative">
                   <Input
@@ -722,7 +634,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                   )}
                 </div>
 
-                {/* Location List */}
                 {locationSearchTerm.trim() && !selectedLocation && (
                   <div className="max-h-48 overflow-y-auto border rounded-lg absolute z-50 w-full bg-white shadow-lg">
                     {getFilteredLocations().length === 0 ? (
@@ -747,7 +658,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       ))
                     )}
 
-                    {/* Show More Button */}
                     {!showAllLocations && getFilteredLocations().length > 10 && (
                       <div className="p-3 text-center border-t">
                         <button
@@ -760,7 +670,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       </div>
                     )}
 
-                    {/* Show Less Button */}
                     {showAllLocations && (
                       <div className="p-3 text-center border-t">
                         <button
@@ -780,23 +689,24 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
             {/* Date, Weight and Length - Same Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date_caught" className="text-sm font-medium flex items-center gap-2">
+                <Label htmlFor="captured_at" className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Data și ora capturării <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="date_caught"
+                  id="captured_at"
                   type="datetime-local"
-                  value={formData.date_caught}
-                  onChange={(e) => handleInputChange('date_caught', e.target.value)}
+                  value={formData.captured_at}
+                  onChange={(e) => handleInputChange('captured_at', e.target.value)}
                   className="w-full"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
                   <Scale className="w-4 h-4" />
-                  Greutatea (kg) <span className="text-red-500">*</span>
+                  Greutatea (kg) (opțional)
                 </Label>
                 <Input
                   id="weight"
@@ -813,7 +723,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="length" className="text-sm font-medium flex items-center gap-2">
                   <Ruler className="w-4 h-4" />
-                  Lungimea (cm) <span className="text-red-500">*</span>
+                  Lungimea (cm) (opțional)
                 </Label>
                 <Input
                   id="length"
@@ -828,16 +738,16 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
               </div>
             </div>
 
-            {/* File Uploads */}
+            {/* File Uploads - Optional */}
             <div className="space-y-2 md:col-span-2">
-              <Label className="text-sm font-medium text-gray-700">Fișiere</Label>
+              <Label className="text-sm font-medium text-gray-700">Fișiere (opțional)</Label>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Photo Upload */}
                 <div className="space-y-2">
                   <Label htmlFor="photo" className="text-sm font-medium flex items-center gap-2 text-gray-700">
                     <Camera className="w-4 h-4 text-blue-500" />
-                    Fotografii <span className="text-red-500">*</span>
+                    Fotografii
                   </Label>
                   <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
                     <input
@@ -847,7 +757,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       multiple
                       onChange={(e) => {
                         handleFileSelect(e.target.files, 'photo');
-                        // Reset input to allow selecting the same file again
                         e.target.value = '';
                       }}
                       className="hidden"
@@ -860,7 +769,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP până la 10MB fiecare</p>
                     </label>
                     
-                    {/* Display selected photos with remove buttons */}
                     {formData.photo_files.length > 0 && (
                       <div className="mt-4 space-y-3">
                         {formData.photo_files.map((file, index) => (
@@ -899,7 +807,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                 <div className="space-y-2">
                   <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700">
                     <Video className="w-4 h-4 text-green-500" />
-                    Videoclip <span className="text-red-500">*</span>
+                    Videoclip (opțional)
                   </Label>
                   <div className="border-2 border-dashed border-green-300 rounded-xl p-4 sm:p-6 text-center hover:border-green-500 hover:bg-green-50/30 transition-all duration-200 group">
                     <input
@@ -908,7 +816,6 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                       accept="video/*"
                       onChange={(e) => {
                         handleFileSelect(e.target.files, 'video');
-                        // Reset input to allow selecting the same file again
                         e.target.value = '';
                       }}
                       className="hidden"
@@ -960,24 +867,46 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                 className="w-full"
               />
             </div>
+
+            {/* Privacy */}
+            <div className="space-y-2 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Captură publică (vizibilă pentru toți)</Label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-gray-600">{formData.is_public ? 'Public' : 'Privat'}</span>
+                  <div
+                    onClick={() => handleInputChange('is_public', !formData.is_public)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      formData.is_public ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        formData.is_public ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </div>
+                </label>
+              </div>
+            </div>
             </div>
 
             {/* Submit Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
-                {isSubmitting ? (
+                {(isSubmitting || isUploading) ? (
                   <>
                     <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Se trimite...
+                    {isUploading ? 'Se încarcă fișierele...' : 'Se salvează...'}
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Trimite Recordul
+                    Salvează Captura
                   </>
                 )}
               </Button>
@@ -985,7 +914,7 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className="px-6"
               >
                 Anulează
@@ -998,4 +927,5 @@ const RecordSubmissionModal: React.FC<RecordSubmissionModalProps> = ({
   );
 };
 
-export default RecordSubmissionModal;
+export default CatchSubmissionModal;
+

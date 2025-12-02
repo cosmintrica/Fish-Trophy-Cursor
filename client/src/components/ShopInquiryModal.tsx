@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { X, Upload, MapPin, Mail, Phone, Store, FileText, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { X, MapPin, Mail, Phone, Store, FileText, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -103,7 +103,7 @@ export default function ShopInquiryModal({ isOpen, onClose }: ShopInquiryModalPr
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `shop-inquiries/${fileName}`;
 
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('public')
           .upload(filePath, image);
 

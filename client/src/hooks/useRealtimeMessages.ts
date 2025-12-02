@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
 import { deriveKeyFromUsers, decryptMessage } from '@/lib/encryption';
+import { showMessageNotification } from '@/hooks/useMessageNotification';
 
 interface Message {
   id: string;
@@ -37,11 +37,27 @@ let globalActiveThread: {
   recipientId?: string;
   context?: 'site' | 'forum';
   onNewMessage?: (message: Message) => void;
-  onMessageReceived?: () => void; // Callback to reload messages list
+  onMessageReceived?: () => void;
+  onMessageRead?: (messageId: string, readAt: string) => void; // Callback for read updates
 } | null = null;
 
 export function setActiveThread(thread: typeof globalActiveThread) {
   globalActiveThread = thread;
+}
+
+// Global callbacks for unread count updates
+type UnreadCountCallback = () => void;
+const unreadCountCallbacks = new Set<UnreadCountCallback>();
+
+export function registerUnreadCountCallback(callback: UnreadCountCallback) {
+  unreadCountCallbacks.add(callback);
+  return () => {
+    unreadCountCallbacks.delete(callback);
+  };
+}
+
+export function notifyUnreadCountChange() {
+  unreadCountCallbacks.forEach(cb => cb());
 }
 
 export function useRealtimeMessages() {
@@ -50,7 +66,16 @@ export function useRealtimeMessages() {
   useEffect(() => {
     if (!user) return;
 
-    // Subscribe to new messages in real-time (both received and sent)
+    // Check if we're on messages page
+    const isOnMessagesPage = () => {
+      return window.location.pathname.startsWith('/messages');
+    };
+
+    // Navigate function that works in async callbacks
+    const navigateToMessages = (context: string) => {
+      window.location.href = `/messages?context=${context}`;
+    };
+
     const channel = supabase
       .channel(`private_messages_global_${user.id}`)
       .on(
@@ -58,12 +83,17 @@ export function useRealtimeMessages() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'private_messages',
-          filter: `or(recipient_id.eq.${user.id},sender_id.eq.${user.id})`
+          table: 'private_messages'
         },
         async (payload) => {
-          // Process message immediately - no filters, no delays
           try {
+            const newMessage = payload.new as any;
+            
+            // Filter in JavaScript - check if message is for current user
+            if (newMessage.recipient_id !== user.id && newMessage.sender_id !== user.id) {
+              return;
+            }
+
             // Load full message data including profiles
             const { data: fullMessageData, error: fullMessageError } = await supabase
               .from('private_messages')
@@ -72,11 +102,11 @@ export function useRealtimeMessages() {
                 sender:profiles!private_messages_sender_id_fkey(id, username, display_name, photo_url),
                 recipient:profiles!private_messages_recipient_id_fkey(id, username, display_name, photo_url)
               `)
-              .eq('id', payload.new.id)
+              .eq('id', newMessage.id)
               .single();
 
             if (fullMessageError || !fullMessageData) {
-              return; // Skip if we can't load the message
+              return;
             }
 
             // Decrypt the new message
@@ -89,7 +119,7 @@ export function useRealtimeMessages() {
                 decryptedContent = '[Eroare la decriptare]';
               }
             }
-            
+
             const formattedMessage: Message = {
               id: fullMessageData.id,
               sender_id: fullMessageData.sender_id,
@@ -104,7 +134,6 @@ export function useRealtimeMessages() {
               is_read: fullMessageData.is_read || false,
               sender_name: fullMessageData.sender?.display_name || fullMessageData.sender_name,
               recipient_name: fullMessageData.recipient?.display_name || fullMessageData.recipient_name,
-              // Add missing fields for Message interface
               subject: fullMessageData.subject || '',
               parent_message_id: fullMessageData.parent_message_id,
               is_archived_by_sender: fullMessageData.is_archived_by_sender || false,
@@ -117,60 +146,107 @@ export function useRealtimeMessages() {
             };
 
             // Check if message is for active thread
-            // For new messages (thread_root_id = id), check if it matches the active thread
             const messageThreadRootId = formattedMessage.thread_root_id || formattedMessage.id;
             const isInActiveThread = globalActiveThread && (
               messageThreadRootId === globalActiveThread.threadRootId ||
               formattedMessage.id === globalActiveThread.selectedMessageId ||
-              formattedMessage.id === globalActiveThread.threadRootId || // For new messages where thread_root_id = id
+              formattedMessage.id === globalActiveThread.threadRootId ||
               (formattedMessage.sender_id === user.id && formattedMessage.recipient_id === (globalActiveThread.senderId === user.id ? globalActiveThread.recipientId : globalActiveThread.senderId)) ||
               (formattedMessage.recipient_id === user.id && formattedMessage.sender_id === (globalActiveThread.senderId === user.id ? globalActiveThread.recipientId : globalActiveThread.senderId))
             );
 
-            // Check if message matches active thread context
             const matchesActiveContext = !globalActiveThread || globalActiveThread.context === formattedMessage.context;
 
-            // Always check if message is for active thread first
             if (isInActiveThread && globalActiveThread?.onNewMessage && matchesActiveContext) {
-              // Message is for active thread - send to Messages component immediately
-              // This works for both sent and received messages in the active thread
-              console.log('Realtime: Message for active thread, calling onNewMessage', formattedMessage.id);
               globalActiveThread.onNewMessage(formattedMessage);
             } else {
-              console.log('Realtime: Message not in active thread', {
-                isInActiveThread,
-                hasCallback: !!globalActiveThread?.onNewMessage,
-                matchesContext: matchesActiveContext,
-                messageId: formattedMessage.id,
-                threadRootId: formattedMessage.thread_root_id,
-                activeThreadRootId: globalActiveThread?.threadRootId
-              });
-              // Not in active thread - show notification
-              // Only show for received messages (not sent by current user)
+              // Not in active thread - show notification and update unread count
               if (formattedMessage.recipient_id === user.id) {
-                toast.success('Mesaj nou primit', { duration: 2000 });
+                // Only show notification if NOT on messages page
+                if (!isOnMessagesPage()) {
+                  const senderName = formattedMessage.sender_name || formattedMessage.sender_username || 'Cineva';
+                  const messageContext = formattedMessage.context === 'forum' ? 'forum' : 'site';
+                  
+                  showMessageNotification({
+                    id: formattedMessage.id,
+                    threadRootId: formattedMessage.thread_root_id || formattedMessage.id,
+                    senderName,
+                    senderAvatar: formattedMessage.sender_avatar,
+                    context: messageContext
+                  });
+                }
                 
-                // Trigger reload of messages list if callback exists
+                notifyUnreadCountChange();
+
                 if (globalActiveThread?.onMessageReceived && matchesActiveContext) {
                   globalActiveThread.onMessageReceived();
                 }
               } else if (formattedMessage.sender_id === user.id) {
-                // Message sent by us but not in active thread - reload list to show it
                 if (globalActiveThread?.onMessageReceived && matchesActiveContext) {
                   globalActiveThread.onMessageReceived();
                 }
               }
             }
           } catch (error) {
-            // Silent fail - don't break the app
+            // Silent fail
           }
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'private_messages'
+        },
+        async (payload) => {
+          try {
+            const updatedMessage = payload.new as any;
+            const oldMessage = payload.old as any;
+
+            // Check if message is in active thread
+            const messageThreadRootId = updatedMessage.thread_root_id || updatedMessage.id;
+            const isInActiveThread = globalActiveThread && (
+              messageThreadRootId === globalActiveThread.threadRootId ||
+              updatedMessage.id === globalActiveThread.selectedMessageId ||
+              updatedMessage.id === globalActiveThread.threadRootId
+            );
+
+            // If is_read changed from false to true
+            if (
+              oldMessage.is_read === false &&
+              updatedMessage.is_read === true
+            ) {
+              // Update unread count if recipient
+              if (updatedMessage.recipient_id === user.id) {
+                notifyUnreadCountChange();
+              }
+
+              // Update checkmarks in active thread if message is in thread
+              if (isInActiveThread && globalActiveThread?.onMessageRead) {
+                globalActiveThread.onMessageRead(
+                  updatedMessage.id,
+                  updatedMessage.read_at || new Date().toISOString()
+                );
+              }
+            }
+          } catch (error) {
+            // Silent fail
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Successfully subscribed
+        } else if (status === 'CHANNEL_ERROR') {
+          // Connection failed
+        } else if (status === 'CLOSED') {
+          // Connection closed
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
 }
-

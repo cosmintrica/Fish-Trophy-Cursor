@@ -174,6 +174,25 @@ export const getR2ImageUrl = (category: string, filename: string): string => {
   return `${R2_CONFIG.PUBLIC_URL}/${category}/${filename}`
 }
 
+// Get R2 image URL through proxy to avoid CORS issues
+export const getR2ImageUrlProxy = (imageUrl: string): string => {
+  if (!imageUrl) return imageUrl;
+  
+  // If it's already a proxy URL or not an R2 URL, return as is
+  if (imageUrl.includes('/.netlify/functions/r2-proxy') || !imageUrl.includes('r2.cloudflarestorage.com')) {
+    return imageUrl;
+  }
+  
+  // Use proxy for R2 URLs
+  // Use the same protocol as the current page to avoid mixed content warnings
+  const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const proxyUrl = import.meta.env.DEV 
+    ? `${protocol}//localhost:8888/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`
+    : `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
+  
+  return proxyUrl;
+}
+
 export const getFishSpeciesImage = (speciesName: string, imageType: 'main' | 'detail' | 'habitat' = 'main'): string => {
   const filename = `${speciesName.toLowerCase().replace(/\s+/g, '-')}-${imageType}.jpg`
   return getR2ImageUrl(R2_CONTENT.FISH_SPECIES, filename)

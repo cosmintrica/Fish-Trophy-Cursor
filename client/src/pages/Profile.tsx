@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 // Modular Components
 import { ProfileSidebar } from '@/components/profile/ProfileSidebar';
 import { RecordsTab } from '@/components/profile/tabs/RecordsTab';
+import { CatchesTab } from '@/components/profile/tabs/CatchesTab';
 import { GearTab } from '@/components/profile/tabs/GearTab';
 import { ProfileEditTab } from '@/components/profile/tabs/ProfileEditTab';
 import { SettingsTab } from '@/components/profile/tabs/SettingsTab';
@@ -21,6 +22,7 @@ import { usePhotoUpload } from '@/components/profile/hooks/usePhotoUpload';
 // Modals
 import RecordSubmissionModal from '@/components/RecordSubmissionModal';
 import EditRecordModal from '@/components/EditRecordModal';
+import CatchSubmissionModal from '@/components/CatchSubmissionModal';
 import { RecordDetailsModal } from '@/components/modals/RecordDetailsModal';
 
 const Profile = () => {
@@ -133,6 +135,8 @@ const Profile = () => {
 
   // Modal States
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [showCatchModal, setShowCatchModal] = useState(false);
+  const [catchReloadKey, setCatchReloadKey] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
@@ -181,8 +185,12 @@ const Profile = () => {
 
   const handleRecordAdded = () => {
     loadUserRecords();
-    setShowRecordModal(false);
-    toast.success('Record adăugat cu succes!');
+  };
+
+  const handleCatchAdded = () => {
+    // Reload catches will be handled by CatchesTab's useEffect via key change
+    setCatchReloadKey(prev => prev + 1);
+    // Toast notification is already shown in CatchSubmissionModal
   };
 
   const handleRecordEdited = () => {
@@ -265,11 +273,12 @@ const Profile = () => {
               </TabsContent>
 
               <TabsContent value="catches" className="space-y-6">
-                <div className="text-center py-12 text-gray-500">
-                  <Fish className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <p>Jurnal de Capturi - În curând</p>
-                  <p className="text-sm mt-2">Funcționalitatea este în dezvoltare</p>
-                </div>
+                <CatchesTab
+                  key={catchReloadKey}
+                  userId={user.id}
+                  onShowCatchModal={() => setShowCatchModal(true)}
+                  onCatchAdded={handleCatchAdded}
+                />
               </TabsContent>
 
               <TabsContent value="gear" className="space-y-6">
@@ -353,6 +362,7 @@ const Profile = () => {
             setEditingRecord(null);
           }}
           onSuccess={handleRecordEdited}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -363,6 +373,12 @@ const Profile = () => {
           setIsDetailsModalOpen(false);
           setSelectedRecord(null);
         }}
+      />
+
+      <CatchSubmissionModal
+        isOpen={showCatchModal}
+        onClose={() => setShowCatchModal(false)}
+        onSuccess={handleCatchAdded}
       />
     </div>
   );

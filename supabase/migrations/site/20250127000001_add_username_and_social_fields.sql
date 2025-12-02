@@ -1,5 +1,5 @@
 -- Migration: Add username and social media fields to profiles
--- Created: 2025-01-27
+-- Created: 2025-11-27
 
 -- Step 1: Add new columns
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS username TEXT;

@@ -1,5 +1,5 @@
 -- Migration: Add Private Messages System (Unified for Site & Forum)
--- Created: 2025-01-28
+-- Created: 2025-11-28
 -- Description: Unified messaging system with inbox/sent/archived folders, separate for site and forum
 
 -- =============================================

@@ -52,8 +52,8 @@ Proiectul este deja configurat pentru Netlify cu:
 3. **Environment Variables:**
    În Netlify dashboard → Site settings → Environment variables:
    ```
-   # Neon Database (Required pentru backend functions)
-   DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+   # Supabase Database (Required pentru backend functions)
+   DATABASE_URL=postgresql://user:pass@host.supabase.co:5432/postgres?sslmode=require
    
    # Firebase Config (Required pentru client-side auth)
    VITE_FIREBASE_API_KEY=your_firebase_api_key
@@ -85,13 +85,13 @@ Proiectul este deja configurat pentru Netlify cu:
 
 ## ⚡ **Pas 3: Funcții Backend**
 
-Funcțiile sunt automat deployate din `netlify/functions/` conform [documentației oficiale Neon](https://neon.com/docs/guides/netlify-functions):
+Funcțiile sunt automat deployate din `netlify/functions/`:
 - ✅ `/api/og` → Social media images (OG image generation)
 - ✅ `/api/species` → Database queries pentru specii pești
 - ✅ `/api/locations` → Locații și corpuri de apă
 - ✅ `/api/users/:firebase_uid` → Profile management
 - ✅ `/api/auth/user` → User creation & authentication
-- 🔗 **Neon Integration**: Folosește `@neondatabase/serverless` optimizat pentru Netlify
+- 🔗 **Supabase Integration**: Folosește Supabase client pentru database queries
 
 ---
 

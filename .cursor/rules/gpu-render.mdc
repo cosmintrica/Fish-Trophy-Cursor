@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+Optimizează tot ce generezi pentru mobile first și performanță ridicată.
+Folosește layouturi simple, eficiente și evită elementele inutile.
+Când este posibil, folosește tehnici de randare accelerate de GPU (CSS transforms, compositing) pentru interfețe fluide și rapide.
+Prioritizează viteza, claritatea și responsivitatea în orice componentă sau pagină creată.

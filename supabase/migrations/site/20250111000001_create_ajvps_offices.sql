@@ -1,5 +1,5 @@
 -- Create table for AJVPS offices and other institutions that issue fishing permits
--- Created: 2025-01-11
+-- Created: 2025-12-01
 
 CREATE TABLE IF NOT EXISTS public.ajvps_offices (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

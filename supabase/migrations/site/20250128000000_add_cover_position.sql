@@ -1,5 +1,5 @@
 -- Migration: Add cover_position column to profiles table
--- Created: 2025-01-28
+-- Created: 2025-11-28
 
 -- Add cover_position column as JSONB to store position, scale, and rotation
 ALTER TABLE public.profiles 

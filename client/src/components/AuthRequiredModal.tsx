@@ -17,8 +17,7 @@ export const AuthRequiredModal = ({
   onLogin,
   onRegister,
   title = 'Autentificare necesară',
-  message = 'Trebuie să fii autentificat pentru a accesa această funcționalitate.',
-  actionName = 'această acțiune'
+  message = 'Trebuie să fii autentificat pentru a accesa această funcționalitate.'
 }: AuthRequiredModalProps) => {
   if (!isOpen) return null;
 

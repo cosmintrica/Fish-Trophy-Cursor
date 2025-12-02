@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, Calendar, Trophy, Globe, Fish, TrendingUp, Wrench, Camera, Trash2, Upload, ExternalLink, Move, Youtube, MessageSquare, Inbox } from 'lucide-react';
+import { MapPin, Calendar, Trophy, Globe, Fish, TrendingUp, Wrench, Camera, Trash2, Upload, ExternalLink, Move, Youtube, MessageSquare, Inbox, Hash, Scale, Ruler, Heart, MessageCircle } from 'lucide-react';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
+import { CatchDetailModal } from '@/components/CatchDetailModal';
 import { toast } from 'sonner';
 import { usePhotoUpload } from '@/components/profile/hooks/usePhotoUpload';
 import { InlineCoverEditor } from '@/components/profile/InlineCoverEditor';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
+import { registerUnreadCountCallback } from '@/hooks/useRealtimeMessages';
 
 interface UserProfile {
   id: string;
@@ -73,16 +75,50 @@ interface UserRecord {
   };
 }
 
+interface UserCatch {
+  id: string;
+  user_id: string;
+  species_id: string | null;
+  location_id: string | null;
+  weight: number | null;
+  length_cm: number | null;
+  captured_at: string;
+  notes: string | null;
+  photo_url: string | null;
+  video_url: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  global_id: number | null;
+  like_count: number;
+  comment_count: number;
+  is_liked_by_current_user: boolean;
+  fish_species?: {
+    id: string;
+    name: string;
+    scientific_name?: string;
+  };
+  fishing_locations?: {
+    id: string;
+    name: string;
+    type: string;
+    county: string;
+  };
+}
+
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
+  const [userCatches, setUserCatches] = useState<UserCatch[]>([]);
   const [userGear, setUserGear] = useState<UserGear[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<UserRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCatch, setSelectedCatch] = useState<UserCatch | null>(null);
+  const [showCatchDetailModal, setShowCatchDetailModal] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [countyName, setCountyName] = useState<string>('');
   const [cityName, setCityName] = useState<string>('');
@@ -109,19 +145,23 @@ const PublicProfile = () => {
             .eq('context', 'site');
 
           if (error) {
-            console.error('Error loading unread messages count:', error);
             return;
           }
 
           setUnreadMessagesCount(data?.length || 0);
         } catch (error) {
-          console.error('Error loading unread messages count:', error);
+          // Silent fail
         }
       };
 
       loadUnreadCount();
-      const interval = setInterval(loadUnreadCount, 30000);
-      return () => clearInterval(interval);
+
+      // Register for instant updates via Realtime
+      const unregister = registerUnreadCountCallback(loadUnreadCount);
+
+      return () => {
+        unregister();
+      };
     } else {
       setUnreadMessagesCount(0);
     }
@@ -263,16 +303,16 @@ const PublicProfile = () => {
       let query = supabase
         .from('profiles')
         .select('*');
-      
+
       // Check if username is a UUID (ID) or a username
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username || '');
-      
+
       if (isUUID) {
         query = query.eq('id', username);
       } else {
         query = query.eq('username', username?.toLowerCase());
       }
-      
+
       const { data: profileDataRaw, error: profileError } = await query.single();
 
       if (profileError) throw profileError;
@@ -349,6 +389,109 @@ const PublicProfile = () => {
         .order('weight', { ascending: false });
       promises.push(recordsPromise);
 
+      // A2. Fetch Catches (for journal - only public or owner's catches)
+      const catchesPromise = (async () => {
+        try {
+          const { data: catchesData, error } = await supabase
+            .from('catches')
+            .select(`
+              *,
+              fish_species:species_id (id, name, scientific_name),
+              fishing_locations:location_id (id, name, type, county)
+            `)
+            .eq('user_id', profileData.id)
+            .or(isCurrentUserOwner ? 'is_public.eq.true,is_public.eq.false' : 'is_public.eq.true')
+            .order('captured_at', { ascending: false });
+
+          if (error) {
+            console.error('Error loading catches:', error);
+            return { data: [], error };
+          }
+
+          // Load likes and comments for each catch
+          if (catchesData && catchesData.length > 0) {
+            const catchIds = catchesData.map(c => c.id);
+
+            // Get current user ID for like check
+            let currentUserId: string | undefined;
+            try {
+              const { data: { user: authUser } } = await supabase.auth.getUser();
+              currentUserId = authUser?.id;
+            } catch (e) {
+              // Ignore auth errors
+            }
+
+            // Load likes (with error handling)
+            let likes: any[] = [];
+            try {
+              const { data: likesData, error: likesError } = await supabase
+                .from('catch_likes')
+                .select('catch_id, user_id')
+                .in('catch_id', catchIds);
+
+              if (!likesError && likesData) {
+                likes = likesData;
+              }
+            } catch (e) {
+              console.error('Error loading likes:', e);
+            }
+
+            // Load comments count (with error handling)
+            let comments: any[] = [];
+            try {
+              const { data: commentsData, error: commentsError } = await supabase
+                .from('catch_comments')
+                .select('catch_id')
+                .in('catch_id', catchIds)
+                .is('parent_comment_id', null);
+
+              if (!commentsError && commentsData) {
+                comments = commentsData;
+              }
+            } catch (e) {
+              console.error('Error loading comments:', e);
+            }
+
+            // Aggregate stats
+            const likeCounts = new Map<string, number>();
+            const commentCounts = new Map<string, number>();
+            const userLikedIds = new Set<string>();
+
+            (likes || []).forEach(like => {
+              if (like?.catch_id) {
+                likeCounts.set(like.catch_id, (likeCounts.get(like.catch_id) || 0) + 1);
+                if (currentUserId && like.user_id === currentUserId) {
+                  userLikedIds.add(like.catch_id);
+                }
+              }
+            });
+
+            (comments || []).forEach(comment => {
+              if (comment?.catch_id) {
+                commentCounts.set(comment.catch_id, (commentCounts.get(comment.catch_id) || 0) + 1);
+              }
+            });
+
+            // Add stats to catches
+            const catchesWithStats = catchesData.map(catchItem => ({
+              ...catchItem,
+              like_count: likeCounts.get(catchItem.id) || 0,
+              comment_count: commentCounts.get(catchItem.id) || 0,
+              is_liked_by_current_user: userLikedIds.has(catchItem.id),
+              global_id: (catchItem as any).global_id || null
+            }));
+
+            return { data: catchesWithStats, error: null };
+          }
+
+          return { data: catchesData || [], error: null };
+        } catch (error: any) {
+          console.error('Error in catchesPromise:', error);
+          return { data: [], error };
+        }
+      })();
+      promises.push(catchesPromise);
+
       // B. Fetch Gear (if public or owner)
       if (profileData.show_gear_publicly || isCurrentUserOwner) {
         const gearPromise = supabase
@@ -386,11 +529,15 @@ const PublicProfile = () => {
       }
 
       // Wait for all requests to complete
-      const [recordsResult, gearResult, countyResult, cityResult] = await Promise.all(promises);
+      const [recordsResult, catchesResult, gearResult, countyResult, cityResult] = await Promise.all(promises);
 
       // Handle Records
       if (recordsResult.error) console.error('Error loading records:', recordsResult.error);
       setUserRecords((recordsResult.data as UserRecord[]) || []);
+
+      // Handle Catches
+      if (catchesResult.error) console.error('Error loading catches:', catchesResult.error);
+      setUserCatches((catchesResult.data as UserCatch[]) || []);
 
       // Handle Gear
       if (gearResult.data) {
@@ -869,7 +1016,7 @@ const PublicProfile = () => {
                       <Trophy className="w-5 h-5 text-amber-500" />
                       Sala Trofeelor
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       {topThree.map((record, index) => {
                         const medals = ['🥇', '🥈', '🥉'];
                         const bgs = ['bg-amber-50 border-amber-100', 'bg-slate-50 border-slate-100', 'bg-orange-50 border-orange-100'];
@@ -877,23 +1024,41 @@ const PublicProfile = () => {
                         return (
                           <div
                             key={record.id}
-                            className={`rounded-xl border ${bgs[index]} p-3 cursor-pointer hover:-translate-y-1 transition-transform`}
+                            className={`rounded-lg sm:rounded-xl border ${bgs[index]} p-2 sm:p-3 cursor-pointer hover:-translate-y-1 transition-transform`}
                             onClick={() => openRecordModal(record)}
                           >
-                            <div className="aspect-square rounded-lg overflow-hidden bg-white mb-3 relative shadow-sm">
+                            <div className="aspect-square rounded-md sm:rounded-lg overflow-hidden bg-white mb-2 sm:mb-3 relative shadow-sm">
                               {record.photo_url ? (
-                                <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
+                                <img
+                                  src={getR2ImageUrlProxy(record.photo_url)}
+                                  className="w-full h-full object-cover"
+                                  alt={record.fish_species?.name || 'Record'}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="w-full h-full flex items-center justify-center text-gray-300">
+                                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                          </svg>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                                   <Fish className="w-8 h-8" />
                                 </div>
                               )}
-                              <div className="absolute top-2 left-2 text-2xl drop-shadow-sm">{medals[index]}</div>
+                              <div className="absolute top-1 left-1 sm:top-2 sm:left-2 text-lg sm:text-2xl drop-shadow-sm">{medals[index]}</div>
                             </div>
                             <div className="text-center">
-                              <div className="font-bold text-gray-900 truncate">{record.fish_species?.name}</div>
-                              <div className="text-sm font-semibold text-blue-600">{record.weight} kg</div>
-                              <div className="text-xs text-gray-500 truncate">{record.fishing_locations?.name}</div>
+                              <div className="font-bold text-gray-900 truncate text-xs sm:text-sm">{record.fish_species?.name}</div>
+                              <div className="text-xs sm:text-sm font-semibold text-blue-600">{record.weight} kg</div>
+                              <div className="text-[10px] sm:text-xs text-gray-500 truncate">{record.fishing_locations?.name}</div>
                             </div>
                           </div>
                         );
@@ -902,52 +1067,127 @@ const PublicProfile = () => {
                   </div>
                 )}
 
-                {/* Recent Activity / All Records */}
+                {/* Recent Activity / All Catches */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                   <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <Fish className="w-5 h-5 text-blue-600" />
                     Jurnal de Capturi
                   </h2>
 
-                  {userRecords.length === 0 ? (
+                  {userCatches.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                       Nu există capturi înregistrate.
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {userRecords.map((record) => (
-                        <div
-                          key={record.id}
-                          className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-100 group"
-                          onClick={() => openRecordModal(record)}
+                    <div className="space-y-2 sm:space-y-3">
+                      {userCatches.map((catchItem) => (
+                        <Card
+                          key={catchItem.id}
+                          className="overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
+                          onClick={() => {
+                            setSelectedCatch(catchItem);
+                            setShowCatchDetailModal(true);
+                          }}
                         >
-                          <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 relative">
-                            {record.photo_url ? (
-                              <img src={record.photo_url} className="w-full h-full object-cover" alt="" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                <Fish className="w-6 h-6" />
-                              </div>
-                            )}
-                          </div>
+                          <div className="flex">
+                            {/* Image */}
+                            <div className="w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-gray-100 overflow-hidden shrink-0 relative">
+                              {catchItem.photo_url ? (
+                                <img
+                                  src={getR2ImageUrlProxy(catchItem.photo_url)}
+                                  className="w-full h-full object-cover"
+                                  alt={catchItem.fish_species?.name || 'Captură'}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+                                          <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                          </svg>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+                                  <Fish className="w-8 h-8 text-blue-300" />
+                                </div>
+                              )}
+                            </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-bold text-gray-900 truncate pr-2">{record.fish_species?.name}</h3>
-                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 shrink-0">
-                                {new Date(record.captured_at).toLocaleDateString('ro-RO')}
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-500 truncate flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {record.fishing_locations?.name}
-                            </div>
-                            <div className="flex items-center gap-3 mt-1 text-sm">
-                              <span className="font-semibold text-blue-600 bg-blue-50 px-1.5 rounded">{record.weight} kg</span>
-                              <span className="text-gray-600 bg-gray-100 px-1.5 rounded">{record.length_cm} cm</span>
-                            </div>
+                            {/* Content */}
+                            <CardContent className="flex-1 p-2 sm:p-4 flex flex-col justify-between min-w-0">
+                              <div className="min-w-0">
+                                <div className="flex items-start justify-between mb-1 sm:mb-2 gap-2">
+                                  <h3 className="font-bold text-sm sm:text-lg text-gray-900 truncate">
+                                    {catchItem.fish_species?.name || 'Specie necunoscută'}
+                                  </h3>
+                                  {catchItem.global_id && (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          await navigator.clipboard.writeText(catchItem.global_id!.toString());
+                                          toast.success(`ID ${catchItem.global_id} copiat!`);
+                                        } catch (err) {
+                                          toast.error('Eroare la copierea ID-ului');
+                                        }
+                                      }}
+                                      className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-gray-50 hover:bg-gray-100 transition-colors font-mono shrink-0"
+                                      title="Click pentru a copia ID-ul"
+                                    >
+                                      #{catchItem.global_id}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {catchItem.fishing_locations && (
+                                  <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 mb-1 sm:mb-2">
+                                    <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                    <span className="truncate">{catchItem.fishing_locations.name}</span>
+                                  </div>
+                                )}
+
+                                {(catchItem.weight || catchItem.length_cm) && (
+                                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 flex-wrap">
+                                    {catchItem.weight && (
+                                      <div className="flex items-center gap-1 text-xs sm:text-sm">
+                                        <Scale className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+                                        <span className="font-semibold text-gray-900">{catchItem.weight} kg</span>
+                                      </div>
+                                    )}
+                                    {catchItem.length_cm && (
+                                      <div className="flex items-center gap-1 text-xs sm:text-sm">
+                                        <Ruler className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 shrink-0" />
+                                        <span className="font-semibold text-gray-900">{catchItem.length_cm} cm</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1 sm:pt-2 border-t border-gray-100 gap-2">
+                                <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-500">
+                                  <div className="flex items-center gap-0.5 sm:gap-1">
+                                    <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-current text-red-600' : 'text-gray-500'}`} />
+                                    <span>{catchItem.like_count || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-0.5 sm:gap-1">
+                                    <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    <span>{catchItem.comment_count || 0}</span>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] sm:text-xs text-gray-500 shrink-0">
+                                  {new Date(catchItem.captured_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                            </CardContent>
                           </div>
-                        </div>
+                        </Card>
                       ))}
                     </div>
                   )}
@@ -1125,6 +1365,25 @@ const PublicProfile = () => {
         onClose={() => setIsModalOpen(false)}
         record={selectedRecord}
       />
+
+      {/* Catch Detail Modal */}
+      {selectedCatch && (
+        <CatchDetailModal
+          catchItem={selectedCatch as any}
+          isOpen={showCatchDetailModal}
+          onClose={() => {
+            setShowCatchDetailModal(false);
+            setSelectedCatch(null);
+          }}
+          onCatchUpdated={() => {
+            // Don't reload entire page, just update the catch in the list
+            // The modal handles its own state updates
+          }}
+          isOwner={isOwner}
+          onEdit={undefined}
+        />
+      )}
+
 
       {/* Auth Required Modal */}
       <AuthRequiredModal
