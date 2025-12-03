@@ -24,11 +24,20 @@ const ForumRoutes: React.FC = () => {
           {/* Ruta principală forum */}
           <Route path="/" element={<ForumHome />} />
 
-          {/* URL-uri clean și ierarhice: /forum/subcategorySlug/topicSlug */}
-          {/* Rute topicuri (cu subcategory slug) - trebuie să fie înainte de subcategory pentru a nu fi ambigue */}
-          <Route path="/:subcategorySlug/:topicSlug" element={<TopicPage />} />
+          {/* URL-uri clean și ierarhice: /forum/categorySlug/subcategorySlug/topicSlug */}
+          {/* IMPORTANT: Ordinea contează - cele mai specifice trebuie să fie primele */}
           
-          {/* Rute subcategorii (doar slug) */}
+          {/* Rute topicuri (category/subcategory/topic) */}
+          <Route path="/:categorySlug/:subcategorySlug/:topicSlug" element={<TopicPage />} />
+          
+          {/* Rute subcategorii (category/subcategory) */}
+          <Route path="/:categorySlug/:subcategorySlug" element={<CategoryPage />} />
+          
+          {/* Rute categorii (doar category slug) */}
+          <Route path="/:categorySlug" element={<CategoryPage />} />
+          
+          {/* Rute legacy pentru compatibilitate (opțional) */}
+          <Route path="/:subcategorySlug/:topicSlug" element={<TopicPage />} />
           <Route path="/:subcategorySlug" element={<CategoryPage />} />
 
           {/* Rute legacy pentru compatibilitate (opțional - poate fi șters după) */}

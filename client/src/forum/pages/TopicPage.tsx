@@ -9,10 +9,19 @@ import ActiveViewers from '../components/ActiveViewers';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { ForumTopic, ForumPost } from '../types/forum';
+import { PostListSkeleton } from '../../components/skeletons';
 
 export default function TopicPage() {
-  // Acceptă atât /topic/:id (legacy) cât și /:subcategorySlug/:topicSlug (clean)
-  const { topicId, topicSlug, subcategorySlug } = useParams<{ topicId?: string; topicSlug?: string; subcategorySlug?: string }>();
+  // Acceptă:
+  // - /:categorySlug/:subcategorySlug/:topicSlug (clean - complet)
+  // - /:subcategorySlug/:topicSlug (legacy - pentru compatibilitate)
+  // - /topic/:id (legacy)
+  const { topicId, topicSlug, subcategorySlug, categorySlug } = useParams<{ 
+    topicId?: string; 
+    topicSlug?: string; 
+    subcategorySlug?: string;
+    categorySlug?: string;
+  }>();
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const page = 1; // Default to page 1 for now
@@ -21,8 +30,13 @@ export default function TopicPage() {
   const topicIdentifier = topicSlug || topicId || '';
 
   // Supabase hooks
-  const { topic, loading: topicLoading, error: topicError } = useTopic(topicIdentifier);
-  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(topicIdentifier, 1, 50);
+  // Folosim subcategorySlug pentru a evita duplicate (slug-ul nu e unic global)
+  const { topic, loading: topicLoading, error: topicError } = useTopic(topicIdentifier, subcategorySlug);
+  
+  // IMPORTANT: Folosim topic.id (UUID) în loc de slug pentru usePosts
+  // Astfel evităm duplicatele și erorile de "Topic not found"
+  const actualTopicId = topic?.id || topicIdentifier;
+  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(actualTopicId, 1, 50);
   const { create: createPost } = useCreatePost();
 
   const [replyContent, setReplyContent] = useState('');
@@ -32,8 +46,9 @@ export default function TopicPage() {
   // Topic not found state
   const [showNotFound, setShowNotFound] = useState(false);
   
-  // Slug-ul subcategoriei pentru link-uri
+  // Slug-urile pentru link-uri
   const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug || null);
+  const [resolvedCategorySlug, setResolvedCategorySlug] = useState<string | null>(categorySlug || null);
   const [subcategoryName, setSubcategoryName] = useState<string>('');
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -125,6 +140,7 @@ export default function TopicPage() {
             
             if (category) {
               setCategoryName(category.name);
+              setResolvedCategorySlug(category.slug || null);
             }
           }
         }
@@ -259,20 +275,22 @@ export default function TopicPage() {
           {(categoryName || subcategoryName || displayTopic.title) && (
             <>
               <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              {categoryName && categoryId && (
+              {categoryName && (resolvedCategorySlug || categoryId) && (
                 <Link 
-                  to={`/forum#category-${categoryId}`} 
+                  to={resolvedCategorySlug ? `/forum/${resolvedCategorySlug}` : `/forum#category-${categoryId}`}
                   style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                   onClick={(e) => {
-                    // Scroll la categorie pe homepage
-                    e.preventDefault();
-                    navigate('/forum');
-                    setTimeout(() => {
-                      const element = document.getElementById(`category-${categoryId}`);
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }, 100);
+                    if (!resolvedCategorySlug && categoryId) {
+                      // Legacy: scroll la categorie pe homepage
+                      e.preventDefault();
+                      navigate('/forum');
+                      setTimeout(() => {
+                        const element = document.getElementById(`category-${categoryId}`);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }
                   }}
                 >
                   {categoryName}
@@ -281,7 +299,7 @@ export default function TopicPage() {
               {categoryName && subcategoryName && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
               {subcategoryName && resolvedSubcategorySlug && (
                 <Link 
-                  to={`/forum/${resolvedSubcategorySlug}`} 
+                  to={resolvedCategorySlug ? `/forum/${resolvedCategorySlug}/${resolvedSubcategorySlug}` : `/forum/${resolvedSubcategorySlug}`}
                   style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                 >
                   {subcategoryName}
@@ -381,7 +399,9 @@ export default function TopicPage() {
         </div>
 
         {/* Posts List - ZERO LOADING: Afișăm întotdeauna, chiar dacă e gol */}
-        {displayPosts.length === 0 && !postsError && (
+        {postsLoading && displayPosts.length === 0 ? (
+          <PostListSkeleton count={3} />
+        ) : displayPosts.length === 0 && !postsError && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '1rem',

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
+import { SWRConfig } from 'swr';
 import { AuthProvider } from '@/lib/auth-supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -11,6 +12,7 @@ import Layout from '@/components/Layout';
 import { CompleteGoogleProfileModal } from '@/components/CompleteGoogleProfileModal';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { MessageNotificationManager } from '@/components/MessageNotificationManager';
+import { swrConfig } from '@/lib/swr-config';
 
 // Initialize analytics
 analytics;
@@ -154,33 +156,53 @@ function AppContent() {
   );
 }
 
+// SWR Provider Wrapper - necesar pentru a evita probleme cu React context
+function SWRProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SWRConfig 
+      value={{
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
+        dedupingInterval: 2000,
+        focusThrottleInterval: 5000,
+        errorRetryCount: 3,
+        errorRetryInterval: 5000,
+      }}
+    >
+      {children}
+    </SWRConfig>
+  );
+}
+
 function App() {
   return (
     <HelmetProvider>
-      <AuthProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <RealtimeMessagesWrapper>
-            <AnalyticsWrapper>
-              <ProfileCompletionWrapper>
-                <AppContent />
-              </ProfileCompletionWrapper>
-            </AnalyticsWrapper>
-          </RealtimeMessagesWrapper>
-          <MessageNotificationManager />
-        </Router>
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-            },
-            className: 'toast-message'
-          }}
-        />
-      </AuthProvider>
+      <SWRProvider>
+        <AuthProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <RealtimeMessagesWrapper>
+              <AnalyticsWrapper>
+                <ProfileCompletionWrapper>
+                  <AppContent />
+                </ProfileCompletionWrapper>
+              </AnalyticsWrapper>
+            </RealtimeMessagesWrapper>
+            <MessageNotificationManager />
+          </Router>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+              },
+              className: 'toast-message'
+            }}
+          />
+        </AuthProvider>
+      </SWRProvider>
     </HelmetProvider>
   );
 }

@@ -86,9 +86,11 @@ export async function getTopics(
 }
 
 /**
- * Get single topic by ID
+ * Get single topic by ID or slug
+ * @param topicId - UUID sau slug al topicului
+ * @param subcategorySlug - Slug-ul subcategoriei (opțional, pentru a evita duplicate)
  */
-export async function getTopicById(topicId: string): Promise<ApiResponse<ForumTopic & { subcategory_slug?: string }>> {
+export async function getTopicById(topicId: string, subcategorySlug?: string): Promise<ApiResponse<ForumTopic & { subcategory_slug?: string }>> {
     try {
         // Încearcă mai întâi ca UUID, apoi ca slug
         let query = supabase
@@ -105,21 +107,95 @@ export async function getTopicById(topicId: string): Promise<ApiResponse<ForumTo
         let data, error;
 
         if (isUUID) {
-            // Caută direct după UUID
-            const result = await query.eq('id', topicId).maybeSingle();
+            // Caută direct după UUID - reconstruiește query-ul pentru a evita probleme
+            const result = await supabase
+                .from('forum_topics')
+                .select('*')
+                .eq('id', topicId)
+                .eq('is_deleted', false)
+                .maybeSingle();
             data = result.data;
             error = result.error;
         } else {
-            // Caută după slug - încearcă mai întâi exact match, apoi ilike
-            let result = await query.eq('slug', topicId).maybeSingle();
-
-            if (!result.data && !result.error) {
-                // Dacă nu găsește cu exact match, încearcă ilike (case-insensitive)
-                result = await query.ilike('slug', topicId).maybeSingle();
+            // Caută după slug - IMPORTANT: slug-ul nu e unic global, doar per subcategory
+            // Dacă avem subcategorySlug, folosim-l pentru a filtra corect
+            let subcategoryId: string | null = null;
+            
+            // Dacă avem subcategorySlug, găsește subcategory_id
+            if (subcategorySlug) {
+                const { data: subcategory } = await supabase
+                    .from('forum_subcategories')
+                    .select('id')
+                    .eq('slug', subcategorySlug)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                
+                if (subcategory) {
+                    subcategoryId = subcategory.id;
+                }
             }
 
-            data = result.data;
-            error = result.error;
+            // Construiește query-ul
+            let query = supabase
+                .from('forum_topics')
+                .select(`
+                    *,
+                    subcategory:forum_subcategories!subcategory_id(slug)
+                `)
+                .eq('slug', topicId)
+                .eq('is_deleted', false);
+
+            // Dacă avem subcategoryId, filtrează și după el
+            if (subcategoryId) {
+                query = query.eq('subcategory_id', subcategoryId);
+            }
+
+            let result = await query.limit(1).maybeSingle();
+
+            // Dacă nu găsește și nu avem subcategorySlug, încearcă fără filtru de subcategory
+            if (!result.data && !result.error && !subcategorySlug) {
+                // Dacă nu găsește cu exact match, încearcă ilike (case-insensitive)
+                result = await supabase
+                    .from('forum_topics')
+                    .select(`
+                        *,
+                        subcategory:forum_subcategories!subcategory_id(slug)
+                    `)
+                    .ilike('slug', topicId)
+                    .eq('is_deleted', false)
+                    .limit(1)
+                    .maybeSingle();
+            }
+
+            // Dacă există eroare de duplicate (PGRST116), folosim .limit(1) și luăm primul
+            if (result.error && result.error.code === 'PGRST116') {
+                // Query fără .maybeSingle() pentru a obține array
+                let arrayQuery = supabase
+                    .from('forum_topics')
+                    .select(`
+                        *,
+                        subcategory:forum_subcategories!subcategory_id(slug)
+                    `)
+                    .eq('slug', topicId)
+                    .eq('is_deleted', false);
+                
+                if (subcategoryId) {
+                    arrayQuery = arrayQuery.eq('subcategory_id', subcategoryId);
+                }
+                
+                const arrayResult = await arrayQuery.limit(1);
+                
+                if (arrayResult.data && arrayResult.data.length > 0) {
+                    data = arrayResult.data[0];
+                    error = null;
+                } else {
+                    data = null;
+                    error = arrayResult.error || { message: 'Topic not found', code: 'NOT_FOUND' };
+                }
+            } else {
+                data = result.data;
+                error = result.error;
+            }
         }
 
         if (error) {

@@ -128,6 +128,7 @@ export default function ForumSidebar({ stats, onlineUsers, recentPosts }: ForumS
             <div key={post.id} className="border-l-2 border-gray-200 pl-3">
               <a 
                 href={`/forum/topic/${post.id}`}
+                // TODO: Actualizează când ai categorySlug/subcategorySlug disponibile
                 className="text-sm font-medium text-gray-900 hover:text-primary-600 line-clamp-2"
               >
                 {post.title}

@@ -48,7 +48,7 @@ export default defineConfig({
   },
   publicDir: 'public',
   optimizeDeps: {
-    include: [],
+    include: ['swr', 'react', 'react-dom'],
     exclude: [],
   },
 });

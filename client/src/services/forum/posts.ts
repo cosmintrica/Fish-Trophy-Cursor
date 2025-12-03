@@ -32,24 +32,27 @@ export async function getPosts(
 
         if (!isUUID) {
             // It's a slug, get the topic ID first
+            // IMPORTANT: Folosim .limit(1) pentru a evita duplicate (slug-ul nu e unic global)
             const { data: topicData } = await supabase
                 .from('forum_topics')
                 .select('id')
-                .ilike('slug', topicId)
+                .eq('slug', topicId)
                 .eq('is_deleted', false)
+                .limit(1)
                 .maybeSingle();
 
             if (!topicData) {
-                // Try exact match
-                const { data: topicDataExact } = await supabase
+                // Try ilike (case-insensitive)
+                const { data: topicDataIlike } = await supabase
                     .from('forum_topics')
                     .select('id')
-                    .eq('slug', topicId)
+                    .ilike('slug', topicId)
                     .eq('is_deleted', false)
+                    .limit(1)
                     .maybeSingle();
 
-                if (topicDataExact) {
-                    actualTopicId = topicDataExact.id;
+                if (topicDataIlike) {
+                    actualTopicId = topicDataIlike.id;
                 } else {
                     return { error: { message: 'Topic not found', code: 'NOT_FOUND' } };
                 }

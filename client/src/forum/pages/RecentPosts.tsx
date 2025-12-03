@@ -41,7 +41,7 @@ export default function RecentPosts() {
 
         const usersMap = new Map((usersData || []).map(u => [u.user_id, u]));
 
-        // Get subcategory slugs for topics
+        // Get subcategory slugs and category slugs for topics
         // Supabase returns topic as an array when using joins, so we need to handle it
         const subcategoryIds = [...new Set((postsData || []).map(p => {
           const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
@@ -49,19 +49,30 @@ export default function RecentPosts() {
         }).filter(Boolean))];
         const { data: subcategoriesData } = await supabase
           .from('forum_subcategories')
-          .select('id, slug')
+          .select('id, slug, category_id')
           .in('id', subcategoryIds);
 
         const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+        
+        // Get category slugs
+        const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
+        const { data: categoriesData } = await supabase
+          .from('forum_categories')
+          .select('id, slug')
+          .in('id', categoryIds);
+        
+        const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
 
         const data = (postsData || []).map(post => {
           const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
           const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
+          const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
           return {
             ...post,
             topic: topic, // Use the normalized topic (single object, not array)
             author: usersMap.get(post.user_id) || { username: 'Unknown', avatar_url: null },
-            subcategorySlug: subcategory?.slug || null
+            subcategorySlug: subcategory?.slug || null,
+            categorySlug: category?.slug || null
           };
         });
 
@@ -133,7 +144,9 @@ export default function RecentPosts() {
                     </div>
                     {post.topic && (
                       <Link
-                        to={post.subcategorySlug && post.topic.slug 
+                        to={post.categorySlug && post.subcategorySlug && post.topic.slug 
+                          ? `/forum/${post.categorySlug}/${post.subcategorySlug}/${post.topic.slug}`
+                          : post.subcategorySlug && post.topic.slug 
                           ? `/forum/${post.subcategorySlug}/${post.topic.slug}`
                           : `/forum/topic/${post.topic.slug || post.topic.id}`}
                         style={{

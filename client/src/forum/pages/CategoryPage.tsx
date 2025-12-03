@@ -8,7 +8,7 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import { TopicListSkeleton } from '@/components/skeletons';
+import { TopicListSkeleton } from '../../components/skeletons';
 
 export default function CategoryPage() {
   // Acceptă:
