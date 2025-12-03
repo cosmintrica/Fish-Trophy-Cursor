@@ -90,6 +90,7 @@ export interface ForumSubcategory {
 
 export interface ForumCategory {
   id: string;
+  slug?: string; // Slug pentru URL-uri frumoase (ex: tehnici-de-pescuit)
   name: string;
   description: string;
   icon: string;
