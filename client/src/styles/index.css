@@ -42,8 +42,7 @@
   justify-content: center !important;
   padding: 1rem !important;
   z-index: 9999 !important;
-  background-color: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(2px) !important;
+  background-color: rgba(0, 0, 0, 0.7) !important;
   width: 100vw !important;
   height: 100vh !important;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, MessageSquare, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useReputation, PostReputation } from '../hooks/useReputation';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
@@ -396,6 +397,4 @@ export default function ReputationButtons({
     </>
   );
 }
-
-import { toast } from 'sonner';
 

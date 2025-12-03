@@ -10,11 +10,9 @@ export default function ActiveMembers() {
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const [members, setMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadActiveMembers = async () => {
-      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('forum_users')
@@ -26,8 +24,6 @@ export default function ActiveMembers() {
         setMembers(data || []);
       } catch (error) {
         console.error('Error loading active members:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -54,12 +50,7 @@ export default function ActiveMembers() {
           👥 Membri Activi
         </h1>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎣</div>
-            <div>Se încarcă membrii...</div>
-          </div>
-        ) : members.length === 0 ? (
+        {members.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '0.5rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>👤</div>
             <div style={{ color: theme.textSecondary }}>Nu există membri înregistrați</div>

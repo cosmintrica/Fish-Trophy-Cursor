@@ -83,44 +83,44 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease', overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease', overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
       {/* SINGURUL HEADER DE NAVIGARE PENTRU TOATE PAGINILE FORUM */}
-      <header style={{ backgroundColor: theme.surface, borderBottom: `1px solid ${theme.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
+      <header style={{ backgroundColor: theme.surface, borderBottom: `1px solid ${theme.border}`, position: 'sticky', top: 0, zIndex: 40, width: '100%' }}>
         {/* Top Navigation */}
-        <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem' }}>
-            {/* Logo */}
-            <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+        <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 0.75rem', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '3.5rem', gap: '0.5rem' }}>
+            {/* Logo - Optimizat pentru mobil */}
+            <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', minWidth: 0, flex: '0 0 auto' }}>
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy Forum"
                 style={{
-                  width: '2.5rem',
-                  height: '2.5rem',
-                  borderRadius: '0.5rem'
+                  width: '2rem',
+                  height: '2rem',
+                  borderRadius: '0.5rem',
+                  flexShrink: 0
                 }}
               />
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{
-                  fontSize: '1.25rem',
+                  fontSize: 'clamp(0.875rem, 2.5vw, 1.25rem)',
                   fontWeight: '700',
-                  color: theme.text
+                  color: theme.text,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>
-                  Fish Trophy Forum
+                  <span className="hidden sm:inline">Fish Trophy Forum</span>
+                  <span className="sm:hidden">Forum</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                  Comunitatea pescarilor din România
+                <div className="hidden sm:block" style={{ fontSize: '0.625rem', color: theme.textSecondary }}>
+                  Comunitatea pescarilor
                 </div>
               </div>
             </Link>
 
-            {/* Search Bar - Hidden on mobile */}
-            <div className="hidden md:block" style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
-              {/* Search will be in navigation bar below */}
-            </div>
-
-            {/* User Menu / Login */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* User Menu / Login - Optimizat pentru mobil */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
@@ -136,12 +136,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 }}
                 title={isDarkMode ? "Comută la modul luminos" : "Comută la modul întunecat"}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                  e.currentTarget.style.color = theme.text;
+                  if (e.currentTarget) {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.color = theme.text;
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = theme.textSecondary;
+                  if (e.currentTarget) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = theme.textSecondary;
+                  }
                 }}
               >
                 {isDarkMode ? '🐟' : '🌙'}
@@ -149,10 +153,10 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
 
               {user ? (
                 <div style={{ position: 'relative' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {/* Admin Badge & Link */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {/* Admin Badge & Link - Ascuns pe mobil mic */}
                     {user.isAdmin && (
-                      <Link to="/admin" style={{ textDecoration: 'none' }}>
+                      <Link to="/admin" className="hidden sm:block" style={{ textDecoration: 'none' }}>
                         <div style={{
                           padding: '0.25rem 0.5rem',
                           backgroundColor: '#dc2626',
@@ -170,8 +174,10 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                       </Link>
                     )}
 
+                    {/* Bell - Ascuns pe mobil mic */}
                     <Bell
                       onClick={() => alert('Notificări - în dezvoltare')}
+                      className="hidden sm:block"
                       style={{
                         width: '1.25rem',
                         height: '1.25rem',
@@ -180,10 +186,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.color = theme.primary;
+                        if (e.currentTarget) {
+                          e.currentTarget.style.color = theme.primary;
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#6b7280';
+                        if (e.currentTarget) {
+                          e.currentTarget.style.color = '#6b7280';
+                        }
                       }}
                     />
                     <Link
@@ -205,13 +215,18 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                         border: user.isAdmin ? '2px solid #fbbf24' : 'none',
                         transition: 'all 0.2s',
                         textDecoration: 'none',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        flexShrink: 0
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.1)';
+                        if (e.currentTarget) {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
+                        if (e.currentTarget) {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }
                       }}
                     >
                       {!user.photo_url && user.username.charAt(0).toUpperCase()}
@@ -225,19 +240,20 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    padding: '0.5rem 1rem',
+                    padding: '0.5rem 0.75rem',
                     background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
+                    fontSize: '0.75rem',
                     fontWeight: '500',
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  <User style={{ width: '1rem', height: '1rem' }} />
-                  Conectare
+                  <User style={{ width: '0.875rem', height: '0.875rem' }} />
+                  <span className="hidden sm:inline">Conectare</span>
                 </button>
               )}
 
@@ -320,13 +336,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
 
       </header>
 
-      {/* Navigation Bar with Search */}
-      <div style={{
+      {/* Navigation Bar with Search - Ascuns pe mobil (doar în meniu) */}
+      <div className="hidden lg:block" style={{
         backgroundColor: theme.background,
         borderBottom: `1px solid ${theme.border}`,
-        padding: '0.75rem 0'
+        padding: '0.75rem 0',
+        width: '100%'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem', width: '100%' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -416,385 +433,41 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
         {children}
       </main>
 
-      {/* Footer - Modern Design (same as main site) */}
+      {/* Footer - Simplificat */}
       <footer style={{
-        background: `linear-gradient(to bottom, ${theme.surface}, ${theme.background})`,
         borderTop: `1px solid ${theme.border}`,
         marginTop: '4rem',
-        color: theme.text
+        padding: '1.5rem 0.75rem',
+        color: theme.text,
+        width: '100%',
+        overflowX: 'hidden',
+        backgroundColor: theme.background
       }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '3rem 1rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '2rem',
-            marginBottom: '2rem'
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1rem',
+            alignItems: 'center',
+            textAlign: 'center',
+            fontSize: '0.875rem',
+            color: theme.textSecondary
           }}>
-            {/* Logo & Mission */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <img src="/icon_free.png" alt="Fish Trophy" style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }} />
-                <div>
-                  <span style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '700',
-                    background: 'linear-gradient(to right, #2563eb, #4f46e5)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
-                  }}>Fish Trophy</span>
-                  <p style={{ fontSize: '0.875rem', color: theme.textSecondary, marginTop: '0.25rem' }}>Platforma pescarilor din România</p>
-                </div>
-              </div>
-              <p style={{ color: theme.textSecondary, maxWidth: '32rem', lineHeight: '1.6', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <a
-                  href="mailto:contact@fishtrophy.ro"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.5rem 1rem',
-                    backgroundColor: theme.surface,
-                    border: `1px solid ${theme.border}`,
-                    color: theme.text,
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    textDecoration: 'none',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                    e.currentTarget.style.borderColor = theme.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.surface;
-                    e.currentTarget.style.borderColor = theme.border;
-                  }}
-                >
-                  <svg style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  Contact
-                </a>
-              </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+              <span>© 2025 Fish Trophy</span>
+              <span style={{ color: theme.border }}>•</span>
+              <span>Toate drepturile rezervate</span>
+              <span style={{ color: theme.border }}>•</span>
+              <span>Făcut cu</span>
+              <span style={{ color: '#ef4444', fontSize: '1.125rem' }}>❤️</span>
+              <span>în România</span>
             </div>
-
-            {/* Navigation */}
-            <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigare</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <li>
-                  <a
-                    href="/"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Acasă
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/species"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Specii
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/records"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Recorduri
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/submission-guide"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Ghid Submisie
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Community & Social */}
-            <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comunitate</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <li>
-                  <a
-                    href="/profile"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Profilul meu
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/leaderboards"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Clasamente
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/fishing-shops"
-                    style={{
-                      fontSize: '0.875rem',
-                      color: theme.textSecondary,
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = theme.primary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = theme.textSecondary;
-                      const dot = e.currentTarget.querySelector('.hover-dot') as HTMLElement;
-                      if (dot) dot.style.opacity = '0';
-                    }}
-                  >
-                    <span className="hover-dot" style={{ width: '0.375rem', height: '0.375rem', backgroundColor: theme.primary, borderRadius: '50%', marginRight: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}></span>
-                    Magazine
-                  </a>
-                </li>
-              </ul>
-
-              <div>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: theme.text, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Urmărește-ne</h4>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <a
-                    href="https://www.facebook.com/fishtrophy.ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      width: '2.5rem',
-                      height: '2.5rem',
-                      backgroundColor: '#1877F2',
-                      borderRadius: '0.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#166FE5';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1877F2';
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                    }}
-                  >
-                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                  </a>
-                  <a
-                    href="https://www.instagram.com/fishtrophy.ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      width: '2.5rem',
-                      height: '2.5rem',
-                      background: 'linear-gradient(to right, #E4405F, #C13584)',
-                      borderRadius: '0.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(to right, #D7356A, #B02A73)';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(to right, #E4405F, #C13584)';
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                    }}
-                  >
-                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                    </svg>
-                  </a>
-                  <a
-                    href="https://x.com/fishtrophy_ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      width: '2.5rem',
-                      height: '2.5rem',
-                      backgroundColor: '#000000',
-                      borderRadius: '0.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1f2937';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#000000';
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                    }}
-                  >
-                    <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: '1.5rem', marginTop: '2.5rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem', color: theme.textSecondary }}>
-                <span style={{ fontWeight: '500' }}>© 2025 Fish Trophy</span>
-                <span style={{ color: theme.border }}>•</span>
-                <span>Toate drepturile rezervate</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', color: theme.textSecondary }}>
-                <span>Făcut cu</span>
-                <span style={{ color: '#ef4444', fontSize: '1.125rem', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>❤️</span>
-                <span>în România</span>
-              </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'center' }}>
+              <Link to="/privacy" style={{ color: theme.textSecondary, textDecoration: 'none' }}>Politica de confidențialitate</Link>
+              <span style={{ color: theme.border }}>•</span>
+              <Link to="/terms" style={{ color: theme.textSecondary, textDecoration: 'none' }}>Termeni și condiții</Link>
+              <span style={{ color: theme.border }}>•</span>
+              <a href="mailto:contact@fishtrophy.ro" style={{ color: theme.textSecondary, textDecoration: 'none' }}>Contact</a>
             </div>
           </div>
         </div>

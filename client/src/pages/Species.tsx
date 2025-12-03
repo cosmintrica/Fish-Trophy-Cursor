@@ -56,11 +56,27 @@ const Species = () => {
     'Delta Dunării'
   ];
 
-  // Load species from Supabase
+  // Load species from Supabase cu cache
   useEffect(() => {
     const loadSpecies = async () => {
+      // Cache cu sessionStorage pentru species (date statice)
+      const CACHE_KEY = 'species_page_cache';
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 minute
+      
       try {
-        setLoading(true);
+        // Încearcă să încarce din cache
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setSpecies(data || []);
+            setLoading(false); // Show cached data instantly
+            // Load in background pentru update
+          }
+        } else {
+          setLoading(true);
+        }
+        
         const { data, error } = await supabase
           .from('fish_species')
           .select(`
@@ -84,14 +100,30 @@ const Species = () => {
         if (error) {
           console.error('Error loading species:', error);
           setError('Eroare la încărcarea speciilor');
+          // Dacă e eroare dar avem cache, păstrăm cache-ul
+          if (cached) {
+            const { data: cachedData } = JSON.parse(cached);
+            setSpecies(cachedData || []);
+          }
           return;
         }
 
-        setSpecies(data || []);
+        const speciesData = data || [];
+        setSpecies(speciesData);
+        setLoading(false);
+        
+        // Cache result
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: speciesData,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          // Ignoră erorile de storage
+        }
       } catch (err) {
         console.error('Error loading species:', err);
         setError('Eroare la încărcarea speciilor');
-      } finally {
         setLoading(false);
       }
     };

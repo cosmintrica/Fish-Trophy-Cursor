@@ -22,25 +22,7 @@ export default function CategoryList({ categories, loading }: CategoryListProps)
     return `${Math.floor(diffInMinutes / 1440)}z`;
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="animate-pulse">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="border-b border-gray-200 p-4">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Nu mai afișăm loading - conținutul apare instant
 
   return (
     <div className="space-y-6">

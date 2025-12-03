@@ -30,23 +30,95 @@ export const useAuthProvider = () => {
   const [forumUser, setForumUser] = useState<ForumUser | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Actualizează last_seen_at și rank pentru utilizatorii online
+  useEffect(() => {
+    if (!mainAuth.user) return;
+
+    const updateUserActivity = async () => {
+      try {
+        const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+        const displayName = mainAuth.user.user_metadata?.display_name ||
+          mainAuth.user.user_metadata?.full_name ||
+          mainAuth.user.email?.split('@')[0] ||
+          'Utilizator';
+
+        // Verifică dacă user-ul există în forum_users
+        const { data: existingUser } = await supabase
+          .from('forum_users')
+          .select('id')
+          .eq('user_id', mainAuth.user.id)
+          .maybeSingle();
+
+        if (existingUser) {
+          // Update user existent cu last_seen_at
+          // NU actualizăm username sau rank - acestea sunt gestionate de trigger-e SQL
+          await supabase
+            .from('forum_users')
+            .update({
+              last_seen_at: new Date().toISOString()
+              // Șters: rank și username - nu le mai suprascriem
+            })
+            .eq('user_id', mainAuth.user.id);
+        } else {
+          // Creează user nou în forum_users
+          // Obține username din profiles
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', mainAuth.user.id)
+            .maybeSingle();
+
+          const username = profile?.username || mainAuth.user.email?.split('@')[0] || 'pescar';
+
+          await supabase
+            .from('forum_users')
+            .insert({
+              user_id: mainAuth.user.id,
+              username: username, // Username corect din profiles
+              // NU setăm rank - trigger-ul SQL va seta 'ou_de_peste' automat
+              post_count: 0,
+              topic_count: 0,
+              reputation_points: 0,
+              last_seen_at: new Date().toISOString()
+            });
+        }
+      } catch (error) {
+        console.error('Error updating user activity:', error);
+      }
+    };
+
+    // Actualizează imediat
+    updateUserActivity();
+
+    // Actualizează la fiecare 2 minute cât timp utilizatorul este activ
+    const interval = setInterval(updateUserActivity, 2 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [mainAuth.user]);
+
   useEffect(() => {
     // Când utilizatorul principal se schimbă, actualizează forumUser
     if (mainAuth.user) {
       const loadUserData = async () => {
         const displayName = mainAuth.user.user_metadata?.display_name ||
-                           mainAuth.user.user_metadata?.full_name ||
-                           mainAuth.user.email?.split('@')[0] ||
-                           'Utilizator';
+          mainAuth.user.user_metadata?.full_name ||
+          mainAuth.user.email?.split('@')[0] ||
+          'Utilizator';
 
         const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
-        const isFounder = isAdmin; // Founder = creator/admin
 
-        // Obține photo_url din profiles
+        // Obține photo_url și rank real din database
         const { data: profile } = await supabase
           .from('profiles')
           .select('photo_url')
           .eq('id', mainAuth.user.id)
+          .maybeSingle();
+
+        // Obține rank real din forum_users (dacă există)
+        const { data: forumUserData } = await supabase
+          .from('forum_users')
+          .select('rank, badges')
+          .eq('user_id', mainAuth.user.id)
           .maybeSingle();
 
         const newForumUser: ForumUser = {
@@ -54,11 +126,11 @@ export const useAuthProvider = () => {
           username: displayName,
           email: mainAuth.user.email,
           avatar_url: profile?.photo_url || mainAuth.user.user_metadata?.avatar_url || null,
-          rank: isFounder ? 'founder' : 'pescar',
+          rank: forumUserData?.rank || 'ou_de_peste', // Rank real din database
           post_count: 0,
           topic_count: 0,
           reputation_points: isAdmin ? 999 : 100,
-          badges: isFounder ? ['Founder', 'Administrator', 'Expert Pescuit'] : ['Pescar Nou'],
+          badges: forumUserData?.badges || (isAdmin ? ['Administrator'] : ['Pescar Nou']),
           isAdmin: isAdmin,
           canModerateRespect: isAdmin,
           canDeletePosts: isAdmin,
@@ -95,7 +167,7 @@ export const useAuthProvider = () => {
           .select('photo_url')
           .eq('id', userId)
           .maybeSingle();
-        
+
         setForumUser({
           ...data,
           photo_url: profile?.photo_url || data.avatar_url || null

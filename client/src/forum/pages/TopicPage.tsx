@@ -11,32 +11,135 @@ import { supabase } from '../../lib/supabase';
 import type { ForumTopic, ForumPost } from '../types/forum';
 
 export default function TopicPage() {
-  const { topicId } = useParams();
+  // Acceptă atât /topic/:id (legacy) cât și /:subcategorySlug/:topicSlug (clean)
+  const { topicId, topicSlug, subcategorySlug } = useParams<{ topicId?: string; topicSlug?: string; subcategorySlug?: string }>();
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const page = 1; // Default to page 1 for now
 
+  // Folosește topicSlug dacă există (clean URL), altfel topicId (legacy)
+  const topicIdentifier = topicSlug || topicId || '';
+
   // Supabase hooks
-  const { topic, loading: topicLoading, error: topicError } = useTopic(topicId || '');
-  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(topicId || '', 1, 50);
+  const { topic, loading: topicLoading, error: topicError } = useTopic(topicIdentifier);
+  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(topicIdentifier, 1, 50);
   const { create: createPost } = useCreatePost();
 
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // IMPORTANT: TOȚI hooks-ii trebuie declarați ÎNAINTE de orice early return
+  // Topic not found state
+  const [showNotFound, setShowNotFound] = useState(false);
+  
+  // Slug-ul subcategoriei pentru link-uri
+  const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug || null);
+  const [subcategoryName, setSubcategoryName] = useState<string>('');
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobil
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // Loading doar dacă încă se încarcă (nu avem erori)
-  const loading = (topicLoading || postsLoading) && !topicError && !postsError;
+  // Scroll automat la hash când se încarcă pagina (ex: #post1, #post2)
+  useEffect(() => {
+    if (posts.length > 0) {
+      const hash = window.location.hash;
+      if (hash) {
+        // Așteaptă ca posturile să fie randate
+        const scrollTimeout = setTimeout(() => {
+          const element = document.getElementById(hash.substring(1)); // Remove #
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 200);
+        return () => clearTimeout(scrollTimeout);
+      }
+    }
+  }, [posts.length]);
+
+  // Nu mai folosim loading state - afișăm conținutul instant
 
   // Error handling
   useEffect(() => {
     if (topicError) console.error('Error loading topic:', topicError);
     if (postsError) console.error('Error loading posts:', postsError);
   }, [topicError, postsError]);
+  
+  // Topic not found effect - doar dacă există eroare EXPLICITĂ (nu mai folosim timeout)
+  useEffect(() => {
+    if (topicError && topicError.message?.includes('not found')) {
+      setShowNotFound(true);
+    } else {
+      setShowNotFound(false);
+    }
+  }, [topicError]);
+  
+  // Obține informații despre subcategorie și categorie pentru breadcrumbs
+  useEffect(() => {
+    const getHierarchy = async () => {
+      if (!topic?.subcategory_id && !subcategorySlug) return;
+      
+      try {
+        let subcategoryData;
+        
+        if (subcategorySlug) {
+          // Obține subcategoria după slug
+          const { data } = await supabase
+            .from('forum_subcategories')
+            .select('id, slug, name, category_id')
+            .eq('slug', subcategorySlug)
+            .maybeSingle();
+          subcategoryData = data;
+          setResolvedSubcategorySlug(subcategorySlug);
+        } else if (topic?.subcategory_id) {
+          // Obține subcategoria după ID
+          const { data } = await supabase
+            .from('forum_subcategories')
+            .select('id, slug, name, category_id')
+            .eq('id', topic.subcategory_id)
+            .maybeSingle();
+          subcategoryData = data;
+          if (data?.slug) {
+            setResolvedSubcategorySlug(data.slug);
+          }
+        }
+        
+        if (subcategoryData) {
+          setSubcategoryName(subcategoryData.name);
+          
+          // Obține categoria părinte
+          if (subcategoryData.category_id) {
+            setCategoryId(subcategoryData.category_id);
+            const { data: category } = await supabase
+              .from('forum_categories')
+              .select('name, slug')
+              .eq('id', subcategoryData.category_id)
+              .maybeSingle();
+            
+            if (category) {
+              setCategoryName(category.name);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading hierarchy:', error);
+      }
+    };
+    
+    getHierarchy();
+  }, [topic, subcategorySlug]);
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!replyContent.trim() || !forumUser || !topicId) {
+    if (!replyContent.trim() || !forumUser || !topicIdentifier) {
       alert('Te rog să te conectezi și să scrii un răspuns!');
       return;
     }
@@ -45,7 +148,7 @@ export default function TopicPage() {
 
     try {
       const { success, error } = await createPost({
-        topic_id: topicId,
+        topic_id: topicIdentifier,
         content: replyContent.trim()
       });
 
@@ -62,37 +165,38 @@ export default function TopicPage() {
     }
   };
 
-  const formatTimeAgo = (dateString: string) => {
+  // Format smart: dacă e azi → doar ora, dacă > 24h → data + ora (FĂRĂ secunde)
+  const formatSmartDateTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'acum';
-    if (diffInMinutes < 60) return `acum ${diffInMinutes}m`;
-    if (diffInMinutes < 1440) return `acum ${Math.floor(diffInMinutes / 60)}h`;
-    return `acum ${Math.floor(diffInMinutes / 1440)}z`;
+    
+    const isToday = date.getDate() === now.getDate() &&
+                    date.getMonth() === now.getMonth() &&
+                    date.getFullYear() === now.getFullYear();
+    
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    if (isToday) {
+      // Dacă e azi → doar ora
+      return `${hours}:${minutes}`;
+    } else {
+      // Dacă > 24h → data + ora
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year} ${hours}:${minutes}`;
+    }
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-          <div style={{ textAlign: 'center', padding: '4rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎣</div>
-            <div>Se încarcă topicul...</div>
-          </div>
-        </div>
-      </ForumLayout>
-    );
-  }
+  // Nu mai afișăm loading - afișăm conținutul instant
 
-  // Error state
+  // Error state - DUPĂ toate hooks-urile
   if (topicError || postsError) {
     return (
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
             <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Eroare la încărcarea topicului</div>
@@ -109,10 +213,10 @@ export default function TopicPage() {
   }
 
   // Topic not found
-  if (!topic && !topicLoading && !postsLoading) {
+  if (showNotFound) {
     return (
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
             <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Topic nu a fost găsit!</div>
@@ -126,69 +230,79 @@ export default function TopicPage() {
     );
   }
 
-  // Fallback - dacă topic e null dar nu suntem în loading
-  if (!topic) {
-    return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-          <div style={{ textAlign: 'center', padding: '4rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-            <div>Se încarcă...</div>
-          </div>
-        </div>
-      </ForumLayout>
-    );
-  }
-
-  // Obține slug-ul subcategoriei pentru link-uri
-  const [subcategorySlug, setSubcategorySlug] = useState<string | null>(null);
+  // ZERO LOADING: Afișăm întotdeauna conținut, chiar dacă datele se încarcă
+  // Skeleton-uri doar cu date placeholder, nu animații de loading
   
-  useEffect(() => {
-    const getSubcategorySlug = async () => {
-      if (!topic?.subcategory_id) return;
-      
-      const { data: subcategory } = await supabase
-        .from('forum_subcategories')
-        .select('slug')
-        .eq('id', topic.subcategory_id)
-        .single();
-      
-      if (subcategory?.slug) {
-        setSubcategorySlug(subcategory.slug);
-      }
-    };
-    
-    if (topic) {
-      getSubcategorySlug();
-    }
-  }, [topic]);
+  // Dacă nu avem topic, afișăm un placeholder pân se încarcă
+  const displayTopic = topic || {
+    title: '',
+    created_at: new Date().toISOString(),
+    view_count: 0,
+    reply_count: 0
+  };
+  
+  const displayPosts = posts.length > 0 ? posts : [];
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-        {/* Breadcrumbs */}
-        <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
-          <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none' }}>Forum</Link>
-          <span style={{ margin: '0 0.5rem' }}>›</span>
-          {subcategorySlug ? (
-            <Link to={`/forum/category/${subcategorySlug}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-              Subcategorie
-            </Link>
-          ) : (
-            <span>Subcategorie</span>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '2rem 1rem' }}>
+        {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie › Topic - Toate linkuri funcționale */}
+        <nav style={{ 
+          marginBottom: isMobile ? '0.75rem' : '1.5rem', 
+          fontSize: isMobile ? '0.75rem' : '0.875rem', 
+          color: '#6b7280',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          paddingBottom: '0.25rem'
+        }}>
+          <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
+          {(categoryName || subcategoryName || displayTopic.title) && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              {categoryName && categoryId && (
+                <Link 
+                  to={`/forum#category-${categoryId}`} 
+                  style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                  onClick={(e) => {
+                    // Scroll la categorie pe homepage
+                    e.preventDefault();
+                    navigate('/forum');
+                    setTimeout(() => {
+                      const element = document.getElementById(`category-${categoryId}`);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                  }}
+                >
+                  {categoryName}
+                </Link>
+              )}
+              {categoryName && subcategoryName && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
+              {subcategoryName && resolvedSubcategorySlug && (
+                <Link 
+                  to={`/forum/${resolvedSubcategorySlug}`} 
+                  style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                >
+                  {subcategoryName}
+                </Link>
+              )}
+              {subcategoryName && displayTopic.title && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
+              {displayTopic.title && (
+                <span style={{ color: '#6b7280', fontWeight: '500' }}>{displayTopic.title}</span>
+              )}
+            </>
           )}
-          <span style={{ margin: '0 0.5rem' }}>›</span>
-          <span>{topic.title}</span>
         </nav>
 
-        {/* Topic Header */}
+        {/* Topic Header - Compact pentru mobil */}
         <div
           style={{
             backgroundColor: 'white',
-            borderRadius: '1rem',
+            borderRadius: isMobile ? '0.5rem' : '1rem',
             border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            marginBottom: '1.5rem',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+            marginBottom: isMobile ? '0.75rem' : '1.5rem',
             overflow: 'hidden'
           }}
         >
@@ -196,29 +310,30 @@ export default function TopicPage() {
             style={{
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: 'white',
-              padding: '1.5rem',
+              padding: isMobile ? '0.75rem' : '1rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '1rem'
+              gap: isMobile ? '0.5rem' : '0.75rem'
             }}
           >
-            {subcategorySlug ? (
+            {resolvedSubcategorySlug ? (
               <Link
-                to={`/forum/category/${subcategorySlug}`}
+                to={`/forum/${resolvedSubcategorySlug}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '2.5rem',
-                  height: '2.5rem',
+                  width: isMobile ? '2rem' : '2.5rem',
+                  height: isMobile ? '2rem' : '2.5rem',
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.5rem',
+                  borderRadius: '0.375rem',
                   color: 'white',
                   textDecoration: 'none',
-                  transition: 'background-color 0.2s'
+                  transition: 'background-color 0.2s',
+                  flexShrink: 0
                 }}
               >
-                <ArrowLeft style={{ width: '1.25rem', height: '1.25rem' }} />
+                <ArrowLeft style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }} />
               </Link>
             ) : (
               <div
@@ -226,54 +341,83 @@ export default function TopicPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '2.5rem',
-                  height: '2.5rem',
+                  width: isMobile ? '2rem' : '2.5rem',
+                  height: isMobile ? '2rem' : '2.5rem',
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.5rem',
+                  borderRadius: '0.375rem',
                   color: 'white',
                   textDecoration: 'none',
-                  transition: 'background-color 0.2s'
+                  transition: 'background-color 0.2s',
+                  flexShrink: 0
                 }}
               >
-                <ArrowLeft style={{ width: '1.25rem', height: '1.25rem' }} />
+                <ArrowLeft style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }} />
               </div>
             )}
-            <div style={{ flex: 1 }}>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem', lineHeight: '1.3' }}>
-                {topic.title}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: isMobile ? '1rem' : '1.5rem', fontWeight: '600', marginBottom: '0.25rem', lineHeight: '1.2', wordBreak: 'break-word' }}>
+                {displayTopic.title || '\u00A0'}
               </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-                {/* Author info might need to be fetched or passed from list */}
-                <span>de <strong>{posts[0]?.author_username || 'Unknown'}</strong></span>
-                {/* <span className={`user-rank rank-${topic.authorRank}`}>{topic.authorRank}</span> */}
-                <span>•</span>
-                <span>{formatTimeAgo(topic.created_at)}</span>
-                <span>•</span>
-                <span>{topic.view_count} vizualizări</span>
-                <span>•</span>
-                <span>{topic.reply_count} răspunsuri</span>
-              </div>
+              {displayTopic.title && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: isMobile ? '0.5rem' : '1rem', 
+                  fontSize: isMobile ? '0.75rem' : '0.875rem', 
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  flexWrap: isMobile ? 'wrap' : 'nowrap'
+                }}>
+                  <span>de <strong>{displayPosts[0]?.author_username || 'Se încarcă...'}</strong></span>
+                  <span>•</span>
+                  <span>{formatSmartDateTime(displayTopic.created_at)}</span>
+                  <span>•</span>
+                  <span>{displayTopic.view_count} viz</span>
+                  <span>•</span>
+                  <span>{displayTopic.reply_count} răsp</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Posts List */}
-        {posts.map((post, index) => (
+        {/* Posts List - ZERO LOADING: Afișăm întotdeauna, chiar dacă e gol */}
+        {displayPosts.length === 0 && !postsError && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            border: '1px solid #e5e7eb',
+            padding: '3rem',
+            textAlign: 'center',
+            color: '#6b7280',
+            marginBottom: '1.5rem'
+          }}>
+            <MessageSquare style={{ width: '3rem', height: '3rem', margin: '0 auto 1rem', opacity: 0.3 }} />
+            <div style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Se încarcă conversația...</div>
+            <div style={{ fontSize: '0.875rem', opacity: 0.7 }}>Un moment, te rog</div>
+          </div>
+        )}
+        {displayPosts.map((post, index) => (
           <MessageContainer
             key={post.id}
             post={{
               id: post.id,
               content: post.content,
               author: post.author_username || 'Unknown',
-              authorId: (post as any).user_id, // ID-ul autorului pentru reputație (din forum_posts.user_id)
-              authorRank: 'user', // Placeholder until rank is available
-              authorAvatar: post.author_avatar,
+              authorId: (post as any).user_id, // ID-ul autorului pentru reputație
+              authorRank: (post as any).author_rank || 'pescar', // Rank real din forum_users
+              authorAvatar: (post as any).author_avatar || null, // Photo URL din profiles
               createdAt: post.created_at,
+              editedAt: post.edited_at || undefined,
+              editedBy: post.edited_by || undefined,
+              editedByUsername: (post as any).edited_by_username || undefined,
+              editReason: post.edit_reason || undefined,
               likes: post.like_count || 0,
               dislikes: 0,
-              respect: 0 // Placeholder
+              respect: (post as any).author_respect || 0 // Respect real din forum_users.reputation_points
             }}
             isOriginalPost={index === 0 && page === 1}
+            postNumber={(post as any).post_number || null} // Post number REAL din database
+            topicId={topic?.id || topicIdentifier}
             onRespectChange={(postId, delta, comment) => {
               console.log(`Respect ${delta > 0 ? 'oferit' : 'retras'} pentru ${post.author_username}: "${comment}"`);
               alert(`Ai ${delta > 0 ? 'oferit' : 'retras'} respect pentru ${post.author_username}!`);
@@ -282,6 +426,14 @@ export default function TopicPage() {
             onQuote={() => console.log(`Quote ${post.author_username}`)}
             onReputationChange={() => {
               // Reîncarcă postările pentru a actualiza reputația
+              refetchPosts();
+            }}
+            onPostDeleted={() => {
+              // Reîncarcă postările după ștergere
+              refetchPosts();
+            }}
+            onPostEdited={() => {
+              // Reîncarcă postările după editare
               refetchPosts();
             }}
           />

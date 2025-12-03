@@ -31,13 +31,24 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Load theme preference from localStorage IMMEDIATELY (before first render)
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('fish-trophy-theme');
+      return savedTheme === 'dark';
+    }
+    return false;
+  });
 
-  // Load theme preference from localStorage
+  // Ensure theme is applied immediately on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('fish-trophy-theme');
     if (savedTheme === 'dark') {
       setIsDarkMode(true);
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
 

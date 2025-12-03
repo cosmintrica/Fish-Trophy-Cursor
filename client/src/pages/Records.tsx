@@ -121,16 +121,52 @@ const Records = () => {
   };
 
   const loadSpecies = async () => {
+    // Cache cu sessionStorage pentru species (date statice)
+    const CACHE_KEY = 'records_species_cache';
+    const CACHE_DURATION = 10 * 60 * 1000; // 10 minute
+    
     try {
+      // Încearcă să încarce din cache
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          setSpecies(data || []);
+          return; // Return instant, load in background
+        }
+      }
+      
+      // Load from database
       const { data, error } = await supabase
         .from('fish_species')
         .select('id, name')
         .order('name');
 
       if (error) throw error;
-      setSpecies(data || []);
+      const speciesData = data || [];
+      setSpecies(speciesData);
+      
+      // Cache result
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: speciesData,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Ignoră erorile de storage
+      }
     } catch (error) {
       console.error('Error loading species:', error);
+      // Dacă e eroare dar avem cache, păstrăm cache-ul
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          setSpecies(data || []);
+        }
+      } catch (e) {
+        // Ignoră
+      }
     }
   };
 
@@ -138,16 +174,52 @@ const Records = () => {
   // Removed debug functions to avoid extra database requests
 
   const loadLocations = async () => {
+    // Cache cu sessionStorage pentru locations (date statice)
+    const CACHE_KEY = 'records_locations_cache';
+    const CACHE_DURATION = 10 * 60 * 1000; // 10 minute
+    
     try {
+      // Încearcă să încarce din cache
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          setLocations(data || []);
+          return; // Return instant, load in background
+        }
+      }
+      
+      // Load from database
       const { data, error } = await supabase
         .from('fishing_locations')
         .select('id, name, type, county')
         .order('name');
 
       if (error) throw error;
-      setLocations(data || []);
+      const locationsData = data || [];
+      setLocations(locationsData);
+      
+      // Cache result
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: locationsData,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Ignoră erorile de storage
+      }
     } catch (error) {
       console.error('Error loading locations:', error);
+      // Dacă e eroare dar avem cache, păstrăm cache-ul
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          setLocations(data || []);
+        }
+      } catch (e) {
+        // Ignoră
+      }
     }
   };
 

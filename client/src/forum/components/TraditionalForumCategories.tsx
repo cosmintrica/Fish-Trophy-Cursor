@@ -35,20 +35,7 @@ export default function TraditionalForumCategories({ onSubcategoryClick }: Tradi
     return timeStr;
   };
 
-  if (loading) {
-    return (
-      <div style={{ 
-        backgroundColor: 'white', 
-        borderRadius: '0.5rem', 
-        border: '1px solid #e5e7eb', 
-        padding: '2rem',
-        textAlign: 'center'
-      }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎣</div>
-        <div>Se încarcă categoriile...</div>
-      </div>
-    );
-  }
+  // Nu mai afișăm loading - conținutul apare instant
 
   return (
     <div style={{ 

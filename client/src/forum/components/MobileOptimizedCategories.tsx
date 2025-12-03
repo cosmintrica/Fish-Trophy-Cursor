@@ -9,17 +9,32 @@ interface MobileOptimizedCategoriesProps {
 }
 
 export default function MobileOptimizedCategories({ onSubcategoryClick }: MobileOptimizedCategoriesProps) {
-  const [isMobile, setIsMobile] = useState(false);
   const { theme } = useTheme();
 
   // Try Supabase first
-  const { categories: supabaseCategories, loading: supabaseLoading, error } = useCategories();
+  const { categories: supabaseCategories } = useCategories();
 
   // Local state for collapse
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
   const categories = supabaseCategories || [];
-  const loading = supabaseLoading && categories.length === 0;
+  
+  // Detectează dacă e mobil
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleToggleCollapse = (categoryId: string) => {
     setCollapsedCategories(prev => ({
@@ -28,20 +43,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
     }));
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        backgroundColor: theme.surface,
-        borderRadius: '0.5rem',
-        border: `1px solid ${theme.border}`,
-        padding: '2rem',
-        textAlign: 'center'
-      }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎣</div>
-        <div style={{ color: theme.text }}>Se încarcă categoriile...</div>
-      </div>
-    );
-  }
+  // Nu mai afișăm loading - afișăm conținutul instant
 
   if (isMobile) {
     // Mobile layout - simplified
@@ -133,12 +135,15 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                     onTouchEnd={(e) => e.currentTarget.style.backgroundColor = theme.background}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      {/* Icon subcategorie - colorat/grayscale */}
                       <div style={{
-                        width: '0.25rem',
-                        height: '0.25rem',
-                        backgroundColor: theme.primary,
-                        borderRadius: '50%'
-                      }} />
+                        fontSize: '1rem',
+                        opacity: subcategory.topicCount > 0 ? 1 : 0.4,
+                        filter: subcategory.topicCount === 0 ? 'grayscale(100%)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        {subcategory.icon || '📝'}
+                      </div>
 
                       <div style={{ fontSize: '0.75rem', fontWeight: '500', color: theme.text, flex: 1, lineHeight: '1.2' }}>
                         {subcategory.name}
@@ -239,27 +244,15 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - GOALE pentru categorie principală (ca în screenshot) */}
             <div style={{ textAlign: 'center', fontSize: '0.875rem', fontWeight: '500', color: theme.text }}>
-              {(category.totalTopics ?? 0).toLocaleString('ro-RO')}
+              {/* Gol */}
             </div>
             <div style={{ textAlign: 'center', fontSize: '0.875rem', fontWeight: '500', color: theme.text }}>
-              {(category.totalPosts ?? 0).toLocaleString('ro-RO')}
+              {/* Gol */}
             </div>
             <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-              {category.lastPost ? (
-                <div>
-                  <div style={{ fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
-                    {category.lastPost.topicTitle.length > 30
-                      ? category.lastPost.topicTitle.substring(0, 30) + '...'
-                      : category.lastPost.topicTitle}
-                  </div>
-                  <div>de <span style={{ fontWeight: '500' }}>{category.lastPost.author}</span></div>
-                  <div>{category.lastPost.time}</div>
-                </div>
-              ) : (
-                <div style={{ color: theme.textSecondary }}>Fără postări</div>
-              )}
+              {/* Gol */}
             </div>
           </div>
 
@@ -285,14 +278,17 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.surfaceHover}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.surface}
                 >
-                  {/* Subcategory Name */}
+                  {/* Subcategory Name cu Icon */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {/* Icon subcategorie - colorat dacă are mesaje noi (TODO: logica pentru mesaje noi) */}
                     <div style={{
-                      width: '0.5rem',
-                      height: '0.5rem',
-                      backgroundColor: theme.primary,
-                      borderRadius: '50%'
-                    }} />
+                      fontSize: '1.5rem',
+                      opacity: subcategory.topicCount > 0 ? 1 : 0.4, // Colorat dacă are topicuri, alb-negru dacă nu
+                      filter: subcategory.topicCount === 0 ? 'grayscale(100%)' : 'none',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      {subcategory.icon || '📝'}
+                    </div>
 
                     <div>
                       <div style={{ fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
@@ -311,16 +307,56 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                   <div style={{ textAlign: 'center', fontSize: '0.875rem', color: theme.text }}>
                     {subcategory.postCount}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, textAlign: 'center' }}>
                     {subcategory.lastPost ? (
                       <div>
-                        <div style={{ fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
-                          {subcategory.lastPost.topicTitle.length > 25
-                            ? subcategory.lastPost.topicTitle.substring(0, 25) + '...'
-                            : subcategory.lastPost.topicTitle}
+                        {/* Primul rând: Data și ora centrate - întotdeauna afișate */}
+                        <div style={{ textAlign: 'center', marginBottom: '0.125rem', fontSize: '0.75rem' }}>
+                          {subcategory.lastPost.date ? (
+                            <>
+                              <span style={{ color: theme.textSecondary, marginRight: '0.25rem' }}>{subcategory.lastPost.date}</span>
+                              <span style={{ color: theme.text, fontWeight: '600' }}>{subcategory.lastPost.timeOnly || '00:00'}</span>
+                            </>
+                          ) : (
+                            subcategory.lastPost.timeOnly ? (
+                              <span style={{ color: theme.text, fontWeight: '600' }}>{subcategory.lastPost.timeOnly}</span>
+                            ) : (
+                              <span style={{ color: theme.text, fontWeight: '600' }}>{subcategory.lastPost.time || '00:00'}</span>
+                            )
+                          )}
                         </div>
-                        <div>de <span style={{ fontWeight: '500' }}>{subcategory.lastPost.author}</span></div>
-                        <div>{subcategory.lastPost.time}</div>
+                        {/* Al doilea rând: postat de [user] > - centrate */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+                          <span>postat de</span>
+                          <span style={{ fontWeight: '500' }}>{subcategory.lastPost.author}</span>
+                          {subcategory.lastPost.subcategorySlug && subcategory.lastPost.topicSlug && subcategory.lastPost.postNumber && (
+                            <a
+                              href={`/forum/${subcategory.lastPost.subcategorySlug}/${subcategory.lastPost.topicSlug}#post${subcategory.lastPost.postNumber}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                window.location.href = `/forum/${subcategory.lastPost.subcategorySlug}/${subcategory.lastPost.topicSlug}#post${subcategory.lastPost.postNumber}`;
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: theme.primary,
+                                textDecoration: 'none',
+                                marginLeft: '0.125rem',
+                                transition: 'color 0.2s',
+                                fontSize: '0.875rem'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = theme.secondary;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = theme.primary;
+                              }}
+                              title="Permalink la ultima postare"
+                            >
+                              &gt;
+                            </a>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div style={{ color: theme.textSecondary }}>Fără postări</div>
@@ -331,8 +367,6 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
             </div>
           )}
 
-          {/* Separator */}
-          <div style={{ height: '0.5rem', backgroundColor: theme.background }} />
         </div>
       ))}
 

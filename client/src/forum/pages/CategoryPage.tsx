@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Pin, Lock } from 'lucide-react';
 import { useTopics } from '../hooks/useTopics';
 import CreateTopicModal from '../components/CreateTopicModal';
@@ -10,46 +10,49 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 
 export default function CategoryPage() {
-  const { id: categoryId } = useParams<{ id: string }>();
+  // Acceptă atât /category/:id (legacy) cât și /:subcategorySlug (clean)
+  const { id: categoryId, subcategorySlug } = useParams<{ id?: string; subcategorySlug?: string }>();
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  
-  // categoryId from params
+  const location = useLocation();
+
+  // Folosește subcategorySlug dacă există, altfel categoryId (legacy)
+  const slugToUse = subcategorySlug || categoryId;
 
   // Obține ID-ul subcategoriei din slug
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const getSubcategoryId = async () => {
-      if (!categoryId) {
-        // No categoryId provided
+      if (!slugToUse) {
+        // No slug provided
         setSubcategoryId(null);
         return;
       }
-      
+
       // Looking for subcategory with slug
-      
+
       // Caută DOAR după slug (nu mai folosim UUID)
       // Încearcă mai întâi cu exact match (cel mai rapid și sigur)
       const { data: subcategoryExact, error: exactError } = await supabase
         .from('forum_subcategories')
         .select('id, slug, name')
-        .eq('slug', categoryId)
+        .eq('slug', slugToUse)
         .eq('is_active', true)
         .single();
-      
+
       if (exactError) {
         // Exact match failed, trying ilike
-        
+
         // Dacă exact match nu funcționează, încercă cu ilike (case-insensitive)
         const { data: subcategoryIlike, error: ilikeError } = await supabase
           .from('forum_subcategories')
           .select('id, slug, name')
-          .ilike('slug', categoryId)
+          .ilike('slug', slugToUse)
           .eq('is_active', true)
           .maybeSingle(); // Folosim maybeSingle în loc de single pentru a evita erori
-        
+
         if (ilikeError) {
           console.error('CategoryPage: ilike match also failed:', ilikeError);
           setSubcategoryId(null);
@@ -68,108 +71,138 @@ export default function CategoryPage() {
         setSubcategoryId(null);
       }
     };
-    
+
     getSubcategoryId();
-  }, [categoryId]);
-  
+  }, [slugToUse]);
+
   // Supabase hooks - folosește subcategoryId (UUID) pentru query (intern folosim UUID, extern slug)
   const { topics, loading: supabaseLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId || '', 1, 50);
 
-  const [categoryName, setCategoryName] = useState('');
-  const [categoryDescription, setCategoryDescription] = useState('');
+  const [subcategoryName, setSubcategoryName] = useState('');
+  const [subcategoryDescription, setSubcategoryDescription] = useState('');
+  const [parentCategoryName, setParentCategoryName] = useState('');
+  const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loadingName, setLoadingName] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Load subcategory by slug (categoryId este de fapt slug-ul)
+  // Detect mobil
   useEffect(() => {
-    const loadSubcategoryName = async () => {
-      if (!categoryId || categoryId.trim() === '') {
-        setLoadingName(false);
-        setCategoryName('');
-        setCategoryDescription('');
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Scroll la top când se încarcă pagina (previne scroll-ul automat jos)
+  useEffect(() => {
+    // Scroll instant la top când se schimbă ruta
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    // Asigură-te că rămâne la top după ce se încarcă totul
+    const ensureTop = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, 100);
+
+    return () => clearTimeout(ensureTop);
+  }, [location.pathname]);
+
+  // Load subcategory by slug și categoria părinte
+  useEffect(() => {
+    const loadHierarchy = async () => {
+      if (!slugToUse || slugToUse.trim() === '') {
+        setSubcategoryName('');
+        setSubcategoryDescription('');
+        setParentCategoryName('');
         return;
       }
-      
-      setLoadingName(true);
+
       try {
-        // Loading name for slug
-        
         // Caută subcategoria după slug - exact match mai întâi
         const { data: subcategory, error: subError } = await supabase
           .from('forum_subcategories')
-          .select('id, name, description, slug')
-          .eq('slug', categoryId)
+          .select('id, name, description, slug, category_id')
+          .eq('slug', slugToUse)
           .eq('is_active', true)
-          .maybeSingle(); // Folosim maybeSingle pentru a evita erori când nu găsește
-        
+          .maybeSingle();
+
         if (subError) {
           console.error('CategoryPage: Error loading subcategory name:', subError);
         }
-        
+
         if (subcategory) {
-          // Found subcategory
-          setCategoryName(subcategory.name);
-          setCategoryDescription(subcategory.description || '');
-          setLoadingName(false);
+          setSubcategoryName(subcategory.name);
+          setSubcategoryDescription(subcategory.description || '');
+
+          // Obține categoria părinte
+          if (subcategory.category_id) {
+            setParentCategoryId(subcategory.category_id);
+            const { data: parentCategory } = await supabase
+              .from('forum_categories')
+              .select('name, slug')
+              .eq('id', subcategory.category_id)
+              .maybeSingle();
+
+            if (parentCategory) {
+              setParentCategoryName(parentCategory.name);
+            }
+          }
           return;
         }
-        
+
         // Fallback la ilike dacă exact match nu funcționează
-        // Trying ilike match
         const { data: subcategoryIlike, error: ilikeError } = await supabase
           .from('forum_subcategories')
-          .select('id, name, description, slug')
-          .ilike('slug', categoryId)
+          .select('id, name, description, slug, category_id')
+          .ilike('slug', slugToUse)
           .eq('is_active', true)
           .maybeSingle();
-        
+
         if (ilikeError) {
           console.error('CategoryPage: Error with ilike:', ilikeError);
         }
-        
+
         if (subcategoryIlike) {
-          // Found subcategory with ilike
-          setCategoryName(subcategoryIlike.name);
-          setCategoryDescription(subcategoryIlike.description || '');
-          setLoadingName(false);
-          return;
-        }
+          setSubcategoryName(subcategoryIlike.name);
+          setSubcategoryDescription(subcategoryIlike.description || '');
 
-        // Nu mai folosim fallback la UUID - doar slug-uri
+          // Obține categoria părinte
+          if (subcategoryIlike.category_id) {
+            setParentCategoryId(subcategoryIlike.category_id);
+            const { data: parentCategory } = await supabase
+              .from('forum_categories')
+              .select('name, slug')
+              .eq('id', subcategoryIlike.category_id)
+              .maybeSingle();
 
-        // Fallback: încercă categoria
-        const { data: category, error: catError } = await supabase
-          .from('forum_categories')
-          .select('id, name, description')
-          .eq('id', categoryId)
-          .eq('is_active', true)
-          .single();
-
-        if (!catError && category) {
-          setCategoryName(category.name);
-          setCategoryDescription(category.description || '');
-          setLoadingName(false);
+            if (parentCategory) {
+              setParentCategoryName(parentCategory.name);
+            }
+          }
           return;
         }
 
         // Nu s-a găsit nimic
-        setCategoryName('');
-        setCategoryDescription('');
-        setLoadingName(false);
+        setSubcategoryName('');
+        setSubcategoryDescription('');
+        setParentCategoryName('');
+        setParentCategoryId(null);
       } catch (error) {
-        console.error('Error loading category name:', error);
-        setCategoryName('');
-        setCategoryDescription('');
-        setLoadingName(false);
+        console.error('Error loading hierarchy:', error);
+        setSubcategoryName('');
+        setSubcategoryDescription('');
+        setParentCategoryName('');
+        setParentCategoryId(null);
       }
     };
 
-    loadSubcategoryName();
-  }, [categoryId]);
+    loadHierarchy();
+  }, [slugToUse]);
 
   const handleTopicClick = (topic: { id: string; slug?: string }) => {
-    const topicIdentifier = topic.slug || topic.id;
-    navigate(`/forum/topic/${topicIdentifier}`);
+    const topicSlug = topic.slug || topic.id;
+    const subcategorySlugToUse = slugToUse || 'unknown';
+    // URL clean: /forum/subcategorySlug/topicSlug
+    navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
   };
 
   const handleTopicCreated = () => {
@@ -178,8 +211,8 @@ export default function CategoryPage() {
     setShowCreateModal(false);
   };
 
-  // Verifică dacă categoryId există
-  if (!categoryId) {
+  // Verifică dacă slugToUse există (poate fi subcategorySlug sau categoryId)
+  if (!slugToUse) {
     return (
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -195,24 +228,10 @@ export default function CategoryPage() {
       </ForumLayout>
     );
   }
-  
-  // Dacă nu s-a găsit subcategoria (verificăm după un mic delay pentru a permite query-ului să se execute)
-  // Folosim un timeout pentru a evita false positives
-  const [showNotFound, setShowNotFound] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!loadingName && !supabaseLoading && !categoryName && !topicsError && categoryId) {
-        setShowNotFound(true);
-      } else {
-        setShowNotFound(false);
-      }
-    }, 500); // Așteaptă 500ms înainte de a afișa "not found"
-    
-    return () => clearTimeout(timer);
-  }, [loadingName, supabaseLoading, categoryName, topicsError, categoryId]);
-  
-  if (showNotFound && !categoryName && !topicsError) {
+
+  // Nu afișăm "not found" - lăsăm datele să se încarce în background
+  // Verificare doar dacă există o eroare explicită
+  if (topicsError && topicsError.message.includes('not found')) {
     return (
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -261,22 +280,55 @@ export default function CategoryPage() {
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-        {/* Breadcrumbs */}
-        <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
-          <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none' }}>Forum</Link>
-          <span style={{ margin: '0 0.5rem' }}>›</span>
-          <span>{categoryName}</span>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
+        {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie - Toate linkuri funcționale */}
+        <nav style={{
+          marginBottom: isMobile ? '0.75rem' : '1.5rem',
+          fontSize: isMobile ? '0.75rem' : '0.875rem',
+          color: '#6b7280',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          paddingBottom: '0.25rem'
+        }}>
+          <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
+          {parentCategoryName && parentCategoryId && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <Link
+                to={`/forum#category-${parentCategoryId}`}
+                style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                onClick={(e) => {
+                  // Scroll la categorie pe homepage
+                  e.preventDefault();
+                  navigate('/forum');
+                  setTimeout(() => {
+                    const element = document.getElementById(`category-${parentCategoryId}`);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                  }, 100);
+                }}
+              >
+                {parentCategoryName}
+              </Link>
+            </>
+          )}
+          {subcategoryName && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <span style={{ color: '#6b7280', fontWeight: '500' }}>{subcategoryName}</span>
+            </>
+          )}
         </nav>
 
-        {/* Header categorie */}
+        {/* Header categorie - Compact pentru mobil */}
         <div
           style={{
             backgroundColor: 'white',
-            borderRadius: '1rem',
+            borderRadius: isMobile ? '0.5rem' : '1rem',
             border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            marginBottom: '2rem',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+            marginBottom: isMobile ? '0.75rem' : '1.5rem',
             overflow: 'hidden'
           }}
         >
@@ -284,10 +336,10 @@ export default function CategoryPage() {
             style={{
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: 'white',
-              padding: '1.5rem',
+              padding: isMobile ? '0.75rem' : '1.5rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '1rem'
+              gap: isMobile ? '0.5rem' : '1rem'
             }}
           >
             <Link
@@ -296,23 +348,24 @@ export default function CategoryPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '2.5rem',
-                height: '2.5rem',
+                width: isMobile ? '2rem' : '2.5rem',
+                height: isMobile ? '2rem' : '2.5rem',
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '0.5rem',
+                borderRadius: '0.375rem',
                 color: 'white',
                 textDecoration: 'none',
-                transition: 'background-color 0.2s'
+                transition: 'background-color 0.2s',
+                flexShrink: 0
               }}
             >
-              <ArrowLeft style={{ width: '1.25rem', height: '1.25rem' }} />
+              <ArrowLeft style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }} />
             </Link>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.25rem' }}>
-                {categoryName}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h1 style={{ fontSize: isMobile ? '1rem' : '1.5rem', fontWeight: '600', marginBottom: '0.125rem', lineHeight: '1.2' }}>
+                {subcategoryName || '\u00A0'}
               </h1>
-              <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.875rem' }}>
-                {categoryDescription || 'Discuții și postări despre pescuit'}
+              <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: isMobile ? '0.75rem' : '0.875rem', lineHeight: '1.3' }}>
+                {subcategoryDescription || 'Discuții și postări despre pescuit'}
               </p>
             </div>
           </div>
@@ -328,13 +381,12 @@ export default function CategoryPage() {
             overflow: 'hidden'
           }}
         >
-          {/* Header pentru topicuri */}
-          <div style={{
+          {/* Header pentru topicuri - Optimizat pentru mobil */}
+          <div className="hidden sm:grid" style={{
             backgroundColor: '#f8fafc',
             borderBottom: '1px solid #e5e7eb',
             padding: '0.75rem 1rem',
-            display: 'grid',
-            gridTemplateColumns: '1fr 100px 100px 220px',
+            gridTemplateColumns: '1fr 80px 80px 180px',
             gap: '0.75rem',
             alignItems: 'center',
             fontSize: '0.75rem',
@@ -352,9 +404,9 @@ export default function CategoryPage() {
           {/* Topicuri */}
           <div>
             {topics.length === 0 ? (
-              <div style={{ 
-                padding: '4rem 2rem', 
-                textAlign: 'center', 
+              <div style={{
+                padding: '4rem 2rem',
+                textAlign: 'center',
                 color: '#6b7280',
                 backgroundColor: '#f9fafb',
                 borderRadius: '0.5rem',
@@ -405,85 +457,91 @@ export default function CategoryPage() {
               </div>
             ) : (
               topics.map((topic) => (
-              <div
-                key={topic.id}
-                style={{
-                  padding: '1rem',
-                  borderBottom: '1px solid #f3f4f6',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 100px 100px 220px',
-                  gap: '0.75rem',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                onClick={() => handleTopicClick(topic)}
-              >
-                {/* Topic info */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.125rem' }}>
-                    {topic.is_pinned && <Pin style={{ width: '1rem', height: '1rem', color: '#f59e0b' }} />}
-                    {topic.is_locked && <Lock style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />}
-                    <MessageSquare style={{ width: '1rem', height: '1rem', color: topic.is_pinned ? '#f59e0b' : '#2563eb' }} />
+                <div
+                  key={topic.id}
+                  className="topic-item"
+                  style={{
+                    padding: isMobile ? '0.5rem' : '0.75rem',
+                    borderBottom: '1px solid #f3f4f6',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: isMobile ? '0.5rem' : '0.75rem',
+                    alignItems: 'flex-start',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onClick={() => handleTopicClick(topic)}
+                >
+                  {/* Topic info - Layout diferit pe mobil */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0, width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.125rem', flexShrink: 0 }}>
+                      {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
+                      {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#6b7280' }} />}
+                      <MessageSquare style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: topic.is_pinned ? '#f59e0b' : '#2563eb' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: '#111827', marginBottom: '0.125rem', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                        {topic.title}
+                      </h3>
+                      <div style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', color: '#6b7280', marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
+                        de <span style={{ color: '#2563eb', fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span>
+                      </div>
+                      {/* Statistici pe mobil - sub titlu */}
+                      <div className="sm:hidden" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        <span>💬 {topic.reply_count}</span>
+                        <span>👁️ {topic.view_count.toLocaleString('ro-RO')}</span>
+                        {topic.last_post_at && (
+                          <span>{new Date(topic.last_post_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '0.25rem', lineHeight: '1.3' }}>
-                      {topic.title}
-                    </h3>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      de <span style={{ color: '#2563eb', fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span>
+
+                  {/* Răspunsuri - Ascuns pe mobil */}
+                  <div className="hidden sm:flex" style={{
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#059669',
+                    minHeight: '2rem'
+                  }}>
+                    {topic.reply_count}
+                  </div>
+
+                  {/* Vizualizări - Ascuns pe mobil */}
+                  <div className="hidden sm:flex" style={{
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    minHeight: '2rem'
+                  }}>
+                    {topic.view_count.toLocaleString('ro-RO')}
+                  </div>
+
+                  {/* Ultima postare - Ascuns pe mobil */}
+                  <div className="hidden sm:flex" style={{
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    minHeight: '2rem'
+                  }}>
+                    <div style={{ fontWeight: '500', marginBottom: '0.125rem' }}>
+                      {topic.last_post_at ? new Date(topic.last_post_at).toLocaleDateString('ro-RO') : '-'}
                     </div>
                   </div>
                 </div>
-
-                {/* Răspunsuri - perfect centrat */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#059669',
-                  minHeight: '2rem'
-                }}>
-                  {topic.reply_count}
-                </div>
-
-                {/* Vizualizări - perfect centrat */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  minHeight: '2rem'
-                }}>
-                  {topic.view_count.toLocaleString('ro-RO')}
-                </div>
-
-                {/* Ultima postare - perfect centrat */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  minHeight: '2rem'
-                }}>
-                  <div style={{ fontWeight: '500', marginBottom: '0.125rem' }}>
-                    {topic.last_post_at ? new Date(topic.last_post_at).toLocaleDateString('ro-RO') : '-'}
-                  </div>
-                  <div>
-                    {/* Last post author not available in basic fetch, showing generic */}
-                  </div>
-                </div>
-              </div>
-            )))}
+              )))}
           </div>
         </div>
 
@@ -526,13 +584,13 @@ export default function CategoryPage() {
           </button>
         </div>
 
-        {/* Create Topic Modal */}
+        {/* Create Topic Modal - Fixed to use slugToUse for both legacy and clean URLs */}
         {forumUser && (
           <CreateTopicModal
             isOpen={showCreateModal}
             onClose={() => setShowCreateModal(false)}
-            categoryId={categoryId || ''}
-            categoryName={categoryName}
+            categoryId={slugToUse || ''}
+            categoryName={subcategoryName}
             user={{
               username: forumUser.username,
               rank: forumUser.rank
@@ -542,7 +600,7 @@ export default function CategoryPage() {
         )}
 
         {/* Active Viewers */}
-        <ActiveViewers subcategoryId={categoryId} />
+        <ActiveViewers subcategoryId={subcategoryId || categoryId || ''} />
       </div>
     </ForumLayout>
   );

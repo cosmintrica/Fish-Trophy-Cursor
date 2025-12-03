@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Regula pentru Fișiere Mari
+
+**Când un fișier devine prea mare (>500 linii), trebuie să fie împărțit în componente mai mici:**
+
+1. **Identifică responsabilitățile distincte** din fișier
+2. **Creează componente separate** cu nume intuitive care reflectă funcționalitatea:
+   - `MessageContainer.tsx` → `MessageContainer.tsx` (principal) + `MessageSidebar.tsx` + `MessageActions.tsx` + `MessageModals.tsx`
+   - `AdminPanel.tsx` → `AdminPanel.tsx` + `AdminUsers.tsx` + `AdminCategories.tsx` + `AdminReports.tsx`
+3. **Extrage funcționalități comune** în:
+   - Hooks: `useMessageActions.ts`, `useAdminActions.ts`
+   - Utils: `messageUtils.ts`, `adminUtils.ts`
+   - Types: `messageTypes.ts`, `adminTypes.ts`
+4. **Păstrează structura clară** și ușor de urmărit
+5. **Fiecare componentă** să aibă un singur scop clar
+
+**Exemplu structură pentru MessageContainer:**
+- `MessageContainer.tsx` - Componenta principală (layout, orchestrator)
+- `MessageSidebar.tsx` - Sidebar cu info utilizator
+- `MessageActions.tsx` - Acțiuni (Respect, Reply, Quote, Admin)
+- `MessageModals.tsx` - Modaluri (Delete, Edit, Gear)
+- `EditInfo.tsx` - Afișare informații editare
+- `types.ts` - Tipuri TypeScript comune
+
+**Beneficii:**
+- Control granular asupra codului
+- Ușor de testat și mentenabil
+- Reutilizare componente
+- Performance mai bună (code splitting)

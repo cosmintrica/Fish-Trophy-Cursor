@@ -118,7 +118,7 @@ export const CompleteGoogleProfileModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" style={{ pointerEvents: 'auto' }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', pointerEvents: 'auto' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 relative">
         <div className="p-6">
           <div className="mb-6">

@@ -207,13 +207,14 @@ export default function ShopInquiryModal({ isOpen, onClose }: ShopInquiryModalPr
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm" 
-      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4"
       style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         willChange: 'opacity',
         transform: 'translateZ(0)',
         backfaceVisibility: 'hidden'
-      }}
+      }} 
+      onClick={onClose}
     >
       <div 
         className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden"

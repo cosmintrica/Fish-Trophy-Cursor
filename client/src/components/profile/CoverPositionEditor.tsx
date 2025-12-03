@@ -66,7 +66,7 @@ export const CoverPositionEditor = ({ coverUrl, onSave, onCancel }: CoverPositio
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">

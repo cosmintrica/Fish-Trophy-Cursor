@@ -101,120 +101,167 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
     }
   }, [forumUser, targetId, targetType]);
 
-  // Adaugă sau actualizează viewer entry în baza de date
-  useEffect(() => {
-    let mounted = true;
+    // Adaugă sau actualizează viewer entry în baza de date
+    useEffect(() => {
+      let mounted = true;
+      let isExecuting = false; // Prevent reentrancy
+      let debounceTimer: NodeJS.Timeout | null = null;
 
-    const addOrUpdateViewer = async () => {
-      try {
-        // Așteaptă până când avem toate datele necesare
-        if (!resolvedTopicId && !resolvedSubcategoryId && !resolvedCategoryId) {
-          return; // Nu avem target-ul încă
+      const addOrUpdateViewer = async () => {
+        // Strict guard against reentrant calls
+        if (isExecuting) {
+          return;
         }
-
-        // Construiește query-ul pentru găsirea entry-ului existent
-        let existingQuery = supabase
-          .from('forum_active_viewers')
-          .select('id');
         
-        if (resolvedTopicId) {
-          existingQuery = existingQuery.eq('topic_id', resolvedTopicId);
-        } else if (resolvedSubcategoryId) {
-          existingQuery = existingQuery.eq('subcategory_id', resolvedSubcategoryId);
-        } else if (resolvedCategoryId) {
-          existingQuery = existingQuery.eq('category_id', resolvedCategoryId);
+        // Debounce pentru a preveni multiple execuții rapide
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
         }
-
-        if (forumUser && forumUser.id) {
-          // Utilizator autentificat
-          
-          const { data: existing, error: existingError } = await existingQuery
-            .eq('user_id', forumUser.id)
-            .maybeSingle();
-          
-          if (existingError && existingError.code !== 'PGRST116') {
-            console.error('Error checking existing authenticated viewer:', existingError);
-          }
-
-          if (existing) {
-            viewerEntryIdRef.current = existing.id;
-            // Actualizează last_seen_at
-            const { error: updateError } = await supabase
-              .from('forum_active_viewers')
-              .update({ last_seen_at: new Date().toISOString() })
-              .eq('id', existing.id);
-            
-            if (updateError) {
-              console.error('Error updating viewer last_seen_at:', updateError);
+        
+        return new Promise<void>((resolve) => {
+          debounceTimer = setTimeout(async () => {
+            if (isExecuting || !mounted) {
+              resolve();
+              return;
             }
-          } else {
-            // Creează nou entry
-            const insertData: any = {
-              user_id: forumUser.id,
-              is_anonymous: false
-            };
             
-            if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
-            if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
-            if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
-
-            const { data: newEntry, error: insertError } = await supabase
-              .from('forum_active_viewers')
-              .insert(insertData)
-              .select('id')
-              .maybeSingle();
-
-            if (insertError) {
-              console.error('Error inserting authenticated viewer:', insertError);
-            } else if (newEntry) {
-              viewerEntryIdRef.current = newEntry.id;
-            }
-          }
-        } else if (sessionIdRef.current) {
-          // Utilizator anonim
-          const { data: existing, error: existingError } = await existingQuery
-            .eq('session_id', sessionIdRef.current)
-            .eq('is_anonymous', true)
-            .maybeSingle();
+            isExecuting = true;
           
-          if (existingError && existingError.code !== 'PGRST116') {
-            console.error('Error checking existing anonymous viewer:', existingError);
-          }
-
-          if (existing) {
-            viewerEntryIdRef.current = existing.id;
-            // Actualizează last_seen_at
-            await supabase
-              .from('forum_active_viewers')
-              .update({ last_seen_at: new Date().toISOString() })
-              .eq('id', existing.id);
-          } else {
-            // Creează nou entry
-            const insertData: any = {
-              session_id: sessionIdRef.current,
-              is_anonymous: true
-            };
-            
-            if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
-            if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
-            if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
-
-            const { data: newEntry, error: insertError } = await supabase
-              .from('forum_active_viewers')
-              .insert(insertData)
-              .select('id')
-              .maybeSingle();
-
-            if (insertError) {
-              console.error('Error inserting viewer:', insertError);
-            } else if (newEntry) {
-              viewerEntryIdRef.current = newEntry.id;
+          try {
+            // Așteaptă până când avem toate datele necesare
+            if (!resolvedTopicId && !resolvedSubcategoryId && !resolvedCategoryId) {
+              resolve();
+              return; // Nu avem target-ul încă
             }
+
+            // Construiește query-ul pentru găsirea entry-ului existent
+            let existingQuery = supabase
+              .from('forum_active_viewers')
+              .select('id');
+            
+            if (resolvedTopicId) {
+              existingQuery = existingQuery.eq('topic_id', resolvedTopicId);
+            } else if (resolvedSubcategoryId) {
+              existingQuery = existingQuery.eq('subcategory_id', resolvedSubcategoryId);
+            } else if (resolvedCategoryId) {
+              existingQuery = existingQuery.eq('category_id', resolvedCategoryId);
+            }
+
+            if (forumUser && forumUser.id) {
+              // Utilizator autentificat - verifică mai întâi dacă există deja un entry
+              const { data: existing, error: existingError } = await existingQuery
+                .eq('user_id', forumUser.id)
+                .maybeSingle();
+              
+              if (existingError && existingError.code !== 'PGRST116') {
+                console.error('Error checking existing authenticated viewer:', existingError);
+              }
+
+              if (existing) {
+                viewerEntryIdRef.current = existing.id;
+                // Actualizează last_seen_at
+                const { error: updateError } = await supabase
+                  .from('forum_active_viewers')
+                  .update({ last_seen_at: new Date().toISOString() })
+                  .eq('id', existing.id);
+                
+                if (updateError) {
+                  console.error('Error updating viewer last_seen_at:', updateError);
+                }
+              } else {
+                // Creează nou entry doar dacă nu există deja
+                const insertData: any = {
+                  user_id: forumUser.id,
+                  is_anonymous: false
+                };
+                
+                if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
+                if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
+                if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
+
+                const { data: newEntry, error: insertError } = await supabase
+                  .from('forum_active_viewers')
+                  .insert(insertData)
+                  .select('id')
+                  .maybeSingle();
+
+                if (insertError) {
+                  // Dacă e eroare de duplicate, încearcă să găsească entry-ul existent
+                  if (insertError.code === '23505') {
+                    const { data: existingAfterError } = await existingQuery
+                      .eq('user_id', forumUser.id)
+                      .maybeSingle();
+                    if (existingAfterError) {
+                      viewerEntryIdRef.current = existingAfterError.id;
+                    }
+                  } else {
+                    console.error('Error inserting authenticated viewer:', insertError);
+                  }
+                } else if (newEntry) {
+                  viewerEntryIdRef.current = newEntry.id;
+                }
+              }
+            } else if (sessionIdRef.current) {
+              // Utilizator anonim
+              const { data: existing, error: existingError } = await existingQuery
+                .eq('session_id', sessionIdRef.current)
+                .eq('is_anonymous', true)
+                .maybeSingle();
+              
+              if (existingError && existingError.code !== 'PGRST116') {
+                console.error('Error checking existing anonymous viewer:', existingError);
+              }
+
+              if (existing) {
+                viewerEntryIdRef.current = existing.id;
+                // Actualizează last_seen_at
+                await supabase
+                  .from('forum_active_viewers')
+                  .update({ last_seen_at: new Date().toISOString() })
+                  .eq('id', existing.id);
+              } else {
+                // Creează nou entry doar dacă nu există deja
+                const insertData: any = {
+                  session_id: sessionIdRef.current,
+                  is_anonymous: true
+                };
+                
+                if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
+                if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
+                if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
+
+                const { data: newEntry, error: insertError } = await supabase
+                  .from('forum_active_viewers')
+                  .insert(insertData)
+                  .select('id')
+                  .maybeSingle();
+
+                if (insertError) {
+                  // Dacă e eroare de duplicate, încearcă să găsească entry-ul existent
+                  if (insertError.code === '23505') {
+                    const { data: existingAfterError } = await existingQuery
+                      .eq('session_id', sessionIdRef.current)
+                      .eq('is_anonymous', true)
+                      .maybeSingle();
+                    if (existingAfterError) {
+                      viewerEntryIdRef.current = existingAfterError.id;
+                    }
+                  } else {
+                    console.error('Error inserting viewer:', insertError);
+                  }
+                } else if (newEntry) {
+                  viewerEntryIdRef.current = newEntry.id;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error adding/updating viewer:', error);
+          } finally {
+            isExecuting = false;
+            resolve();
           }
-        }
-      } catch (error) {
-        console.error('Error adding/updating viewer:', error);
-      }
+        }, 1000); // Debounce 1 secundă (mai mult timp pentru a preveni duplicate calls)
+      });
     };
 
     // Încarcă viewer-ii existenți (cu cleanup automat)
@@ -328,18 +375,17 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
       }
     };
 
-    // Inițializare
-    addOrUpdateViewer().then(() => {
-      loadViewers(); // După ce adăugăm viewer-ul, încărcăm lista
-      
-      // Actualizare imediată a last_seen_at după ce entry-ul e creat (pentru instant feedback)
-      if (viewerEntryIdRef.current) {
-        supabase
-          .from('forum_active_viewers')
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq('id', viewerEntryIdRef.current);
+    // Inițializare cu protecție împotriva multiple calls
+    (async () => {
+      try {
+        await addOrUpdateViewer();
+        if (mounted) {
+          await loadViewers(); // După ce adăugăm viewer-ul, încărcăm lista
+        }
+      } catch (error) {
+        console.error('Error during initialization:', error);
       }
-    });
+    })();
 
     // Actualizare periodică a last_seen_at (mai frecvent pentru real-time)
     updateIntervalRef.current = setInterval(async () => {
@@ -404,8 +450,13 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
 
       // Unsubscribe de la Realtime
       supabase.removeChannel(channel);
+      
+      // Clear debounce timer
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
     };
-  }, [topicId, categoryId, subcategoryId, forumUser, targetId, targetType]);
+  }, [resolvedTopicId, resolvedCategoryId, resolvedSubcategoryId, forumUser]);
 
   // Ranguri de vechime (bazate pe post_count)
   const getSeniorityRank = (rank: string) => {

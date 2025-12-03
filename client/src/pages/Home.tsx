@@ -2202,7 +2202,7 @@ export default function Home() {
 
         {/* Location Request Overlay */}
         {showLocationRequest && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
             <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Navigation className="w-10 h-10 text-white" />
@@ -2233,7 +2233,7 @@ export default function Home() {
 
         {/* Shop Popup Modal */}
         {showShopPopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
             <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
               <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <MapPin className="w-10 h-10 text-white" />

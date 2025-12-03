@@ -116,8 +116,13 @@ export interface ForumSubcategory {
     lastPost?: {
         topicId: string
         topicTitle: string
+        topicSlug?: string
         author: string
         time: string
+        date?: string | null
+        timeOnly?: string
+        postNumber?: number | null
+        subcategorySlug?: string | null
         created_at?: string
         user_name?: string
         topic_title?: string
@@ -179,11 +184,15 @@ export interface ForumPost {
     is_edited: boolean
     edited_at?: string
     edited_by?: string
+    edit_reason?: string // Motivul editării (obligatoriu pentru admin)
+    edited_by_admin?: boolean // True dacă a fost editată de admin
     is_deleted: boolean
     deleted_at?: string
     deleted_by?: string
+    delete_reason?: string // Motivul ștergerii (obligatoriu pentru admin)
     like_count: number
     created_at: string
+    post_number?: number // Numărul postului în topic
 }
 
 export interface ForumReputationLog {
@@ -327,8 +336,13 @@ export interface CategoryWithChildren extends ForumCategory {
     lastPost?: {
         topicId: string
         topicTitle: string
+        topicSlug?: string
         author: string
         time: string
+        date?: string | null
+        timeOnly?: string
+        postNumber?: number | null
+        subcategorySlug?: string | null
         created_at?: string
         user_name?: string
         topic_title?: string

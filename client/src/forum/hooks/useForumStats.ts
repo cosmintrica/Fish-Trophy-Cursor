@@ -18,13 +18,42 @@ export interface ForumStats {
   total_reputation_given: number
 }
 
+// Cache cu sessionStorage pentru forum stats
+const STATS_CACHE_KEY = 'forum_stats_cache';
+const STATS_CACHE_DURATION = 2 * 60 * 1000; // 2 minute
+
+function getCachedStats(): ForumStats | null {
+  try {
+    const cached = sessionStorage.getItem(STATS_CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < STATS_CACHE_DURATION) {
+        return data;
+      }
+    }
+  } catch (e) {
+    // Ignoră erorile de parsing
+  }
+  return null;
+}
+
+function setCachedStats(data: ForumStats) {
+  try {
+    sessionStorage.setItem(STATS_CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    // Ignoră erorile de storage
+  }
+}
+
 export function useForumStats() {
-  const [stats, setStats] = useState<ForumStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Încarcă instant din cache dacă există
+  const [stats, setStats] = useState<ForumStats | null>(() => getCachedStats());
   const [error, setError] = useState<Error | null>(null)
 
   const loadStats = useCallback(async () => {
-    setLoading(true)
     setError(null)
 
     try {
@@ -69,25 +98,35 @@ export function useForumStats() {
           total_reputation_given: 0
         }
 
-        setStats(manualStats)
+        setStats(manualStats);
+        setCachedStats(manualStats);
         return
       }
 
-      setStats(data as ForumStats)
+      const statsData = data as ForumStats;
+      setStats(statsData);
+      setCachedStats(statsData);
     } catch (err) {
       setError(err as Error)
-    } finally {
-      setLoading(false)
+      // Dacă e eroare dar avem cache, păstrăm cache-ul
+      const cached = getCachedStats();
+      if (cached) {
+        setStats(cached);
+      }
     }
   }, [])
 
   useEffect(() => {
-    loadStats()
+    // Încarcă doar dacă nu avem cache valid
+    const cached = getCachedStats();
+    if (!cached) {
+      loadStats();
+    }
   }, [loadStats])
 
   return {
     stats,
-    loading,
+    loading: false, // Nu mai folosim loading
     error,
     refetch: loadStats
   }

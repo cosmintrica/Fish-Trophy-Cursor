@@ -42,14 +42,14 @@ export default function ForumHome() {
   };
 
   const handleSubcategoryClick = (subcategoryId: string) => {
-    // subcategoryId este de fapt slug-ul acum
-    navigate(`/forum/category/${subcategoryId}`);
+    // subcategoryId este de fapt slug-ul acum - URL clean
+    navigate(`/forum/${subcategoryId}`);
   };
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={handleLogin} onLogout={handleLogout} showWelcomeBanner={true}>
-      {/* Main Content */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+      {/* Main Content - Optimizat pentru mobil */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
 
 
         {/* Mobile Optimized Forum Categories */}
@@ -57,11 +57,6 @@ export default function ForumHome() {
 
         {/* Auto-Seeder for empty database */}
         <ForumSeeder />
-
-        {/* Active Viewers pe Forum */}
-        <div style={{ marginTop: '1.5rem' }}>
-          <ActiveViewers categoryId={undefined} subcategoryId={undefined} topicId={undefined} />
-        </div>
 
         {/* Activitate și Statistici Forum */}
         <div style={{
@@ -121,7 +116,7 @@ export default function ForumHome() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
               {/* Utilizatori Online */}
               <div>
                 <h4 style={{
@@ -142,9 +137,7 @@ export default function ForumHome() {
                   Utilizatori Online ({forumStats.onlineUsers})
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {onlineUsersLoading ? (
-                    <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Se încarcă utilizatorii online...</div>
-                  ) : onlineUsers.length === 0 ? (
+                  {onlineUsers.length === 0 ? (
                     <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
                   ) : (
                     onlineUsers.map((user) => (
@@ -162,12 +155,16 @@ export default function ForumHome() {
                           transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dbeafe';
-                          e.currentTarget.style.borderColor = '#3b82f6';
+                          if (e.currentTarget) {
+                            e.currentTarget.style.backgroundColor = '#dbeafe';
+                            e.currentTarget.style.borderColor = '#3b82f6';
+                          }
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f0f9ff';
-                          e.currentTarget.style.borderColor = '#bfdbfe';
+                          if (e.currentTarget) {
+                            e.currentTarget.style.backgroundColor = '#f0f9ff';
+                            e.currentTarget.style.borderColor = '#bfdbfe';
+                          }
                         }}
                       >
                         <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>

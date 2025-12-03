@@ -39,22 +39,24 @@ export default function CreateTopicModal({
         setResolvedSubcategoryId(null);
         return;
       }
-      
+
       // Verifică dacă e UUID sau slug
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
-      
+
       if (isUUID) {
         setResolvedSubcategoryId(categoryId);
       } else {
+        // Folosește ilike pentru case-insensitive match
         const { data } = await supabase
           .from('forum_subcategories')
           .select('id')
-          .eq('slug', categoryId)
+          .ilike('slug', categoryId)
           .single();
+
         setResolvedSubcategoryId(data?.id || null);
       }
     };
-    
+
     resolveSubcategoryId();
   }, [categoryId]);
 

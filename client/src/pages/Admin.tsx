@@ -2069,7 +2069,7 @@ const Admin: React.FC = () => {
 
       {/* Shop Inquiry Details Modal */}
       {isInquiryModalOpen && selectedInquiry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -2162,7 +2162,7 @@ const Admin: React.FC = () => {
       {isUserModalOpen && selectedUser && (
         <div className="modal-overlay">
           <div className="modal-content w-full max-w-2xl">
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+            <Card className="bg-white border-0 shadow-2xl">
               <CardContent className="p-0">
                 {/* Header */}
                 <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-lg">

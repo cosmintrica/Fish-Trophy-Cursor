@@ -130,11 +130,9 @@ const RecordDetailsModal = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
       style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         opacity: isOpen ? 1 : 0,
         transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
         willChange: 'opacity'
@@ -145,7 +143,7 @@ const RecordDetailsModal = ({
         className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl h-full flex flex-col">
+        <Card className="bg-white border-0 shadow-2xl h-full flex flex-col">
           <CardContent className="p-0 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 text-white rounded-t-lg">

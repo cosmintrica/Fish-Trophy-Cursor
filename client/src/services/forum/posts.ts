@@ -22,7 +22,7 @@ export async function getPosts(
     topicId: string,
     page = 1,
     pageSize = 20
-): Promise<ApiResponse<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string }>>> {
+): Promise<ApiResponse<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string; author_respect?: number; author_rank?: string }>>> {
     try {
         const offset = (page - 1) * pageSize
 
@@ -38,7 +38,7 @@ export async function getPosts(
                 .ilike('slug', topicId)
                 .eq('is_deleted', false)
                 .maybeSingle();
-            
+
             if (!topicData) {
                 // Try exact match
                 const { data: topicDataExact } = await supabase
@@ -47,7 +47,7 @@ export async function getPosts(
                     .eq('slug', topicId)
                     .eq('is_deleted', false)
                     .maybeSingle();
-                
+
                 if (topicDataExact) {
                     actualTopicId = topicDataExact.id;
                 } else {
@@ -60,10 +60,7 @@ export async function getPosts(
 
         const { data, error, count } = await supabase
             .from('forum_posts')
-            .select(`
-        *,
-        author:forum_users!user_id(username, avatar_url, rank, reputation_power)
-      `, { count: 'exact' })
+            .select('*', { count: 'exact' })
             .eq('topic_id', actualTopicId)
             .eq('is_deleted', false)
             .order('created_at', { ascending: true })
@@ -73,36 +70,61 @@ export async function getPosts(
             return { error: { message: error.message, code: error.code } }
         }
 
-        // Map posts with author info, with fallback to profiles
+        // Map posts with author info REAL - din profiles și forum_users
         const postsWithAuthor = await Promise.all((data || []).map(async (p) => {
-            let username = p.author?.username;
-            let avatar = p.author?.avatar_url;
-            
-            // Fallback: dacă nu găsește username din forum_users, încearcă din profiles (folosește display_name pentru afișare)
-            if (!username && p.user_id) {
+            let username = 'Unknown';
+            let avatar = null;
+            let respect = 0;
+            let rank = 'pescar';
+            let editedByUsername: string | undefined = undefined;
+
+            if (p.user_id) {
+                // Obține date din profiles (photo_url, display_name)
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('display_name, username, email')
+                    .select('display_name, username, email, photo_url')
                     .eq('id', p.user_id)
                     .maybeSingle();
-                
-                if (profile?.display_name) {
-                    username = profile.display_name;
-                } else if (profile?.username) {
-                    username = profile.username;
-                } else if (profile?.email) {
-                    username = profile.email.split('@')[0];
-                } else {
-                    username = 'Unknown';
+
+                if (profile) {
+                    username = profile.display_name || profile.username || profile.email?.split('@')[0] || 'Unknown';
+                    avatar = profile.photo_url || null;
                 }
-            } else if (!username) {
-                username = 'Unknown';
+
+                // Obține date din forum_users (respect, rank)
+                const { data: forumUser } = await supabase
+                    .from('forum_users')
+                    .select('reputation_points, rank')
+                    .eq('user_id', p.user_id)
+                    .maybeSingle();
+
+                if (forumUser) {
+                    respect = forumUser.reputation_points || 0;
+                    rank = forumUser.rank || 'pescar';
+                }
             }
-            
+
+            // Obține username-ul pentru edited_by dacă există
+            if (p.edited_by) {
+                const { data: editedByProfile } = await supabase
+                    .from('profiles')
+                    .select('display_name, username, email')
+                    .eq('id', p.edited_by)
+                    .maybeSingle();
+
+                if (editedByProfile) {
+                    editedByUsername = editedByProfile.display_name || editedByProfile.username || editedByProfile.email?.split('@')[0] || 'Unknown';
+                }
+            }
+
             return {
                 ...p,
                 author_username: username,
-                author_avatar: avatar || null
+                author_avatar: avatar,
+                author_respect: respect,
+                author_rank: rank,
+                post_number: p.post_number || null, // Include post_number din database
+                edited_by_username: editedByUsername // Numele utilizatorului care a editat
             };
         }))
 
@@ -177,7 +199,7 @@ export async function createPost(params: PostCreateParams): Promise<ApiResponse<
                 .ilike('slug', params.topic_id)
                 .eq('is_deleted', false)
                 .maybeSingle();
-            
+
             if (!topicData) {
                 // Try exact match
                 const { data: topicDataExact } = await supabase
@@ -186,7 +208,7 @@ export async function createPost(params: PostCreateParams): Promise<ApiResponse<
                     .eq('slug', params.topic_id)
                     .eq('is_deleted', false)
                     .maybeSingle();
-                
+
                 if (topicDataExact) {
                     actualTopicId = topicDataExact.id;
                 } else {
@@ -224,6 +246,13 @@ export async function createPost(params: PostCreateParams): Promise<ApiResponse<
             return { error: { message: postError?.message || 'Failed to create post', code: 'CREATE_FAILED' } }
         }
 
+        // ✅ Invalidează cache-ul categoriilor pentru a actualiza homepage-ul
+        try {
+            sessionStorage.removeItem('forum_categories_cache_v2');
+        } catch (e) {
+            // Ignoră eroarea de sessionStorage
+        }
+
         return { data: post }
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
@@ -235,16 +264,32 @@ export async function createPost(params: PostCreateParams): Promise<ApiResponse<
  */
 export async function updatePost(
     postId: string,
-    content: string
+    content: string,
+    editReason?: string
 ): Promise<ApiResponse<ForumPost>> {
     try {
+        // Get current user for edited_by
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            return { error: { message: 'Authentication required', code: 'AUTH_REQUIRED' } }
+        }
+
+        const updateData: any = {
+            content,
+            is_edited: true,
+            edited_at: new Date().toISOString(),
+            edited_by: user.id
+        }
+
+        // Add edit reason if provided (mandatory for admin edits)
+        if (editReason) {
+            updateData.edit_reason = editReason;
+            updateData.edited_by_admin = true; // Dacă există motiv, înseamnă că e editare de admin
+        }
+
         const { data, error } = await supabase
             .from('forum_posts')
-            .update({
-                content,
-                edit_count: supabase.rpc('increment', { row_id: postId }),
-                last_edited_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', postId)
             .select()
             .single()
@@ -260,13 +305,30 @@ export async function updatePost(
 }
 
 /**
- * Delete post (soft delete)
+ * Delete post (soft delete with reason)
  */
-export async function deletePost(postId: string): Promise<ApiResponse<void>> {
+export async function deletePost(postId: string, reason?: string): Promise<ApiResponse<void>> {
     try {
+        // Get current user for deleted_by
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            return { error: { message: 'Authentication required', code: 'AUTH_REQUIRED' } }
+        }
+
+        const updateData: any = {
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: user.id
+        }
+
+        // Add reason if provided (mandatory for admin)
+        if (reason) {
+            updateData.delete_reason = reason
+        }
+
         const { error } = await supabase
             .from('forum_posts')
-            .update({ is_deleted: true })
+            .update(updateData)
             .eq('id', postId)
 
         if (error) {

@@ -188,7 +188,40 @@
 }
 
 /* Responsive design */
+/* Optimizări mobile pentru forum */
 @media (max-width: 768px) {
+  .forum-container {
+    padding: 10px;
+  }
+  
+  /* Previne overflow orizontal */
+  * {
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Topic items pe mobil - layout vertical */
+  .topic-item {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  /* Grid-uri responsive */
+  [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Topic items - grid pe desktop, flex pe mobil */
+@media (min-width: 640px) {
+  .topic-item {
+    display: grid !important;
+    grid-template-columns: 1fr 80px 80px 180px !important;
+    align-items: center !important;
+  }
+}
+
+@media (max-width: 640px) {
   .forum-container {
     padding: 10px;
   }

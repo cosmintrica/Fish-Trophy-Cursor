@@ -10,11 +10,9 @@ export default function RecentPosts() {
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadRecentPosts = async () => {
-      setLoading(true);
       try {
         // forum_posts.user_id references auth.users, not forum_users
         // Need to join through forum_users separately
@@ -43,16 +41,27 @@ export default function RecentPosts() {
 
         const usersMap = new Map((usersData || []).map(u => [u.user_id, u]));
 
-        const data = (postsData || []).map(post => ({
-          ...post,
-          author: usersMap.get(post.user_id) || { username: 'Unknown', avatar_url: null }
-        }));
+        // Get subcategory slugs for topics
+        const subcategoryIds = [...new Set((postsData || []).map(p => p.topic?.subcategory_id).filter(Boolean))];
+        const { data: subcategoriesData } = await supabase
+          .from('forum_subcategories')
+          .select('id, slug')
+          .in('id', subcategoryIds);
+
+        const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+
+        const data = (postsData || []).map(post => {
+          const subcategory = post.topic?.subcategory_id ? subcategoriesMap.get(post.topic.subcategory_id) : null;
+          return {
+            ...post,
+            author: usersMap.get(post.user_id) || { username: 'Unknown', avatar_url: null },
+            subcategorySlug: subcategory?.slug || null
+          };
+        });
 
         setPosts(data || []);
       } catch (error) {
         console.error('Error loading recent posts:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -66,12 +75,7 @@ export default function RecentPosts() {
           📝 Postări Recente
         </h1>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎣</div>
-            <div>Se încarcă postările...</div>
-          </div>
-        ) : posts.length === 0 ? (
+        {posts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '0.5rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</div>
             <div style={{ color: theme.textSecondary }}>Nu există postări recente</div>
@@ -123,7 +127,9 @@ export default function RecentPosts() {
                     </div>
                     {post.topic && (
                       <Link
-                        to={`/forum/topic/${post.topic.slug || post.topic.id}`}
+                        to={post.subcategorySlug && post.topic.slug 
+                          ? `/forum/${post.subcategorySlug}/${post.topic.slug}`
+                          : `/forum/topic/${post.topic.slug || post.topic.id}`}
                         style={{
                           color: theme.primary,
                           textDecoration: 'none',

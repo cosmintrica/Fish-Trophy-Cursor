@@ -44,13 +44,110 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                     .eq('is_active', true)
                     .order('sort_order', { ascending: true })
 
-                // Get subcategories (direct children) - include slug
-                const { data: subcategories } = await supabase
+                // Get subcategories (direct children) - include slug și calculează statistici
+                const { data: subcategoriesRaw } = await supabase
                     .from('forum_subcategories')
                     .select('id, name, description, icon, sort_order, slug')
                     .eq('category_id', category.id)
                     .eq('is_active', true)
                     .order('sort_order', { ascending: true })
+                
+                // Calculează statistici pentru fiecare subcategorie
+                const subcategories = await Promise.all(
+                    (subcategoriesRaw || []).map(async (subcat) => {
+                        // Count topics
+                        const { count: topicCount } = await supabase
+                            .from('forum_topics')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('subcategory_id', subcat.id)
+                            .eq('is_deleted', false);
+                        
+                        // Count posts
+                        let postCount = 0;
+                        if (topicCount && topicCount > 0) {
+                            const { data: topicIds } = await supabase
+                                .from('forum_topics')
+                                .select('id')
+                                .eq('subcategory_id', subcat.id)
+                                .eq('is_deleted', false);
+                            
+                            if (topicIds && topicIds.length > 0) {
+                                const { count: postsCount } = await supabase
+                                    .from('forum_posts')
+                                    .select('*', { count: 'exact', head: true })
+                                    .in('topic_id', topicIds.map(t => t.id))
+                                    .eq('is_deleted', false);
+                                postCount = postsCount || 0;
+                            }
+                        }
+                        
+                        // Get last post
+                        let lastPost = null;
+                        if (topicCount && topicCount > 0) {
+                            const { data: latestPost } = await supabase
+                                .from('forum_posts')
+                                .select(`
+                                    id,
+                                    created_at,
+                                    topic_id,
+                                    user_id,
+                                    post_number,
+                                    forum_topics!inner(title, subcategory_id, slug)
+                                `)
+                                .eq('forum_topics.subcategory_id', subcat.id)
+                                .eq('is_deleted', false)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            
+                            if (latestPost && latestPost.user_id) {
+                                // Get author info din profiles
+                                const { data: profile } = await supabase
+                                    .from('profiles')
+                                    .select('display_name, username')
+                                    .eq('id', latestPost.user_id)
+                                    .maybeSingle();
+                                
+                                const topicData = latestPost.forum_topics as any;
+                                const topicTitle = topicData?.title || 'Unknown';
+                                const topicSlug = topicData?.slug || null;
+                                const authorName = profile?.display_name || profile?.username || 'Unknown';
+                                
+                                // Format time - smart: dacă e azi → doar ora
+                                const postDate = new Date(latestPost.created_at);
+                                const now = new Date();
+                                const isToday = postDate.getDate() === now.getDate() &&
+                                               postDate.getMonth() === now.getMonth() &&
+                                               postDate.getFullYear() === now.getFullYear();
+                                
+                                const hours = postDate.getHours().toString().padStart(2, '0');
+                                const minutes = postDate.getMinutes().toString().padStart(2, '0');
+                                const day = postDate.getDate().toString().padStart(2, '0');
+                                const month = (postDate.getMonth() + 1).toString().padStart(2, '0');
+                                const year = postDate.getFullYear();
+                                
+                                lastPost = {
+                                    topicId: latestPost.topic_id,
+                                    topicTitle,
+                                    topicSlug,
+                                    author: authorName,
+                                    time: isToday ? `${hours}:${minutes}` : `${day}.${month}.${year} ${hours}:${minutes}`,
+                                    date: isToday ? null : `${day}.${month}.${year}`,
+                                    timeOnly: `${hours}:${minutes}`,
+                                    postNumber: latestPost.post_number || null,
+                                    subcategorySlug: subcat.slug || null
+                                };
+                            }
+                        }
+                        
+                        return {
+                            ...subcat,
+                            topicCount: topicCount || 0,
+                            postCount: postCount || 0,
+                            lastPost
+                        };
+                    })
+                )
 
                 // Calculate total topics and posts for this category
                 // Get all subcategory IDs (including from subforums)
@@ -111,12 +208,63 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                     }
                 }
 
+                // Get last post pentru toată categoria
+                let categoryLastPost = null;
+                if (subcategoryIds.length > 0 && totalTopics > 0) {
+                    const { data: latestPost } = await supabase
+                        .from('forum_posts')
+                        .select(`
+                            id,
+                            created_at,
+                            user_id,
+                            topic_id,
+                            forum_topics!inner(title, subcategory_id)
+                        `)
+                        .in('forum_topics.subcategory_id', subcategoryIds)
+                        .eq('is_deleted', false)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    
+                    if (latestPost) {
+                        // Get author info
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('display_name, username')
+                            .eq('id', latestPost.user_id)
+                            .maybeSingle();
+                        
+                        const topicTitle = (latestPost.forum_topics as any)?.title || 'Unknown';
+                        const authorName = profile?.display_name || profile?.username || 'Unknown';
+                        
+                        // Format time - smart
+                        const postDate = new Date(latestPost.created_at);
+                        const now = new Date();
+                        const isToday = postDate.getDate() === now.getDate() &&
+                                       postDate.getMonth() === now.getMonth() &&
+                                       postDate.getFullYear() === now.getFullYear();
+                        
+                        const hours = postDate.getHours().toString().padStart(2, '0');
+                        const minutes = postDate.getMinutes().toString().padStart(2, '0');
+                        const time = isToday 
+                            ? `${hours}:${minutes}`
+                            : `${postDate.getDate().toString().padStart(2, '0')}.${(postDate.getMonth() + 1).toString().padStart(2, '0')}.${postDate.getFullYear()} ${hours}:${minutes}`;
+                        
+                        categoryLastPost = {
+                            topicTitle,
+                            author: authorName,
+                            time
+                        };
+                    }
+                }
+
                 return {
                     ...category,
                     subforums: subforums || [],
                     subcategories: subcategories || [],
                     totalTopics: totalTopics,
-                    totalPosts: totalPosts
+                    totalPosts: totalPosts,
+                    lastPost: categoryLastPost
                 }
             })
         )

@@ -5,6 +5,23 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
+    
+    <!-- Prevent dark mode flash - set theme before render -->
+    <script>
+      (function() {
+        const theme = localStorage.getItem('fish-trophy-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        if (document.documentElement && document.body) {
+          if (theme === 'dark') {
+            document.documentElement.style.backgroundColor = '#0f172a';
+            document.body.style.backgroundColor = '#0f172a';
+          } else {
+            document.documentElement.style.backgroundColor = '#f8fafc';
+            document.body.style.backgroundColor = '#f8fafc';
+          }
+        }
+      })();
+    </script>
 
     <!-- Google Fonts - Montserrat (optimizat) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -347,7 +347,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
   const cityOptions = cities.map(city => ({ value: city.id, label: city.name }));
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
       <div className={`bg-white rounded-xl shadow-2xl p-4 sm:p-6 transition-all duration-300 w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto ${isTransitioning ? 'opacity-0 scale-95 transform -translate-y-4' : 'opacity-100 scale-100 transform translate-y-0'
         }`}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">

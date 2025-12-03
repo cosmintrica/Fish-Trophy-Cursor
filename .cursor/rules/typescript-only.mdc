@@ -1,0 +1,46 @@
+---
+alwaysApply: true
+---
+
+# TypeScript Only Rule
+
+**IMPORTANT**: Folosește DOAR TypeScript pentru toate fișierele noi create.
+
+## Reguli stricte:
+
+1. **Fișiere noi** - TOATE trebuie să fie `.ts` sau `.tsx`:
+   - ❌ NU crea fișiere `.js` sau `.mjs` noi
+   - ✅ DOAR `.ts` sau `.tsx` pentru cod nou
+   - ✅ DOAR `.ts` pentru scripts Node.js noi
+   - ✅ DOAR `.ts` pentru Netlify Functions noi
+
+2. **Excepții permise** (doar pentru fișiere existente):
+   - Config files (`tailwind.config.js`, `postcss.config.js`) - pot rămâne JS
+   - Service Worker (`sw.js`) - poate rămâne JS dacă există deja
+   - Scripts existente în `docs/` sau `backup/` - pot rămâne JS
+
+3. **Când editezi fișiere existente**:
+   - Dacă un fișier `.js` există deja, poți să-l editezi (nu-l converti automat)
+   - Dacă creezi un fișier NOU similar, folosește `.ts` în loc de `.js`
+
+4. **Conversie la TypeScript pentru probleme**:
+   - Dacă un fișier `.js` sau `.mjs` existent cauzează probleme **medii-mari** (bugs, erori de tip, dificultăți de debugging), convertește-l la TypeScript
+   - Probleme medii-mari = erori de runtime, type errors, dificultăți de mentenanță, refactoring complex
+   - Probleme mici = lasă-l JS, doar fixează bug-ul
+   - Înainte de conversie, asigură-te că:
+     - Ai înțeles complet funcționalitatea
+     - Ai testat că funcționează înainte
+     - Ai un plan de conversie sigur (pas cu pas)
+     - Actualizezi toate import-urile și referințele
+
+5. **Netlify Functions**:
+   - Fișiere noi → `.ts` (nu `.mjs`)
+   - Folosește `@netlify/functions` types
+   - Configura build-ul pentru TypeScript dacă e necesar
+
+## Scop:
+
+Asigură că proiectul devine gradual 100% TypeScript prin:
+- Toate fișierele noi sunt TypeScript
+- Fișierele existente JS rămân funcționale
+- Fără risc de a strica build-ul sau funcționalitatea existentă

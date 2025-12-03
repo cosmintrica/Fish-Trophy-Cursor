@@ -30,6 +30,7 @@ export default function ForumSeeder() {
                 setTimeout(() => window.location.reload(), 2000);
             } else {
                 setStatus('idle'); // Data exists, do nothing
+                setMessage(''); // Nu afișa mesaj dacă datele există
             }
         } catch (err: any) {
             console.error('Seeding error:', err);
@@ -117,28 +118,6 @@ export default function ForumSeeder() {
         if (error) throw error;
     };
 
-    if (status === 'idle') return null;
-
-    return (
-        <div style={{
-            position: 'fixed',
-            bottom: '1rem',
-            right: '1rem',
-            backgroundColor: status === 'error' ? '#fee2e2' : '#dbeafe',
-            color: status === 'error' ? '#991b1b' : '#1e40af',
-            padding: '1rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            zIndex: 100,
-            maxWidth: '300px'
-        }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {status === 'checking' && '🔍 Verificare...'}
-                {status === 'seeding' && '🌱 Populare...'}
-                {status === 'done' && '✅ Gata!'}
-                {status === 'error' && '❌ Eroare'}
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>{message}</div>
-        </div>
-    );
+    // Nu afișa niciodată UI pentru seeder - rulează în background
+    return null;
 }
