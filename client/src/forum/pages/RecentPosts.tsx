@@ -42,7 +42,11 @@ export default function RecentPosts() {
         const usersMap = new Map((usersData || []).map(u => [u.user_id, u]));
 
         // Get subcategory slugs for topics
-        const subcategoryIds = [...new Set((postsData || []).map(p => p.topic?.subcategory_id).filter(Boolean))];
+        // Supabase returns topic as an array when using joins, so we need to handle it
+        const subcategoryIds = [...new Set((postsData || []).map(p => {
+          const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
+          return topic?.subcategory_id;
+        }).filter(Boolean))];
         const { data: subcategoriesData } = await supabase
           .from('forum_subcategories')
           .select('id, slug')
@@ -51,9 +55,11 @@ export default function RecentPosts() {
         const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
 
         const data = (postsData || []).map(post => {
-          const subcategory = post.topic?.subcategory_id ? subcategoriesMap.get(post.topic.subcategory_id) : null;
+          const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
+          const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
           return {
             ...post,
+            topic: topic, // Use the normalized topic (single object, not array)
             author: usersMap.get(post.user_id) || { username: 'Unknown', avatar_url: null },
             subcategorySlug: subcategory?.slug || null
           };
