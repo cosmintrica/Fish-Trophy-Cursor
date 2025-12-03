@@ -8,20 +8,35 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
+import { TopicListSkeleton } from '@/components/skeletons';
 
 export default function CategoryPage() {
-  // Acceptă atât /category/:id (legacy) cât și /:subcategorySlug (clean)
-  const { id: categoryId, subcategorySlug } = useParams<{ id?: string; subcategorySlug?: string }>();
+  // Acceptă:
+  // - /:categorySlug (categorie)
+  // - /:categorySlug/:subcategorySlug (subcategorie)
+  // - /category/:id (legacy)
+  // - /:subcategorySlug (legacy - pentru compatibilitate)
+  const { id: categoryIdFromParams, categorySlug, subcategorySlug } = useParams<{ 
+    id?: string; 
+    categorySlug?: string; 
+    subcategorySlug?: string;
+  }>();
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Folosește subcategorySlug dacă există, altfel categoryId (legacy)
-  const slugToUse = subcategorySlug || categoryId;
+  // Determină dacă e categorie sau subcategorie
+  // Dacă avem categorySlug și subcategorySlug → subcategorie
+  // Dacă avem doar categorySlug → categorie
+  // Dacă avem doar subcategorySlug (legacy) → subcategorie
+  const isSubcategory = !!(subcategorySlug || (categorySlug && !subcategorySlug && categoryIdFromParams === undefined));
+  const slugToUse = subcategorySlug || categorySlug || categoryIdFromParams;
 
   // Obține ID-ul subcategoriei din slug
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     const getSubcategoryId = async () => {
@@ -82,6 +97,10 @@ export default function CategoryPage() {
   const [subcategoryDescription, setSubcategoryDescription] = useState('');
   const [parentCategoryName, setParentCategoryName] = useState('');
   const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
+  const [parentCategorySlug, setParentCategorySlug] = useState<string | null>(categorySlug || null);
+  const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug || null);
+  const [categorySubcategories, setCategorySubcategories] = useState<any[]>([]);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -109,7 +128,15 @@ export default function CategoryPage() {
   // Load subcategory by slug și categoria părinte
   useEffect(() => {
     const loadHierarchy = async () => {
-      if (!slugToUse || slugToUse.trim() === '') {
+      // Dacă e doar categorie (categorySlug && !subcategorySlug), nu căuta subcategorii aici
+      if (categorySlug && !subcategorySlug) {
+        return; // Va fi gestionat în alt useEffect
+      }
+
+      // Dacă avem categorySlug și subcategorySlug, folosim subcategorySlug
+      const slugToSearch = subcategorySlug || slugToUse;
+
+      if (!slugToSearch || slugToSearch.trim() === '') {
         setSubcategoryName('');
         setSubcategoryDescription('');
         setParentCategoryName('');
@@ -121,7 +148,7 @@ export default function CategoryPage() {
         const { data: subcategory, error: subError } = await supabase
           .from('forum_subcategories')
           .select('id, name, description, slug, category_id')
-          .eq('slug', slugToUse)
+          .eq('slug', slugToSearch)
           .eq('is_active', true)
           .maybeSingle();
 
@@ -132,6 +159,7 @@ export default function CategoryPage() {
         if (subcategory) {
           setSubcategoryName(subcategory.name);
           setSubcategoryDescription(subcategory.description || '');
+          setResolvedSubcategorySlug(subcategory.slug || null);
 
           // Obține categoria părinte
           if (subcategory.category_id) {
@@ -144,6 +172,7 @@ export default function CategoryPage() {
 
             if (parentCategory) {
               setParentCategoryName(parentCategory.name);
+              setParentCategorySlug(parentCategory.slug || null);
             }
           }
           return;
@@ -153,7 +182,7 @@ export default function CategoryPage() {
         const { data: subcategoryIlike, error: ilikeError } = await supabase
           .from('forum_subcategories')
           .select('id, name, description, slug, category_id')
-          .ilike('slug', slugToUse)
+          .ilike('slug', slugToSearch)
           .eq('is_active', true)
           .maybeSingle();
 
@@ -164,6 +193,7 @@ export default function CategoryPage() {
         if (subcategoryIlike) {
           setSubcategoryName(subcategoryIlike.name);
           setSubcategoryDescription(subcategoryIlike.description || '');
+          setResolvedSubcategorySlug(subcategoryIlike.slug || null);
 
           // Obține categoria părinte
           if (subcategoryIlike.category_id) {
@@ -176,12 +206,13 @@ export default function CategoryPage() {
 
             if (parentCategory) {
               setParentCategoryName(parentCategory.name);
+              setParentCategorySlug(parentCategory.slug || null);
             }
           }
           return;
         }
 
-        // Nu s-a găsit nimic
+        // Nu s-a găsit nimic (nu e subcategorie)
         setSubcategoryName('');
         setSubcategoryDescription('');
         setParentCategoryName('');
@@ -196,13 +227,134 @@ export default function CategoryPage() {
     };
 
     loadHierarchy();
-  }, [slugToUse]);
+  }, [slugToUse, categorySlug, subcategorySlug]);
+
+  // Detect and redirect if categorySlug is actually a subcategory
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      // Doar dacă avem categorySlug dar nu subcategorySlug
+      if (!categorySlug || subcategorySlug) {
+        return;
+      }
+
+      try {
+        // Verifică mai întâi dacă este categorie
+        const { data: category } = await supabase
+          .from('forum_categories')
+          .select('id, slug')
+          .eq('slug', categorySlug)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        // Dacă nu este categorie, verifică dacă este subcategorie
+        if (!category) {
+          const { data: subcategory } = await supabase
+            .from('forum_subcategories')
+            .select('id, slug, category_id')
+            .eq('slug', categorySlug)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (subcategory && subcategory.category_id) {
+            // Este subcategorie - găsește categoria părinte
+            const { data: parentCategory } = await supabase
+              .from('forum_categories')
+              .select('slug')
+              .eq('id', subcategory.category_id)
+              .maybeSingle();
+
+            if (parentCategory?.slug && subcategory.slug) {
+              // Redirecționează la URL-ul corect: /forum/categorySlug/subcategorySlug
+              navigate(`/forum/${parentCategory.slug}/${subcategory.slug}`, { replace: true });
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking redirect:', error);
+      }
+    };
+
+    checkAndRedirect();
+  }, [categorySlug, subcategorySlug, navigate]);
+
+  // Load category and subcategories when it's just a category (not subcategory)
+  useEffect(() => {
+    const loadCategory = async () => {
+      if (!categorySlug || subcategorySlug) {
+        // Nu e doar categorie, sau nu avem categorySlug
+        return;
+      }
+
+      try {
+        setLoadingSubcategories(true);
+        
+        // Caută categoria după slug
+        const { data: category, error: catError } = await supabase
+          .from('forum_categories')
+          .select('id, name, description, slug')
+          .eq('slug', categorySlug)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (category) {
+          setCategoryName(category.name);
+          setCategoryId(category.id);
+          setSubcategoryName('');
+          setSubcategoryDescription('');
+          setParentCategoryName('');
+          setParentCategoryId(null);
+          
+          // Încarcă subcategoriile pentru această categorie
+          const { data: subcategories, error: subcatsError } = await supabase
+            .from('forum_subcategories')
+            .select('id, name, description, slug, icon, sort_order')
+            .eq('category_id', category.id)
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+          
+          if (!subcatsError && subcategories) {
+            setCategorySubcategories(subcategories || []);
+          } else {
+            setCategorySubcategories([]);
+          }
+        } else {
+          setCategoryName('');
+          setCategoryId(null);
+          setCategorySubcategories([]);
+        }
+      } catch (error) {
+        console.error('Error loading category:', error);
+        setCategorySubcategories([]);
+      } finally {
+        setLoadingSubcategories(false);
+      }
+    };
+
+    loadCategory();
+  }, [categorySlug, subcategorySlug]);
 
   const handleTopicClick = (topic: { id: string; slug?: string }) => {
     const topicSlug = topic.slug || topic.id;
-    const subcategorySlugToUse = slugToUse || 'unknown';
-    // URL clean: /forum/subcategorySlug/topicSlug
-    navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
+    // URL clean: /forum/categorySlug/subcategorySlug/topicSlug
+    if (categorySlug && subcategorySlug) {
+      // Format complet: category/subcategory/topic
+      navigate(`/forum/${categorySlug}/${subcategorySlug}/${topicSlug}`);
+    } else if (subcategorySlug) {
+      // Legacy: doar subcategorySlug (fără category)
+      navigate(`/forum/${subcategorySlug}/${topicSlug}`);
+    } else if (parentCategorySlug && resolvedSubcategorySlug) {
+      // Dacă avem parentCategorySlug și subcategorySlug din state
+      navigate(`/forum/${parentCategorySlug}/${resolvedSubcategorySlug}/${topicSlug}`);
+    } else {
+      // Fallback - încearcă să găsească slug-urile
+      const subcategorySlugToUse = resolvedSubcategorySlug || slugToUse || 'unknown';
+      if (parentCategorySlug) {
+        navigate(`/forum/${parentCategorySlug}/${subcategorySlugToUse}/${topicSlug}`);
+      } else {
+        navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
+      }
+    }
   };
 
   const handleTopicCreated = () => {
@@ -291,29 +443,58 @@ export default function CategoryPage() {
           paddingBottom: '0.25rem'
         }}>
           <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
-          {parentCategoryName && parentCategoryId && (
+          {/* Dacă avem categorySlug și subcategorySlug, afișăm categoria părinte */}
+          {categorySlug && subcategorySlug && parentCategoryName && parentCategorySlug && (
             <>
               <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
               <Link
-                to={`/forum#category-${parentCategoryId}`}
+                to={`/forum/${parentCategorySlug}`}
+                style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+              >
+                {parentCategoryName}
+              </Link>
+            </>
+          )}
+          {/* Dacă avem doar categorySlug (categorie), afișăm categoria */}
+          {categorySlug && !subcategorySlug && categoryName && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <span style={{ color: '#6b7280', fontWeight: '500' }}>{categoryName}</span>
+            </>
+          )}
+          {/* Dacă avem subcategorySlug (subcategorie), afișăm subcategoria */}
+          {subcategorySlug && subcategoryName && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <span style={{ color: '#6b7280', fontWeight: '500' }}>{subcategoryName}</span>
+            </>
+          )}
+          {/* Fallback pentru legacy routes */}
+          {!categorySlug && !subcategorySlug && parentCategoryName && parentCategoryId && (
+            <>
+              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <Link
+                to={parentCategorySlug ? `/forum/${parentCategorySlug}` : `/forum#category-${parentCategoryId}`}
                 style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                 onClick={(e) => {
-                  // Scroll la categorie pe homepage
-                  e.preventDefault();
-                  navigate('/forum');
-                  setTimeout(() => {
-                    const element = document.getElementById(`category-${parentCategoryId}`);
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                  }, 100);
+                  if (!parentCategorySlug && parentCategoryId) {
+                    // Scroll la categorie pe homepage
+                    e.preventDefault();
+                    navigate('/forum');
+                    setTimeout(() => {
+                      const element = document.getElementById(`category-${parentCategoryId}`);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                  }
                 }}
               >
                 {parentCategoryName}
               </Link>
             </>
           )}
-          {subcategoryName && (
+          {!categorySlug && !subcategorySlug && subcategoryName && (
             <>
               <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
               <span style={{ color: '#6b7280', fontWeight: '500' }}>{subcategoryName}</span>
@@ -362,16 +543,16 @@ export default function CategoryPage() {
             </Link>
             <div style={{ minWidth: 0, flex: 1 }}>
               <h1 style={{ fontSize: isMobile ? '1rem' : '1.5rem', fontWeight: '600', marginBottom: '0.125rem', lineHeight: '1.2' }}>
-                {subcategoryName || '\u00A0'}
+                {subcategoryName || categoryName || '\u00A0'}
               </h1>
               <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: isMobile ? '0.75rem' : '0.875rem', lineHeight: '1.3' }}>
-                {subcategoryDescription || 'Discuții și postări despre pescuit'}
+                {subcategoryDescription || 'Selectează o subcategorie pentru a vedea topicurile'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Lista topicuri */}
+        {/* Lista topicuri SAU subcategorii */}
         <div
           style={{
             backgroundColor: 'white',
@@ -381,29 +562,92 @@ export default function CategoryPage() {
             overflow: 'hidden'
           }}
         >
-          {/* Header pentru topicuri - Optimizat pentru mobil */}
-          <div className="hidden sm:grid" style={{
-            backgroundColor: '#f8fafc',
-            borderBottom: '1px solid #e5e7eb',
-            padding: '0.75rem 1rem',
-            gridTemplateColumns: '1fr 80px 80px 180px',
-            gap: '0.75rem',
-            alignItems: 'center',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            color: '#6b7280',
-            textTransform: 'uppercase',
-            letterSpacing: '0.025em'
-          }}>
-            <div>Topic</div>
-            <div style={{ textAlign: 'center' }}>Răspunsuri</div>
-            <div style={{ textAlign: 'center' }}>Vizualizări</div>
-            <div style={{ textAlign: 'center' }}>Ultima postare</div>
-          </div>
+          {/* Dacă e doar categorie (fără subcategorie), afișează subcategoriile */}
+          {categorySlug && !subcategorySlug && categoryId ? (
+            <div>
+              {loadingSubcategories ? (
+                <div style={{ padding: '2rem', textAlign: 'center' }}>
+                  <div className="animate-spin" style={{ width: '2rem', height: '2rem', border: '4px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', margin: '0 auto' }}></div>
+                </div>
+              ) : categorySubcategories.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {categorySubcategories.map((subcat) => (
+                    <Link
+                      key={subcat.id}
+                      to={`/forum/${categorySlug}/${subcat.slug || subcat.id}`}
+                      style={{
+                        display: 'block',
+                        padding: '1rem 1.5rem',
+                        transition: 'background-color 0.2s',
+                        textDecoration: 'none',
+                        color: 'inherit'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {subcat.icon && (
+                          <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>{subcat.icon}</div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem', color: '#111827' }}>
+                            {subcat.name}
+                          </h3>
+                          {subcat.description && (
+                            <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.5' }}>
+                              {subcat.description}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ color: '#9ca3af', fontSize: '1.25rem' }}>›</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  padding: '4rem 2rem',
+                  textAlign: 'center',
+                  color: '#6b7280'
+                }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: '#111827' }}>
+                    Nu există subcategorii în această categorie
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Header pentru topicuri - Optimizat pentru mobil */}
+              <div className="hidden sm:grid" style={{
+                backgroundColor: '#f8fafc',
+                borderBottom: '1px solid #e5e7eb',
+                padding: '0.75rem 1rem',
+                gridTemplateColumns: '1fr 80px 80px 180px',
+                gap: '0.75rem',
+                alignItems: 'center',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.025em'
+              }}>
+                <div>Topic</div>
+                <div style={{ textAlign: 'center' }}>Răspunsuri</div>
+                <div style={{ textAlign: 'center' }}>Vizualizări</div>
+                <div style={{ textAlign: 'center' }}>Ultima postare</div>
+              </div>
 
-          {/* Topicuri */}
-          <div>
-            {topics.length === 0 ? (
+              {/* Topicuri */}
+              <div>
+            {supabaseLoading && topics.length === 0 ? (
+              <TopicListSkeleton count={5} />
+            ) : topics.length === 0 ? (
               <div style={{
                 padding: '4rem 2rem',
                 textAlign: 'center',
@@ -542,11 +786,14 @@ export default function CategoryPage() {
                   </div>
                 </div>
               )))}
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Buton creare topic nou */}
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+        {/* Buton creare topic nou - doar dacă e subcategorie (nu categorie) */}
+        {subcategorySlug && (
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
           <button
             style={{
               display: 'inline-flex',
@@ -582,7 +829,8 @@ export default function CategoryPage() {
             <MessageSquare style={{ width: '1rem', height: '1rem' }} />
             Creează Topic Nou
           </button>
-        </div>
+          </div>
+        )}
 
         {/* Create Topic Modal - Fixed to use slugToUse for both legacy and clean URLs */}
         {forumUser && (
