@@ -6,6 +6,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/lib/supabase';
 import { registerUnreadCountCallback } from '@/hooks/useRealtimeMessages';
+import { usePrefetch } from '@/hooks/usePrefetch';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import BackToTop from './BackToTop';
@@ -160,17 +161,8 @@ export default function Layout({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Fallback pentru cazurile când aplicația nu se încarcă - DUPĂ toate hook-urile
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Se încarcă...</p>
-        </div>
-      </div>
-    );
-  }
+  // Nu mai blocăm render-ul pentru loading - afișăm direct conținutul
+  // React Query cache-ul asigură datele instant, iar loading-ul se face în background
 
   return (
     <div className="min-h-screen min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 bg-fixed">
@@ -223,12 +215,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Link
                 to="/species"
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                onMouseEnter={() => prefetchSpecies()}
               >
                 Specii
               </Link>
               <Link
                 to="/records"
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                onMouseEnter={() => prefetchRecords()}
               >
                 Recorduri
               </Link>
@@ -263,6 +257,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                       <Link
                         to={`/profile/${userUsername}`}
                         className={`relative px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer`}
+                        onMouseEnter={() => prefetchProfile(userUsername)}
                       >
                         {getUserDisplayName()}
                         {unreadMessagesCount > 0 && (
@@ -602,7 +597,11 @@ export default function Layout({ children }: { children: ReactNode }) {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/records" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
+                  <Link 
+                    to="/records" 
+                    className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group"
+                    onMouseEnter={() => prefetchRecords()}
+                  >
                     <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
                     Recorduri
                   </Link>

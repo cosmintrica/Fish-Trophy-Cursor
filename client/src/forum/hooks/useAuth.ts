@@ -28,7 +28,8 @@ export const useAuth = () => {
 export const useAuthProvider = () => {
   const mainAuth = useMainAuth();
   const [forumUser, setForumUser] = useState<ForumUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Sync loading state with main auth - prevents false redirects when auth re-evaluates
+  const [loading, setLoading] = useState(true); // Start as loading until we verify auth
 
   // Actualizează last_seen_at și rank pentru utilizatorii online
   useEffect(() => {
@@ -36,7 +37,14 @@ export const useAuthProvider = () => {
 
     const updateUserActivity = async () => {
       try {
-        const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+        // Verifică admin role din profiles (sursa de adevăr)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', mainAuth.user.id)
+          .maybeSingle();
+        const isAdmin = profile?.role === 'admin';
+
         const displayName = mainAuth.user.user_metadata?.display_name ||
           mainAuth.user.user_metadata?.full_name ||
           mainAuth.user.email?.split('@')[0] ||
@@ -56,7 +64,6 @@ export const useAuthProvider = () => {
             .from('forum_users')
             .update({
               last_seen_at: new Date().toISOString()
-              // Șters: rank și username - nu le mai suprascriem
             })
             .eq('user_id', mainAuth.user.id);
         } else {
@@ -70,7 +77,7 @@ export const useAuthProvider = () => {
 
           const username = profile?.username || mainAuth.user.email?.split('@')[0] || 'pescar';
 
-          await supabase
+          const { error: insertError } = await supabase
             .from('forum_users')
             .insert({
               user_id: mainAuth.user.id,
@@ -81,6 +88,12 @@ export const useAuthProvider = () => {
               reputation_points: 0,
               last_seen_at: new Date().toISOString()
             });
+
+          if (insertError) {
+            console.error('Error inserting forum_user:', insertError);
+          } else {
+            console.log('Created new forum_user for:', mainAuth.user.id);
+          }
         }
       } catch (error) {
         console.error('Error updating user activity:', error);
@@ -97,55 +110,70 @@ export const useAuthProvider = () => {
   }, [mainAuth.user]);
 
   useEffect(() => {
+    // Sync loading with main auth loading state
+    if (mainAuth.loading) {
+      setLoading(true);
+      return;
+    }
+
     // Când utilizatorul principal se schimbă, actualizează forumUser
     if (mainAuth.user) {
       const loadUserData = async () => {
-        const displayName = mainAuth.user.user_metadata?.display_name ||
-          mainAuth.user.user_metadata?.full_name ||
-          mainAuth.user.email?.split('@')[0] ||
-          'Utilizator';
+        try {
+          const displayName = mainAuth.user.user_metadata?.display_name ||
+            mainAuth.user.user_metadata?.full_name ||
+            mainAuth.user.email?.split('@')[0] ||
+            'Utilizator';
 
-        const isAdmin = mainAuth.user.email === 'cosmin.trica@outlook.com';
+          // Obține photo_url și role din database
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('photo_url, role')
+            .eq('id', mainAuth.user.id)
+            .maybeSingle();
 
-        // Obține photo_url și rank real din database
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('photo_url')
-          .eq('id', mainAuth.user.id)
-          .maybeSingle();
+          // Verifică admin role din profiles (sursa de adevăr)
+          const isAdmin = profile?.role === 'admin';
 
-        // Obține rank real din forum_users (dacă există)
-        const { data: forumUserData } = await supabase
-          .from('forum_users')
-          .select('rank, badges')
-          .eq('user_id', mainAuth.user.id)
-          .maybeSingle();
+          // Obține username și rank real din forum_users (dacă există)
+          const { data: forumUserData } = await supabase
+            .from('forum_users')
+            .select('username, rank, badges')
+            .eq('user_id', mainAuth.user.id)
+            .maybeSingle();
 
-        const newForumUser: ForumUser = {
-          id: mainAuth.user.id,
-          username: displayName,
-          email: mainAuth.user.email,
-          avatar_url: profile?.photo_url || mainAuth.user.user_metadata?.avatar_url || null,
-          rank: forumUserData?.rank || 'ou_de_peste', // Rank real din database
-          post_count: 0,
-          topic_count: 0,
-          reputation_points: isAdmin ? 999 : 100,
-          badges: forumUserData?.badges || (isAdmin ? ['Administrator'] : ['Pescar Nou']),
-          isAdmin: isAdmin,
-          canModerateRespect: isAdmin,
-          canDeletePosts: isAdmin,
-          canBanUsers: isAdmin,
-          canEditAnyPost: isAdmin
-        };
+          // Folosește username-ul real din forum_users, nu displayName
+          const realUsername = forumUserData?.username || displayName;
 
-        setForumUser(newForumUser);
+          const newForumUser: ForumUser = {
+            id: mainAuth.user.id,
+            username: realUsername, // Username real din forum_users
+            email: mainAuth.user.email,
+            avatar_url: profile?.photo_url || mainAuth.user.user_metadata?.avatar_url || null,
+            rank: forumUserData?.rank || 'ou_de_peste', // Rank real din database
+            post_count: 0,
+            topic_count: 0,
+            reputation_points: isAdmin ? 999 : 100,
+            badges: forumUserData?.badges || (isAdmin ? ['Administrator'] : ['Pescar Nou']),
+            isAdmin: isAdmin,
+            canModerateRespect: isAdmin,
+            canDeletePosts: isAdmin,
+            canBanUsers: isAdmin,
+            canEditAnyPost: isAdmin
+          };
+
+          setForumUser(newForumUser);
+        } finally {
+          setLoading(false); // Always set loading to false after attempt
+        }
       };
 
       loadUserData();
     } else {
       setForumUser(null);
+      setLoading(false); // No user, stop loading
     }
-  }, [mainAuth.user]);
+  }, [mainAuth.user, mainAuth.loading]);
 
   const loadForumUser = async (userId: string) => {
     try {

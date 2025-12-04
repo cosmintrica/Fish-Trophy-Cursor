@@ -174,6 +174,18 @@ export const getR2ImageUrl = (category: string, filename: string): string => {
   return `${R2_CONFIG.PUBLIC_URL}/${category}/${filename}`
 }
 
+// Helper function to get Netlify Functions base URL
+// Works correctly on mobile when accessing via network IP (e.g., 192.168.1.100:5173)
+export const getNetlifyFunctionsBaseUrl = (): string => {
+  if (import.meta.env.DEV) {
+    // In development, use window.location.hostname to work on mobile
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    return `http://${hostname}:8889`;
+  }
+  // In production, use relative path
+  return '';
+};
+
 // Get R2 image URL through proxy to avoid CORS issues
 export const getR2ImageUrlProxy = (imageUrl: string): string => {
   if (!imageUrl) return imageUrl;
@@ -183,14 +195,13 @@ export const getR2ImageUrlProxy = (imageUrl: string): string => {
     return imageUrl;
   }
   
-  // Use proxy for R2 URLs
-  // Use the same protocol as the current page to avoid mixed content warnings
-  const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https:' : 'http:';
-  const proxyUrl = import.meta.env.DEV 
-    ? `${protocol}//localhost:8888/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`
-    : `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
+  // Use proxy for R2 URLs to avoid CORS issues
+  // In development, use proxy if netlify dev is running, otherwise use direct URL (will show CORS error)
+  // In production, always use proxy
+  const baseUrl = getNetlifyFunctionsBaseUrl();
+  const proxyPath = `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
   
-  return proxyUrl;
+  return baseUrl ? `${baseUrl}${proxyPath}` : proxyPath;
 }
 
 export const getFishSpeciesImage = (speciesName: string, imageType: 'main' | 'detail' | 'habitat' = 'main'): string => {

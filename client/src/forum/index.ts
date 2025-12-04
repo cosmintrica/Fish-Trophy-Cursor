@@ -22,4 +22,4 @@ export { default as MobileOptimizedCategories } from './components/MobileOptimiz
 
 // Auth components
 export { default as AuthProvider } from './components/AuthProvider';
-export { default as SimpleLoginModal } from './components/SimpleLoginModal';
+// SimpleLoginModal replaced by UnifiedAuthModal in @/components/UnifiedAuthModal

@@ -130,3 +130,83 @@ const shopLogo = getShopImage('magazin-pescuit-1', 'logo')
 3. **Faza 3:** Actualizează codul
 4. **Faza 4:** Testează performanța
 5. **Faza 5:** Monitorizează costurile
+
+---
+
+## ⚠️ **Probleme întâlnite și soluții**
+
+### **1. R2 Proxy - Eroare 400 Bad Request (Authorization)**
+
+**Problema:** Imagini R2 nu se încărcau, eroare `400 Bad Request` cu mesaj `Authorization`.
+
+**Cauza:** URL-urile R2 nu sunt publice și necesită autentificare AWS S3-compatible.
+
+**Soluție:**
+- Folosit AWS SDK (`@aws-sdk/client-s3`) cu `GetObjectCommand` în loc de `fetch()` direct
+- Inițializat `S3Client` cu credențialele R2
+- Corectat extragerea key-ului din URL (eliminat bucket name-ul dacă este prezent)
+
+**Fișier:** `netlify/functions/r2-proxy.mjs`
+
+**Detalii complete:** Vezi `docs/issues/R2_AND_FORUM_ISSUES_RESOLVED.md`
+
+### **2. Extragere key din URL**
+
+**Problema:** Key-ul extras din URL includea bucket name-ul (`fishtrophy-content`), dar key-ul salvat în R2 nu include bucket name-ul.
+
+**Soluție:**
+```javascript
+// URL: https://...r2.cloudflarestorage.com/fishtrophy-content/username/journal/images/file.jpg
+// Key în R2: username/journal/images/file.jpg (fără fishtrophy-content/)
+
+if (pathname.startsWith(R2_BUCKET_NAME + '/')) {
+  key = pathname.substring(R2_BUCKET_NAME.length + 1);
+}
+```
+
+### **3. Environment variables**
+
+**Important:** Variabilele de mediu în Netlify Functions NU au prefixul `VITE_`:
+```bash
+# ✅ Corect (Netlify Functions)
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=fishtrophy-content
+R2_PUBLIC_URL=https://<account-id>.r2.cloudflarestorage.com/fishtrophy-content
+
+# ❌ Greșit (nu funcționează în Netlify Functions)
+VITE_R2_ACCOUNT_ID=...
+```
+
+**Client-side** (React) folosește `VITE_` prefix:
+```bash
+# Client-side
+VITE_R2_PUBLIC_URL=...
+```
+
+### **4. Structura URL-uri**
+
+**Format complet:**
+```
+https://<account-id>.r2.cloudflarestorage.com/fishtrophy-content/username/journal/images/file.jpg
+```
+
+**Key salvat în R2:**
+```
+username/journal/images/file.jpg
+```
+
+**R2_PUBLIC_URL:**
+```
+https://<account-id>.r2.cloudflarestorage.com/fishtrophy-content
+```
+
+**Notă:** `R2_PUBLIC_URL` include bucket name-ul, dar key-ul salvat în R2 nu include bucket name-ul.
+
+---
+
+## 📚 **Documentație suplimentară**
+
+Pentru detalii complete despre problemele întâlnite și soluțiile implementate, vezi:
+- `docs/issues/R2_AND_FORUM_ISSUES_RESOLVED.md` - Probleme R2 și Forum rezolvate

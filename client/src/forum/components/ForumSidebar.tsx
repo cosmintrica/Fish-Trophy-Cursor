@@ -76,7 +76,7 @@ export default function ForumSidebar({ stats, onlineUsers, recentPosts }: ForumS
               <p className="text-sm text-gray-600">
                 Cel mai nou membru: 
                 <a 
-                  href={`/forum/user/${stats.newest_user.id}`}
+                  href={`/forum/user/${stats.newest_user.username}`}
                   className="ml-1 text-primary-600 hover:text-primary-700 font-medium"
                 >
                   {stats.newest_user.username}
@@ -99,7 +99,7 @@ export default function ForumSidebar({ stats, onlineUsers, recentPosts }: ForumS
             <div key={user.id} className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <a 
-                href={`/forum/user/${user.id}`}
+                href={`/forum/user/${user.username}`}
                 className="text-sm text-gray-700 hover:text-primary-600 flex-1"
               >
                 {user.username}

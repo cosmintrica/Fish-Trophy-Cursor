@@ -59,21 +59,24 @@ export default function MessageSidebar({ post, isOriginalPost, isMobile, onGearC
 
   return (
     <div style={{
-      width: isMobile ? '160px' : '200px',
+      width: isMobile ? '100px' : '200px',
+      minWidth: isMobile ? '100px' : '200px',
+      maxWidth: isMobile ? '100px' : '200px',
       backgroundColor: isOriginalPost ? theme.primary + '15' : theme.background,
       borderRight: `1px solid ${theme.border}`,
-      padding: isMobile ? '0.75rem 0.5rem' : '1.5rem 1rem',
+      padding: isMobile ? '0.5rem 0.375rem' : '1.5rem 1rem',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       textAlign: 'center',
-      flexShrink: 0
+      flexShrink: 0,
+      overflow: 'hidden'
     }}>
-      {/* Avatar */}
+      {/* Avatar - Mai mic pe mobil */}
       <div
         style={{
-          width: isMobile ? '3rem' : '4rem',
-          height: isMobile ? '3rem' : '4rem',
+          width: isMobile ? '2.5rem' : '4rem',
+          height: isMobile ? '2.5rem' : '4rem',
           borderRadius: '50%',
           background: post.authorAvatar 
             ? `url(${post.authorAvatar}) center/cover`
@@ -82,72 +85,94 @@ export default function MessageSidebar({ post, isOriginalPost, isMobile, onGearC
           alignItems: 'center',
           justifyContent: 'center',
           color: post.authorAvatar ? 'transparent' : 'white',
-          fontSize: isMobile ? '1.25rem' : '1.5rem',
+          fontSize: isMobile ? '1rem' : '1.5rem',
           fontWeight: '600',
-          marginBottom: isMobile ? '0.5rem' : '0.75rem',
+          marginBottom: isMobile ? '0.375rem' : '0.75rem',
           border: `2px solid ${theme.border}`,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          flexShrink: 0
         }}
       >
         {!post.authorAvatar && post.author.charAt(0).toUpperCase()}
       </div>
 
-      {/* Nume utilizator */}
+      {/* Nume utilizator - Truncat pe mobil */}
       <div style={{
         fontWeight: '600',
         color: theme.text,
-        fontSize: isMobile ? '0.75rem' : '0.875rem',
+        fontSize: isMobile ? '0.6875rem' : '0.875rem',
         marginBottom: isMobile ? '0.25rem' : '0.5rem',
         wordBreak: 'break-word',
-        lineHeight: '1.2'
+        lineHeight: '1.2',
+        width: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: isMobile ? 2 : 3,
+        WebkitBoxOrient: 'vertical'
       }}>
         {post.author}
       </div>
 
-      {/* Rang vechime */}
+      {/* Rang vechime - Mai compact pe mobil */}
       <div style={{
-        fontSize: isMobile ? '0.625rem' : '0.75rem',
+        fontSize: isMobile ? '0.5625rem' : '0.75rem',
         color: theme.textSecondary,
-        marginBottom: isMobile ? '0.5rem' : '0.75rem',
+        marginBottom: isMobile ? '0.375rem' : '0.75rem',
         textAlign: 'center',
-        lineHeight: '1.2'
+        lineHeight: '1.2',
+        width: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical'
       }}>
         {getSeniorityRank(post.authorRank)}
       </div>
 
-      {/* Respect */}
+      {/* Respect - Mai compact pe mobil */}
       <div style={{
         backgroundColor: theme.surface,
         border: `1px solid ${theme.border}`,
         borderRadius: '0.375rem',
-        padding: isMobile ? '0.375rem' : '0.5rem',
-        marginBottom: isMobile ? '0.5rem' : '0.75rem',
+        padding: isMobile ? '0.25rem 0.375rem' : '0.5rem',
+        marginBottom: isMobile ? '0.375rem' : '0.75rem',
         width: '100%'
       }}>
-        <div style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', color: theme.textSecondary, marginBottom: '0.125rem' }}>
-          Respect Pescar
+        <div style={{ 
+          fontSize: isMobile ? '0.5625rem' : '0.75rem', 
+          color: theme.textSecondary, 
+          marginBottom: '0.125rem',
+          lineHeight: '1.2'
+        }}>
+          {isMobile ? 'Rep.' : 'Respect'}
         </div>
         <div style={{
           fontWeight: '600',
-          fontSize: isMobile ? '0.875rem' : '1rem',
-          color: getRespectColor(post.respect || 0)
+          fontSize: isMobile ? '0.75rem' : '1rem',
+          color: getRespectColor(post.respect || 0),
+          lineHeight: '1.2'
         }}>
           {post.respect >= 0 ? '+' : ''}{post.respect || 0}
         </div>
       </div>
 
-      {/* Equipment preview */}
+      {/* Equipment preview - Mai mic pe mobil */}
       <button
         style={{
-          fontSize: isMobile ? '0.625rem' : '0.75rem',
+          fontSize: isMobile ? '0.5625rem' : '0.75rem',
           color: theme.primary,
           backgroundColor: 'transparent',
           border: `1px solid ${theme.primary}`,
           borderRadius: '0.375rem',
-          padding: isMobile ? '0.25rem 0.5rem' : '0.375rem 0.75rem',
+          padding: isMobile ? '0.25rem 0.375rem' : '0.375rem 0.75rem',
           cursor: 'pointer',
           width: '100%',
-          transition: 'all 0.2s'
+          transition: 'all 0.2s',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
         }}
         onClick={onGearClick}
         onMouseEnter={(e) => {
@@ -159,32 +184,39 @@ export default function MessageSidebar({ post, isOriginalPost, isMobile, onGearC
           e.currentTarget.style.color = theme.primary;
         }}
       >
-        📋 Echipament
+        {isMobile ? '📋' : '📋 Echipament'}
       </button>
 
-      {/* Post stats */}
+      {/* Post stats - Mai compact pe mobil */}
       <div style={{
-        marginTop: '1rem',
-        fontSize: '0.75rem',
+        marginTop: isMobile ? '0.5rem' : '1rem',
+        fontSize: isMobile ? '0.5625rem' : '0.75rem',
         color: theme.textSecondary,
         borderTop: `1px solid ${theme.border}`,
-        paddingTop: '0.75rem',
-        width: '100%'
+        paddingTop: isMobile ? '0.5rem' : '0.75rem',
+        width: '100%',
+        lineHeight: '1.3'
       }}>
-        <div>
+        <div style={{
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
           {formatSmartDateTime(post.createdAt)}
         </div>
         {isOriginalPost && (
           <div style={{
-            marginTop: '0.5rem',
-            fontSize: '0.625rem',
-            padding: '0.25rem',
+            marginTop: '0.375rem',
+            fontSize: isMobile ? '0.5rem' : '0.625rem',
+            padding: isMobile ? '0.125rem 0.25rem' : '0.25rem',
             backgroundColor: theme.primary + '20',
             color: theme.primary,
             borderRadius: '0.25rem',
-            fontWeight: '600'
+            fontWeight: '600',
+            textAlign: 'center',
+            lineHeight: '1.2'
           }}>
-            TOPIC STARTER
+            {isMobile ? 'TOPIC' : 'TOPIC STARTER'}
           </div>
         )}
       </div>

@@ -111,28 +111,91 @@ export const handler = async (event) => {
 
     // If fileUrl is provided, extract the key from the URL
     if (fileUrl) {
-      // Extract key from R2 URL
-      // Format: https://<account-id>.r2.cloudflarestorage.com/<bucket-name>/<key>
-      // Or: https://<public-url>/<key>
+      // Extract key from R2 URL using the same logic as r2-proxy.mjs
+      // Format from upload.mjs: ${R2_PUBLIC_URL}/${key}
+      // Where R2_PUBLIC_URL might include bucket name: https://...r2.cloudflarestorage.com/fishtrophy-content
+      // And key is: username/category/subCategory/fileName
       let key = fileUrl;
       
-      // Remove domain and bucket name if present
-      if (fileUrl.includes('.r2.cloudflarestorage.com/')) {
-        const parts = fileUrl.split('.r2.cloudflarestorage.com/');
-        if (parts.length > 1) {
-          key = parts[1].split('/').slice(1).join('/'); // Remove bucket name
+      const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+      
+      // Parse URL to get pathname
+      try {
+        const url = new URL(fileUrl);
+        let pathname = url.pathname;
+        
+        // Remove leading slash
+        if (pathname.startsWith('/')) {
+          pathname = pathname.substring(1);
         }
-      } else if (fileUrl.includes('/')) {
-        // Assume it's a relative path or full path
-        const urlParts = fileUrl.split('/');
-        // Find the part after 'fishtrophy-content' or use the last parts
-        const contentIndex = urlParts.findIndex(part => part === 'fishtrophy-content');
-        if (contentIndex >= 0 && contentIndex < urlParts.length - 1) {
-          key = urlParts.slice(contentIndex + 1).join('/');
+        
+        // If pathname starts with bucket name, remove it
+        // R2_PUBLIC_URL might be: https://...r2.cloudflarestorage.com/fishtrophy-content
+        // So pathname might be: fishtrophy-content/username/category/...
+        if (pathname.startsWith(R2_BUCKET_NAME + '/')) {
+          key = pathname.substring(R2_BUCKET_NAME.length + 1); // Remove bucket name and slash
         } else {
-          // Try to extract from common patterns
-          key = urlParts.slice(-3).join('/'); // username/journal/images or videos
+          key = pathname; // Use pathname as is
         }
+      } catch (e) {
+        // Fallback: manual extraction
+        if (fileUrl.includes('.r2.cloudflarestorage.com/')) {
+          const parts = fileUrl.split('.r2.cloudflarestorage.com/');
+          if (parts.length > 1) {
+            let pathname = parts[1];
+            // Remove bucket name if present
+            if (pathname.startsWith(R2_BUCKET_NAME + '/')) {
+              key = pathname.substring(R2_BUCKET_NAME.length + 1);
+            } else {
+              key = pathname;
+            }
+          }
+        } else if (fileUrl.includes(R2_PUBLIC_URL)) {
+          // If R2_PUBLIC_URL is in the fileUrl, extract key after it
+          const index = fileUrl.indexOf(R2_PUBLIC_URL);
+          if (index >= 0) {
+            key = fileUrl.substring(index + R2_PUBLIC_URL.length);
+            // Remove leading slash
+            if (key.startsWith('/')) {
+              key = key.substring(1);
+            }
+            // Remove bucket name if present
+            if (key.startsWith(R2_BUCKET_NAME + '/')) {
+              key = key.substring(R2_BUCKET_NAME.length + 1);
+            }
+          }
+        } else {
+          // Last resort: try to find key after bucket name or domain
+          const urlParts = fileUrl.split('/');
+          const bucketIndex = urlParts.findIndex(part => part === R2_BUCKET_NAME);
+          if (bucketIndex >= 0 && bucketIndex < urlParts.length - 1) {
+            key = urlParts.slice(bucketIndex + 1).join('/');
+          } else {
+            // Try to extract from common patterns (username/category/subCategory/fileName)
+            const contentIndex = urlParts.findIndex(part => part.includes('r2'));
+            if (contentIndex >= 0 && contentIndex < urlParts.length - 1) {
+              key = urlParts.slice(contentIndex + 1).join('/');
+              // Remove bucket name if present in key
+              if (key.startsWith(R2_BUCKET_NAME + '/')) {
+                key = key.substring(R2_BUCKET_NAME.length + 1);
+              }
+            } else {
+              // Assume it's already a key (username/category/subCategory/fileName)
+              key = fileUrl;
+            }
+          }
+        }
+      }
+      
+      // Final cleanup: remove any leading/trailing slashes
+      key = key.replace(/^\/+|\/+$/g, '');
+      
+      // Log for debugging (only in dev)
+      if (process.env.NETLIFY_DEV) {
+        console.log('Deleting file from R2:');
+        console.log('  Original URL:', fileUrl);
+        console.log('  Extracted Key:', key);
+        console.log('  Bucket:', R2_BUCKET_NAME);
       }
 
       const deleteCommand = new DeleteObjectCommand({
@@ -141,6 +204,10 @@ export const handler = async (event) => {
       });
 
       await s3Client.send(deleteCommand);
+      
+      if (process.env.NETLIFY_DEV) {
+        console.log('✅ Successfully deleted file from R2:', key);
+      }
 
       return {
         statusCode: 200,

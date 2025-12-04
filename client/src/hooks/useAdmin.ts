@@ -1,34 +1,53 @@
 import { useAuth } from './useAuth';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export const useAdmin = () => {
   const { user, loading } = useAuth();
+  const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [loadingRole, setLoadingRole] = useState(false);
+
+  // Fetch admin role from profiles table (sursa de adevăr)
+  useEffect(() => {
+    if (!user || loading) {
+      setAdminRole(null);
+      return;
+    }
+
+    const checkAdminRole = async () => {
+      setLoadingRole(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error checking admin role:', error);
+          setAdminRole(null);
+        } else {
+          setAdminRole(data?.role || null);
+        }
+      } catch (error) {
+        console.error('Error checking admin role:', error);
+        setAdminRole(null);
+      } finally {
+        setLoadingRole(false);
+      }
+    };
+
+    checkAdminRole();
+  }, [user, loading]);
 
   const isAdmin = useMemo(() => {
-    if (!user || loading) return false;
-
-    // Check environment variable first (for development/testing)
-    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-    if (adminEmail && user.email === adminEmail) {
-      return true;
-    }
-
-    // Check user metadata for admin role
-    if (user.user_metadata?.role === 'admin') {
-      return true;
-    }
-
-    // Check app_metadata for admin role (set by Supabase)
-    if (user.app_metadata?.role === 'admin') {
-      return true;
-    }
-
-    return false;
-  }, [user, loading]);
+    if (!user || loading || loadingRole) return false;
+    return adminRole === 'admin';
+  }, [user, loading, loadingRole, adminRole]);
 
   return {
     isAdmin,
-    loading,
+    loading: loading || loadingRole,
     user
   };
 };

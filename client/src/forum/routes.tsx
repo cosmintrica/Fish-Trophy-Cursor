@@ -13,6 +13,7 @@ import TopicPage from './pages/TopicPage';
 import AdminForum from './pages/AdminForum';
 import RecentPosts from './pages/RecentPosts';
 import ActiveMembers from './pages/ActiveMembers';
+import ForumUserProfile from './pages/ForumUserProfile';
 
 // Componenta principală pentru rutele forum
 const ForumRoutes: React.FC = () => {
@@ -21,47 +22,36 @@ const ForumRoutes: React.FC = () => {
       <ToastProvider>
         <AuthProvider>
           <Routes>
-          {/* Ruta principală forum */}
-          <Route path="/" element={<ForumHome />} />
+            {/* Ruta principală forum */}
+            <Route path="/" element={<ForumHome />} />
 
-          {/* URL-uri clean și ierarhice: /forum/categorySlug/subcategorySlug/topicSlug */}
-          {/* IMPORTANT: Ordinea contează - cele mai specifice trebuie să fie primele */}
-          
-          {/* Rute topicuri (category/subcategory/topic) */}
-          <Route path="/:categorySlug/:subcategorySlug/:topicSlug" element={<TopicPage />} />
-          
-          {/* Rute subcategorii (category/subcategory) */}
-          <Route path="/:categorySlug/:subcategorySlug" element={<CategoryPage />} />
-          
-          {/* Rute categorii (doar category slug) */}
-          <Route path="/:categorySlug" element={<CategoryPage />} />
-          
-          {/* Rute legacy pentru compatibilitate (opțional) */}
-          <Route path="/:subcategorySlug/:topicSlug" element={<TopicPage />} />
-          <Route path="/:subcategorySlug" element={<CategoryPage />} />
+            {/* Rute speciale - trebuie să fie înainte de categoriile generice */}
+            <Route path="/recent" element={<RecentPosts />} />
+            <Route path="/members" element={<ActiveMembers />} />
+            <Route path="/search" element={<div>Căutare Forum</div>} />
+            <Route path="/rules" element={<RegulationsPage />} />
+            <Route path="/messages" element={<div>Mesaje Private</div>} />
+            <Route path="/admin" element={<AdminForum />} />
 
-          {/* Rute legacy pentru compatibilitate (opțional - poate fi șters după) */}
-          <Route path="/category/:id" element={<CategoryPage />} />
-          <Route path="/topic/:id" element={<TopicPage />} />
+            {/* Rute utilizatori - folosim prefix /user/ pentru a evita conflicte cu categorii */}
+            {/* IMPORTANT: Această rută trebuie să fie înainte de categoriile generice */}
+            <Route path="/user/:username" element={<ForumUserProfile />} />
 
-          {/* Rute utilizatori */}
-          <Route path="/user/:id" element={<div>Profil Utilizator Forum</div>} />
+            {/* URL-uri clean și ierarhice: /forum/categorySlug/subcategorySlug/topicSlug */}
 
-          {/* Postări recente și membri */}
-          <Route path="/recent" element={<RecentPosts />} />
-          <Route path="/members" element={<ActiveMembers />} />
+            {/* Rute topicuri (category/subcategory/topic) */}
+            <Route path="/:categorySlug/:subcategorySlug/:topicSlug" element={<TopicPage />} />
 
-          {/* Căutare */}
-          <Route path="/search" element={<div>Căutare Forum</div>} />
+            {/* Rute subcategorii (category/subcategory) */}
+            <Route path="/:categorySlug/:subcategorySlug" element={<CategoryPage />} />
 
-          {/* Regulament */}
-          <Route path="/rules" element={<RegulationsPage />} />
+            {/* Rute categorii (doar category slug) */}
+            <Route path="/:categorySlug" element={<CategoryPage />} />
 
-          {/* Mesaje private */}
-          <Route path="/messages" element={<div>Mesaje Private</div>} />
+            {/* Rute legacy pentru compatibilitate */}
+            <Route path="/category/:id" element={<CategoryPage />} />
+            <Route path="/topic/:id" element={<TopicPage />} />
 
-          {/* Admin forum */}
-          <Route path="/admin" element={<AdminForum />} />
           </Routes>
         </AuthProvider>
       </ToastProvider>

@@ -62,6 +62,8 @@
 
 [functions]
   directory = "netlify/functions"
+  # Mărește limita pentru funcții (în MB) - doar pentru cazuri mici, fișiere mari folosesc presigned URLs
+  included_files = ["netlify/functions/**/*"]
 
 # Supabase extension configured via Netlify App UI - no plugin configuration needed
 # Trigger rebuild

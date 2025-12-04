@@ -6,22 +6,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
     
-    <!-- Prevent dark mode flash - set theme before render -->
+    <!-- Prevent dark mode flash - set theme IMMEDIATELY before render -->
     <script>
       (function() {
-        const theme = localStorage.getItem('fish-trophy-theme') || 'light';
-        document.documentElement.setAttribute('data-theme', theme);
-        if (document.documentElement && document.body) {
-          if (theme === 'dark') {
-            document.documentElement.style.backgroundColor = '#0f172a';
-            document.body.style.backgroundColor = '#0f172a';
-          } else {
-            document.documentElement.style.backgroundColor = '#f8fafc';
-            document.body.style.backgroundColor = '#f8fafc';
+        try {
+          const theme = localStorage.getItem('fish-trophy-theme') || 'light';
+          const isDark = theme === 'dark';
+          
+          // Set attribute immediately
+          document.documentElement.setAttribute('data-theme', theme);
+          
+          // Apply background color IMMEDIATELY to prevent white flash
+          const bgColor = isDark ? '#0f172a' : '#f8fafc';
+          document.documentElement.style.backgroundColor = bgColor;
+          document.documentElement.style.color = isDark ? '#f1f5f9' : '#1f2937';
+          
+          // Also apply to body if it exists (will be applied later if not)
+          if (document.body) {
+            document.body.style.backgroundColor = bgColor;
+            document.body.style.color = isDark ? '#f1f5f9' : '#1f2937';
           }
+          
+          // Set meta theme-color for mobile browsers
+          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+          if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', bgColor);
+          }
+        } catch (e) {
+          console.error('Error setting theme:', e);
         }
       })();
     </script>
+    <style>
+      /* Prevent white flash - apply background immediately */
+      html {
+        background-color: #f8fafc;
+        color: #1f2937;
+      }
+      html[data-theme="dark"] {
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
+      }
+      body {
+        background-color: inherit;
+        color: inherit;
+        margin: 0;
+        padding: 0;
+      }
+      #root {
+        background-color: inherit;
+        color: inherit;
+      }
+    </style>
 
     <!-- Google Fonts - Montserrat (optimizat) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,10 +91,10 @@
     <meta property="og:description" content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://fishtrophy.ro" />
-    <meta property="og:image" content="https://fishtrophy.ro/socialmedia_banner.png" />
+    <meta property="og:image" content="https://fishtrophy.ro/socialmedia_banner.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:site_name" content="Fish Trophy" />
     <meta property="og:locale" content="ro_RO" />
 
@@ -66,7 +102,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Fish Trophy - Platforma Pescarilor din România" />
     <meta name="twitter:description" content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
-    <meta name="twitter:image" content="https://fishtrophy.ro/socialmedia_banner.png" />
+    <meta name="twitter:image" content="https://fishtrophy.ro/socialmedia_banner.jpg" />
     <meta name="twitter:image:alt" content="Fish Trophy - Platforma Pescarilor din România" />
 
     <!-- Additional Meta Tags -->

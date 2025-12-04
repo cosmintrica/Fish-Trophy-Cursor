@@ -132,13 +132,15 @@ export default function ReputationButtons({
   const hasLiked = userVote && userVote.points > 0;
   const hasDisliked = userVote && userVote.points < 0;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <>
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '0.5rem',
-        marginTop: '0.5rem'
+        gap: isMobile ? '0.25rem' : '0.375rem',
+        marginTop: 0
       }}>
         {/* Buton Like */}
         <button
@@ -147,14 +149,14 @@ export default function ReputationButtons({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.25rem',
-            padding: '0.375rem 0.75rem',
+            gap: '0.125rem',
+            padding: isMobile ? '0.25rem 0.375rem' : '0.3125rem 0.5rem',
             borderRadius: '0.375rem',
             border: `1px solid ${hasLiked ? theme.primary : theme.border}`,
             backgroundColor: hasLiked ? theme.primary : 'transparent',
             color: hasLiked ? 'white' : theme.text,
             cursor: loading || !forumUser ? 'not-allowed' : 'pointer',
-            fontSize: '0.875rem',
+            fontSize: isMobile ? '0.625rem' : '0.6875rem',
             fontWeight: '500',
             transition: 'all 0.2s',
             opacity: loading || !forumUser ? 0.6 : 1
@@ -177,7 +179,7 @@ export default function ReputationButtons({
             }
           }}
         >
-          <ThumbsUp style={{ width: '1rem', height: '1rem' }} />
+          <ThumbsUp style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
           <span>{reputation?.like_count || 0}</span>
         </button>
 
@@ -189,14 +191,14 @@ export default function ReputationButtons({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.25rem',
-              padding: '0.375rem 0.75rem',
+              gap: '0.125rem',
+              padding: isMobile ? '0.25rem 0.375rem' : '0.3125rem 0.5rem',
               borderRadius: '0.375rem',
               border: `1px solid ${hasDisliked ? '#dc2626' : theme.border}`,
               backgroundColor: hasDisliked ? '#dc2626' : 'transparent',
               color: hasDisliked ? 'white' : theme.text,
               cursor: loading || !forumUser ? 'not-allowed' : 'pointer',
-              fontSize: '0.875rem',
+              fontSize: isMobile ? '0.625rem' : '0.6875rem',
               fontWeight: '500',
               transition: 'all 0.2s',
               opacity: loading || !forumUser ? 0.6 : 1
@@ -220,7 +222,7 @@ export default function ReputationButtons({
               }
             }}
           >
-            <ThumbsDown style={{ width: '1rem', height: '1rem' }} />
+            <ThumbsDown style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
             <span>{reputation?.dislike_count || 0}</span>
           </button>
         ) : (
@@ -228,19 +230,19 @@ export default function ReputationButtons({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.25rem',
-              padding: '0.375rem 0.75rem',
+              gap: '0.125rem',
+              padding: isMobile ? '0.25rem 0.375rem' : '0.3125rem 0.5rem',
               borderRadius: '0.375rem',
               border: `1px solid ${theme.border}`,
               backgroundColor: theme.surface,
               color: theme.textSecondary,
-              fontSize: '0.875rem',
+              fontSize: isMobile ? '0.625rem' : '0.6875rem',
               cursor: 'not-allowed',
               opacity: 0.5
             }}
             title="Ai nevoie de minimum 50 puncte reputație pentru a da dislike"
           >
-            <ThumbsDown style={{ width: '1rem', height: '1rem' }} />
+            <ThumbsDown style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
             <span>{reputation?.dislike_count || 0}</span>
           </div>
         )}

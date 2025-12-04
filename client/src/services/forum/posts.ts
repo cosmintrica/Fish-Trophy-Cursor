@@ -17,6 +17,7 @@ import type {
 
 /**
  * Get posts for a topic (paginated)
+ * OPTIMIZED: Uses RPC function to reduce 60+ queries to 1
  */
 export async function getPosts(
     topicId: string,
@@ -24,15 +25,12 @@ export async function getPosts(
     pageSize = 20
 ): Promise<ApiResponse<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string; author_respect?: number; author_rank?: string }>>> {
     try {
-        const offset = (page - 1) * pageSize
-
         // Check if topicId is UUID or slug - if slug, get UUID first
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(topicId);
         let actualTopicId = topicId;
 
         if (!isUUID) {
             // It's a slug, get the topic ID first
-            // IMPORTANT: Folosim .limit(1) pentru a evita duplicate (slug-ul nu e unic global)
             const { data: topicData } = await supabase
                 .from('forum_topics')
                 .select('id')
@@ -61,87 +59,122 @@ export async function getPosts(
             }
         }
 
-        const { data, error, count } = await supabase
-            .from('forum_posts')
-            .select('*', { count: 'exact' })
-            .eq('topic_id', actualTopicId)
-            .eq('is_deleted', false)
-            .order('created_at', { ascending: true })
-            .range(offset, offset + pageSize - 1)
+        // Try optimized RPC first (1 query instead of 60+)
+        const { data: rpcData, error: rpcError } = await supabase
+            .rpc('get_posts_with_authors', {
+                p_topic_id: actualTopicId,
+                p_page: page,
+                p_page_size: pageSize
+            });
 
-        if (error) {
-            return { error: { message: error.message, code: error.code } }
-        }
-
-        // Map posts with author info REAL - din profiles și forum_users
-        const postsWithAuthor = await Promise.all((data || []).map(async (p) => {
-            let username = 'Unknown';
-            let avatar = null;
-            let respect = 0;
-            let rank = 'pescar';
-            let editedByUsername: string | undefined = undefined;
-
-            if (p.user_id) {
-                // Obține date din profiles (photo_url, display_name)
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('display_name, username, email, photo_url')
-                    .eq('id', p.user_id)
-                    .maybeSingle();
-
-                if (profile) {
-                    username = profile.display_name || profile.username || profile.email?.split('@')[0] || 'Unknown';
-                    avatar = profile.photo_url || null;
-                }
-
-                // Obține date din forum_users (respect, rank)
-                const { data: forumUser } = await supabase
-                    .from('forum_users')
-                    .select('reputation_points, rank')
-                    .eq('user_id', p.user_id)
-                    .maybeSingle();
-
-                if (forumUser) {
-                    respect = forumUser.reputation_points || 0;
-                    rank = forumUser.rank || 'pescar';
-                }
-            }
-
-            // Obține username-ul pentru edited_by dacă există
-            if (p.edited_by) {
-                const { data: editedByProfile } = await supabase
-                    .from('profiles')
-                    .select('display_name, username, email')
-                    .eq('id', p.edited_by)
-                    .maybeSingle();
-
-                if (editedByProfile) {
-                    editedByUsername = editedByProfile.display_name || editedByProfile.username || editedByProfile.email?.split('@')[0] || 'Unknown';
-                }
-            }
-
+        // If RPC works, use it
+        if (!rpcError && rpcData) {
             return {
-                ...p,
-                author_username: username,
-                author_avatar: avatar,
-                author_respect: respect,
-                author_rank: rank,
-                post_number: p.post_number || null, // Include post_number din database
-                edited_by_username: editedByUsername // Numele utilizatorului care a editat
+                data: {
+                    data: rpcData.data || [],
+                    total: rpcData.total || 0,
+                    page: rpcData.page || page,
+                    page_size: rpcData.page_size || pageSize,
+                    has_more: rpcData.has_more || false
+                }
             };
-        }))
-
-        return {
-            data: {
-                data: postsWithAuthor,
-                total: count || 0,
-                page,
-                page_size: pageSize,
-                has_more: offset + pageSize < (count || 0)
-            }
         }
+
+        // Fallback to old method if RPC not available (e.g., migration not run yet)
+        console.warn('RPC get_posts_with_authors not available, using fallback method');
+        return getPostsFallback(actualTopicId, page, pageSize);
+
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Fallback method for getPosts (used when RPC is not available)
+ * This is the old N+1 query pattern - less efficient but works without migration
+ */
+async function getPostsFallback(
+    topicId: string,
+    page: number,
+    pageSize: number
+): Promise<ApiResponse<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string; author_respect?: number; author_rank?: string }>>> {
+    const offset = (page - 1) * pageSize;
+
+    const { data, error, count } = await supabase
+        .from('forum_posts')
+        .select('*', { count: 'exact' })
+        .eq('topic_id', topicId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + pageSize - 1)
+
+    if (error) {
+        return { error: { message: error.message, code: error.code } }
+    }
+
+    // Map posts with author info - N+1 pattern (slower but works)
+    const postsWithAuthor = await Promise.all((data || []).map(async (p) => {
+        let username = 'Unknown';
+        let avatar = null;
+        let respect = 0;
+        let rank = 'pescar';
+        let editedByUsername: string | undefined = undefined;
+
+        if (p.user_id) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('display_name, username, email, photo_url')
+                .eq('id', p.user_id)
+                .maybeSingle();
+
+            if (profile) {
+                username = profile.display_name || profile.username || profile.email?.split('@')[0] || 'Unknown';
+                avatar = profile.photo_url || null;
+            }
+
+            const { data: forumUser } = await supabase
+                .from('forum_users')
+                .select('reputation_points, rank')
+                .eq('user_id', p.user_id)
+                .maybeSingle();
+
+            if (forumUser) {
+                respect = forumUser.reputation_points || 0;
+                rank = forumUser.rank || 'pescar';
+            }
+        }
+
+        if (p.edited_by) {
+            const { data: editedByProfile } = await supabase
+                .from('profiles')
+                .select('display_name, username, email')
+                .eq('id', p.edited_by)
+                .maybeSingle();
+
+            if (editedByProfile) {
+                editedByUsername = editedByProfile.display_name || editedByProfile.username || editedByProfile.email?.split('@')[0] || 'Unknown';
+            }
+        }
+
+        return {
+            ...p,
+            author_username: username,
+            author_avatar: avatar,
+            author_respect: respect,
+            author_rank: rank,
+            post_number: p.post_number || null,
+            edited_by_username: editedByUsername
+        };
+    }))
+
+    return {
+        data: {
+            data: postsWithAuthor,
+            total: count || 0,
+            page,
+            page_size: pageSize,
+            has_more: offset + pageSize < (count || 0)
+        }
     }
 }
 
@@ -178,16 +211,66 @@ export async function createPost(params: PostCreateParams): Promise<ApiResponse<
             return { error: { message: 'Authentication required', code: 'AUTH_REQUIRED' } }
         }
 
-        // Check if user is restricted (mute/ban)
+        // Check if user is restricted (mute/ban) - exclude shadow_ban
         const { data: restrictions } = await supabase
             .from('forum_user_restrictions')
-            .select('restriction_type')
+            .select('restriction_type, reason, expires_at')
             .eq('user_id', user.id)
             .eq('is_active', true)
+            .neq('restriction_type', 'shadow_ban') // Exclude shadow ban from notifications
             .or('expires_at.is.null,expires_at.gt.now()')
 
         if (restrictions && restrictions.length > 0) {
-            return { error: { message: 'You are restricted from posting', code: 'USER_RESTRICTED' } }
+            const restriction = restrictions[0]; // Take first active restriction
+            const restrictionType = restriction.restriction_type;
+            const reason = restriction.reason || 'Fără motiv specificat';
+            const expiresAt = restriction.expires_at;
+
+            // Format restriction message based on type
+            let restrictionMessage = '';
+            let restrictionTitle = '';
+
+            switch (restrictionType) {
+                case 'mute':
+                    restrictionTitle = 'Ești mutat';
+                    restrictionMessage = `Nu poți posta în forum. Motiv: ${reason}`;
+                    break;
+                case 'view_ban':
+                    restrictionTitle = 'Ești restricționat';
+                    restrictionMessage = `Nu poți posta în forum. Motiv: ${reason}`;
+                    break;
+                case 'temp_ban':
+                    restrictionTitle = 'Ești banat temporar';
+                    restrictionMessage = `Nu poți posta în forum. Motiv: ${reason}`;
+                    break;
+                case 'permanent_ban':
+                    restrictionTitle = 'Ești banat permanent';
+                    restrictionMessage = `Nu poți posta în forum. Motiv: ${reason}`;
+                    break;
+                default:
+                    restrictionTitle = 'Ești restricționat';
+                    restrictionMessage = `Nu poți posta în forum. Motiv: ${reason}`;
+            }
+
+            if (expiresAt) {
+                const expiryDate = new Date(expiresAt);
+                const now = new Date();
+                const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                restrictionMessage += `. Restricția expiră ${daysUntilExpiry > 0 ? `în ${daysUntilExpiry} zile` : 'astăzi'}.`;
+            } else if (restrictionType === 'permanent_ban') {
+                restrictionMessage += '. Restricția este permanentă.';
+            }
+
+            return {
+                error: {
+                    message: restrictionMessage,
+                    title: restrictionTitle,
+                    code: 'USER_RESTRICTED',
+                    restrictionType: restrictionType,
+                    reason: reason,
+                    expiresAt: expiresAt
+                }
+            }
         }
 
         // Check if topic_id is UUID or slug - if slug, get UUID first

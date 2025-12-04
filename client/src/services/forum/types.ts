@@ -309,7 +309,7 @@ export interface AdminAwardReputationParams {
     receiverUserId: string
     points: number // Unlimited
     comment: string
-    reason: string
+    reason?: string // Optional - not stored in database, only for API consistency
 }
 
 export interface ReputationLogWithUsers extends ForumReputationLog {

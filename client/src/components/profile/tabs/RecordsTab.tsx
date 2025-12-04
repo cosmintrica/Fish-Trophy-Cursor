@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Fish, Scale, Ruler, MapPin } from 'lucide-react';
+import { getR2ImageUrlProxy } from '@/lib/supabase';
 
 interface RecordsTabProps {
     userId: string;
@@ -78,9 +79,26 @@ export const RecordsTab = ({
                     {records.map((record) => (
                         <Card key={record.id} className="overflow-hidden">
                             <div className="aspect-video bg-gray-200 relative">
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
-                                    <Fish className="w-16 h-16 text-blue-400" />
-                                </div>
+                                {(record.image_url || record.photo_url) ? (
+                                    <>
+                                        <img
+                                            src={getR2ImageUrlProxy(record.image_url || record.photo_url)}
+                                            alt={record.fish_species?.name || 'Record'}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                target.style.display = 'none';
+                                            }}
+                                        />
+                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200" style={{ display: 'none' }}>
+                                            <Fish className="w-16 h-16 text-blue-400" />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                                        <Fish className="w-16 h-16 text-blue-400" />
+                                    </div>
+                                )}
                                 <div className="absolute top-2 right-2">
                                     {getStatusBadge(record.status)}
                                 </div>
@@ -88,7 +106,13 @@ export const RecordsTab = ({
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-semibold text-lg">{record.fish_species?.name || 'Specie necunoscută'}</h3>
-                                    <span className="text-sm text-gray-500">{new Date(record.captured_at).toLocaleDateString('ro-RO')}</span>
+                                    <span className="text-sm text-gray-500">
+                                        {record.date_caught 
+                                            ? new Date(record.date_caught).toLocaleDateString('ro-RO')
+                                            : record.captured_at 
+                                            ? new Date(record.captured_at).toLocaleDateString('ro-RO')
+                                            : new Date(record.created_at).toLocaleDateString('ro-RO')}
+                                    </span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 mb-3">
@@ -101,7 +125,7 @@ export const RecordsTab = ({
                                     <div className="flex items-center space-x-2">
                                         <Ruler className="w-4 h-4 text-green-600" />
                                         <span className="text-sm">
-                                            <span className="font-medium">{record.length_cm} cm</span>
+                                            <span className="font-medium">{(record.length || record.length_cm) || 'N/A'} cm</span>
                                         </span>
                                     </div>
                                 </div>

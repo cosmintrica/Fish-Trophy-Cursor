@@ -1,45 +1,42 @@
 /**
  * Forum Categories Hook
- * React hook for loading forum categories hierarchy using SWR
+ * React hook for loading forum categories hierarchy using React Query
  */
 
-import useSWR from 'swr'
+import { useQuery } from '@tanstack/react-query'
 import {
     getCategoriesWithHierarchy,
     getSubcategories,
     type CategoryWithChildren,
     type ForumSubcategory
-} from '@/services/forum'
-import { swrKeys } from '@/lib/swr-config'
+} from '../../services/forum'
+import { queryKeys } from '../../lib/query-client'
 import { useState, useCallback, useEffect } from 'react'
 
 /**
- * Hook pentru încărcarea categoriilor cu ierarhie completă - cu SWR
+ * Hook pentru încărcarea categoriilor cu ierarhie completă - cu React Query
  * Returnează instant date din cache, apoi revalidatează în background
  */
 export function useCategories() {
-    const { data, error, isLoading, mutate } = useSWR<CategoryWithChildren[]>(
-        swrKeys.categories(),
-        async () => {
+    const { data, error, isLoading, refetch } = useQuery<CategoryWithChildren[]>({
+        queryKey: queryKeys.categories(),
+        queryFn: async () => {
             const result = await getCategoriesWithHierarchy()
             if (result.error) {
                 throw new Error(result.error.message)
             }
             return result.data || []
         },
-        {
-            revalidateOnFocus: false, // Categoriile nu se schimbă des
-            revalidateOnReconnect: true,
-            // Cache mai lung pentru categorii (se schimbă rar)
-            dedupingInterval: 5 * 60 * 1000, // 5 minute
-        }
-    )
+        staleTime: 5 * 60 * 1000, // 5 minute (categoriile nu se schimbă des)
+        gcTime: 10 * 60 * 1000, // 10 minute
+        refetchOnWindowFocus: false, // Categoriile nu se schimbă des
+    })
 
     return {
         categories: data || [],
         loading: isLoading && !data, // Loading doar dacă nu avem date
         error: error as Error | null,
-        refetch: () => mutate()
+        refetch: () => refetch()
     }
 }
 

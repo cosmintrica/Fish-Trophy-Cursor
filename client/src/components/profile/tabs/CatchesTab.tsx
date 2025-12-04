@@ -6,7 +6,8 @@ import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { CatchDetailModal } from '@/components/CatchDetailModal';
-import EditCatchModal from '@/components/EditCatchModal';
+import FishingEntryModal from '@/components/FishingEntryModal';
+import { CatchCard } from '@/components/profile/CatchCard';
 
 interface Catch {
   id: string;
@@ -213,26 +214,26 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
           {catches.map((catchItem) => (
             <Card 
               key={catchItem.id} 
-              className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+              className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col aspect-square sm:aspect-auto sm:h-full"
               onClick={() => {
                 setSelectedCatch(catchItem);
                 setShowDetailModal(true);
               }}
             >
-              {catchItem.photo_url ? (
-                <div className="aspect-video bg-gray-200 relative">
+              {/* Mobile: Full screen image with overlay */}
+              <div className="relative w-full h-full sm:aspect-video sm:h-auto">
+                {catchItem.photo_url ? (
                   <img
                     src={getR2ImageUrlProxy(catchItem.photo_url)}
                     alt={catchItem.fish_species?.name || 'Captură'}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                     onError={(e) => {
-                      // Fallback to placeholder if image fails to load
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
                       const parent = target.parentElement;
                       if (parent) {
                         parent.innerHTML = `
-                          <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                          <div class="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                             <svg class="w-16 h-16 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
@@ -241,16 +242,108 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                       }
                     }}
                   />
-                </div>
-              ) : (
-                <div className="aspect-video bg-gray-200 relative">
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                ) : (
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                     <Fish className="w-16 h-16 text-blue-400" />
                   </div>
+                )}
+                
+                {/* Gradient overlay pentru mobil - doar în partea de jos */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent sm:hidden"></div>
+                
+                {/* Detalii peste gradient - doar pe mobil */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-white sm:hidden z-10">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-bold text-lg text-white drop-shadow-lg">
+                      {catchItem.fish_species?.name || 'Specie necunoscută'}
+                    </h3>
+                    {catchItem.global_id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(catchItem.global_id!.toString());
+                            toast.success(`ID ${catchItem.global_id} copiat!`);
+                          } catch (err) {
+                            toast.error('Eroare la copierea ID-ului');
+                          }
+                        }}
+                        className="text-[10px] text-white/80 hover:text-white px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors font-mono shrink-0 backdrop-blur-sm"
+                        title="Click pentru a copia ID-ul"
+                      >
+                        #{catchItem.global_id}
+                      </button>
+                    )}
+                  </div>
+
+                  {catchItem.fishing_locations && (
+                    <div className="flex items-center gap-1.5 text-sm text-white/90 mb-2 drop-shadow">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="truncate">{catchItem.fishing_locations.name}</span>
+                    </div>
+                  )}
+
+                  {(catchItem.weight || catchItem.length_cm) && (
+                    <div className="flex items-center gap-4 mb-3">
+                      {catchItem.weight && (
+                        <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-md">
+                          <Scale className="w-4 h-4 text-white" />
+                          <span className="text-sm font-semibold text-white">{catchItem.weight} kg</span>
+                        </div>
+                      )}
+                      {catchItem.length_cm && (
+                        <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-md">
+                          <Ruler className="w-4 h-4 text-white" />
+                          <span className="text-sm font-semibold text-white">{catchItem.length_cm} cm</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                    <div className="flex items-center gap-3 text-xs text-white/90">
+                      <div className="flex items-center gap-1">
+                        <Heart className={`w-3.5 h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-red-400 text-red-400' : ''}`} />
+                        <span>{catchItem.like_count || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>{catchItem.comment_count || 0}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-white/80">
+                      {new Date(catchItem.captured_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+
+                  {/* Show like button only if not owner - pe mobil */}
+                  {!isOwner && (
+                    <div className="pt-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLike(catchItem.id, catchItem.is_liked_by_current_user);
+                        }}
+                        className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors backdrop-blur-sm ${
+                          catchItem.is_liked_by_current_user
+                            ? 'text-red-100 bg-red-500/30 hover:bg-red-500/40 border border-red-400/30'
+                            : 'text-white bg-white/20 hover:bg-white/30 border border-white/30'
+                        }`}
+                      >
+                        <Heart
+                          className={`w-4 h-4 ${catchItem.is_liked_by_current_user ? 'fill-current' : ''}`}
+                        />
+                        <span className="text-sm font-medium">
+                          {catchItem.is_liked_by_current_user ? 'Ai dat like' : 'Dă like'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
               
-              <CardContent className="p-4">
+              {/* Desktop: CardContent normal */}
+              <CardContent className="hidden sm:block p-4 flex-shrink-0">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-bold text-lg text-gray-900">
                     {catchItem.fish_species?.name || 'Specie necunoscută'}
@@ -371,18 +464,24 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
 
       {/* Edit Catch Modal */}
       {editingCatch && (
-        <EditCatchModal
-          catchItem={editingCatch}
+        <FishingEntryModal
+          entry={editingCatch}
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setEditingCatch(null);
           }}
           onSuccess={() => {
+            setShowEditModal(false);
+            setEditingCatch(null);
             loadCatches();
             onCatchAdded?.();
           }}
+          type="catch"
+          mode="edit"
           onDelete={() => {
+            setShowEditModal(false);
+            setEditingCatch(null);
             loadCatches();
             onCatchAdded?.();
           }}

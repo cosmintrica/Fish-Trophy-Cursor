@@ -1,10 +1,11 @@
 /**
  * Forum Statistics Hook
- * Loads real forum statistics from database
+ * Loads real forum statistics from database using React Query
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { queryKeys } from '../../lib/query-client'
 
 export interface ForumStats {
   total_users: number
@@ -18,45 +19,10 @@ export interface ForumStats {
   total_reputation_given: number
 }
 
-// Cache cu sessionStorage pentru forum stats
-const STATS_CACHE_KEY = 'forum_stats_cache';
-const STATS_CACHE_DURATION = 2 * 60 * 1000; // 2 minute
-
-function getCachedStats(): ForumStats | null {
-  try {
-    const cached = sessionStorage.getItem(STATS_CACHE_KEY);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < STATS_CACHE_DURATION) {
-        return data;
-      }
-    }
-  } catch (e) {
-    // Ignoră erorile de parsing
-  }
-  return null;
-}
-
-function setCachedStats(data: ForumStats) {
-  try {
-    sessionStorage.setItem(STATS_CACHE_KEY, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-  } catch (e) {
-    // Ignoră erorile de storage
-  }
-}
-
 export function useForumStats() {
-  // Încarcă instant din cache dacă există
-  const [stats, setStats] = useState<ForumStats | null>(() => getCachedStats());
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadStats = useCallback(async () => {
-    setError(null)
-
-    try {
+  const { data: stats, error, isLoading, refetch } = useQuery<ForumStats>({
+    queryKey: queryKeys.forumStats(),
+    queryFn: async () => {
       // Use the RPC function from migration 12
       const { data, error: statsError } = await supabase.rpc('get_forum_stats')
 
@@ -65,28 +31,30 @@ export function useForumStats() {
         console.warn('get_forum_stats RPC failed, calculating manually:', statsError)
         
         // Get counts without RLS issues
+        // Pentru utilizatori online, folosim last_seen_at (ultimele 5 minute)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
         const [usersResult, topicsResult, postsResult, onlineResult] = await Promise.all([
           supabase.from('forum_users').select('id', { count: 'exact', head: true }),
           supabase.from('forum_topics').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
           supabase.from('forum_posts').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
-          supabase.from('forum_users').select('id', { count: 'exact', head: true }).eq('is_online', true)
+          supabase.from('forum_users').select('id', { count: 'exact', head: true }).gte('last_seen_at', fiveMinutesAgo)
         ])
 
         // Get newest user separately (might fail due to RLS, so we catch it)
-        let newestUser = undefined;
+        let newestUser = undefined
         try {
           const { data: newestData } = await supabase
             .from('forum_users')
             .select('user_id, username')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle()
           
           if (newestData) {
-            newestUser = { id: newestData.user_id, username: newestData.username };
+            newestUser = { id: newestData.user_id, username: newestData.username }
           }
         } catch (err) {
-          console.warn('Could not fetch newest user:', err);
+          console.warn('Could not fetch newest user:', err)
         }
 
         const manualStats: ForumStats = {
@@ -98,37 +66,20 @@ export function useForumStats() {
           total_reputation_given: 0
         }
 
-        setStats(manualStats);
-        setCachedStats(manualStats);
-        return
+        return manualStats
       }
 
-      const statsData = data as ForumStats;
-      setStats(statsData);
-      setCachedStats(statsData);
-    } catch (err) {
-      setError(err as Error)
-      // Dacă e eroare dar avem cache, păstrăm cache-ul
-      const cached = getCachedStats();
-      if (cached) {
-        setStats(cached);
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    // Încarcă doar dacă nu avem cache valid
-    const cached = getCachedStats();
-    if (!cached) {
-      loadStats();
-    }
-  }, [loadStats])
+      return data as ForumStats
+    },
+    staleTime: 2 * 60 * 1000, // 2 minute - stats se schimbă mai des
+    gcTime: 5 * 60 * 1000, // 5 minute
+    refetchOnWindowFocus: false, // Dezactivat pentru performanță
+  })
 
   return {
-    stats,
-    loading: false, // Nu mai folosim loading
-    error,
-    refetch: loadStats
+    stats: stats || null,
+    loading: isLoading && !stats, // Loading doar dacă nu avem date
+    error: error as Error | null,
+    refetch: () => refetch()
   }
 }
-

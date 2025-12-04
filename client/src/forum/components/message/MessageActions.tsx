@@ -31,92 +31,41 @@ export default function MessageActions({
 }: MessageActionsProps) {
   const { theme } = useTheme();
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div style={{
       backgroundColor: theme.background,
       borderTop: `1px solid ${theme.border}`,
-      padding: '0.75rem 1.5rem',
+      padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1.5rem',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      gap: '0.5rem',
+      flexWrap: 'wrap'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Respect buttons */}
-        <button
-          onClick={() => onRespectChange?.(postId, 1, 'Postare utilă!')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            padding: '0.375rem 0.75rem',
-            backgroundColor: 'transparent',
-            border: `1px solid ${theme.secondary}`,
-            borderRadius: '0.375rem',
-            color: theme.secondary,
-            cursor: 'pointer',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = theme.secondary;
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = theme.secondary;
-          }}
-        >
-          🎣 Respect
-        </button>
-
-        <button
-          onClick={() => onRespectChange?.(postId, -1, 'Postare necorespunzătoare')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            padding: '0.375rem 0.75rem',
-            backgroundColor: 'transparent',
-            border: '1px solid #dc2626',
-            borderRadius: '0.375rem',
-            color: '#dc2626',
-            cursor: 'pointer',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#dc2626';
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#dc2626';
-          }}
-        >
-          ⚓ Retrage
-        </button>
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Traditional actions */}
         <button
           onClick={() => onReply?.(postId)}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.375rem',
-            padding: '0.375rem 0.75rem',
+            gap: '0.25rem',
+            padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
             backgroundColor: 'transparent',
             border: `1px solid ${theme.border}`,
             borderRadius: '0.375rem',
             color: theme.textSecondary,
             cursor: 'pointer',
-            fontSize: '0.75rem',
-            transition: 'all 0.2s'
+            fontSize: isMobile ? '0.6875rem' : '0.75rem',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
           }}
         >
-          <MessageSquare style={{ width: '0.875rem', height: '0.875rem' }} />
-          Răspunde
+          <MessageSquare style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+          <span>Răspunde</span>
         </button>
 
         <button
@@ -124,19 +73,21 @@ export default function MessageActions({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.375rem',
-            padding: '0.375rem 0.75rem',
+            gap: '0.25rem',
+            padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
             backgroundColor: 'transparent',
             border: `1px solid ${theme.border}`,
             borderRadius: '0.375rem',
             color: theme.textSecondary,
             cursor: 'pointer',
-            fontSize: '0.75rem',
-            transition: 'all 0.2s'
+            fontSize: isMobile ? '0.6875rem' : '0.75rem',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
           }}
         >
-          <Quote style={{ width: '0.875rem', height: '0.875rem' }} />
-          Citează
+          <Quote style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+          <span>Citează</span>
         </button>
 
         {/* Admin Controls */}
@@ -154,16 +105,17 @@ export default function MessageActions({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.375rem 0.75rem',
+                gap: '0.25rem',
+                padding: isMobile ? '0.375rem 0.5rem' : '0.375rem 0.75rem',
                 backgroundColor: '#dc2626',
                 border: 'none',
                 borderRadius: '0.375rem',
                 color: 'white',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: isMobile ? '0.6875rem' : '0.75rem',
                 fontWeight: '600',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#b91c1c';
@@ -172,7 +124,7 @@ export default function MessageActions({
                 e.currentTarget.style.backgroundColor = '#dc2626';
               }}
             >
-              🗑️ Șterge
+              🗑️ {!isMobile && <span>Șterge</span>}
             </button>
 
             <button
@@ -180,16 +132,17 @@ export default function MessageActions({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.375rem 0.75rem',
+                gap: '0.25rem',
+                padding: isMobile ? '0.375rem 0.5rem' : '0.375rem 0.75rem',
                 backgroundColor: '#f59e0b',
                 border: 'none',
                 borderRadius: '0.375rem',
                 color: 'white',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: isMobile ? '0.6875rem' : '0.75rem',
                 fontWeight: '600',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flexShrink: 0
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#d97706';
@@ -198,7 +151,7 @@ export default function MessageActions({
                 e.currentTarget.style.backgroundColor = '#f59e0b';
               }}
             >
-              ✏️ Editează
+              ✏️ {!isMobile && <span>Editează</span>}
             </button>
           </>
         )}
@@ -206,11 +159,13 @@ export default function MessageActions({
 
       {/* Reputation Buttons */}
       {authorId && (
-        <ReputationButtons
-          postId={postId}
-          receiverUserId={authorId}
-          onReputationChange={onReputationChange}
-        />
+        <div style={{ flexShrink: 0 }}>
+          <ReputationButtons
+            postId={postId}
+            receiverUserId={authorId}
+            onReputationChange={onReputationChange}
+          />
+        </div>
       )}
     </div>
   );

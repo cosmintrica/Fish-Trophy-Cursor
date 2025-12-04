@@ -46,12 +46,15 @@ export default function CreateTopicModal({
       if (isUUID) {
         setResolvedSubcategoryId(categoryId);
       } else {
-        // Folosește ilike pentru case-insensitive match
+        // Folosește exact match (nu ilike) pentru a evita eroarea 406
+        // IMPORTANT: categoryId poate fi un slug de categorie sau subcategorie
+        // Trebuie să verificăm mai întâi dacă este o subcategorie
         const { data } = await supabase
           .from('forum_subcategories')
           .select('id')
-          .ilike('slug', categoryId)
-          .single();
+          .eq('slug', categoryId)
+          .eq('is_active', true)
+          .maybeSingle();
 
         setResolvedSubcategoryId(data?.id || null);
       }
@@ -97,7 +100,18 @@ export default function CreateTopicModal({
       showToast('Topic creat cu succes!', 'success');
     } else {
       console.error('Error creating topic:', result.error);
-      showToast(result.error?.message || 'A apărut o eroare la crearea topicului!', 'error');
+      
+      // Check if it's a restriction error with custom details
+      if (result.error?.code === 'USER_RESTRICTED' && result.error?.title) {
+        // Show custom restriction notification
+        showToast(
+          result.error.title ? `${result.error.title}: ${result.error.message}` : result.error.message,
+          'error',
+          { duration: 6000 } // Longer duration for restriction messages
+        );
+      } else {
+        showToast(result.error?.message || 'A apărut o eroare la crearea topicului!', 'error');
+      }
     }
   };
 

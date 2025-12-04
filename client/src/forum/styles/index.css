@@ -123,10 +123,126 @@
     background-color: #f8fafc !important;
   }
   
-  /* Previne gradient alb la scroll pe mobil */
+  /* Previne gradient alb la scroll pe mobil - ELIMINĂ TOATE gradient-urile */
   [data-theme="dark"] html::after,
   [data-theme="dark"] body::after {
     display: none !important;
+  }
+  
+  /* ELIMINĂ gradient-urile din styles/index.css care se aplică pe forum */
+  [data-theme="dark"] html,
+  [data-theme="dark"] body,
+  [data-theme="dark"] #root {
+    background: #0f172a !important;
+    background-image: none !important;
+    background-attachment: initial !important;
+  }
+  
+  /* Fix pentru fundal alb după footer */
+  [data-theme="dark"] body::before,
+  [data-theme="dark"] html::before {
+    display: none !important;
+  }
+  
+  /* Fix pentru orice spațiu alb după footer */
+  [data-theme="dark"] footer::after,
+  [data-theme="dark"] footer::before {
+    display: none !important;
+  }
+  
+  /* Asigură că nu există gradient la scroll pe mobil */
+  [data-theme="dark"] * {
+    background-attachment: initial !important;
+  }
+  
+  /* Fix pentru dungă albă la scroll rapid - elimină orice spațiu la sfârșitul paginii */
+  [data-theme="dark"] body,
+  [data-theme="dark"] html {
+    height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Elimină margin/padding la sfârșitul paginii */
+  [data-theme="dark"] body::after {
+    content: none !important;
+    display: none !important;
+  }
+  
+  /* Fix pentru forum layout - asigură că nu există spațiu alb */
+  [data-theme="dark"] #root > div[style*="minHeight"] {
+    background-color: #0f172a !important;
+    min-height: 100vh !important;
+  }
+  
+  /* Fix pentru dungă albă pe iPhone la scroll rapid - safe area insets */
+  @supports (padding: max(0px)) {
+    [data-theme="dark"] body {
+      padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+    }
+    
+    [data-theme="dark"] html {
+      padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+    }
+    
+    [data-theme="dark"] #root {
+      padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+    }
+    
+    [data-theme="dark"] footer {
+      padding-bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom))) !important;
+      margin-bottom: 0 !important;
+    }
+  }
+  
+  /* Elimină orice overflow la sfârșitul paginii pe iPhone */
+  [data-theme="dark"] body,
+  [data-theme="dark"] html {
+    overscroll-behavior-y: contain !important;
+  }
+  
+  /* Asigură fundal consistent până la sfârșitul paginii - ELIMINĂ COMPLET dungă albă pe iPhone */
+  [data-theme="dark"] #root,
+  [data-theme="dark"] .App {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    min-height: calc(100vh + env(safe-area-inset-bottom, 0px)) !important;
+    background-color: #0f172a !important;
+  }
+  
+  /* Fix specific pentru container-ul principal al forum-ului - elimină dungă albă */
+  [data-theme="dark"] #root > div[style*="minHeight"] {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    min-height: calc(100vh + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  /* Elimină complet orice spațiu alb după footer pe iPhone */
+  [data-theme="dark"] body > *:last-child::after {
+    display: none !important;
+    content: none !important;
+  }
+  
+  /* Fix pentru dungă albă foarte mică pe iPhone la scroll rapid - elimină complet */
+  [data-theme="dark"] html,
+  [data-theme="dark"] body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: none !important;
+  }
+  
+  /* Asigură că footer-ul acoperă complet spațiul la sfârșit */
+  [data-theme="dark"] footer {
+    min-height: auto !important;
+    margin-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+  
+  /* Elimină orice spațiu alb sub footer pe iPhone */
+  @media screen and (max-width: 768px) {
+    [data-theme="dark"] body::after,
+    [data-theme="dark"] html::after {
+      display: none !important;
+      content: none !important;
+      background: none !important;
+    }
   }
 
   [data-theme="light"] html,

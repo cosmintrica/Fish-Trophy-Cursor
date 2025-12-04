@@ -1,9 +1,9 @@
 /**
  * Forum Posts Hook
- * Manages posts data and operations using SWR
+ * Manages posts data and operations using React Query
  */
 
-import useSWR from 'swr'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     getPosts,
     createPost,
@@ -12,36 +12,34 @@ import {
     type ForumPost,
     type PostCreateParams,
     type PaginatedResponse
-} from '@/services/forum'
-import { swrKeys } from '@/lib/swr-config'
-import { useState, useCallback } from 'react'
-import { useSWRConfig } from 'swr'
+} from '../../services/forum'
+import { queryKeys } from '../../lib/query-client'
 
 /**
- * Hook pentru listarea postărilor dintr-un topic - cu SWR
+ * Hook pentru listarea postărilor dintr-un topic - cu React Query
  * Returnează instant date din cache, apoi revalidatează în background
  */
 export function usePosts(topicId: string | null | undefined, page = 1, pageSize = 20) {
     // Nu încărca postările dacă nu avem topicId
-    const key = topicId ? swrKeys.posts(topicId, page, pageSize) : null
+    const queryKey = topicId ? queryKeys.posts(topicId, page, pageSize) : null
 
-    const { data, error, isLoading, mutate } = useSWR<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string }>>(
-        key,
-        async () => {
+    const { data, error, isLoading, refetch } = useQuery<PaginatedResponse<ForumPost & { author_username?: string; author_avatar?: string }>>({
+        queryKey: queryKey || ['posts', 'disabled'],
+        queryFn: async () => {
+            if (!topicId) {
+                throw new Error('Topic ID is required')
+            }
             const result = await getPosts(topicId, page, pageSize)
             if (result.error) {
                 throw new Error(result.error.message)
             }
             return result.data!
         },
-        {
-            // Dezactivăm revalidateOnFocus pentru a evita erori
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-            // Postările se schimbă mai des, deci revalidate mai frecvent
-            dedupingInterval: 1000,
-        }
-    )
+        enabled: !!queryKey, // Nu rulează query-ul dacă nu avem topicId
+        staleTime: 1 * 60 * 1000, // 1 minut (postările se schimbă mai des)
+        gcTime: 3 * 60 * 1000, // 3 minute
+        refetchOnWindowFocus: false, // Dezactivăm pentru a evita erori
+    })
 
     return {
         posts: data?.data || [],
@@ -49,121 +47,124 @@ export function usePosts(topicId: string | null | undefined, page = 1, pageSize 
         hasMore: data?.has_more || false,
         loading: isLoading && !data, // Loading doar dacă nu avem date
         error: error as Error | null,
-        refetch: () => mutate()
+        refetch: () => refetch()
     }
 }
 
 /**
- * Hook pentru crearea postărilor
+ * Hook pentru crearea postărilor - cu React Query Mutations
  */
 export function useCreatePost() {
-    const [creating, setCreating] = useState(false)
-    const [error, setError] = useState<Error | null>(null)
-    const { mutate } = useSWRConfig()
+    const queryClient = useQueryClient()
 
-    const create = useCallback(async (params: PostCreateParams) => {
-        setCreating(true)
-        setError(null)
-
-        try {
-            const { data, error: createError } = await createPost(params)
-            if (createError) {
-                throw new Error(createError.message)
+    const mutation = useMutation({
+        mutationFn: async (params: PostCreateParams) => {
+            const result = await createPost(params)
+            if (result.error) {
+                throw new Error(result.error.message)
             }
-            
+            return result
+        },
+        onSuccess: (result) => {
             // Invalidează cache-ul pentru posts din topic-ul creat
-            if (data?.topic_id) {
-                mutate(
-                    (key) => typeof key === 'string' && key.includes(`posts:${data.topic_id}`),
-                    undefined,
-                    { revalidate: true }
-                )
+            if (result.data?.topic_id) {
+                queryClient.invalidateQueries({ 
+                    queryKey: ['posts', result.data.topic_id] 
+                })
             }
-            
-            return { success: true, data }
-        } catch (err) {
-            setError(err as Error)
-            return { success: false, error: err as Error }
-        } finally {
-            setCreating(false)
-        }
-    }, [mutate])
+        },
+    })
 
-    return { create, creating, error }
+    const create = async (params: PostCreateParams) => {
+        try {
+            const result = await mutation.mutateAsync(params)
+            return { success: true, data: result.data, error: null }
+        } catch (error) {
+            return { success: false, data: null, error: error as Error }
+        }
+    }
+
+    return { 
+        create, 
+        creating: mutation.isPending, 
+        error: mutation.error as Error | null 
+    }
 }
 
 /**
- * Hook pentru editarea postărilor
+ * Hook pentru editarea postărilor - cu React Query Mutations
  */
 export function useUpdatePost() {
-    const [updating, setUpdating] = useState(false)
-    const [error, setError] = useState<Error | null>(null)
-    const { mutate } = useSWRConfig()
+    const queryClient = useQueryClient()
 
-    const update = useCallback(async (postId: string, content: string, editReason?: string) => {
-        setUpdating(true)
-        setError(null)
-
-        try {
-            const { data, error: updateError } = await updatePost(postId, content, editReason)
-            if (updateError) {
-                throw new Error(updateError.message)
+    const mutation = useMutation({
+        mutationFn: async ({ postId, content, editReason }: { postId: string; content: string; editReason?: string }) => {
+            const result = await updatePost(postId, content, editReason)
+            if (result.error) {
+                throw new Error(result.error.message)
             }
-            
+            return result
+        },
+        onSuccess: (result) => {
             // Invalidează cache-ul pentru posts din topic-ul editat
-            if (data?.topic_id) {
-                mutate(
-                    (key) => typeof key === 'string' && key.includes(`posts:${data.topic_id}`),
-                    undefined,
-                    { revalidate: true }
-                )
+            if (result.data?.topic_id) {
+                queryClient.invalidateQueries({ 
+                    queryKey: ['posts', result.data.topic_id] 
+                })
             }
-            
-            return { success: true, data }
-        } catch (err) {
-            setError(err as Error)
-            return { success: false, error: err as Error }
-        } finally {
-            setUpdating(false)
-        }
-    }, [mutate])
+        },
+    })
 
-    return { update, updating, error }
+    const update = async (postId: string, content: string, editReason?: string) => {
+        try {
+            const result = await mutation.mutateAsync({ postId, content, editReason })
+            return { success: true, data: result.data, error: null }
+        } catch (error) {
+            return { success: false, data: null, error: error as Error }
+        }
+    }
+
+    return { 
+        update, 
+        updating: mutation.isPending, 
+        error: mutation.error as Error | null 
+    }
 }
 
 /**
- * Hook pentru ștergerea postărilor
+ * Hook pentru ștergerea postărilor - cu React Query Mutations
  */
 export function useDeletePost() {
-    const [deleting, setDeleting] = useState(false)
-    const [error, setError] = useState<Error | null>(null)
-    const { mutate } = useSWRConfig()
+    const queryClient = useQueryClient()
 
-    const deletePostAction = useCallback(async (postId: string, reason?: string) => {
-        setDeleting(true)
-        setError(null)
-
-        try {
-            const { error: deleteError } = await deletePost(postId, reason)
-            if (deleteError) {
-                throw new Error(deleteError.message)
+    const mutation = useMutation({
+        mutationFn: async ({ postId, reason }: { postId: string; reason?: string }) => {
+            const result = await deletePost(postId, reason)
+            if (result.error) {
+                throw new Error(result.error.message)
             }
-            
+            return result
+        },
+        onSuccess: () => {
             // Invalidează cache-ul pentru toate posts (nu știm topic_id după ștergere)
-            mutate(
-                (key) => typeof key === 'string' && key.startsWith('swr:posts:'),
-                undefined,
-                { revalidate: true }
-            )
-            
-            return { success: true }
-        } catch (err) {
-            setError(err as Error)
-            return { success: false, error: err as Error }
-        } finally {
-            setDeleting(false)
-        }
-    }, [mutate])
+            queryClient.invalidateQueries({ 
+                queryKey: ['posts'] 
+            })
+        },
+    })
 
-    return { deletePost: deletePostAction, deleting, error }
+    const deletePostAction = async (postId: string, reason?: string) => {
+        try {
+            await mutation.mutateAsync({ postId, reason })
+            return { success: true, error: null }
+        } catch (error) {
+            return { success: false, error: error as Error }
+        }
+    }
+
+    return { 
+        deletePost: deletePostAction, 
+        deleting: mutation.isPending, 
+        error: mutation.error as Error | null 
+    }
 }

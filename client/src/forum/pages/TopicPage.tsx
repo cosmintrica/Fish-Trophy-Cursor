@@ -9,7 +9,8 @@ import ActiveViewers from '../components/ActiveViewers';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { ForumTopic, ForumPost } from '../types/forum';
-import { PostListSkeleton } from '../../components/skeletons';
+import { useMarkTopicAsRead } from '../hooks/useTopicReadStatus';
+import { useToast } from '../contexts/ToastContext';
 
 export default function TopicPage() {
   // Acceptă:
@@ -24,6 +25,7 @@ export default function TopicPage() {
   }>();
   const navigate = useNavigate();
   const { forumUser } = useAuth();
+  const { showToast } = useToast();
   const page = 1; // Default to page 1 for now
 
   // Folosește topicSlug dacă există (clean URL), altfel topicId (legacy)
@@ -38,6 +40,9 @@ export default function TopicPage() {
   const actualTopicId = topic?.id || topicIdentifier;
   const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(actualTopicId, 1, 50);
   const { create: createPost } = useCreatePost();
+  
+  // Hook pentru marcarea topicului ca citit
+  const { markAsRead } = useMarkTopicAsRead();
 
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,6 +157,21 @@ export default function TopicPage() {
     getHierarchy();
   }, [topic, subcategorySlug]);
 
+  // Marchează topicul ca citit când user-ul intră pe pagină
+  useEffect(() => {
+    if (actualTopicId && forumUser && posts.length > 0) {
+      // Marchează topicul ca citit cu ultimul post
+      const lastPost = posts[posts.length - 1];
+      markAsRead({ 
+        topicId: actualTopicId, 
+        postId: lastPost?.id 
+      }).catch(error => {
+        // Silent fail - nu afișăm eroare dacă marcarea nu reușește
+        console.error('Error marking topic as read:', error);
+      });
+    }
+  }, [actualTopicId, forumUser, posts.length, markAsRead]);
+
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -168,14 +188,38 @@ export default function TopicPage() {
         content: replyContent.trim()
       });
 
-      if (!success) throw error;
+      if (!success) {
+        // Check if it's a restriction error with custom details
+        if (error?.code === 'USER_RESTRICTED' && error?.title) {
+          // Show custom restriction notification
+          showToast(
+            error.title ? `${error.title}: ${error.message}` : error.message,
+            'error',
+            { duration: 6000 } // Longer duration for restriction messages
+          );
+        } else {
+          throw error;
+        }
+        return;
+      }
+      
       await refetchPosts(); // Reload real posts
 
       setReplyContent('');
-      alert('Răspuns postat cu succes!');
-    } catch (error) {
+      showToast('Răspuns postat cu succes!', 'success');
+    } catch (error: any) {
       console.error('Error posting reply:', error);
-      alert('A apărut o eroare la postarea răspunsului!');
+      
+      // Show error notification
+      if (error?.code === 'USER_RESTRICTED' && error?.title) {
+        showToast(
+          error.title ? `${error.title}: ${error.message}` : error.message,
+          'error',
+          { duration: 6000 }
+        );
+      } else {
+        showToast('A apărut o eroare la postarea răspunsului!', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -261,7 +305,14 @@ export default function TopicPage() {
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '2rem 1rem' }}>
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: isMobile ? '0.5rem' : '2rem 1rem',
+        width: '100%',
+        overflowX: 'hidden',
+        boxSizing: 'border-box'
+      }}>
         {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie › Topic - Toate linkuri funcționale */}
         <nav style={{ 
           marginBottom: isMobile ? '0.75rem' : '1.5rem', 
@@ -398,24 +449,7 @@ export default function TopicPage() {
           </div>
         </div>
 
-        {/* Posts List - ZERO LOADING: Afișăm întotdeauna, chiar dacă e gol */}
-        {postsLoading && displayPosts.length === 0 ? (
-          <PostListSkeleton count={3} />
-        ) : displayPosts.length === 0 && !postsError && (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '1rem',
-            border: '1px solid #e5e7eb',
-            padding: '3rem',
-            textAlign: 'center',
-            color: '#6b7280',
-            marginBottom: '1.5rem'
-          }}>
-            <MessageSquare style={{ width: '3rem', height: '3rem', margin: '0 auto 1rem', opacity: 0.3 }} />
-            <div style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Se încarcă conversația...</div>
-            <div style={{ fontSize: '0.875rem', opacity: 0.7 }}>Un moment, te rog</div>
-          </div>
-        )}
+        {/* Posts List - Fără loading, afișăm direct datele */}
         {displayPosts.map((post, index) => (
           <MessageContainer
             key={post.id}
@@ -621,7 +655,7 @@ export default function TopicPage() {
         )}
 
         {/* Active Viewers */}
-        <ActiveViewers topicId={topicId || ''} />
+        <ActiveViewers topicId={topic?.id || topicId || ''} />
       </div>
     </ForumLayout>
   );

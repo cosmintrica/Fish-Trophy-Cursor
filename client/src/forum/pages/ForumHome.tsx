@@ -15,6 +15,15 @@ export default function ForumHome() {
   const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Use Supabase categories
   const { categories, loading, error } = useCategories();
@@ -30,7 +39,8 @@ export default function ForumHome() {
     totalTopics: forumStatsData?.total_topics || 0,
     totalPosts: forumStatsData?.total_posts || 0,
     totalMembers: forumStatsData?.total_users || 0,
-    onlineUsers: forumStatsData?.online_users || 0
+    // Nu mai folosim online_users din stats - folosim hook-ul direct
+    onlineUsers: onlineUsers.length
   };
 
   const handleLogin = () => {
@@ -46,10 +56,35 @@ export default function ForumHome() {
     navigate(`/forum/${subcategoryId}`);
   };
 
+  // Funcție helper pentru a obține doar iconul rangului
+  const getRankIcon = (rank: string) => {
+    const rankIcons: Record<string, string> = {
+      'ou_de_peste': '🥚',
+      'puiet': '🐟',
+      'pui_de_crap': '🐠',
+      'crap_junior': '🎣',
+      'crap_senior': '🏆',
+      'maestru_pescar': '💎',
+      'legenda_apelor': '👑'
+    };
+    return rankIcons[rank] || '🎣';
+  };
+
   return (
-    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={handleLogin} onLogout={handleLogout} showWelcomeBanner={true}>
-      {/* Main Content - Optimizat pentru mobil */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
+    <ForumLayout 
+      user={forumUserToLayoutUser(forumUser)} 
+      onLogin={handleLogin} 
+      onLogout={handleLogout} 
+      showWelcomeBanner={true}
+    >
+      {/* Main Content - Optimizat pentru mobil - Aliniat cu header */}
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: isMobile ? '1rem 0.75rem' : '1rem 1rem', 
+        width: '100%', 
+        overflowX: 'hidden' 
+      }}>
 
 
         {/* Mobile Optimized Forum Categories */}
@@ -110,7 +145,7 @@ export default function ForumHome() {
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
-                  {forumStats.onlineUsers}
+                  {onlineUsers.length}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
               </div>
@@ -134,7 +169,7 @@ export default function ForumHome() {
                     backgroundColor: theme.secondary,
                     borderRadius: '50%'
                   }} />
-                  Utilizatori Online ({forumStats.onlineUsers})
+                  Utilizatori Online ({onlineUsers.length})
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                   {onlineUsers.length === 0 ? (
@@ -167,10 +202,10 @@ export default function ForumHome() {
                           }
                         }}
                       >
-                        <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>
-                        <span className={`user-rank rank-${user.rank}`} style={{ fontSize: '0.625rem' }}>
-                          {user.rank}
+                        <span style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>
+                          {getRankIcon(user.rank)}
                         </span>
+                        <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>
                       </div>
                     ))
                   )}
@@ -239,7 +274,7 @@ export default function ForumHome() {
                     <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
                   </div>
                   <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Utilizatori online:</strong> {forumStats.onlineUsers}
+                    <strong>Utilizatori online:</strong> {onlineUsers.length}
                   </div>
                   <div>
                     <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}

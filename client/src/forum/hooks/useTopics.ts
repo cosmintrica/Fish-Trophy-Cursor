@@ -1,9 +1,9 @@
 /**
  * Forum Topics Hook
- * Manages topics data and operations using SWR
+ * Manages topics data and operations using React Query
  */
 
-import useSWR from 'swr'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     getTopics,
     getTopicById,
@@ -11,35 +11,36 @@ import {
     type ForumTopic,
     type TopicCreateParams,
     type PaginatedResponse
-} from '@/services/forum'
-import { swrKeys } from '@/lib/swr-config'
-import { useState, useCallback } from 'react'
-import { useSWRConfig } from 'swr'
+} from '../../services/forum'
+import { queryKeys } from '../../lib/query-client'
 
 /**
- * Hook pentru listarea topicurilor din subcategorie - cu SWR
+ * Hook pentru listarea topicurilor din subcategorie - cu React Query
  * Returnează instant date din cache, apoi revalidatează în background
  */
 export function useTopics(subcategoryId: string, page = 1, pageSize = 20) {
-    const key = subcategoryId && subcategoryId.trim() !== '' 
-        ? swrKeys.topics(subcategoryId, page, pageSize)
+    const queryKey = subcategoryId && subcategoryId.trim() !== '' 
+        ? queryKeys.topics(subcategoryId, page, pageSize)
         : null
 
-    const { data, error, isLoading, mutate } = useSWR<PaginatedResponse<ForumTopic & { author_username?: string }>>(
-        key,
-        async () => {
+    const { data, error, isLoading, refetch } = useQuery<PaginatedResponse<ForumTopic & { author_username?: string }>>({
+        queryKey: queryKey || ['topics', 'disabled'],
+        queryFn: async () => {
+            if (!subcategoryId || subcategoryId.trim() === '') {
+                throw new Error('Subcategory ID is required')
+            }
             const result = await getTopics(subcategoryId, page, pageSize)
             if (result.error) {
                 throw new Error(result.error.message)
             }
             return result.data!
         },
-        {
-            // Revalidate când subcategoryId se schimbă
-            revalidateOnFocus: true,
-            // SWR v2 păstrează automat datele vechi în timp ce revalidatează
-        }
-    )
+        enabled: !!queryKey, // Nu rulează query-ul dacă nu avem subcategoryId
+        staleTime: 5 * 60 * 1000, // 5 minute - datele rămân fresh mai mult timp
+        gcTime: 10 * 60 * 1000, // 10 minute - cache-ul rămâne mai mult timp
+        refetchOnMount: false, // NU refetch când componenta se montează - folosește cache
+        refetchOnWindowFocus: false, // Nu refetch când se revine la fereastră
+    })
 
     // Verifică validitatea datelor
     const validData = data && data.data 
@@ -48,84 +49,92 @@ export function useTopics(subcategoryId: string, page = 1, pageSize = 20) {
             : null
         : data
 
+    // Loading doar dacă nu avem date în cache și se încarcă pentru prima dată
+    const hasCachedData = !!validData
+    const isInitialLoading = isLoading && !hasCachedData
+
     return {
         topics: validData?.data || [],
         total: validData?.total || 0,
         hasMore: validData?.has_more || false,
-        loading: isLoading && !validData, // Loading doar dacă nu avem date
+        loading: isInitialLoading, // Loading doar la prima încărcare
+        isLoading: isInitialLoading, // Exportăm și isLoading direct pentru verificări mai precise
         error: error as Error | null,
-        refetch: () => mutate()
+        refetch: () => refetch()
     }
 }
 
 /**
- * Hook pentru un singur topic - cu SWR
+ * Hook pentru un singur topic - cu React Query
  * @param topicId - UUID sau slug al topicului
  * @param subcategorySlug - Slug-ul subcategoriei (opțional, pentru a evita duplicate)
  */
 export function useTopic(topicId: string, subcategorySlug?: string) {
-    const key = topicId ? swrKeys.topic(topicId + (subcategorySlug ? `:${subcategorySlug}` : '')) : null
+    const queryKey = topicId ? queryKeys.topic(topicId, subcategorySlug) : null
 
-    const { data, error, isLoading, mutate } = useSWR<ForumTopic>(
-        key,
-        async () => {
+    const { data, error, isLoading, refetch } = useQuery<ForumTopic>({
+        queryKey: queryKey || ['topic', 'disabled'],
+        queryFn: async () => {
+            if (!topicId) {
+                throw new Error('Topic ID is required')
+            }
             const result = await getTopicById(topicId, subcategorySlug)
             if (result.error) {
                 throw new Error(result.error.message)
             }
             return result.data!
         },
-        {
-            // Dezactivăm revalidateOnFocus pentru a evita erori
-            revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-        }
-    )
+        enabled: !!queryKey, // Nu rulează query-ul dacă nu avem topicId
+        staleTime: 2 * 60 * 1000, // 2 minute
+        gcTime: 5 * 60 * 1000, // 5 minute
+        refetchOnWindowFocus: false, // Dezactivăm pentru a evita erori
+    })
 
     return { 
         topic: data || null, 
         loading: isLoading && !data, 
         error: error as Error | null, 
-        refetch: () => mutate() 
+        refetch: () => refetch() 
     }
 }
 
 /**
- * Hook pentru crearea topicurilor
+ * Hook pentru crearea topicurilor - cu React Query Mutations
  */
 export function useCreateTopic() {
-    const [creating, setCreating] = useState(false)
-    const [error, setError] = useState<Error | null>(null)
-    const { mutate } = useSWRConfig()
+    const queryClient = useQueryClient()
 
-    const create = useCallback(async (params: TopicCreateParams) => {
-        setCreating(true)
-        setError(null)
-
-        try {
-            const { data, error: createError } = await createTopic(params)
-            if (createError) {
-                throw new Error(createError.message)
+    const mutation = useMutation({
+        mutationFn: async (params: TopicCreateParams) => {
+            const result = await createTopic(params)
+            if (result.error) {
+                throw new Error(result.error.message)
             }
-            
+            return result
+        },
+        onSuccess: (result) => {
             // Invalidează cache-ul pentru topics din subcategoria creată
-            if (data?.subcategory_id) {
+            if (result.data?.subcategory_id) {
                 // Invalidează toate paginile de topics pentru această subcategorie
-                mutate(
-                    (key) => typeof key === 'string' && key.includes(`topics:${data.subcategory_id}`),
-                    undefined,
-                    { revalidate: true }
-                )
+                queryClient.invalidateQueries({ 
+                    queryKey: ['topics', result.data.subcategory_id] 
+                })
             }
-            
-            return { success: true, data }
-        } catch (err) {
-            setError(err as Error)
-            return { success: false, error: err as Error }
-        } finally {
-            setCreating(false)
-        }
-    }, [mutate])
+        },
+    })
 
-    return { create, creating, error }
+    const create = async (params: TopicCreateParams) => {
+        try {
+            const result = await mutation.mutateAsync(params)
+            return { success: true, data: result.data, error: null }
+        } catch (error) {
+            return { success: false, data: null, error: error as Error }
+        }
+    }
+
+    return { 
+        create, 
+        creating: mutation.isPending, 
+        error: mutation.error as Error | null 
+    }
 }

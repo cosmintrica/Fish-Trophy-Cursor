@@ -199,9 +199,16 @@ export default function MessageContainer({
           </a>
         )}
 
-        {/* Layout: Sidebar + Content */}
-        <div style={{ display: 'flex', minHeight: '200px', flexDirection: 'row' }}>
-          {/* Sidebar */}
+        {/* Layout: Sidebar + Content - Optimizat pentru mobil */}
+        <div style={{ 
+          display: 'flex', 
+          minHeight: isMobile ? '150px' : '200px', 
+          flexDirection: 'row',
+          width: '100%',
+          maxWidth: '100%',
+          overflow: 'hidden'
+        }}>
+          {/* Sidebar - Mai mic pe mobil, dar păstrat */}
           <MessageSidebar
             post={messagePost}
             isOriginalPost={isOriginalPost}
@@ -209,20 +216,38 @@ export default function MessageContainer({
             onGearClick={handleGearClick}
           />
 
-          {/* Content area */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Message content */}
+          {/* Content area - Flex pentru a nu ieși din lățime */}
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column',
+            minWidth: 0, // Important pentru overflow
+            maxWidth: '100%'
+          }}>
+            {/* Message content - Word wrap și overflow control */}
             <div
               style={{
                 flex: 1,
-                padding: isMobile ? '1rem' : '1.5rem',
+                padding: isMobile ? '0.75rem' : '1.5rem',
                 fontSize: isMobile ? '0.8125rem' : '0.875rem',
                 color: theme.text,
                 lineHeight: '1.6',
-                position: 'relative'
+                position: 'relative',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+                overflowX: 'hidden'
               }}
             >
-              {post.content}
+              <div style={{
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                maxWidth: '100%'
+              }}>
+                {post.content}
+              </div>
               
               {/* Edit Info - afișează informații despre editare */}
               {post.editedAt && (

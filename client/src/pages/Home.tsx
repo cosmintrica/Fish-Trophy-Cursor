@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { MapPin, Navigation, X, Layers } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { loadFishingLocations, loadFishingMarkers, getLocationDetails, FishingLocation, FishingMarker } from '@/services/fishingLocations';
-import { loadAJVPSOfficeMarkers, getAJVPSOfficeDetails, AJVPSOfficeMarker } from '@/services/ajvpsOffices';
-import { loadAccommodationMarkers, getAccommodationDetails, AccommodationMarker } from '@/services/accommodations';
+import { loadFishingLocations, getLocationDetails, FishingLocation, FishingMarker } from '@/services/fishingLocations';
+import { getAJVPSOfficeDetails, AJVPSOfficeMarker } from '@/services/ajvpsOffices';
+import { getAccommodationDetails, AccommodationMarker } from '@/services/accommodations';
+import { useFishingMarkers, useFishingLocations, useShopMarkers, useAJVPSMarkers, useAccommodationMarkers } from '@/hooks/useMapMarkers';
 import { getMapLocationDetails, MapLocationType, getMarkerColor } from '@/services/mapLocations';
 import { generateShopCard, generateAJVPSOfficeCard, generateAccommodationCard } from '@/utils/mapCardTemplates';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
-import RecordSubmissionModal from '@/components/RecordSubmissionModal';
+import FishingEntryModal from '@/components/FishingEntryModal';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
 
@@ -142,6 +143,7 @@ export default function Home() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const userRef = useRef(user); // Ref pentru a accesa valoarea curentă a user în event listeners
   
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
@@ -152,12 +154,21 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
+  // Use React Query hooks for markers
+  const { markers: fishingMarkersData, loading: fishingMarkersLoading } = useFishingMarkers();
+  const { locations: databaseLocationsData, loading: locationsLoading } = useFishingLocations();
+  const { markers: shopMarkersData, loading: shopMarkersLoading } = useShopMarkers();
+  const { markers: ajvpsMarkersData, loading: ajvpsMarkersLoading } = useAJVPSMarkers();
+  const { markers: accommodationMarkersData, loading: accommodationMarkersLoading } = useAccommodationMarkers();
+  
+  const isLoadingLocations = fishingMarkersLoading || locationsLoading || shopMarkersLoading || ajvpsMarkersLoading || accommodationMarkersLoading;
+  
+  // Local state for refs (updated from React Query)
   const [fishingMarkers, setFishingMarkers] = useState<FishingMarker[]>([]);
   const [shopMarkers, setShopMarkers] = useState<any[]>([]);
   const [ajvpsMarkers, setAjvpsMarkers] = useState<AJVPSOfficeMarker[]>([]);
   const [accommodationMarkers, setAccommodationMarkers] = useState<AccommodationMarker[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [databaseLocations, setDatabaseLocations] = useState<FishingLocation[]>([]);
   // Refs pentru a evita closure issues în event listeners
   const fishingMarkersRef = useRef<FishingMarker[]>([]);
   const databaseLocationsRef = useRef<FishingLocation[]>([]);
@@ -584,7 +595,8 @@ export default function Home() {
                   if (action === 'view-records') {
                     window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
                   } else if (action === 'add-record') {
-                    if (!user) {
+                    // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
+                    if (!userRef.current) {
                       setShowAuthRequiredModal(true);
                     } else {
                       setSelectedLocationForRecord({ id: locationId || '', name: fullDetails.name });
@@ -884,63 +896,75 @@ export default function Home() {
     }
   };
 
-  // Prevent double loading
-  const hasLoadedLocationsRef = useRef(false);
+  // Update local state and refs when React Query data changes (compare by length and first ID to prevent loops)
+  const prevFishingMarkersLengthRef = useRef<number>(0);
+  const prevShopMarkersLengthRef = useRef<number>(0);
+  const prevAjvpsMarkersLengthRef = useRef<number>(0);
+  const prevAccommodationMarkersLengthRef = useRef<number>(0);
+  const prevDatabaseLocationsLengthRef = useRef<number>(0);
 
-  // PERFORMANCE: Load data on component mount
+  // Actualizează userRef când user se schimbă (pentru event listeners)
   useEffect(() => {
-    if (hasLoadedLocationsRef.current) return;
+    userRef.current = user;
+    
+    // Dacă utilizatorul s-a logat și avem o locație selectată pentru record, deschide modalul
+    if (user && selectedLocationForRecord && !showRecordModal && !isAuthModalOpen) {
+      // Mic delay pentru a permite UI-ului să se actualizeze
+      setTimeout(() => {
+        setShowRecordModal(true);
+      }, 100);
+    }
+  }, [user, selectedLocationForRecord, showRecordModal, isAuthModalOpen]);
 
-    const loadData = async () => {
-      hasLoadedLocationsRef.current = true;
-      setIsLoadingLocations(true);
-      try {
-        // Load minimal marker data first (FAST!) - all types in parallel
-        const [fishingMarkersData, shopMarkersData, ajvpsMarkersData, accommodationMarkersData] = await Promise.all([
-          loadFishingMarkers(),
-          (async () => {
-            const { data } = await supabase
-              .from('fishing_shops')
-              .select('id, name, county, region, latitude, longitude')
-              .not('latitude', 'is', null)
-              .not('longitude', 'is', null);
-            return (data || []).map(shop => ({
-              id: shop.id,
-              name: shop.name,
-              coords: [shop.longitude, shop.latitude] as [number, number],
-              county: shop.county,
-              region: shop.region
-            })).filter(m => m.coords[0] >= 20 && m.coords[0] <= 30 && m.coords[1] >= 43 && m.coords[1] <= 48);
-          })(),
-          loadAJVPSOfficeMarkers(),
-          loadAccommodationMarkers()
-        ]);
+  useEffect(() => {
+    const newLength = fishingMarkersData?.length || 0;
+    const prevLength = prevFishingMarkersLengthRef.current;
+    if (fishingMarkersData && (newLength !== prevLength || (newLength > 0 && fishingMarkersData[0]?.id !== fishingMarkers[0]?.id))) {
+      setFishingMarkers(fishingMarkersData);
+      fishingMarkersRef.current = fishingMarkersData;
+      prevFishingMarkersLengthRef.current = newLength;
+    }
+  }, [fishingMarkersData, fishingMarkers]);
 
-        setFishingMarkers(fishingMarkersData);
-        fishingMarkersRef.current = fishingMarkersData;
+  useEffect(() => {
+    const newLength = shopMarkersData?.length || 0;
+    const prevLength = prevShopMarkersLengthRef.current;
+    if (shopMarkersData && (newLength !== prevLength || (newLength > 0 && shopMarkersData[0]?.id !== shopMarkers[0]?.id))) {
+      setShopMarkers(shopMarkersData);
+      shopMarkersRef.current = shopMarkersData;
+      prevShopMarkersLengthRef.current = newLength;
+    }
+  }, [shopMarkersData, shopMarkers]);
 
-        setShopMarkers(shopMarkersData);
-        shopMarkersRef.current = shopMarkersData;
+  useEffect(() => {
+    const newLength = ajvpsMarkersData?.length || 0;
+    const prevLength = prevAjvpsMarkersLengthRef.current;
+    if (ajvpsMarkersData && (newLength !== prevLength || (newLength > 0 && ajvpsMarkersData[0]?.id !== ajvpsMarkers[0]?.id))) {
+      setAjvpsMarkers(ajvpsMarkersData);
+      ajvpsMarkersRef.current = ajvpsMarkersData;
+      prevAjvpsMarkersLengthRef.current = newLength;
+    }
+  }, [ajvpsMarkersData, ajvpsMarkers]);
 
-        setAjvpsMarkers(ajvpsMarkersData);
-        ajvpsMarkersRef.current = ajvpsMarkersData;
+  useEffect(() => {
+    const newLength = accommodationMarkersData?.length || 0;
+    const prevLength = prevAccommodationMarkersLengthRef.current;
+    if (accommodationMarkersData && (newLength !== prevLength || (newLength > 0 && accommodationMarkersData[0]?.id !== accommodationMarkers[0]?.id))) {
+      setAccommodationMarkers(accommodationMarkersData);
+      accommodationMarkersRef.current = accommodationMarkersData;
+      prevAccommodationMarkersLengthRef.current = newLength;
+    }
+  }, [accommodationMarkersData, accommodationMarkers]);
 
-        setAccommodationMarkers(accommodationMarkersData);
-        accommodationMarkersRef.current = accommodationMarkersData;
-
-        // Load full details in background (for search/filters)
-        const locations = await loadFishingLocations();
-        setDatabaseLocations(locations);
-        databaseLocationsRef.current = locations; // Update ref
-      } catch (error) {
-        hasLoadedLocationsRef.current = false; // Retry on error
-      } finally {
-        setIsLoadingLocations(false);
-      }
-    };
-
-    loadData();
-  }, []);
+  useEffect(() => {
+    const newLength = databaseLocationsData?.length || 0;
+    const prevLength = prevDatabaseLocationsLengthRef.current;
+    if (databaseLocationsData && (newLength !== prevLength || (newLength > 0 && databaseLocationsData[0]?.id !== databaseLocations[0]?.id))) {
+      setDatabaseLocations(databaseLocationsData);
+      databaseLocationsRef.current = databaseLocationsData;
+      prevDatabaseLocationsLengthRef.current = newLength;
+    }
+  }, [databaseLocationsData, databaseLocations]);
 
   // Funcția pentru normalizarea textului (elimină diacriticele)
   const normalizeText = (text: string) => {
@@ -1300,7 +1324,8 @@ export default function Home() {
                 if (action === 'view-records') {
                   window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
                 } else if (action === 'add-record') {
-                  if (!user) {
+                  // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
+                  if (!userRef.current) {
                     setShowAuthRequiredModal(true);
                   } else {
                     setSelectedLocationForRecord({ id: locationId || '', name: locationName || fullLocation.name });
@@ -1457,6 +1482,10 @@ export default function Home() {
     
     // Funcție simplificată pentru a adăuga markerele
     const tryAddMarkers = () => {
+      // Verifică dacă harta există, are stil setat și e încărcată
+      if (!map || !map.getStyle()) {
+        return false;
+      }
       if (map.isStyleLoaded() && map.loaded()) {
         addAllLocationTypesToMap(map, activeFilter);
         return true;
@@ -1840,7 +1869,7 @@ export default function Home() {
         title="Fish Trophy - Platforma Pescarilor din România"
         description="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii. Hărți interactive și comunitate activă."
         keywords="pescuit, romania, locatii pescuit, recorduri pescuit, harta pescuit, rauri romania, lacuri romania, balti pescuit, specii pesti, tehnici pescuit, echipament pescuit, platforma pescarilor, comunitate pescuit"
-        image="https://fishtrophy.ro/socialmedia_banner.png"
+        image="https://fishtrophy.ro/socialmedia_banner.jpg"
         url="https://fishtrophy.ro"
         type="website"
         structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
@@ -2268,16 +2297,24 @@ export default function Home() {
           </div>
         )}
 
-        {/* Record Submission Modal */}
-        <RecordSubmissionModal
+        {/* Record Submission Modal - TEST cu FishingEntryModal */}
+        <FishingEntryModal
+          type="record"
+          mode="add"
           isOpen={showRecordModal}
           onClose={() => {
             setShowRecordModal(false);
             setSelectedLocationForRecord(null);
           }}
+          onSuccess={() => {
+            setShowRecordModal(false);
+            setSelectedLocationForRecord(null);
+            // Refresh markers sau alte acțiuni necesare
+          }}
           locationId={selectedLocationForRecord?.id}
           locationName={selectedLocationForRecord?.name}
         />
+        
 
         {/* Auth Required Modal */}
         <AuthRequiredModal

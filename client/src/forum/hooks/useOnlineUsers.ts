@@ -1,10 +1,11 @@
 /**
  * Online Users Hook
- * Loads real online users from database
+ * Loads real online users from database using React Query
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { queryKeys } from '../../lib/query-client'
 
 export interface OnlineUser {
   id: string
@@ -13,102 +14,46 @@ export interface OnlineUser {
   avatar_url?: string
 }
 
-// Cache cu sessionStorage pentru online users
-const ONLINE_USERS_CACHE_KEY = 'forum_online_users_cache';
-const ONLINE_USERS_CACHE_DURATION = 30 * 1000; // 30 secunde (se schimbă mai des)
-
-function getCachedOnlineUsers(): OnlineUser[] | null {
-  try {
-    const cached = sessionStorage.getItem(ONLINE_USERS_CACHE_KEY);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < ONLINE_USERS_CACHE_DURATION) {
-        return data;
-      }
-    }
-  } catch (e) {
-    // Ignoră erorile de parsing
-  }
-  return null;
-}
-
-function setCachedOnlineUsers(data: OnlineUser[]) {
-  try {
-    sessionStorage.setItem(ONLINE_USERS_CACHE_KEY, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-  } catch (e) {
-    // Ignoră erorile de storage
-  }
-}
-
 export function useOnlineUsers() {
-  // Încarcă instant din cache dacă există
-  const [users, setUsers] = useState<OnlineUser[]>(() => getCachedOnlineUsers() || []);
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadUsers = useCallback(async () => {
-    setError(null)
-
-    try {
+  const { data: users = [], error, isLoading, refetch } = useQuery<OnlineUser[]>({
+    queryKey: queryKeys.onlineUsers(),
+    queryFn: async () => {
       // Folosește last_seen_at în loc de is_online (mai precis)
       // Utilizatorii activi în ultimele 5 minute
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+
+      // Folosim RPC function sau query direct cu timestamp comparison
+      // Supabase .gte() funcționează corect cu TIMESTAMP WITH TIME ZONE
       const { data, error: usersError } = await supabase
         .from('forum_users')
-        .select('user_id, username, rank, avatar_url')
+        .select('user_id, username, rank, avatar_url, last_seen_at')
         .gte('last_seen_at', fiveMinutesAgo)
         .order('last_seen_at', { ascending: false })
         .limit(50)
 
       if (usersError) {
+        console.error('Error fetching online users:', usersError)
         throw new Error(usersError.message)
       }
 
       // Map user_id to id for compatibility
-      const mappedUsers = (data || []).map(u => ({
+      return (data || []).map(u => ({
         id: u.user_id,
         username: u.username,
         rank: u.rank,
         avatar_url: u.avatar_url
-      }));
-      setUsers(mappedUsers);
-      setCachedOnlineUsers(mappedUsers);
-    } catch (err) {
-      setError(err as Error)
-      // Dacă e eroare dar avem cache, păstrăm cache-ul
-      const cached = getCachedOnlineUsers();
-      if (cached) {
-        setUsers(cached);
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    // Încarcă instant din cache, apoi refresh în background
-    const cached = getCachedOnlineUsers();
-    if (cached) {
-      setUsers(cached);
-    }
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUsers, 30000)
-    
-    // Load imediat dacă nu avem cache
-    if (!cached) {
-      loadUsers();
-    }
-    
-    return () => clearInterval(interval)
-  }, [loadUsers])
+      }))
+    },
+    staleTime: 15 * 1000, // 15 secunde - online users se schimbă mai des
+    gcTime: 1 * 60 * 1000, // 1 minut - cache mai mic pentru actualizări mai rapide
+    refetchOnWindowFocus: false, // Dezactivat pentru a evita refresh-uri când schimbi tab-ul
+    refetchInterval: 15 * 1000, // Refetch automat la fiecare 15 secunde (mai rapid)
+  })
 
   return {
     users,
-    loading: false, // Nu mai folosim loading
-    error,
-    refetch: loadUsers
+    loading: isLoading && !users.length, // Loading doar dacă nu avem date
+    error: error as Error | null,
+    refetch: () => refetch()
   }
 }
-

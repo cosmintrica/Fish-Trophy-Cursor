@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -10,11 +10,11 @@ const AdminRoute: React.FC<AdminRouteProps> = ({
   children,
   fallback = <div>Acces restricționat</div>
 }) => {
-  const { user } = useAuth();
+  const { isAdmin, loading } = useAdmin();
 
-  // Check if user is admin - use environment variable for security
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const isAdmin = user?.email === adminEmail;
+  if (loading) {
+    return <div>Se verifică permisiunile...</div>;
+  }
 
   if (!isAdmin) {
     return <>{fallback}</>;

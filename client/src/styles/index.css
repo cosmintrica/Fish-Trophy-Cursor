@@ -277,13 +277,7 @@ button,
     min-height: -webkit-fill-available;
   }
 
-  /* Optimizează font loading pentru LCP */
-  @font-face {
-    font-family: 'Inter';
-    font-display: swap;
-    font-weight: 400 800;
-    src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  }
+  /* Fonturile sunt încărcate în index.html (Montserrat) */
 }
 
 /* Basic mobile optimizations */

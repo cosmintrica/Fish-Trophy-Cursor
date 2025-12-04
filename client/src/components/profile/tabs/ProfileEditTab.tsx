@@ -32,7 +32,7 @@ interface ProfileEditTabProps {
     userId?: string;
     username?: string;
     onLoadCities: (countyId: string) => void;
-    onUpdateProfile: () => Promise<boolean> | boolean;
+    onUpdateProfile: (profileDataToUpdate: any, selectedCounty: string, selectedCity: string) => Promise<boolean> | boolean;
 }
 
 export const ProfileEditTab = ({
@@ -59,7 +59,7 @@ export const ProfileEditTab = ({
     };
 
     const handleSave = async () => {
-        const success = await onUpdateProfile();
+        const success = await onUpdateProfile(profileData, selectedCounty, selectedCity);
         if (success) {
             setIsEditing(false);
         }

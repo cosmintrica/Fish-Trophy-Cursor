@@ -13,6 +13,7 @@ import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { registerUnreadCountCallback } from '@/hooks/useRealtimeMessages';
+import { CatchCard } from '@/components/profile/CatchCard';
 
 interface UserProfile {
   id: string;
@@ -54,10 +55,14 @@ interface UserRecord {
   species_id: string;
   location_id: string;
   weight: number;
-  length_cm: number;
-  captured_at: string;
+  length?: number; // records use 'length' (integer), not 'length_cm'
+  length_cm?: number; // legacy/compatibility field
+  date_caught?: string; // records use 'date_caught' (date)
+  time_caught?: string; // records use 'time_caught' (time)
+  captured_at?: string; // computed/legacy field - combine date_caught + time_caught
   notes?: string;
-  photo_url?: string;
+  image_url?: string; // records use 'image_url', not 'photo_url'
+  photo_url?: string; // legacy/compatibility field
   video_url?: string;
   status: string;
   created_at: string;
@@ -1028,24 +1033,15 @@ const PublicProfile = () => {
                             onClick={() => openRecordModal(record)}
                           >
                             <div className="aspect-square rounded-md sm:rounded-lg overflow-hidden bg-white mb-2 sm:mb-3 relative shadow-sm">
-                              {record.photo_url ? (
+                              {(record.image_url || record.photo_url) ? (
                                 <img
-                                  src={getR2ImageUrlProxy(record.photo_url)}
+                                  src={getR2ImageUrlProxy(record.image_url || record.photo_url!)}
                                   className="w-full h-full object-cover"
                                   alt={record.fish_species?.name || 'Record'}
                                   loading="lazy"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `
-                                        <div class="w-full h-full flex items-center justify-center text-gray-300">
-                                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                          </svg>
-                                        </div>
-                                      `;
-                                    }
+                                    target.style.display = 'none';
                                   }}
                                 />
                               ) : (
@@ -1079,115 +1075,16 @@ const PublicProfile = () => {
                       Nu există capturi înregistrate.
                     </div>
                   ) : (
-                    <div className="space-y-2 sm:space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                       {userCatches.map((catchItem) => (
-                        <Card
+                        <CatchCard
                           key={catchItem.id}
-                          className="overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
-                          onClick={() => {
+                          catchItem={catchItem}
+                          onCatchClick={() => {
                             setSelectedCatch(catchItem);
                             setShowCatchDetailModal(true);
                           }}
-                        >
-                          <div className="flex">
-                            {/* Image */}
-                            <div className="w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-gray-100 overflow-hidden shrink-0 relative">
-                              {catchItem.photo_url ? (
-                                <img
-                                  src={getR2ImageUrlProxy(catchItem.photo_url)}
-                                  className="w-full h-full object-cover"
-                                  alt={catchItem.fish_species?.name || 'Captură'}
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `
-                                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-                                          <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                          </svg>
-                                        </div>
-                                      `;
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-                                  <Fish className="w-8 h-8 text-blue-300" />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Content */}
-                            <CardContent className="flex-1 p-2 sm:p-4 flex flex-col justify-between min-w-0">
-                              <div className="min-w-0">
-                                <div className="flex items-start justify-between mb-1 sm:mb-2 gap-2">
-                                  <h3 className="font-bold text-sm sm:text-lg text-gray-900 truncate">
-                                    {catchItem.fish_species?.name || 'Specie necunoscută'}
-                                  </h3>
-                                  {catchItem.global_id && (
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          await navigator.clipboard.writeText(catchItem.global_id!.toString());
-                                          toast.success(`ID ${catchItem.global_id} copiat!`);
-                                        } catch (err) {
-                                          toast.error('Eroare la copierea ID-ului');
-                                        }
-                                      }}
-                                      className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-gray-50 hover:bg-gray-100 transition-colors font-mono shrink-0"
-                                      title="Click pentru a copia ID-ul"
-                                    >
-                                      #{catchItem.global_id}
-                                    </button>
-                                  )}
-                                </div>
-
-                                {catchItem.fishing_locations && (
-                                  <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 mb-1 sm:mb-2">
-                                    <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                                    <span className="truncate">{catchItem.fishing_locations.name}</span>
-                                  </div>
-                                )}
-
-                                {(catchItem.weight || catchItem.length_cm) && (
-                                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 flex-wrap">
-                                    {catchItem.weight && (
-                                      <div className="flex items-center gap-1 text-xs sm:text-sm">
-                                        <Scale className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
-                                        <span className="font-semibold text-gray-900">{catchItem.weight} kg</span>
-                                      </div>
-                                    )}
-                                    {catchItem.length_cm && (
-                                      <div className="flex items-center gap-1 text-xs sm:text-sm">
-                                        <Ruler className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 shrink-0" />
-                                        <span className="font-semibold text-gray-900">{catchItem.length_cm} cm</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="flex items-center justify-between pt-1 sm:pt-2 border-t border-gray-100 gap-2">
-                                <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-500">
-                                  <div className="flex items-center gap-0.5 sm:gap-1">
-                                    <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-current text-red-600' : 'text-gray-500'}`} />
-                                    <span>{catchItem.like_count || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-0.5 sm:gap-1">
-                                    <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                    <span>{catchItem.comment_count || 0}</span>
-                                  </div>
-                                </div>
-                                <span className="text-[10px] sm:text-xs text-gray-500 shrink-0">
-                                  {new Date(catchItem.captured_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                              </div>
-                            </CardContent>
-                          </div>
-                        </Card>
+                        />
                       ))}
                     </div>
                   )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { supabase } from '@/lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Wrench, User, Settings, Fish } from 'lucide-react';
@@ -20,15 +21,12 @@ import { useGear } from '@/components/profile/hooks/useGear';
 import { usePhotoUpload } from '@/components/profile/hooks/usePhotoUpload';
 
 // Modals
-import RecordSubmissionModal from '@/components/RecordSubmissionModal';
-import EditRecordModal from '@/components/EditRecordModal';
-import CatchSubmissionModal from '@/components/CatchSubmissionModal';
+import FishingEntryModal from '@/components/FishingEntryModal';
 import { RecordDetailsModal } from '@/components/modals/RecordDetailsModal';
 
 const Profile = () => {
   const { user, logout } = useAuth();
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const isAdmin = user?.email === adminEmail;
+  const { isAdmin } = useAdmin();
 
   // Hooks
   const { records, loadingRecords, loadUserRecords } = useRecords(user?.id);
@@ -154,12 +152,11 @@ const Profile = () => {
         return;
       }
 
-      console.log('Profile: Loading initial data for user', user.id);
       hasLoadedRef.current = true;
       loadedUserIdRef.current = user.id;
 
       const loadDataSequentially = async () => {
-        await loadCounties();
+        // Counties are loaded automatically by React Query
         await loadProfile();
         await checkGoogleAuthStatus();
         await loadUserGear();
@@ -190,7 +187,7 @@ const Profile = () => {
   const handleCatchAdded = () => {
     // Reload catches will be handled by CatchesTab's useEffect via key change
     setCatchReloadKey(prev => prev + 1);
-    // Toast notification is already shown in CatchSubmissionModal
+    // Toast notification is already shown in FishingEntryModal
   };
 
   const handleRecordEdited = () => {
@@ -348,21 +345,38 @@ const Profile = () => {
       </div>
 
       {/* Modals */}
-      <RecordSubmissionModal
+      <FishingEntryModal
         isOpen={showRecordModal}
         onClose={() => setShowRecordModal(false)}
+        onSuccess={() => {
+          setShowRecordModal(false);
+          handleRecordAdded();
+        }}
+        type="record"
+        mode="add"
       />
 
       {editingRecord && (
-        <EditRecordModal
-          record={editingRecord}
+        <FishingEntryModal
+          entry={editingRecord}
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
             setEditingRecord(null);
           }}
-          onSuccess={handleRecordEdited}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            setEditingRecord(null);
+            handleRecordEdited();
+          }}
+          type="record"
+          mode="edit"
           isAdmin={isAdmin}
+          onDelete={() => {
+            setIsEditModalOpen(false);
+            setEditingRecord(null);
+            handleRecordEdited();
+          }}
         />
       )}
 
@@ -375,10 +389,15 @@ const Profile = () => {
         }}
       />
 
-      <CatchSubmissionModal
+      <FishingEntryModal
         isOpen={showCatchModal}
         onClose={() => setShowCatchModal(false)}
-        onSuccess={handleCatchAdded}
+        onSuccess={() => {
+          setShowCatchModal(false);
+          handleCatchAdded();
+        }}
+        type="catch"
+        mode="add"
       />
     </div>
   );

@@ -1,18 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import basicSsl from '@vitejs/plugin-basic-ssl';
 import { fileURLToPath } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), basicSsl()],
+  plugins: [react()],
   server: {
-    https: true, // HTTPS required for Web Crypto API on local IP (192.168.x.x)
+    https: false, // HTTP pentru a evita mixed content cu netlify dev
+    // Note: Web Crypto API funcționează pe HTTP pe localhost (doar pe IP-uri de rețea necesită HTTPS)
     port: 5173,
     host: '0.0.0.0', // Allow access from network (for mobile testing)
     strictPort: true, // Prevent port fallback
     hmr: {
       overlay: false, // Disable error overlay to reduce console noise
+      // HMR va folosi automat host-ul server-ului (0.0.0.0 permite acces din rețea)
+      protocol: 'ws', // WebSocket protocol
+    },
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     },
   },
   resolve: {

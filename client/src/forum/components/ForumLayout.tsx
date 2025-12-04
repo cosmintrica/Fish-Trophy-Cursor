@@ -1,31 +1,38 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare } from 'lucide-react';
+/**
+ * ForumLayout - SINGURUL layout și header de navigare pentru toate paginile forum
+ * 
+ * IMPORTANT: Acesta este SINGURUL header de navigare folosit în întregul forum.
+ * Toate paginile forum (ForumHome, CategoryPage, TopicPage, etc.) folosesc acest layout.
+ * 
+ * Redesign complet - Mobile-first, profesional, compact
+ */
+
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare, Home, Users, FileText, Moon, Sun, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import SimpleLoginModal from './SimpleLoginModal';
+import UnifiedAuthModal from '@/components/UnifiedAuthModal';
 import BackToTop from '@/components/BackToTop';
 import ForumSearch from './ForumSearch';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
+import { registerUnreadCountCallback } from '../../hooks/useRealtimeMessages';
 
 export interface ForumUser {
   id: string;
   username: string;
-  email?: string; // Optional pentru compatibilitate cu forum/types/forum.ts
-  photo_url?: string; // Avatar din profiles
+  email?: string;
+  photo_url?: string;
   isAdmin?: boolean;
 }
 
 /**
  * Helper function pentru a converti forumUser din useAuth în ForumUser pentru ForumLayout
- * Asigură consistența și evită duplicarea codului
- * 
- * IMPORTANT: Această funcție este folosită de TOATE paginile forum pentru a asigura
- * că header-ul este identic peste tot (inclusiv avatar-ul).
  */
 export function forumUserToLayoutUser(forumUser: any): ForumUser | null {
   if (!forumUser) return null;
   
-  // Folosește photo_url din profiles (avatar_url din forumUser sau user_metadata)
   const photoUrl = forumUser.photo_url || forumUser.avatar_url || null;
   
   return {
@@ -44,26 +51,89 @@ interface ForumLayoutProps {
   onLogout: () => void;
 }
 
-/**
- * ForumLayout - SINGURUL layout și header de navigare pentru toate paginile forum
- * 
- * IMPORTANT: Acesta este SINGURUL header de navigare folosit în întregul forum.
- * Toate paginile forum (ForumHome, CategoryPage, TopicPage, etc.) folosesc acest layout.
- * 
- * NU crea alte header-uri de navigare! Orice modificare la header trebuie făcută AICI.
- * 
- * Header-ul include:
- * - Logo și titlu forum
- * - Navigare principală
- * - Search bar
- * - User menu / Login
- * - Dark mode toggle
- */
 export default function ForumLayout({ children, user, onLogin, onLogout, showWelcomeBanner = false }: ForumLayoutProps & { showWelcomeBanner?: boolean }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
-  // Toast is now provided globally via ToastProvider
+  const location = useLocation();
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Get loading state directly from auth context
+  const { loading: authLoading, forumUser: authForumUser } = useAuth();
+  
+  // User is loaded when auth loading is complete
+  const userLoaded = !authLoading;
+  
+  // Unread messages count for forum context
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  
+  // Load unread messages count
+  useEffect(() => {
+    if (!authForumUser?.id) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    const loadUnreadCount = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('private_messages')
+          .select('id', { count: 'exact', head: false })
+          .eq('recipient_id', authForumUser.id)
+          .eq('is_read', false)
+          .eq('is_deleted_by_recipient', false)
+          .eq('is_archived_by_recipient', false)
+          .eq('context', 'forum');
+
+        if (error) {
+          return;
+        }
+
+        setUnreadMessagesCount(data?.length || 0);
+      } catch (error) {
+        // Silent fail
+      }
+    };
+
+    loadUnreadCount();
+
+    // Register for instant updates via Realtime
+    const unregister = registerUnreadCountCallback(loadUnreadCount);
+
+    return () => {
+      unregister();
+    };
+  }, [authForumUser?.id]);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+  }, [location.pathname]);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!showUserMenu) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   const generateUserColor = (name: string) => {
     const colors = [
@@ -83,80 +153,150 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: theme.background, transition: 'all 0.3s ease', overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
-      {/* SINGURUL HEADER DE NAVIGARE PENTRU TOATE PAGINILE FORUM */}
-      <header style={{ backgroundColor: theme.surface, borderBottom: `1px solid ${theme.border}`, position: 'sticky', top: 0, zIndex: 40, width: '100%' }}>
-        {/* Top Navigation */}
-        <nav style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 0.75rem', width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '3.5rem', gap: '0.5rem' }}>
-            {/* Logo - Optimizat pentru mobil */}
-            <Link to="/forum" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', minWidth: 0, flex: '0 0 auto' }}>
+    <div style={{ 
+      minHeight: 'calc(100vh + env(safe-area-inset-bottom, 0px))', 
+      height: 'auto',
+      backgroundColor: theme.background, 
+      transition: 'all 0.3s ease', 
+      overflowY: 'auto', 
+      overflowX: 'hidden', 
+      width: '100%',
+      position: 'relative',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      marginBottom: 0
+    }}>
+      {/* HEADER - Redesign complet, Mobile-first */}
+      <header style={{ 
+        backgroundColor: theme.surface, 
+        borderBottom: `1px solid ${theme.border}`, 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 50, 
+        width: '100%',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ 
+          maxWidth: '1200px', 
+          margin: '0 auto', 
+          padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem', 
+          width: '100%' 
+        }}>
+          {/* Main Header Row */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            gap: '0.75rem',
+            minHeight: isMobile ? '3rem' : '3.5rem'
+          }}>
+            {/* Logo + Text - COMPLET VIZIBIL PE MOBIL */}
+            <Link 
+              to="/forum" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: isMobile ? '0.5rem' : '0.75rem', 
+                textDecoration: 'none', 
+                minWidth: 0, 
+                flex: '0 0 auto',
+                flexShrink: 0
+              }}
+            >
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy Forum"
                 style={{
-                  width: '2rem',
-                  height: '2rem',
+                  width: isMobile ? '2rem' : '2.5rem',
+                  height: isMobile ? '2rem' : '2.5rem',
                   borderRadius: '0.5rem',
                   flexShrink: 0
                 }}
               />
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
                 <div style={{
-                  fontSize: 'clamp(0.875rem, 2.5vw, 1.25rem)',
+                  fontSize: isMobile ? 'clamp(0.875rem, 3vw, 1rem)' : '1.125rem',
                   fontWeight: '700',
                   color: theme.text,
                   whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  lineHeight: '1.2'
                 }}>
-                  <span className="hidden sm:inline">Fish Trophy Forum</span>
-                  <span className="sm:hidden">Forum</span>
+                  Fish Trophy Forum
                 </div>
-                <div className="hidden sm:block" style={{ fontSize: '0.625rem', color: theme.textSecondary }}>
+                <div style={{ 
+                  fontSize: isMobile ? 'clamp(0.5rem, 1.5vw, 0.625rem)' : '0.625rem', 
+                  color: theme.textSecondary,
+                  lineHeight: '1.2'
+                }}>
                   Comunitatea pescarilor
                 </div>
               </div>
             </Link>
 
-            {/* User Menu / Login - Optimizat pentru mobil */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {/* Right Side - Actions */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: isMobile ? '0.5rem' : '0.75rem', 
+              flexShrink: 0,
+              marginLeft: 'auto',
+              marginRight: isMobile ? '-5px' : '0'
+            }}>
+              {/* Search - Desktop only */}
+              {!isMobile && (
+                <div style={{ width: '200px', flexShrink: 0 }}>
+                  <ForumSearch />
+                </div>
+              )}
+
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
                 style={{
-                  padding: '0.5rem',
+                  padding: isMobile ? '0.375rem' : '0.5rem',
                   color: theme.textSecondary,
                   backgroundColor: 'transparent',
                   border: 'none',
                   borderRadius: '0.375rem',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  fontSize: '1.25rem'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
                 }}
                 title={isDarkMode ? "Comută la modul luminos" : "Comută la modul întunecat"}
                 onMouseEnter={(e) => {
-                  if (e.currentTarget) {
-                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                    e.currentTarget.style.color = theme.text;
-                  }
+                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  e.currentTarget.style.color = theme.text;
                 }}
                 onMouseLeave={(e) => {
-                  if (e.currentTarget) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = theme.textSecondary;
-                  }
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = theme.textSecondary;
                 }}
               >
-                {isDarkMode ? '🐟' : '🌙'}
+                {isDarkMode ? <Sun size={isMobile ? 18 : 20} /> : <Moon size={isMobile ? 18 : 20} />}
               </button>
 
-              {user ? (
-                <div style={{ position: 'relative' }}>
+              {/* User Section - Show only after user state is determined */}
+              {!userLoaded ? (
+                // Loading placeholder - same size as avatar to prevent layout shift
+                <div style={{
+                  width: isMobile ? '2rem' : '2.25rem',
+                  height: isMobile ? '2rem' : '2.25rem',
+                  borderRadius: '50%',
+                  backgroundColor: theme.surfaceHover,
+                  flexShrink: 0
+                }} />
+              ) : user ? (
+                <div style={{ position: 'relative' }} ref={userMenuRef}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {/* Admin Badge & Link - Ascuns pe mobil mic */}
-                    {user.isAdmin && (
-                      <Link to="/admin" className="hidden sm:block" style={{ textDecoration: 'none' }}>
+                    {/* Admin Badge - Desktop only */}
+                    {user.isAdmin && !isMobile && (
+                      <Link 
+                        to="/forum/admin" 
+                        style={{ textDecoration: 'none' }}
+                        onClick={() => setShowUserMenu(false)}
+                      >
                         <div style={{
                           padding: '0.25rem 0.5rem',
                           backgroundColor: '#dc2626',
@@ -167,40 +307,82 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.25rem',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#b91c1c';
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                          e.currentTarget.style.transform = 'scale(1)';
                         }}>
                           🔧 ADMIN
                         </div>
                       </Link>
                     )}
 
-                    {/* Bell - Ascuns pe mobil mic */}
-                    <Bell
-                      onClick={() => alert('Notificări - în dezvoltare')}
-                      className="hidden sm:block"
-                      style={{
-                        width: '1.25rem',
-                        height: '1.25rem',
-                        color: '#6b7280',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (e.currentTarget) {
+                    {/* Messages - Desktop only */}
+                    {!isMobile && userLoaded && user && (
+                      <Link
+                        to="/messages?context=forum"
+                        style={{
+                          position: 'relative',
+                          padding: '0.5rem',
+                          color: theme.textSecondary,
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme.surfaceHover;
                           e.currentTarget.style.color = theme.primary;
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (e.currentTarget) {
-                          e.currentTarget.style.color = '#6b7280';
-                        }
-                      }}
-                    />
-                    <Link
-                      to={`/forum/user/${user.id}`}
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = theme.textSecondary;
+                        }}
+                      >
+                        <MessageSquare size={18} />
+                        {unreadMessagesCount > 0 && (
+                          <span style={{
+                            position: 'absolute',
+                            top: '0.25rem',
+                            right: '0.25rem',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            fontSize: '0.625rem',
+                            fontWeight: '700',
+                            borderRadius: '9999px',
+                            minWidth: '1.125rem',
+                            height: '1.125rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0 0.25rem',
+                            border: `2px solid ${theme.background}`,
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                          }}>
+                            {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                          </span>
+                        )}
+                      </Link>
+                    )}
+
+                    {/* User Avatar - Clickable for menu */}
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
                       style={{
-                        width: '2rem',
-                        height: '2rem',
+                        width: isMobile ? '2rem' : '2.25rem',
+                        height: isMobile ? '2rem' : '2.25rem',
                         borderRadius: '50%',
                         background: user.photo_url 
                           ? `url(${user.photo_url}) center/cover`
@@ -209,114 +391,513 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
-                        fontSize: '0.875rem',
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        border: user.isAdmin ? '2px solid #fbbf24' : 'none',
+                        border: user.isAdmin ? '2px solid #fbbf24' : `2px solid ${theme.border}`,
                         transition: 'all 0.2s',
-                        textDecoration: 'none',
                         overflow: 'hidden',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={(e) => {
-                        if (e.currentTarget) {
-                          e.currentTarget.style.transform = 'scale(1.1)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (e.currentTarget) {
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }
+                        flexShrink: 0,
+                        padding: 0
                       }}
                     >
                       {!user.photo_url && user.username.charAt(0).toUpperCase()}
-                    </Link>
+                    </button>
                   </div>
+
+                  {/* User Dropdown Menu */}
+                  {showUserMenu && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '0.5rem',
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      zIndex: 100,
+                      minWidth: '200px',
+                      overflow: 'hidden'
+                    }}>
+                      {/* User Info */}
+                      <div style={{
+                        padding: '0.75rem 1rem',
+                        borderBottom: `1px solid ${theme.border}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{
+                          width: '2.5rem',
+                          height: '2.5rem',
+                          borderRadius: '50%',
+                          background: user.photo_url 
+                            ? `url(${user.photo_url}) center/cover`
+                            : (user.isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(user.username)),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
+                          {!user.photo_url && user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: theme.text,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {user.username}
+                          </div>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: theme.textSecondary
+                          }}>
+                            {user.email || 'Utilizator'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div style={{ padding: '0.25rem' }}>
+                        <Link
+                          to={`/forum/user/${user.username}`}
+                          onClick={() => setShowUserMenu(false)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: theme.text,
+                            textDecoration: 'none',
+                            borderRadius: '0.375rem',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <User size={18} />
+                          <span>Profilul meu</span>
+                        </Link>
+
+                        {user.isAdmin && (
+                          <Link
+                            to="/forum/admin"
+                            onClick={() => setShowUserMenu(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem 1rem',
+                              color: '#dc2626',
+                              textDecoration: 'none',
+                              borderRadius: '0.375rem',
+                              transition: 'all 0.2s',
+                              fontSize: '0.875rem',
+                              fontWeight: '600'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <Settings size={18} />
+                            <span>Admin Panel</span>
+                          </Link>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            onLogout();
+                            setShowUserMenu(false);
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: '#ef4444',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <LogOut size={18} />
+                          <span>Deconectare</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <button
-                  onClick={handleLogin}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 0.75rem',
-                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.75rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <User style={{ width: '0.875rem', height: '0.875rem' }} />
-                  <span className="hidden sm:inline">Conectare</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleLogin}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                      background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8, #4338ca)';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb, #4f46e5)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <User size={isMobile ? 14 : 16} />
+                    <span>Conectare</span>
+                  </button>
+
+                  {/* Mobile Menu Button - În dreapta butonului Conectare, aproape de el */}
+                  {isMobile && (
+                    <button
+                      onClick={() => setShowMobileMenu(!showMobileMenu)}
+                      style={{
+                        display: 'flex',
+                        padding: '0.625rem',
+                        color: theme.textSecondary,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                        marginLeft: '0.125rem'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                        e.currentTarget.style.color = theme.text;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = theme.textSecondary;
+                      }}
+                    >
+                      {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                  )}
+                </>
               )}
 
-              {/* Mobile Menu Button */}
-              <button
-                className="lg:hidden"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                style={{
-                  display: 'flex',
-                  padding: '0.5rem',
-                  color: '#6b7280',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer'
-                }}
-              >
-                {showMobileMenu ? <X style={{ width: '1.5rem', height: '1.5rem' }} /> : <Menu style={{ width: '1.5rem', height: '1.5rem' }} />}
-              </button>
             </div>
           </div>
 
           {/* Mobile Menu Overlay */}
-          {showMobileMenu && (
-            <div className="lg:hidden" style={{
+          {showMobileMenu && isMobile && (
+            <div style={{
               position: 'absolute',
-              top: '4rem',
+              top: '100%',
               left: 0,
               right: 0,
               backgroundColor: theme.surface,
               borderBottom: `1px solid ${theme.border}`,
               padding: '1rem',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              zIndex: 50
+              zIndex: 40,
+              maxHeight: 'calc(100vh - 4rem)',
+              overflowY: 'auto'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {/* Mobile Search */}
+                <div style={{ marginBottom: '0.5rem' }}>
                   <ForumSearch />
                 </div>
-                <Link to="/forum" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>🏠 Acasă Forum</Link>
-                <Link to="/forum/recent" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>📝 Postări Recente</Link>
-                <Link to="/forum/members" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>👥 Membri Activi</Link>
-                <Link to="/forum/rules" onClick={() => setShowMobileMenu(false)} style={{ color: theme.text, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>📜 Regulament</Link>
-                <a href="https://fishtrophy.ro" style={{ color: theme.secondary, textDecoration: 'none', padding: '0.5rem', fontWeight: '500' }}>🎣 Fish Trophy</a>
+
+                {/* Navigation Links */}
+                <Link 
+                  to="/forum" 
+                  onClick={() => setShowMobileMenu(false)} 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.text, 
+                    textDecoration: 'none', 
+                    padding: '0.75rem', 
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <Home size={18} />
+                  <span>Acasă Forum</span>
+                </Link>
+
+                <Link 
+                  to="/forum/recent" 
+                  onClick={() => setShowMobileMenu(false)} 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.text, 
+                    textDecoration: 'none', 
+                    padding: '0.75rem', 
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <MessageSquare size={18} />
+                  <span>Postări Recente</span>
+                </Link>
+
+                <Link 
+                  to="/forum/members" 
+                  onClick={() => setShowMobileMenu(false)} 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.text, 
+                    textDecoration: 'none', 
+                    padding: '0.75rem', 
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <Users size={18} />
+                  <span>Membri Activi</span>
+                </Link>
+
+                <Link 
+                  to="/forum/rules" 
+                  onClick={() => setShowMobileMenu(false)} 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.text, 
+                    textDecoration: 'none', 
+                    padding: '0.75rem', 
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <FileText size={18} />
+                  <span>Regulament</span>
+                </Link>
+
+                <a 
+                  href="/forum" 
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.secondary, 
+                    textDecoration: 'none', 
+                    padding: '0.75rem', 
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>🎣</span>
+                  <span>Fish Trophy</span>
+                </a>
+
                 {user?.isAdmin && (
-                  <Link to="/admin" onClick={() => setShowMobileMenu(false)} style={{ color: '#dc2626', textDecoration: 'none', padding: '0.5rem', fontWeight: '600' }}>🔧 Admin Panel</Link>
+                  <Link 
+                    to="/forum/admin" 
+                    onClick={() => setShowMobileMenu(false)} 
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      color: '#dc2626', 
+                      textDecoration: 'none', 
+                      padding: '0.75rem', 
+                      fontWeight: '600',
+                      borderRadius: '0.375rem',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Settings size={18} />
+                    <span>Admin Panel</span>
+                  </Link>
                 )}
               </div>
             </div>
           )}
-        </nav>
 
-        {/* Hero Section - doar pe homepage */}
+          {/* Desktop Navigation Bar */}
+          {!isMobile && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.5rem',
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
+              borderTop: `1px solid ${theme.border}`,
+              fontSize: '0.875rem'
+            }}>
+              <Link
+                to="/forum"
+                style={{
+                  color: location.pathname === '/forum' ? theme.primary : theme.text,
+                  textDecoration: 'none',
+                  fontWeight: location.pathname === '/forum' ? '600' : '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0',
+                  borderBottom: location.pathname === '/forum' ? `2px solid ${theme.primary}` : '2px solid transparent'
+                }}
+              >
+                Acasă
+              </Link>
+              <Link
+                to="/forum/recent"
+                style={{
+                  color: location.pathname === '/forum/recent' ? theme.primary : theme.text,
+                  textDecoration: 'none',
+                  fontWeight: location.pathname === '/forum/recent' ? '600' : '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0',
+                  borderBottom: location.pathname === '/forum/recent' ? `2px solid ${theme.primary}` : '2px solid transparent'
+                }}
+              >
+                Postări Recente
+              </Link>
+              <Link
+                to="/forum/members"
+                style={{
+                  color: location.pathname === '/forum/members' ? theme.primary : theme.text,
+                  textDecoration: 'none',
+                  fontWeight: location.pathname === '/forum/members' ? '600' : '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0',
+                  borderBottom: location.pathname === '/forum/members' ? `2px solid ${theme.primary}` : '2px solid transparent'
+                }}
+              >
+                Membri Activi
+              </Link>
+              <Link
+                to="/forum/rules"
+                style={{
+                  color: location.pathname === '/forum/rules' ? theme.primary : theme.text,
+                  textDecoration: 'none',
+                  fontWeight: location.pathname === '/forum/rules' ? '600' : '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0',
+                  borderBottom: location.pathname === '/forum/rules' ? `2px solid ${theme.primary}` : '2px solid transparent'
+                }}
+              >
+                Regulament
+              </Link>
+              <a
+                href="/forum"
+                style={{
+                  color: theme.secondary,
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.2s',
+                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0'
+                }}
+              >
+                Fish Trophy
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Welcome Banner - doar pe homepage - Aliniat cu header */}
         {showWelcomeBanner && (
           <div style={{
             background: isDarkMode
               ? 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)'
               : 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #e0e7ff 100%)',
-            borderTop: `1px solid ${theme.border}`
+            borderTop: `1px solid ${theme.border}`,
+            padding: 0 // Remove padding from outer container
           }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', textAlign: 'left' }}>
+            <div style={{ 
+              maxWidth: '1200px', 
+              margin: '0 auto', 
+              textAlign: 'left',
+              padding: isMobile ? '1.5rem 0.75rem' : '2rem 1rem' // Same horizontal padding as header
+            }}>
               <h1 style={{
-                fontSize: '2rem',
+                fontSize: isMobile ? '1.5rem' : '2rem',
                 fontWeight: '700',
                 color: theme.text,
                 marginBottom: '0.5rem'
@@ -324,7 +905,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 Bine ai venit pe Forumul Fish Trophy
               </h1>
               <p style={{
-                fontSize: '1.125rem',
+                fontSize: isMobile ? '0.875rem' : '1.125rem',
                 color: theme.textSecondary,
                 maxWidth: '800px'
               }}>
@@ -333,103 +914,13 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
             </div>
           </div>
         )}
-
       </header>
 
-      {/* Navigation Bar with Search - Ascuns pe mobil (doar în meniu) */}
-      <div className="hidden lg:block" style={{
-        backgroundColor: theme.background,
-        borderBottom: `1px solid ${theme.border}`,
-        padding: '0.75rem 0',
-        width: '100%'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem', width: '100%' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1.5rem',
-            flexWrap: 'wrap'
-          }}>
-            {/* Menu Links */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1.5rem',
-              fontSize: '0.875rem',
-              flex: 1
-            }}>
-              <Link
-                to="/forum"
-                style={{
-                  color: theme.primary,
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                🏠 Acasă Forum
-              </Link>
-              <Link
-                to="/forum/recent"
-                style={{
-                  color: theme.text,
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                📝 Postări Recente
-              </Link>
-              <Link
-                to="/forum/members"
-                style={{
-                  color: theme.text,
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                👥 Membri Activi
-              </Link>
-              <Link
-                to="/forum/rules"
-                style={{
-                  color: theme.text,
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                📜 Regulament
-              </Link>
-              <a
-                href="https://fishtrophy.ro"
-                style={{
-                  color: theme.secondary,
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                🎣 Fish Trophy
-              </a>
-            </div>
-            
-            {/* Search Bar */}
-            <div style={{ flex: '0 0 300px', minWidth: '200px' }}>
-              <ForumSearch />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
-      <main>
+      <main style={{ 
+        minHeight: 'calc(100vh - 200px)',
+        backgroundColor: theme.background
+      }}>
         {children}
       </main>
 
@@ -437,32 +928,32 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
       <footer style={{
         borderTop: `1px solid ${theme.border}`,
         marginTop: '4rem',
-        padding: '1.5rem 0.75rem',
+        padding: isMobile ? '1rem 0.75rem' : '1.5rem 0.75rem',
+        paddingBottom: `max(${isMobile ? '1rem' : '1.5rem'}, calc(${isMobile ? '1rem' : '1.5rem'} + env(safe-area-inset-bottom, 0px)))`,
         color: theme.text,
         width: '100%',
         overflowX: 'hidden',
-        backgroundColor: theme.background
+        backgroundColor: theme.background,
+        position: 'relative',
+        zIndex: 1,
+        marginBottom: 0
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
           <div style={{ 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '1rem',
+            gap: '0.75rem',
             alignItems: 'center',
             textAlign: 'center',
-            fontSize: '0.875rem',
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
             color: theme.textSecondary
           }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
               <span>© 2025 Fish Trophy</span>
               <span style={{ color: theme.border }}>•</span>
               <span>Toate drepturile rezervate</span>
-              <span style={{ color: theme.border }}>•</span>
-              <span>Făcut cu</span>
-              <span style={{ color: '#ef4444', fontSize: '1.125rem' }}>❤️</span>
-              <span>în România</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
               <Link to="/privacy" style={{ color: theme.textSecondary, textDecoration: 'none' }}>Politica de confidențialitate</Link>
               <span style={{ color: theme.border }}>•</span>
               <Link to="/terms" style={{ color: theme.textSecondary, textDecoration: 'none' }}>Termeni și condiții</Link>
@@ -474,9 +965,13 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
       </footer>
 
       {/* Login Modal */}
-      <SimpleLoginModal
+      <UnifiedAuthModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
+        initialMode="login"
+        redirectAfterLogin={null} // Rămâne pe pagina curentă după login
+        theme={theme}
+        isDarkMode={isDarkMode}
       />
 
       {/* Back to Top Button */}

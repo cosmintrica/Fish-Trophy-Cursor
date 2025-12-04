@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Pin, Lock } from 'lucide-react';
 import { useTopics } from '../hooks/useTopics';
@@ -8,7 +8,9 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import { TopicListSkeleton } from '../../components/skeletons';
+import ReadStatusMarker from '../components/ReadStatusMarker';
+import { useMultipleTopicsReadStatus, useMultipleSubcategoriesUnreadStatus } from '../hooks/useTopicReadStatus';
+import { usePrefetch } from '../hooks/usePrefetch';
 
 export default function CategoryPage() {
   // Acceptă:
@@ -40,8 +42,18 @@ export default function CategoryPage() {
 
   useEffect(() => {
     const getSubcategoryId = async () => {
-      if (!slugToUse) {
-        // No slug provided
+      // Dacă e doar categorie (categorySlug && !subcategorySlug), nu căuta subcategorii
+      if (categorySlug && !subcategorySlug) {
+        setSubcategoryId(null);
+        return;
+      }
+
+      // Folosim DOAR subcategorySlug (nu slugToUse care poate fi categorySlug)
+      // slugToUse este folosit doar pentru legacy routes fără categorySlug
+      const slugToSearch = subcategorySlug || (categorySlug ? null : slugToUse);
+
+      if (!slugToSearch) {
+        // No slug provided sau e doar categorie
         setSubcategoryId(null);
         return;
       }
@@ -53,45 +65,32 @@ export default function CategoryPage() {
       const { data: subcategoryExact, error: exactError } = await supabase
         .from('forum_subcategories')
         .select('id, slug, name')
-        .eq('slug', slugToUse)
+        .eq('slug', slugToSearch)
         .eq('is_active', true)
-        .single();
+        .maybeSingle(); // Folosim maybeSingle pentru a evita erori
 
-      if (exactError) {
-        // Exact match failed, trying ilike
-
-        // Dacă exact match nu funcționează, încercă cu ilike (case-insensitive)
-        const { data: subcategoryIlike, error: ilikeError } = await supabase
-          .from('forum_subcategories')
-          .select('id, slug, name')
-          .ilike('slug', slugToUse)
-          .eq('is_active', true)
-          .maybeSingle(); // Folosim maybeSingle în loc de single pentru a evita erori
-
-        if (ilikeError) {
-          console.error('CategoryPage: ilike match also failed:', ilikeError);
-          setSubcategoryId(null);
-        } else if (subcategoryIlike) {
-          // Found subcategory with ilike
-          setSubcategoryId(subcategoryIlike.id);
-        } else {
-          // No subcategory found with slug
-          setSubcategoryId(null);
-        }
-      } else if (subcategoryExact) {
+      if (subcategoryExact) {
         // Found subcategory with exact match
         setSubcategoryId(subcategoryExact.id);
       } else {
-        // No subcategory found
+        // No subcategory found - nu mai încercăm cu ilike pentru a evita eroarea 406
+        // Dacă exact match nu funcționează, înseamnă că nu există subcategorie cu acest slug
         setSubcategoryId(null);
       }
     };
 
     getSubcategoryId();
-  }, [slugToUse]);
+  }, [slugToUse, categorySlug, subcategorySlug]);
 
   // Supabase hooks - folosește subcategoryId (UUID) pentru query (intern folosim UUID, extern slug)
-  const { topics, loading: supabaseLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId || '', 1, 50);
+  const { topics, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId || '', 1, 50);
+  
+  // Hook pentru prefetch pe hover
+  const { prefetchTopic } = usePrefetch();
+
+  // Hook pentru status-ul read/unread al topicurilor
+  const topicIds = topics.map(topic => topic.id);
+  const { unreadMap, hasUnread: hasUnreadPost } = useMultipleTopicsReadStatus(topicIds);
 
   const [subcategoryName, setSubcategoryName] = useState('');
   const [subcategoryDescription, setSubcategoryDescription] = useState('');
@@ -102,6 +101,16 @@ export default function CategoryPage() {
   const [categorySubcategories, setCategorySubcategories] = useState<any[]>([]);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // Hook pentru status-ul read/unread al subcategoriilor (pentru pagina de categorie)
+  // Trebuie să fie după declararea categorySubcategories - folosim useMemo pentru a evita erorile de hoisting
+  const subcategoryIdsForReadStatus = useMemo(() => {
+    return categorySubcategories.map(subcat => subcat.id);
+  }, [categorySubcategories]);
+  
+  const { hasUnread: hasUnreadSubcategory } = useMultipleSubcategoriesUnreadStatus(
+    subcategoryIdsForReadStatus.length > 0 ? subcategoryIdsForReadStatus : []
+  );
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobil
@@ -130,11 +139,17 @@ export default function CategoryPage() {
     const loadHierarchy = async () => {
       // Dacă e doar categorie (categorySlug && !subcategorySlug), nu căuta subcategorii aici
       if (categorySlug && !subcategorySlug) {
+        // Nu căuta subcategorii când e doar categorie
+        setSubcategoryName('');
+        setSubcategoryDescription('');
+        setParentCategoryName('');
+        setParentCategoryId(null);
         return; // Va fi gestionat în alt useEffect
       }
 
       // Dacă avem categorySlug și subcategorySlug, folosim subcategorySlug
-      const slugToSearch = subcategorySlug || slugToUse;
+      // IMPORTANT: Nu folosim slugToUse aici pentru că poate fi categorySlug
+      const slugToSearch = subcategorySlug;
 
       if (!slugToSearch || slugToSearch.trim() === '') {
         setSubcategoryName('');
@@ -178,39 +193,8 @@ export default function CategoryPage() {
           return;
         }
 
-        // Fallback la ilike dacă exact match nu funcționează
-        const { data: subcategoryIlike, error: ilikeError } = await supabase
-          .from('forum_subcategories')
-          .select('id, name, description, slug, category_id')
-          .ilike('slug', slugToSearch)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (ilikeError) {
-          console.error('CategoryPage: Error with ilike:', ilikeError);
-        }
-
-        if (subcategoryIlike) {
-          setSubcategoryName(subcategoryIlike.name);
-          setSubcategoryDescription(subcategoryIlike.description || '');
-          setResolvedSubcategorySlug(subcategoryIlike.slug || null);
-
-          // Obține categoria părinte
-          if (subcategoryIlike.category_id) {
-            setParentCategoryId(subcategoryIlike.category_id);
-            const { data: parentCategory } = await supabase
-              .from('forum_categories')
-              .select('name, slug')
-              .eq('id', subcategoryIlike.category_id)
-              .maybeSingle();
-
-            if (parentCategory) {
-              setParentCategoryName(parentCategory.name);
-              setParentCategorySlug(parentCategory.slug || null);
-            }
-          }
-          return;
-        }
+        // Nu mai folosim ilike - dacă exact match nu funcționează, înseamnă că nu există subcategorie
+        // Eliminăm ilike pentru a evita eroarea 406
 
         // Nu s-a găsit nimic (nu e subcategorie)
         setSubcategoryName('');
@@ -565,11 +549,7 @@ export default function CategoryPage() {
           {/* Dacă e doar categorie (fără subcategorie), afișează subcategoriile */}
           {categorySlug && !subcategorySlug && categoryId ? (
             <div>
-              {loadingSubcategories ? (
-                <div style={{ padding: '2rem', textAlign: 'center' }}>
-                  <div className="animate-spin" style={{ width: '2rem', height: '2rem', border: '4px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', margin: '0 auto' }}></div>
-                </div>
-              ) : categorySubcategories.length > 0 ? (
+              {categorySubcategories.length > 0 ? (
                 <div className="divide-y divide-gray-200">
                   {categorySubcategories.map((subcat) => (
                     <Link
@@ -590,6 +570,13 @@ export default function CategoryPage() {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {/* Read Status Marker - în stânga iconiței */}
+                        {forumUser && (
+                          <ReadStatusMarker 
+                            hasUnread={hasUnreadSubcategory(subcat.id)} 
+                            style={{ marginRight: '0.25rem', alignSelf: 'center', flexShrink: 0 }}
+                          />
+                        )}
                         {subcat.icon && (
                           <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>{subcat.icon}</div>
                         )}
@@ -607,6 +594,30 @@ export default function CategoryPage() {
                       </div>
                     </Link>
                   ))}
+                  
+                  {/* Legendă pentru iconread marker */}
+                  {forumUser && categorySubcategories.length > 0 && (
+                    <div style={{
+                      padding: '1rem 1.5rem',
+                      borderTop: '1px solid #e5e7eb',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1.5rem',
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ReadStatusMarker hasUnread={true} size={20} />
+                        <span>Forumul <strong>conține</strong> posturi noi</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ReadStatusMarker hasUnread={false} size={20} />
+                        <span>Forumul <strong>nu conține</strong> posturi noi</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{
@@ -645,9 +656,8 @@ export default function CategoryPage() {
 
               {/* Topicuri */}
               <div>
-            {supabaseLoading && topics.length === 0 ? (
-              <TopicListSkeleton count={5} />
-            ) : topics.length === 0 ? (
+            {/* Fără skeleton - afișăm direct datele când sunt gata */}
+            {topics.length === 0 && !topicsIsLoading && subcategoryId ? (
               <div style={{
                 padding: '4rem 2rem',
                 textAlign: 'center',
@@ -717,16 +727,28 @@ export default function CategoryPage() {
                     maxWidth: '100%',
                     boxSizing: 'border-box'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    // Prefetch topic-ul când utilizatorul trece cu mouse-ul
+                    if (topic.slug) {
+                      prefetchTopic(topic.slug, resolvedSubcategorySlug || undefined);
+                    }
+                  }}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   onClick={() => handleTopicClick(topic)}
                 >
                   {/* Topic info - Layout diferit pe mobil */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0, width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.125rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.125rem', flexShrink: 0 }}>
+                      {/* Read Status Marker - în stânga iconițelor, 90% din înălțimea row-ului */}
+                      {forumUser && (
+                        <ReadStatusMarker 
+                          hasUnread={hasUnreadPost(topic.id)} 
+                          style={{ marginRight: '0.25rem', alignSelf: 'center' }}
+                        />
+                      )}
                       {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
                       {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#6b7280' }} />}
-                      <MessageSquare style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: topic.is_pinned ? '#f59e0b' : '#2563eb' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: '#111827', marginBottom: '0.125rem', lineHeight: '1.3', wordBreak: 'break-word' }}>
@@ -848,7 +870,10 @@ export default function CategoryPage() {
         )}
 
         {/* Active Viewers */}
-        <ActiveViewers subcategoryId={subcategoryId || categoryId || ''} />
+        <ActiveViewers 
+          subcategoryId={subcategoryId || undefined} 
+          categoryId={categorySlug && !subcategorySlug ? categoryId || undefined : undefined}
+        />
       </div>
     </ForumLayout>
   );

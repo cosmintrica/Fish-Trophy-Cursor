@@ -153,7 +153,7 @@ export async function awardReputation(
  */
 export async function adminAwardReputation(
     params: AdminAwardReputationParams
-): Promise<ApiResponse<ForumReputationLog>> {
+): Promise<ApiResponse<ForumReputationLog | { success: boolean }>> {
     try {
         // Get current user
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
@@ -164,7 +164,9 @@ export async function adminAwardReputation(
         // RLS will enforce admin permission
 
         // Insert reputation log
-        const { data, error } = await supabase
+        // NOTE: Nu folosim .select() deoarece SELECT RLS policy restricționează
+        // vizibilitatea rândurilor și nu include immediate log-urile admin noi
+        const { error } = await supabase
             .from('forum_reputation_logs')
             .insert({
                 giver_user_id: currentUser.id,
@@ -175,14 +177,13 @@ export async function adminAwardReputation(
                 giver_power: 7, // Max power for admin
                 is_admin_award: true
             })
-            .select()
-            .single()
 
         if (error) {
             return { error: { message: error.message, code: error.code } }
         }
 
-        return { data }
+        // Return success without data (insert succeeded)
+        return { data: { success: true } }
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
     }
@@ -198,32 +199,69 @@ export async function getUserReputationLogs(
     try {
         // RLS will automatically enforce visibility rules:
         // - Regular users see last 10
-        // - Admins see all
+        // - Admins see all (via get_visible_reputation_log_ids function)
+        // Pentru admini, nu aplicăm limit în query - funcția RLS va returna toate ID-urile
+
+        // Query fără join-uri pentru că forum_reputation_logs face referință la auth.users, nu forum_users
         const { data, error, count } = await supabase
             .from('forum_reputation_logs')
-            .select(`
-        *,
-        giver:forum_users!giver_user_id(username),
-        receiver:forum_users!receiver_user_id(username),
-        post:forum_posts!post_id(
-          id,
-          topic:forum_topics(title)
-        )
-      `, { count: 'exact' })
+            .select('*', { count: 'exact' })
             .eq('receiver_user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(limit)
 
         if (error) {
             return { error: { message: error.message, code: error.code } }
         }
 
+        if (!data || data.length === 0) {
+            return {
+                data: {
+                    data: [],
+                    total: 0,
+                    page: 1,
+                    page_size: limit,
+                    has_more: false
+                }
+            }
+        }
+
+        // Obține username-urile din forum_users
+        const userIds = [...new Set([
+            ...data.map(log => log.giver_user_id),
+            ...data.map(log => log.receiver_user_id)
+        ])]
+
+        const { data: usersData } = await supabase
+            .from('forum_users')
+            .select('user_id, username')
+            .in('user_id', userIds)
+
+        const usersMap = new Map((usersData || []).map(u => [u.user_id, u.username]))
+
+        // Obține post-urile și topic-urile (doar pentru log-urile cu post_id)
+        const postIds = data.filter(log => log.post_id).map(log => log.post_id) as string[]
+
+        let postsMap = new Map()
+        if (postIds.length > 0) {
+            const { data: postsData } = await supabase
+                .from('forum_posts')
+                .select('id, topic_id, topic:forum_topics!topic_id(title)')
+                .in('id', postIds)
+
+            if (postsData) {
+                postsMap = new Map(postsData.map(p => {
+                    const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic
+                    return [p.id, topic?.title || null]
+                }))
+            }
+        }
+
         // Transform data to include usernames
-        const transformedData: ReputationLogWithUsers[] = (data || []).map(log => ({
+        const transformedData: ReputationLogWithUsers[] = data.map(log => ({
             ...log,
-            giver_username: log.giver?.username || 'Unknown',
-            receiver_username: log.receiver?.username || 'Unknown',
-            post_title: log.post?.topic?.title
+            giver_username: usersMap.get(log.giver_user_id) || 'Unknown',
+            receiver_username: usersMap.get(log.receiver_user_id) || 'Unknown',
+            post_title: log.post_id ? (postsMap.get(log.post_id) || null) : null
         }))
 
         return {
@@ -251,17 +289,10 @@ export async function getAllUserReputationLogs(
     try {
         const offset = (page - 1) * pageSize
 
+        // Query fără join-uri pentru că forum_reputation_logs face referință la auth.users, nu forum_users
         const { data, error, count } = await supabase
             .from('forum_reputation_logs')
-            .select(`
-        *,
-        giver:forum_users!giver_user_id(username),
-        receiver:forum_users!receiver_user_id(username),
-        post:forum_posts!post_id(
-          id,
-          topic:forum_topics(title)
-        )
-      `, { count: 'exact' })
+            .select('*', { count: 'exact' })
             .eq('receiver_user_id', userId)
             .order('created_at', { ascending: false })
             .range(offset, offset + pageSize - 1)
@@ -270,11 +301,54 @@ export async function getAllUserReputationLogs(
             return { error: { message: error.message, code: error.code } }
         }
 
-        const transformedData: ReputationLogWithUsers[] = (data || []).map(log => ({
+        if (!data || data.length === 0) {
+            return {
+                data: {
+                    data: [],
+                    total: count || 0,
+                    page,
+                    page_size: pageSize,
+                    has_more: offset + pageSize < (count || 0)
+                }
+            }
+        }
+
+        // Obține username-urile din forum_users
+        const userIds = [...new Set([
+            ...data.map(log => log.giver_user_id),
+            ...data.map(log => log.receiver_user_id)
+        ])]
+
+        const { data: usersData } = await supabase
+            .from('forum_users')
+            .select('user_id, username')
+            .in('user_id', userIds)
+
+        const usersMap = new Map((usersData || []).map(u => [u.user_id, u.username]))
+
+        // Obține post-urile și topic-urile (doar pentru log-urile cu post_id)
+        const postIds = data.filter(log => log.post_id).map(log => log.post_id) as string[]
+
+        let postsMap = new Map()
+        if (postIds.length > 0) {
+            const { data: postsData } = await supabase
+                .from('forum_posts')
+                .select('id, topic_id, topic:forum_topics!topic_id(title)')
+                .in('id', postIds)
+
+            if (postsData) {
+                postsMap = new Map(postsData.map(p => {
+                    const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic
+                    return [p.id, topic?.title || null]
+                }))
+            }
+        }
+
+        const transformedData: ReputationLogWithUsers[] = data.map(log => ({
             ...log,
-            giver_username: log.giver?.username || 'Unknown',
-            receiver_username: log.receiver?.username || 'Unknown',
-            post_title: log.post?.topic?.title
+            giver_username: usersMap.get(log.giver_user_id) || 'Unknown',
+            receiver_username: usersMap.get(log.receiver_user_id) || 'Unknown',
+            post_title: log.post_id ? (postsMap.get(log.post_id) || null) : null
         }))
 
         return {

@@ -157,23 +157,8 @@ export const performanceUtils = {
 
   // Optimize font loading
   optimizeFonts: () => {
-    if (typeof document === 'undefined') return;
-
-    // Preload critical fonts
-    const criticalFonts = [
-      'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
-    ];
-
-    criticalFonts.forEach(font => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.href = font;
-      link.as = 'style';
-      link.onload = () => {
-        link.rel = 'stylesheet';
-      };
-      document.head.appendChild(link);
-    });
+    // Fonturile sunt deja încărcate în index.html (Montserrat)
+    // Nu mai încărcăm fonturi suplimentare
   },
 
   // Service Worker registration for caching

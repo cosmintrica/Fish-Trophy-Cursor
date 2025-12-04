@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAllRecords, useSpecies, useLocations } from '@/hooks/useRecordsPage';
+import { usePrefetch } from '@/hooks/usePrefetch';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 interface FishRecord {
@@ -41,13 +44,19 @@ interface FishRecord {
 
 const Records = () => {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const { trackSearch } = useAnalytics();
+  const { prefetchProfile } = usePrefetch();
   const [searchParams, setSearchParams] = useSearchParams();
-  // Real data states
+  
+  // Use React Query hooks for data fetching
+  const { records: allRecords, loading: recordsLoading } = useAllRecords();
+  const { species, loading: speciesLoading } = useSpecies();
+  const { locations, loading: locationsLoading } = useLocations();
+  
+  // Use records from React Query
   const [records, setRecords] = useState<FishRecord[]>([]);
-  const [species, setSpecies] = useState<{ id: string; name: string }[]>([]);
-  const [locations, setLocations] = useState<{ id: string; name: string; type: string; county: string }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = recordsLoading || speciesLoading || locationsLoading;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState(searchParams.get('location_id') || 'all');
@@ -85,143 +94,16 @@ const Records = () => {
   const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
-  // Load real data from database
-  const loadRecords = async () => {
-    try {
-      // First load records with profiles
-      // Use explicit foreign key reference: records.user_id -> profiles.id
-      const { data: recordsData, error: recordsError } = await supabase
-        .from('records')
-        .select(`
-          *,
-          fish_species:species_id(name),
-          fishing_locations:location_id(name, type, county),
-          profiles!records_user_id_fkey(id, display_name, username)
-        `)
-        .eq('status', 'verified')
-        .order('weight', { ascending: false });
-
-      if (recordsError) {
-        console.error('Error loading records:', recordsError);
-        setRecords([]);
-        return;
-      }
-
-
-      if (!recordsData || recordsData.length === 0) {
-        setRecords([]);
-        return;
-      }
-
-      setRecords(recordsData);
-    } catch (error) {
-      console.error('Error loading records:', error);
-      setRecords([]);
+  // Update records when React Query data changes (compare by length and first ID to prevent loops)
+  const prevRecordsLengthRef = useRef<number>(0);
+  useEffect(() => {
+    const newLength = allRecords?.length || 0;
+    const prevLength = prevRecordsLengthRef.current;
+    if (allRecords && (newLength !== prevLength || (newLength > 0 && allRecords[0]?.id !== records[0]?.id))) {
+      setRecords(allRecords as FishRecord[]);
+      prevRecordsLengthRef.current = newLength;
     }
-  };
-
-  const loadSpecies = async () => {
-    // Cache cu sessionStorage pentru species (date statice)
-    const CACHE_KEY = 'records_species_cache';
-    const CACHE_DURATION = 10 * 60 * 1000; // 10 minute
-    
-    try {
-      // Încearcă să încarce din cache
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          setSpecies(data || []);
-          return; // Return instant, load in background
-        }
-      }
-      
-      // Load from database
-      const { data, error } = await supabase
-        .from('fish_species')
-        .select('id, name')
-        .order('name');
-
-      if (error) throw error;
-      const speciesData = data || [];
-      setSpecies(speciesData);
-      
-      // Cache result
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: speciesData,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        // Ignoră erorile de storage
-      }
-    } catch (error) {
-      console.error('Error loading species:', error);
-      // Dacă e eroare dar avem cache, păstrăm cache-ul
-      try {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data } = JSON.parse(cached);
-          setSpecies(data || []);
-        }
-      } catch (e) {
-        // Ignoră
-      }
-    }
-  };
-
-  // Debug function to check profiles
-  // Removed debug functions to avoid extra database requests
-
-  const loadLocations = async () => {
-    // Cache cu sessionStorage pentru locations (date statice)
-    const CACHE_KEY = 'records_locations_cache';
-    const CACHE_DURATION = 10 * 60 * 1000; // 10 minute
-    
-    try {
-      // Încearcă să încarce din cache
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          setLocations(data || []);
-          return; // Return instant, load in background
-        }
-      }
-      
-      // Load from database
-      const { data, error } = await supabase
-        .from('fishing_locations')
-        .select('id, name, type, county')
-        .order('name');
-
-      if (error) throw error;
-      const locationsData = data || [];
-      setLocations(locationsData);
-      
-      // Cache result
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: locationsData,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        // Ignoră erorile de storage
-      }
-    } catch (error) {
-      console.error('Error loading locations:', error);
-      // Dacă e eroare dar avem cache, păstrăm cache-ul
-      try {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data } = JSON.parse(cached);
-          setLocations(data || []);
-        }
-      } catch (e) {
-        // Ignoră
-      }
-    }
-  };
+  }, [allRecords, records]);
 
   const loadTeamStats = async () => {
     try {
@@ -319,27 +201,7 @@ const Records = () => {
     }
   };
 
-  useEffect(() => {
-    const loadAllData = async () => {
-      setLoading(true);
-      try {
-        // Load data sequentially to avoid overwhelming the database
-        await loadSpecies();
-        await loadLocations();
-        await loadRecords();
-        await loadTeamStats();
-        // Removed debug profiles to avoid extra requests
-      } catch (error) {
-        console.error('Error loading records data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAllData();
-  }, []);
-
-  // Reload team stats when records change
+  // Load team stats when records change (from React Query)
   useEffect(() => {
     if (records.length > 0) {
       loadTeamStats();
@@ -426,6 +288,14 @@ const Records = () => {
     } else {
       // Fallback to userId if username is not available
       window.location.href = `/profile/${record.user_id}`;
+    }
+  };
+
+  const handleProfileHover = (username?: string, userId?: string) => {
+    if (username) {
+      prefetchProfile(username);
+    } else if (userId) {
+      prefetchProfile(userId);
     }
   };
 
@@ -954,6 +824,14 @@ const Records = () => {
                             <h3
                               className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
                               onClick={() => openUserProfile(record)}
+                              onMouseEnter={() => {
+                                const username = record.profiles?.username;
+                                if (username) {
+                                  prefetchProfile(username);
+                                } else if (record.user_id) {
+                                  prefetchProfile(record.user_id);
+                                }
+                              }}
                               title="Vezi profilul utilizatorului"
                             >
                               {record.profiles?.display_name || 'Utilizator'}
@@ -995,7 +873,7 @@ const Records = () => {
                             <Eye className="w-3 h-3 sm:mr-1" />
                             <span className="hidden sm:inline">Vezi</span>
                           </button>
-                          {user?.email === 'cosmin.trica@outlook.com' && record.status === 'verified' && (
+                          {isAdmin && record.status === 'verified' && (
                             <button
                               onClick={() => handleEditRecord(record)}
                               className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center"

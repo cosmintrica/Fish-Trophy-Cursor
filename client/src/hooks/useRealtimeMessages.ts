@@ -78,21 +78,22 @@ export function useRealtimeMessages() {
 
     const channel = supabase
       .channel(`private_messages_global_${user.id}`)
+      // Subscription 1: Mesaje primite (optimizat cu filter)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'private_messages'
+          table: 'private_messages',
+          filter: `recipient_id=eq.${user.id}`
         },
         async (payload) => {
+          console.log('[Realtime] 🔔 INSERT event received!', payload.new);
           try {
             const newMessage = payload.new as any;
-            
-            // Filter in JavaScript - check if message is for current user
-            if (newMessage.recipient_id !== user.id && newMessage.sender_id !== user.id) {
-              return;
-            }
+            console.log('[Realtime] Processing message for recipient:', newMessage.recipient_id);
+
+            // Mesajul este deja filtrat pentru recipient_id, dar verificăm context
 
             // Load full message data including profiles
             const { data: fullMessageData, error: fullMessageError } = await supabase
@@ -166,7 +167,7 @@ export function useRealtimeMessages() {
                 if (!isOnMessagesPage()) {
                   const senderName = formattedMessage.sender_name || formattedMessage.sender_username || 'Cineva';
                   const messageContext = formattedMessage.context === 'forum' ? 'forum' : 'site';
-                  
+
                   showMessageNotification({
                     id: formattedMessage.id,
                     threadRootId: formattedMessage.thread_root_id || formattedMessage.id,
@@ -175,7 +176,7 @@ export function useRealtimeMessages() {
                     context: messageContext
                   });
                 }
-                
+
                 notifyUnreadCountChange();
 
                 if (globalActiveThread?.onMessageReceived && matchesActiveContext) {
@@ -192,14 +193,72 @@ export function useRealtimeMessages() {
           }
         }
       )
+      // Subscription 2: Mesaje trimise (pentru sync când trimitem noi mesajul)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'private_messages',
+          filter: `sender_id=eq.${user.id}`
+        },
+        async (payload) => {
+          try {
+            const newMessage = payload.new as any;
+
+            // Mesaj trimis de noi - doar pentru sync în active thread
+            if (!globalActiveThread) return;
+
+            const messageThreadRootId = newMessage.thread_root_id || newMessage.id;
+            const isInActiveThread = globalActiveThread && (
+              messageThreadRootId === globalActiveThread.threadRootId ||
+              newMessage.id === globalActiveThread.selectedMessageId
+            );
+
+            if (isInActiveThread && globalActiveThread?.onMessageReceived) {
+              globalActiveThread.onMessageReceived();
+            }
+          } catch (error) {
+            console.error('[Realtime] Error processing sent message:', error);
+          }
+        }
+      )
+      // Subscription 3: UPDATE events for recipient (unread count)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'private_messages'
+          table: 'private_messages',
+          filter: `recipient_id=eq.${user.id}`
         },
         async (payload) => {
+          console.log('[Realtime] UPDATE event (recipient):', payload.new);
+          try {
+            const updatedMessage = payload.new as any;
+            const oldMessage = payload.old as any;
+
+            // If is_read changed from false to true - update unread count
+            if (oldMessage?.is_read === false && updatedMessage.is_read === true) {
+              console.log('[Realtime] Message marked as read (recipient view)');
+              notifyUnreadCountChange();
+            }
+          } catch (error) {
+            console.error('[Realtime] Error processing recipient UPDATE:', error);
+          }
+        }
+      )
+      // Subscription 4: UPDATE events for sender (checkmarks!)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'private_messages',
+          filter: `sender_id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('[Realtime] UPDATE event (sender sees read):', payload.new);
           try {
             const updatedMessage = payload.new as any;
             const oldMessage = payload.old as any;
@@ -212,17 +271,11 @@ export function useRealtimeMessages() {
               updatedMessage.id === globalActiveThread.threadRootId
             );
 
-            // If is_read changed from false to true
-            if (
-              oldMessage.is_read === false &&
-              updatedMessage.is_read === true
-            ) {
-              // Update unread count if recipient
-              if (updatedMessage.recipient_id === user.id) {
-                notifyUnreadCountChange();
-              }
+            // If is_read changed from false to true - update checkmarks
+            if (oldMessage?.is_read === false && updatedMessage.is_read === true) {
+              console.log('[Realtime] ✓ Checkmark update for sender!', updatedMessage.id);
 
-              // Update checkmarks in active thread if message is in thread
+              // Update checkmarks in active thread
               if (isInActiveThread && globalActiveThread?.onMessageRead) {
                 globalActiveThread.onMessageRead(
                   updatedMessage.id,
@@ -231,22 +284,18 @@ export function useRealtimeMessages() {
               }
             }
           } catch (error) {
-            // Silent fail
+            console.error('[Realtime] Error processing sender UPDATE:', error);
           }
         }
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          // Successfully subscribed
-        } else if (status === 'CHANNEL_ERROR') {
-          // Connection failed
-        } else if (status === 'CLOSED') {
-          // Connection closed
-        }
+        // Log-urile au fost eliminate pentru a reduce zgomotul în consolă
+        // Status-ul este gestionat automat de Supabase Realtime
       });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 }
+

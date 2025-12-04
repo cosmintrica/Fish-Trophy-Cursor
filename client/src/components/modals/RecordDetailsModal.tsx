@@ -27,11 +27,15 @@ export const RecordDetailsModal = ({ record, isOpen, onClose }: RecordDetailsMod
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                     {/* Imagine */}
                     <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                        {record.image_url ? (
+                        {(record.image_url || record.photo_url) ? (
                             <img
-                                src={record.image_url}
+                                src={getR2ImageUrlProxy(record.image_url || record.photo_url)}
                                 alt={record.fish_species?.name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                }}
                             />
                         ) : (
                             <Fish className="w-20 h-20 text-gray-300" />
@@ -53,7 +57,7 @@ export const RecordDetailsModal = ({ record, isOpen, onClose }: RecordDetailsMod
                                     <Ruler className="w-4 h-4" />
                                     <span className="font-medium">Lungime</span>
                                 </div>
-                                <p className="text-2xl font-bold text-green-900">{record.length_cm} cm</p>
+                                <p className="text-2xl font-bold text-green-900">{(record.length || record.length_cm) || 'N/A'} cm</p>
                             </div>
                         </div>
 
@@ -73,7 +77,13 @@ export const RecordDetailsModal = ({ record, isOpen, onClose }: RecordDetailsMod
                                 <Calendar className="w-5 h-5 text-gray-500 mt-0.5" />
                                 <div>
                                     <p className="font-medium text-gray-900">Data capturii</p>
-                                    <p className="text-gray-600">{new Date(record.captured_at).toLocaleDateString('ro-RO')}</p>
+                                    <p className="text-gray-600">
+                                        {record.date_caught 
+                                            ? new Date(record.date_caught).toLocaleDateString('ro-RO')
+                                            : record.captured_at 
+                                            ? new Date(record.captured_at).toLocaleDateString('ro-RO')
+                                            : new Date(record.created_at).toLocaleDateString('ro-RO')}
+                                    </p>
                                 </div>
                             </div>
 

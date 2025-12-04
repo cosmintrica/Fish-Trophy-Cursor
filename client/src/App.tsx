@@ -2,17 +2,18 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'sonner';
-import { SWRConfig } from 'swr';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider } from '@/lib/auth-supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdmin } from '@/hooks/useAdmin';
+// import { useAdmin } from '@/hooks/useAdmin'; // Nu mai folosim loading-ul global
 import { analytics } from '@/lib/analytics';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import Layout from '@/components/Layout';
 import { CompleteGoogleProfileModal } from '@/components/CompleteGoogleProfileModal';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { MessageNotificationManager } from '@/components/MessageNotificationManager';
-import { swrConfig } from '@/lib/swr-config';
+import { queryClient } from '@/lib/query-client';
 
 // Initialize analytics
 analytics;
@@ -83,19 +84,8 @@ function ProfileCompletionWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { loading } = useAdmin();
-
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Se încarcă...</p>
-        </div>
-      </div>
-    );
-  }
+  // Nu mai blocăm render-ul pentru loading - afișăm direct conținutul
+  // React Query cache-ul asigură datele instant, iar loading-ul se face în background
   return (
     <Routes>
       {/* Forum routes - independent layout */}
@@ -156,28 +146,27 @@ function AppContent() {
   );
 }
 
-// SWR Provider Wrapper - necesar pentru a evita probleme cu React context
-function SWRProvider({ children }: { children: React.ReactNode }) {
+// React Query Provider Wrapper
+function QueryProvider({ children }: { children: React.ReactNode }) {
   return (
-    <SWRConfig 
-      value={{
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-        dedupingInterval: 2000,
-        focusThrottleInterval: 5000,
-        errorRetryCount: 3,
-        errorRetryInterval: 5000,
-      }}
-    >
+    <QueryClientProvider client={queryClient}>
       {children}
-    </SWRConfig>
+      {/* DevTools doar în development - icon-ul cu palmierul apare doar în development */}
+      {/* IMPORTANT: DevTools NU apare în production - doar în development */}
+      {/* Doar dezvoltatorii care rulează local văd acest icon */}
+      {import.meta.env.DEV && (
+        <ReactQueryDevtools 
+          initialIsOpen={false}
+        />
+      )}
+    </QueryClientProvider>
   );
 }
 
 function App() {
   return (
     <HelmetProvider>
-      <SWRProvider>
+      <QueryProvider>
         <AuthProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <RealtimeMessagesWrapper>
@@ -202,7 +191,7 @@ function App() {
             }}
           />
         </AuthProvider>
-      </SWRProvider>
+      </QueryProvider>
     </HelmetProvider>
   );
 }

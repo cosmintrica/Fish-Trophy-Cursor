@@ -20,8 +20,31 @@ import type {
 
 /**
  * Get all categories with their subforums and subcategories
+ * OPTIMIZED: Uses single RPC call instead of 50+ sequential queries
  */
 export async function getCategoriesWithHierarchy(): Promise<ApiResponse<CategoryWithChildren[]>> {
+    try {
+        // Try optimized RPC first (single query)
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_categories_with_stats')
+
+        if (!rpcError && rpcData) {
+            // RPC returned data - transform to expected format
+            return { data: rpcData as CategoryWithChildren[] }
+        }
+
+        // Fallback to old method if RPC doesn't exist yet
+        console.warn('Optimized RPC not available, using fallback method')
+        return getCategoriesWithHierarchyFallback()
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Fallback method - original implementation with sequential queries
+ * Will be removed once RPC is deployed
+ */
+async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<CategoryWithChildren[]>> {
     try {
         const { data: categories, error: catError } = await supabase
             .from('forum_categories')
@@ -51,7 +74,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                     .eq('category_id', category.id)
                     .eq('is_active', true)
                     .order('sort_order', { ascending: true })
-                
+
                 // Calculează statistici pentru fiecare subcategorie
                 const subcategories = await Promise.all(
                     (subcategoriesRaw || []).map(async (subcat) => {
@@ -61,7 +84,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                             .select('*', { count: 'exact', head: true })
                             .eq('subcategory_id', subcat.id)
                             .eq('is_deleted', false);
-                        
+
                         // Count posts
                         let postCount = 0;
                         if (topicCount && topicCount > 0) {
@@ -70,7 +93,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                                 .select('id')
                                 .eq('subcategory_id', subcat.id)
                                 .eq('is_deleted', false);
-                            
+
                             if (topicIds && topicIds.length > 0) {
                                 const { count: postsCount } = await supabase
                                     .from('forum_posts')
@@ -80,7 +103,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                                 postCount = postsCount || 0;
                             }
                         }
-                        
+
                         // Get last post
                         let lastPost = null;
                         if (topicCount && topicCount > 0) {
@@ -99,7 +122,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                                 .order('created_at', { ascending: false })
                                 .limit(1)
                                 .maybeSingle();
-                            
+
                             if (latestPost && latestPost.user_id) {
                                 // Get author info din profiles
                                 const { data: profile } = await supabase
@@ -107,25 +130,25 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                                     .select('display_name, username')
                                     .eq('id', latestPost.user_id)
                                     .maybeSingle();
-                                
+
                                 const topicData = latestPost.forum_topics as any;
                                 const topicTitle = topicData?.title || 'Unknown';
                                 const topicSlug = topicData?.slug || null;
                                 const authorName = profile?.display_name || profile?.username || 'Unknown';
-                                
+
                                 // Format time - smart: dacă e azi → doar ora
                                 const postDate = new Date(latestPost.created_at);
                                 const now = new Date();
                                 const isToday = postDate.getDate() === now.getDate() &&
-                                               postDate.getMonth() === now.getMonth() &&
-                                               postDate.getFullYear() === now.getFullYear();
-                                
+                                    postDate.getMonth() === now.getMonth() &&
+                                    postDate.getFullYear() === now.getFullYear();
+
                                 const hours = postDate.getHours().toString().padStart(2, '0');
                                 const minutes = postDate.getMinutes().toString().padStart(2, '0');
                                 const day = postDate.getDate().toString().padStart(2, '0');
                                 const month = (postDate.getMonth() + 1).toString().padStart(2, '0');
                                 const year = postDate.getFullYear();
-                                
+
                                 lastPost = {
                                     topicId: latestPost.topic_id,
                                     topicTitle,
@@ -139,7 +162,7 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                                 };
                             }
                         }
-                        
+
                         return {
                             ...subcat,
                             topicCount: topicCount || 0,
@@ -150,121 +173,16 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
                 )
 
                 // Calculate total topics and posts for this category
-                // Get all subcategory IDs (including from subforums)
-                const subcategoryIds: string[] = []
-                
-                // Add direct subcategories
-                if (subcategories) {
-                    subcategoryIds.push(...subcategories.map(sc => sc.id))
-                }
-                
-                // Add subcategories from subforums
-                if (subforums) {
-                    for (const subforum of subforums) {
-                        const { data: subforumSubcategories } = await supabase
-                            .from('forum_subcategories')
-                            .select('id, slug')
-                            .eq('subforum_id', subforum.id)
-                            .eq('is_active', true)
-                        
-                        if (subforumSubcategories) {
-                            subcategoryIds.push(...subforumSubcategories.map(sc => sc.id))
-                        }
-                    }
-                }
-
-                // Count topics and posts
-                let totalTopics = 0
-                let totalPosts = 0
-
-                if (subcategoryIds.length > 0) {
-                    // Count topics
-                    const { count: topicsCount } = await supabase
-                        .from('forum_topics')
-                        .select('*', { count: 'exact', head: true })
-                        .in('subcategory_id', subcategoryIds)
-                        .eq('is_deleted', false)
-
-                    totalTopics = topicsCount || 0
-
-                    // Count posts - get all topic IDs first, then count posts
-                    if (totalTopics > 0) {
-                        const { data: topicIds } = await supabase
-                            .from('forum_topics')
-                            .select('id')
-                            .in('subcategory_id', subcategoryIds)
-                            .eq('is_deleted', false)
-
-                        if (topicIds && topicIds.length > 0) {
-                            const topicIdArray = topicIds.map(t => t.id)
-                            const { count: postsCount } = await supabase
-                                .from('forum_posts')
-                                .select('*', { count: 'exact', head: true })
-                                .in('topic_id', topicIdArray)
-                                .eq('is_deleted', false)
-
-                            totalPosts = postsCount || 0
-                        }
-                    }
-                }
-
-                // Get last post pentru toată categoria
-                let categoryLastPost = null;
-                if (subcategoryIds.length > 0 && totalTopics > 0) {
-                    const { data: latestPost } = await supabase
-                        .from('forum_posts')
-                        .select(`
-                            id,
-                            created_at,
-                            user_id,
-                            topic_id,
-                            forum_topics!inner(title, subcategory_id)
-                        `)
-                        .in('forum_topics.subcategory_id', subcategoryIds)
-                        .eq('is_deleted', false)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    
-                    if (latestPost) {
-                        // Get author info
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('display_name, username')
-                            .eq('id', latestPost.user_id)
-                            .maybeSingle();
-                        
-                        const topicTitle = (latestPost.forum_topics as any)?.title || 'Unknown';
-                        const authorName = profile?.display_name || profile?.username || 'Unknown';
-                        
-                        // Format time - smart
-                        const postDate = new Date(latestPost.created_at);
-                        const now = new Date();
-                        const isToday = postDate.getDate() === now.getDate() &&
-                                       postDate.getMonth() === now.getMonth() &&
-                                       postDate.getFullYear() === now.getFullYear();
-                        
-                        const hours = postDate.getHours().toString().padStart(2, '0');
-                        const minutes = postDate.getMinutes().toString().padStart(2, '0');
-                        const time = isToday 
-                            ? `${hours}:${minutes}`
-                            : `${postDate.getDate().toString().padStart(2, '0')}.${(postDate.getMonth() + 1).toString().padStart(2, '0')}.${postDate.getFullYear()} ${hours}:${minutes}`;
-                        
-                        categoryLastPost = {
-                            topicTitle,
-                            author: authorName,
-                            time
-                        };
-                    }
-                }
+                const totalTopics = subcategories.reduce((sum, sc) => sum + (sc.topicCount || 0), 0)
+                const totalPosts = subcategories.reduce((sum, sc) => sum + (sc.postCount || 0), 0)
 
                 return {
                     ...category,
                     subforums: subforums || [],
                     subcategories: subcategories || [],
-                    totalTopics: totalTopics,
-                    totalPosts: totalPosts,
-                    lastPost: categoryLastPost
+                    totalTopics,
+                    totalPosts,
+                    lastPost: null
                 }
             })
         )

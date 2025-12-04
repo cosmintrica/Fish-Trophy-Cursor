@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { getR2ImageUrlProxy } from '@/lib/supabase';
 
 interface FishRecord {
   id: string;
@@ -11,10 +12,14 @@ interface FishRecord {
   species_id: string;
   location_id: string;
   weight: number;
-  length_cm: number;
-  captured_at: string;
+  length?: number; // records use 'length' (integer), not 'length_cm'
+  length_cm?: number; // legacy/compatibility field
+  date_caught?: string; // records use 'date_caught' (date)
+  time_caught?: string; // records use 'time_caught' (time)
+  captured_at?: string; // computed/legacy field - combine date_caught + time_caught
   notes?: string;
-  photo_url?: string;
+  image_url?: string; // records use 'image_url', not 'photo_url'
+  photo_url?: string; // legacy/compatibility field
   video_url?: string;
   status: string;
   created_at: string;
@@ -103,6 +108,24 @@ const RecordDetailsModal = ({
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Combine date_caught + time_caught for records, or use captured_at
+  const getCapturedAt = () => {
+    if (record.date_caught && record.time_caught) {
+      return `${record.date_caught}T${record.time_caught}`;
+    }
+    return record.captured_at || record.date_caught || record.created_at;
+  };
+
+  // Get image URL - records use image_url, catches use photo_url
+  const getImageUrl = () => {
+    return record.image_url || record.photo_url;
+  };
+
+  // Get length - records use length (integer), catches use length_cm (decimal)
+  const getLength = () => {
+    return record.length || record.length_cm;
   };
 
   const handleEdit = () => {
@@ -215,7 +238,7 @@ const RecordDetailsModal = ({
                     <div className="min-w-0">
                       <p className="text-xs sm:text-sm text-green-600 font-medium">Lungime</p>
                       <p className="text-lg sm:text-2xl font-bold text-green-900 truncate">
-                        {record.length_cm || 'N/A'} cm
+                        {getLength() || 'N/A'} cm
                       </p>
                     </div>
                   </div>
@@ -250,7 +273,7 @@ const RecordDetailsModal = ({
                     <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm text-gray-600">Data capturii</p>
-                      <p className="font-medium text-xs sm:text-sm truncate">{formatDate(record.captured_at)}</p>
+                      <p className="font-medium text-xs sm:text-sm truncate">{formatDate(getCapturedAt())}</p>
                     </div>
                   </div>
 
@@ -265,7 +288,7 @@ const RecordDetailsModal = ({
               </div>
 
               {/* Media Gallery */}
-              {(record.photo_url || record.video_url) && (
+              {(getImageUrl() || record.video_url) && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <h4 className="font-medium text-gray-800 mb-3 flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,12 +297,16 @@ const RecordDetailsModal = ({
                     Media
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {record.photo_url && (
+                    {getImageUrl() && (
                       <div className="relative group">
                         <img
-                          src={record.photo_url}
+                          src={getR2ImageUrlProxy(getImageUrl()!)}
                           alt={`Poza record ${record.fish_species?.name}`}
                           className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
                           <button className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 p-2 rounded-full transition-all">
@@ -293,9 +320,13 @@ const RecordDetailsModal = ({
                     {record.video_url && (
                       <div className="relative group">
                         <video
-                          src={record.video_url}
+                          src={getR2ImageUrlProxy(record.video_url)}
                           controls
                           className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
+                          onError={(e) => {
+                            const target = e.target as HTMLVideoElement;
+                            target.style.display = 'none';
+                          }}
                         />
                       </div>
                     )}

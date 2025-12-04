@@ -4,58 +4,85 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
+import AdminPanelTabs, { AdminTab } from '../components/admin/AdminPanelTabs';
+import AdminDashboard from '../components/admin/AdminDashboard';
+import AdminModeration from '../components/admin/AdminModeration';
+import AdminReputation from '../components/admin/AdminReputation';
+import AdminBadges from '../components/admin/AdminBadges';
+import AdminBraconajReports from '../components/admin/AdminBraconajReports';
+import AdminRoles from '../components/admin/AdminRoles';
+import AdminMarketplace from '../components/admin/AdminMarketplace';
 
 export default function AdminForum() {
-  const { forumUser } = useAuth();
+  const { forumUser, loading: authLoading } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
   // Check if user is admin
   useEffect(() => {
     const checkAdmin = async () => {
+      // Wait for auth to finish loading before checking
+      if (authLoading) {
+        setChecking(true);
+        return;
+      }
+
+      // If auth finished loading and no user, redirect
       if (!forumUser) {
+        setChecking(false);
+        setIsAdmin(false);
         navigate('/forum');
         return;
       }
 
       try {
-        // Check if user has admin role in forum_users
-        const { data: userData, error } = await supabase
-          .from('forum_users')
-          .select('role_id, forum_roles!inner(name)')
-          .eq('user_id', forumUser.id)
-          .single();
+        setChecking(true);
+        
+        // First check if forumUser already has isAdmin flag (from useAuth hook)
+        if (forumUser.isAdmin === true) {
+          setIsAdmin(true);
+          setChecking(false);
+          return;
+        }
+
+        // If not set, check if user has admin role in profiles (sursa de adevăr)
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', forumUser.id)
+          .maybeSingle();
 
         if (error) {
           console.error('Error checking admin:', error);
           setIsAdmin(false);
           setChecking(false);
+          navigate('/forum');
           return;
         }
 
         // Check if role is admin
-        const role = userData?.forum_roles;
-        if (role && typeof role === 'object' && 'name' in role && role.name === 'admin') {
+        if (profileData?.role === 'admin') {
           setIsAdmin(true);
+          setChecking(false);
         } else {
           setIsAdmin(false);
+          setChecking(false);
           // Redirect if not admin
-          setTimeout(() => {
-            navigate('/forum');
-          }, 2000);
+          navigate('/forum');
         }
       } catch (error) {
         console.error('Error checking admin:', error);
         setIsAdmin(false);
-      } finally {
         setChecking(false);
+        navigate('/forum');
       }
     };
 
     checkAdmin();
-  }, [forumUser, navigate]);
+  }, [forumUser, authLoading, navigate]);
 
   if (checking) {
     return (
@@ -85,10 +112,31 @@ export default function AdminForum() {
     );
   }
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <AdminDashboard />;
+      case 'moderare':
+        return <AdminModeration />;
+      case 'reputatie':
+        return <AdminReputation />;
+      case 'badges':
+        return <AdminBadges />;
+      case 'braconaj':
+        return <AdminBraconajReports />;
+      case 'roluri':
+        return <AdminRoles />;
+      case 'marketplace':
+        return <AdminMarketplace />;
+      default:
+        return <AdminDashboard />;
+    }
+  };
+
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser ? { ...forumUser, isAdmin: true } : null)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: '700', color: theme.text, marginBottom: '2rem' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: '700', color: theme.text, marginBottom: '1rem' }}>
           🔧 Admin Panel Forum
         </h1>
 
@@ -96,20 +144,14 @@ export default function AdminForum() {
           backgroundColor: theme.surface,
           borderRadius: '0.5rem',
           border: `1px solid ${theme.border}`,
-          padding: '2rem'
+          padding: '1rem',
+          minHeight: '600px',
+          width: '100%',
+          overflow: 'hidden'
         }}>
-          <div style={{ color: theme.textSecondary, marginBottom: '1rem' }}>
-            Panoul de administrare pentru forum va fi implementat aici.
-          </div>
-          <div style={{ color: theme.textSecondary, fontSize: '0.875rem' }}>
-            Funcționalități planificate:
-            <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-              <li>Gestionare categorii și subcategorii</li>
-              <li>Moderare topicuri și postări</li>
-              <li>Gestionare utilizatori și roluri</li>
-              <li>Raportări și restricții</li>
-              <li>Statistici și rapoarte</li>
-            </ul>
+          <AdminPanelTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          <div style={{ width: '100%', overflowX: 'hidden' }}>
+            {renderTabContent()}
           </div>
         </div>
       </div>

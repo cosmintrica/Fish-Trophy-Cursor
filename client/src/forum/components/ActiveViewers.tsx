@@ -324,24 +324,22 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
               usersMap = new Map(usersData.map((u: any) => [u.user_id, u]));
             }
             
-            // Obține display_name și photo_url din profiles (pentru afișare și avatar)
+            // Obține photo_url din profiles (pentru avatar real)
             const { data: profilesData, error: profilesError } = await supabase
               .from('profiles')
-              .select('id, display_name, username, photo_url')
+              .select('id, photo_url')
               .in('id', userIds);
             
             if (profilesError) {
               console.error('Error fetching profiles for viewers:', profilesError);
             } else if (profilesData) {
-              // Adaugă display_name și photo_url la usersMap
+              // Adaugă photo_url la usersMap
               profilesData.forEach((profile: any) => {
                 const userInfo = usersMap.get(profile.id);
                 if (userInfo) {
-                  userInfo.display_name = profile.display_name || profile.username;
                   userInfo.photo_url = profile.photo_url; // Folosește photo_url din profiles
                 } else {
                   usersMap.set(profile.id, { 
-                    display_name: profile.display_name || profile.username,
                     photo_url: profile.photo_url
                   });
                 }
@@ -356,8 +354,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
               id: v.id,
               user_id: v.user_id,
               session_id: v.session_id,
-              username: userInfo?.username, // Pentru linkuri/identificare
-              display_name: userInfo?.display_name || userInfo?.username || 'Unknown', // Pentru afișare
+              username: userInfo?.username || 'Unknown', // Folosim doar username pe forum
               rank: userInfo?.rank, // Rang de vechime (ou_de_peste, puiet, etc.)
               role_name: role?.name, // Rol (admin, moderator, etc.)
               role_display_name: role?.display_name,
@@ -474,9 +471,8 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
 
   // Obține display-ul complet al rangului (vechime + rol + founder)
   const getDisplayRank = (viewer: Viewer) => {
-    // Founder DOAR pentru email-ul specific - verifică dacă viewer-ul este utilizatorul curent cu email-ul specific
-    const userEmail = user?.email;
-    const isFounder = userEmail === 'cosmin.trica@outlook.com' && viewer.user_id === user?.id;
+    // Founder DOAR pentru admin - verifică dacă viewer-ul este utilizatorul curent și este admin
+    const isFounder = forumUser?.isAdmin && viewer.user_id === user?.id;
     
     if (isFounder) {
       return '👑 Founder';
@@ -599,12 +595,12 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
                 fontWeight: '600'
               }}
             >
-              {!viewer.avatar_url && (viewer.display_name || viewer.username)?.charAt(0).toUpperCase()}
+              {!viewer.avatar_url && viewer.username?.charAt(0).toUpperCase()}
             </div>
 
             <div>
               <div style={{ fontWeight: '500', color: theme.text }}>
-                {viewer.display_name || viewer.username || 'Anonim'}
+                {viewer.username || 'Anonim'}
               </div>
               <div style={{ fontSize: '0.625rem', color: theme.textSecondary }}>
                 {getDisplayRank(viewer)}
