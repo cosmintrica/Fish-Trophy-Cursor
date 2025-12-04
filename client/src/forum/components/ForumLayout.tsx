@@ -403,6 +403,35 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                     >
                       {!user.photo_url && user.username.charAt(0).toUpperCase()}
                     </button>
+
+                    {/* Mobile Menu Button - În dreapta avatar-ului utilizatorului logat */}
+                    {isMobile && (
+                      <button
+                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        style={{
+                          display: 'flex',
+                          padding: '0.625rem',
+                          color: theme.textSecondary,
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          flexShrink: 0,
+                          marginLeft: '0.125rem'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          e.currentTarget.style.color = theme.text;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = theme.textSecondary;
+                        }}
+                      >
+                        {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+                      </button>
+                    )}
                   </div>
 
                   {/* User Dropdown Menu */}

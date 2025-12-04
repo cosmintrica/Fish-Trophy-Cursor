@@ -81,6 +81,7 @@ export {
     restrictUser,
     removeRestriction,
     getUserRestrictions,
+    getAllUserRestrictions,
     hasActiveRestriction,
     createReport,
     getReports,

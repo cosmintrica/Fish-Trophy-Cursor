@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { queryKeys } from '../../lib/query-client';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { getUserReputationLogs } from '../../services/forum/reputation';
+import { getAllUserRestrictions } from '../../services/forum/moderation';
 import {
   User,
   Award,
@@ -27,7 +28,9 @@ import {
   Fish,
   ArrowUp,
   ArrowDown,
-  ExternalLink
+  ExternalLink,
+  CheckCircle,
+  X
 } from 'lucide-react';
 
 interface ForumUserProfileData {
@@ -678,14 +681,18 @@ export default function ForumUserProfile() {
             />
           )}
           {activeTab === 'sanctions' && (
-            <div style={{ color: theme.textSecondary }}>
-              <p>Tab Sancțiuni - în dezvoltare</p>
-            </div>
+            <SanctionsTab
+              userId={userProfile.user_id}
+              theme={theme}
+              isMobile={isMobile}
+            />
           )}
           {activeTab === 'marketplace' && (
-            <div style={{ color: theme.textSecondary }}>
-              <p>Tab Activitate Piață - în dezvoltare</p>
-            </div>
+            <MarketplaceTab
+              userId={userProfile.user_id}
+              theme={theme}
+              isMobile={isMobile}
+            />
           )}
         </div>
       </div>
@@ -1655,6 +1662,594 @@ function ReputationHistoryTab({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Sanctions Tab Component
+function SanctionsTab({ 
+  userId, 
+  theme, 
+  isMobile 
+}: { 
+  userId: string; 
+  theme: any; 
+  isMobile: boolean;
+}) {
+  // Fetch all restrictions (active + history)
+  const { data: restrictionsData, isLoading } = useQuery({
+    queryKey: ['user-restrictions', userId],
+    queryFn: async () => {
+      const result = await getAllUserRestrictions(userId);
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      return result.data || [];
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  const restrictions = restrictionsData || [];
+
+  // Get usernames for applied_by and deactivated_by
+  const { data: usernamesMap } = useQuery({
+    queryKey: ['restrictions-usernames', restrictions.map(r => r.issued_by).filter(Boolean)],
+    queryFn: async () => {
+      const userIds = [...new Set([
+        ...restrictions.map(r => r.issued_by).filter(Boolean),
+        ...restrictions.map(r => (r as any).deactivated_by).filter(Boolean)
+      ])] as string[];
+
+      if (userIds.length === 0) return new Map();
+
+      const { data: usersData } = await supabase
+        .from('forum_users')
+        .select('user_id, username')
+        .in('user_id', userIds);
+
+      const map = new Map<string, string>();
+      if (usersData) {
+        usersData.forEach(u => map.set(u.user_id, u.username));
+      }
+      return map;
+    },
+    enabled: restrictions.length > 0,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const getRestrictionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'mute': 'Mute',
+      'view_ban': 'Ban Vizualizare',
+      'shadow_ban': 'Shadow Ban',
+      'temp_ban': 'Ban Temporar',
+      'permanent_ban': 'Ban Permanent'
+    };
+    return labels[type] || type;
+  };
+
+  const getRestrictionTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
+      'mute': '#f59e0b',
+      'view_ban': '#ef4444',
+      'shadow_ban': '#8b5cf6',
+      'temp_ban': '#dc2626',
+      'permanent_ban': '#991b1b'
+    };
+    return colors[type] || theme.textSecondary;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ro-RO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const activeRestrictions = restrictions.filter(r => r.is_active);
+  const historyRestrictions = restrictions.filter(r => !r.is_active);
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: theme.textSecondary }}>
+        Se încarcă...
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Active Restrictions */}
+      {activeRestrictions.length > 0 && (
+        <div>
+          <h3 style={{
+            fontSize: isMobile ? '1rem' : '1.125rem',
+            fontWeight: '600',
+            color: theme.text,
+            marginBottom: '0.75rem'
+          }}>
+            Restricții Active
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {activeRestrictions.map((restriction) => {
+              const appliedByUsername = restriction.issued_by && usernamesMap?.get(restriction.issued_by);
+              const isExpired = restriction.expires_at && new Date(restriction.expires_at) < new Date();
+              
+              return (
+                <div
+                  key={restriction.id}
+                  style={{
+                    padding: isMobile ? '0.75rem' : '1rem',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${getRestrictionTypeColor(restriction.restriction_type)}`,
+                    borderRadius: '0.5rem',
+                    borderLeftWidth: '4px'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <Shield size={isMobile ? 16 : 18} color={getRestrictionTypeColor(restriction.restriction_type)} />
+                    <span style={{
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      fontWeight: '600',
+                      color: getRestrictionTypeColor(restriction.restriction_type)
+                    }}>
+                      {getRestrictionTypeLabel(restriction.restriction_type)}
+                    </span>
+                    {isExpired && (
+                      <span style={{
+                        padding: '0.125rem 0.5rem',
+                        backgroundColor: theme.error + '20',
+                        color: theme.error,
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600'
+                      }}>
+                        Expirat
+                      </span>
+                    )}
+                  </div>
+                  
+                  {restriction.reason && (
+                    <div style={{
+                      fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                      color: theme.text,
+                      marginBottom: '0.5rem',
+                      lineHeight: '1.5'
+                    }}>
+                      <strong>Motiv:</strong> {restriction.reason}
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                    fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                    color: theme.textSecondary
+                  }}>
+                    <div>
+                      <strong>Aplicat la:</strong> {formatDate(restriction.created_at)}
+                    </div>
+                    {appliedByUsername && (
+                      <div>
+                        <strong>Aplicat de:</strong> {appliedByUsername}
+                      </div>
+                    )}
+                    {restriction.expires_at ? (
+                      <div>
+                        <strong>Expiră la:</strong> {formatDate(restriction.expires_at)}
+                      </div>
+                    ) : (
+                      <div>
+                        <strong>Durată:</strong> Permanentă
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      <div>
+        <h3 style={{
+          fontSize: isMobile ? '1rem' : '1.125rem',
+          fontWeight: '600',
+          color: theme.text,
+          marginBottom: '0.75rem'
+        }}>
+          Istoric Restricții {historyRestrictions.length > 0 && `(${historyRestrictions.length})`}
+        </h3>
+        {historyRestrictions.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {historyRestrictions.map((restriction) => {
+              const appliedByUsername = restriction.issued_by && usernamesMap?.get(restriction.issued_by);
+              const deactivatedByUsername = (restriction as any).deactivated_by && usernamesMap?.get((restriction as any).deactivated_by);
+              
+              return (
+                <div
+                  key={restriction.id}
+                  style={{
+                    padding: isMobile ? '0.75rem' : '1rem',
+                    backgroundColor: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.5rem',
+                    opacity: 0.7
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <Shield size={isMobile ? 14 : 16} color={theme.textSecondary} />
+                    <span style={{
+                      fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                      fontWeight: '600',
+                      color: theme.textSecondary
+                    }}>
+                      {getRestrictionTypeLabel(restriction.restriction_type)}
+                    </span>
+                    <span style={{
+                      padding: '0.125rem 0.5rem',
+                      backgroundColor: theme.success + '20',
+                      color: theme.success,
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600'
+                    }}>
+                      Dezactivată
+                    </span>
+                  </div>
+                  
+                  {restriction.reason && (
+                    <div style={{
+                      fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                      color: theme.textSecondary,
+                      marginBottom: '0.5rem',
+                      lineHeight: '1.5'
+                    }}>
+                      <strong>Motiv:</strong> {restriction.reason}
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                    color: theme.textSecondary
+                  }}>
+                    <div>
+                      <strong>Aplicat la:</strong> {formatDate(restriction.created_at)}
+                    </div>
+                    {appliedByUsername && (
+                      <div>
+                        <strong>Aplicat de:</strong> {appliedByUsername}
+                      </div>
+                    )}
+                    {(restriction as any).deactivated_at && (
+                      <div>
+                        <strong>Dezactivată la:</strong> {formatDate((restriction as any).deactivated_at)}
+                      </div>
+                    )}
+                    {deactivatedByUsername && (
+                      <div>
+                        <strong>Dezactivată de:</strong> {deactivatedByUsername}
+                      </div>
+                    )}
+                    {(restriction as any).deactivation_reason && (
+                      <div>
+                        <strong>Motiv dezactivare:</strong> {(restriction as any).deactivation_reason}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{
+            padding: '2rem',
+            textAlign: 'center',
+            color: theme.textSecondary,
+            backgroundColor: theme.background,
+            borderRadius: '0.5rem',
+            border: `1px solid ${theme.border}`
+          }}>
+            {activeRestrictions.length === 0 ? 'Nu există restricții' : 'Nu există istoric restricții'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Marketplace Tab Component
+function MarketplaceTab({ 
+  userId, 
+  theme, 
+  isMobile 
+}: { 
+  userId: string; 
+  theme: any; 
+  isMobile: boolean;
+}) {
+  // Fetch sales verification
+  const { data: verificationData } = useQuery({
+    queryKey: ['user-sales-verification', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('forum_sales_verification')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Fetch marketplace feedback
+  const { data: feedbackData } = useQuery({
+    queryKey: ['user-marketplace-feedback', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('forum_marketplace_feedback')
+        .select('*')
+        .eq('seller_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 2 * 60 * 1000
+  });
+
+  const feedback = feedbackData || [];
+  const averageRating = feedback.length > 0
+    ? feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length
+    : 0;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ro-RO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Sales Verification Status */}
+      <div>
+        <h3 style={{
+          fontSize: isMobile ? '1rem' : '1.125rem',
+          fontWeight: '600',
+          color: theme.text,
+          marginBottom: '0.75rem'
+        }}>
+          Status Vânzător
+        </h3>
+        {verificationData ? (
+          <div style={{
+            padding: isMobile ? '0.75rem' : '1rem',
+            backgroundColor: verificationData.is_eligible ? theme.success + '20' : theme.error + '20',
+            border: `1px solid ${verificationData.is_eligible ? theme.success : theme.error}`,
+            borderRadius: '0.5rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.75rem'
+            }}>
+              {verificationData.is_eligible ? (
+                <>
+                  <CheckCircle size={isMobile ? 18 : 20} color={theme.success} />
+                  <span style={{
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    fontWeight: '600',
+                    color: theme.success
+                  }}>
+                    Eligibil pentru vânzare
+                  </span>
+                </>
+              ) : (
+                <>
+                  <X size={isMobile ? 18 : 20} color={theme.error} />
+                  <span style={{
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    fontWeight: '600',
+                    color: theme.error
+                  }}>
+                    Neeligibil pentru vânzare
+                  </span>
+                </>
+              )}
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+              gap: '0.75rem',
+              fontSize: isMobile ? '0.75rem' : '0.8125rem',
+              color: theme.text
+            }}>
+              <div>
+                <strong>Vârsta cont:</strong> {verificationData.account_age_days} zile
+              </div>
+              <div>
+                <strong>Reputație:</strong> {verificationData.reputation_points} puncte
+              </div>
+              <div>
+                <strong>Postări:</strong> {verificationData.post_count}
+              </div>
+              <div>
+                <strong>Vânzări reușite:</strong> {verificationData.successful_sales}
+              </div>
+              <div>
+                <strong>Vânzări eșuate:</strong> {verificationData.failed_sales}
+              </div>
+              <div>
+                <strong>Email verificat:</strong> {verificationData.email_verified ? 'Da' : 'Nu'}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: '1rem',
+            textAlign: 'center',
+            color: theme.textSecondary,
+            backgroundColor: theme.background,
+            borderRadius: '0.5rem',
+            border: `1px solid ${theme.border}`
+          }}>
+            Nu există verificare de vânzător
+          </div>
+        )}
+      </div>
+
+      {/* Feedback Statistics */}
+      {feedback.length > 0 && (
+        <div>
+          <h3 style={{
+            fontSize: isMobile ? '1rem' : '1.125rem',
+            fontWeight: '600',
+            color: theme.text,
+            marginBottom: '0.75rem'
+          }}>
+            Feedback Vânzări
+          </h3>
+          <div style={{
+            padding: isMobile ? '0.75rem' : '1rem',
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.5rem',
+            marginBottom: '0.75rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <span style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '700', color: theme.primary }}>
+                {averageRating.toFixed(1)}
+              </span>
+              <span style={{ fontSize: '1.25rem' }}>⭐</span>
+              <span style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', color: theme.textSecondary }}>
+                ({feedback.length} {feedback.length === 1 ? 'recenzie' : 'recenzii'})
+              </span>
+            </div>
+            <div style={{
+              fontSize: isMobile ? '0.75rem' : '0.8125rem',
+              color: theme.textSecondary
+            }}>
+              {feedback.filter(f => f.transaction_completed).length} tranzacții finalizate
+            </div>
+          </div>
+
+          {/* Feedback List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {feedback.map((fb) => (
+              <div
+                key={fb.id}
+                style={{
+                  padding: isMobile ? '0.75rem' : '1rem',
+                  backgroundColor: theme.background,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    gap: '0.125rem'
+                  }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        style={{
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                          color: star <= fb.rating ? '#fbbf24' : theme.border
+                        }}
+                      >
+                        ⭐
+                      </span>
+                    ))}
+                  </div>
+                  <span style={{
+                    fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                    color: theme.textSecondary
+                  }}>
+                    {formatDate(fb.created_at)}
+                  </span>
+                  {fb.transaction_completed && (
+                    <span style={{
+                      padding: '0.125rem 0.5rem',
+                      backgroundColor: theme.success + '20',
+                      color: theme.success,
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600'
+                    }}>
+                      Finalizat
+                    </span>
+                  )}
+                </div>
+                {fb.review_text && (
+                  <div style={{
+                    fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                    color: theme.text,
+                    lineHeight: '1.5',
+                    marginTop: '0.5rem'
+                  }}>
+                    {fb.review_text}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {feedback.length === 0 && verificationData && (
+        <div style={{
+          padding: '1rem',
+          textAlign: 'center',
+          color: theme.textSecondary,
+          backgroundColor: theme.background,
+          borderRadius: '0.5rem',
+          border: `1px solid ${theme.border}`
+        }}>
+          Nu există feedback pentru vânzări
+        </div>
+      )}
     </div>
   );
 }

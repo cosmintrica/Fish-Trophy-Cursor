@@ -6,6 +6,8 @@ import { usePosts, useCreatePost } from '../hooks/usePosts';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import MessageContainer from '../components/MessageContainer';
 import ActiveViewers from '../components/ActiveViewers';
+import QuickReplyBox from '../components/QuickReplyBox';
+import AdvancedEditorModal from '../components/AdvancedEditorModal';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { ForumTopic, ForumPost } from '../types/forum';
@@ -26,11 +28,24 @@ export default function TopicPage() {
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const { showToast } = useToast();
-  const page = 1; // Default to page 1 for now
+  
+  // Paginare - salvat în localStorage pentru preferințe utilizator
+  const [page, setPage] = useState(() => {
+    const saved = localStorage.getItem('forum_posts_page');
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('forum_posts_page_size');
+    return saved ? parseInt(saved, 10) : 20;
+  });
+
+  // Advanced Editor Modal state
+  const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
+  const [advancedEditorContent, setAdvancedEditorContent] = useState<string>('');
 
   // Folosește topicSlug dacă există (clean URL), altfel topicId (legacy)
   const topicIdentifier = topicSlug || topicId || '';
-
+  
   // Supabase hooks
   // Folosim subcategorySlug pentru a evita duplicate (slug-ul nu e unic global)
   const { topic, loading: topicLoading, error: topicError } = useTopic(topicIdentifier, subcategorySlug);
@@ -38,15 +53,12 @@ export default function TopicPage() {
   // IMPORTANT: Folosim topic.id (UUID) în loc de slug pentru usePosts
   // Astfel evităm duplicatele și erorile de "Topic not found"
   const actualTopicId = topic?.id || topicIdentifier;
-  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts } = usePosts(actualTopicId, 1, 50);
+  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts, total, hasMore } = usePosts(actualTopicId, page, pageSize);
   const { create: createPost } = useCreatePost();
   
   // Hook pentru marcarea topicului ca citit
   const { markAsRead } = useMarkTopicAsRead();
 
-  const [replyContent, setReplyContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
   // IMPORTANT: TOȚI hooks-ii trebuie declarați ÎNAINTE de orice early return
   // Topic not found state
   const [showNotFound, setShowNotFound] = useState(false);
@@ -172,56 +184,6 @@ export default function TopicPage() {
     }
   }, [actualTopicId, forumUser, posts.length, markAsRead]);
 
-  const handleReplySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!replyContent.trim() || !forumUser || !topicIdentifier) {
-      alert('Te rog să te conectezi și să scrii un răspuns!');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const { success, error } = await createPost({
-        topic_id: topicIdentifier,
-        content: replyContent.trim()
-      });
-
-      if (!success) {
-        // Check if it's a restriction error with custom details
-        if (error?.code === 'USER_RESTRICTED' && error?.title) {
-          // Show custom restriction notification
-          showToast(
-            error.title ? `${error.title}: ${error.message}` : error.message,
-            'error'
-          );
-        } else {
-          throw error;
-        }
-        return;
-      }
-      
-      await refetchPosts(); // Reload real posts
-
-      setReplyContent('');
-      showToast('Răspuns postat cu succes!', 'success');
-    } catch (error: any) {
-      console.error('Error posting reply:', error);
-      
-      // Show error notification
-      if (error?.code === 'USER_RESTRICTED' && error?.title) {
-        showToast(
-          error.title ? `${error.title}: ${error.message}` : error.message,
-          'error'
-        );
-      } else {
-        showToast('A apărut o eroare la postarea răspunsului!', 'error');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Format smart: dacă e azi → doar ora, dacă > 24h → data + ora (FĂRĂ secunde)
   const formatSmartDateTime = (dateString: string) => {
@@ -491,169 +453,199 @@ export default function TopicPage() {
           />
         ))}
 
-        {/* Reply Form */}
-        {forumUser ? (
-          <div
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '1rem',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              overflow: 'hidden'
+        {/* Quick Reply Box - Înainte de ActiveViewers, sub ultimul post */}
+        {actualTopicId && (
+          <QuickReplyBox
+            topicId={actualTopicId}
+            pageSize={pageSize}
+            onPageSizeChange={(newSize) => {
+              // Nu resetăm pagina - păstrăm poziția utilizatorului
+              // Doar schimbăm numărul de postări pe pagină
+              setPageSize(newSize);
+              localStorage.setItem('forum_posts_page_size', newSize.toString());
+              // Nu resetăm page - păstrăm poziția curentă
+              // React Query va reîncărca automat datele pentru query key nou
             }}
-          >
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #059669, #047857)',
-                color: 'white',
-                padding: '1rem 1.5rem',
-                fontSize: '1rem',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <MessageSquare style={{ width: '1.125rem', height: '1.125rem' }} />
-              Răspunde la acest topic
-            </div>
-
-            <form onSubmit={handleReplySubmit} style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                {/* Avatar utilizator */}
-                <div
-                  style={{
-                    width: '2.5rem',
-                    height: '2.5rem',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    flexShrink: 0
-                  }}
-                >
-                  {forumUser.username.charAt(0).toUpperCase()}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontWeight: '600', color: '#111827' }}>{forumUser.username}</span>
-                    <span className={`user-rank rank-${forumUser.rank}`}>{forumUser.rank}</span>
-                  </div>
-
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Scrie răspunsul tău aici..."
-                    style={{
-                      width: '100%',
-                      minHeight: '120px',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                      lineHeight: '1.5',
-                      transition: 'border-color 0.2s'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Submit button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !replyContent.trim()}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    background: isSubmitting || !replyContent.trim()
-                      ? '#9ca3af'
-                      : 'linear-gradient(135deg, #059669, #047857)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    cursor: isSubmitting || !replyContent.trim() ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div
-                        style={{
-                          width: '1rem',
-                          height: '1rem',
-                          border: '2px solid rgba(255, 255, 255, 0.3)',
-                          borderTop: '2px solid white',
-                          borderRadius: '50%',
-                          animation: 'spin 1s linear infinite'
-                        }}
-                      />
-                      Se postează...
-                    </>
-                  ) : (
-                    <>
-                      <Send style={{ width: '1rem', height: '1rem' }} />
-                      Postează Răspuns
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <div
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '1rem',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              padding: '2rem',
-              textAlign: 'center'
+            onPostCreated={() => {
+              refetchPosts();
             }}
-          >
-            <User style={{ width: '3rem', height: '3rem', color: '#9ca3af', margin: '0 auto 1rem' }} />
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>
-              Conectează-te pentru a răspunde
-            </h3>
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-              Pentru a posta răspunsuri și a interacționa cu comunitatea, te rog să te conectezi.
-            </p>
-            <button
-              onClick={() => navigate('/forum')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Conectează-te
-            </button>
-          </div>
+            onOpenAdvancedEditor={(content) => {
+              setAdvancedEditorContent(content);
+              setIsAdvancedEditorOpen(true);
+            }}
+          />
+        )}
+
+        {/* Advanced Editor Modal */}
+        {actualTopicId && (
+          <AdvancedEditorModal
+            isOpen={isAdvancedEditorOpen}
+            onClose={() => {
+              setIsAdvancedEditorOpen(false);
+              setAdvancedEditorContent(''); // Clear content when closing
+            }}
+            topicId={actualTopicId}
+            initialContent={advancedEditorContent}
+            onPostCreated={() => {
+              refetchPosts();
+              setIsAdvancedEditorOpen(false);
+              setAdvancedEditorContent(''); // Clear content after posting
+            }}
+          />
         )}
 
         {/* Active Viewers */}
         <ActiveViewers topicId={topic?.id || topicId || ''} />
+
+        {/* Paginare */}
+        {total > pageSize && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            padding: isMobile ? '1rem' : '1.5rem',
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            border: '1px solid #e5e7eb',
+            marginTop: '1rem'
+          }}>
+            {/* Info pagină */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              fontSize: isMobile ? '0.875rem' : '0.9375rem',
+              color: '#6b7280'
+            }}>
+              <span>
+                Pagina {page} din {Math.ceil(total / pageSize)} ({total} postări)
+              </span>
+              <span>
+                Afișez {((page - 1) * pageSize + 1)} - {Math.min(page * pageSize, total)} din {total}
+              </span>
+            </div>
+
+            {/* Butoane navigare */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => {
+                  setPage(1);
+                  localStorage.setItem('forum_posts_page', '1');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={page === 1}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: page === 1 ? '#f3f4f6' : 'white',
+                  color: page === 1 ? '#9ca3af' : '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  cursor: page === 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: page === 1 ? 0.5 : 1
+                }}
+              >
+                Prima
+              </button>
+              
+              <button
+                onClick={() => {
+                  const newPage = Math.max(1, page - 1);
+                  setPage(newPage);
+                  localStorage.setItem('forum_posts_page', newPage.toString());
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={page === 1}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: page === 1 ? '#f3f4f6' : 'white',
+                  color: page === 1 ? '#9ca3af' : '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  cursor: page === 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: page === 1 ? 0.5 : 1
+                }}
+              >
+                ← Anterior
+              </button>
+
+              {/* Număr pagină curentă */}
+              <span style={{
+                padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                borderRadius: '0.375rem',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontWeight: '600',
+                minWidth: '3rem',
+                textAlign: 'center'
+              }}>
+                {page}
+              </span>
+
+              <button
+                onClick={() => {
+                  const newPage = Math.min(Math.ceil(total / pageSize), page + 1);
+                  setPage(newPage);
+                  localStorage.setItem('forum_posts_page', newPage.toString());
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={page >= Math.ceil(total / pageSize)}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: page >= Math.ceil(total / pageSize) ? '#f3f4f6' : 'white',
+                  color: page >= Math.ceil(total / pageSize) ? '#9ca3af' : '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  cursor: page >= Math.ceil(total / pageSize) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: page >= Math.ceil(total / pageSize) ? 0.5 : 1
+                }}
+              >
+                Următor →
+              </button>
+
+              <button
+                onClick={() => {
+                  const lastPage = Math.ceil(total / pageSize);
+                  setPage(lastPage);
+                  localStorage.setItem('forum_posts_page', lastPage.toString());
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={page >= Math.ceil(total / pageSize)}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: page >= Math.ceil(total / pageSize) ? '#f3f4f6' : 'white',
+                  color: page >= Math.ceil(total / pageSize) ? '#9ca3af' : '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  cursor: page >= Math.ceil(total / pageSize) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: page >= Math.ceil(total / pageSize) ? 0.5 : 1
+                }}
+              >
+                Ultima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </ForumLayout>
   );

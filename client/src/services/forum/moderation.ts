@@ -93,6 +93,28 @@ export async function getUserRestrictions(userId: string): Promise<ApiResponse<F
 }
 
 /**
+ * Get all restrictions (active + history) for a user
+ */
+export async function getAllUserRestrictions(userId: string): Promise<ApiResponse<ForumUserRestriction[]>> {
+    try {
+        const { data, error } = await supabase
+            .from('forum_user_restrictions')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50)
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data: data || [] }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
  * Check if user has active restriction of specific type
  */
 export async function hasActiveRestriction(

@@ -522,7 +522,11 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
         borderRadius: '0.5rem',
         padding: '1rem 1.5rem',
         marginTop: '2rem',
-        transition: 'all 0.3s ease'
+        minHeight: '130px', // Înălțime minimă (pastrează spațiul chiar și la 0 utilizatori pentru a evita animații)
+        boxSizing: 'border-box', // Include padding și border în înălțime
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'none' // Dezactivăm animația pentru a preveni layout shift
       }}
     >
       {/* Header */}
@@ -530,10 +534,11 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem',
-        marginBottom: '1rem',
+        marginBottom: totalViewers > 0 ? '1rem' : '0',
         fontSize: '0.875rem',
         fontWeight: '600',
-        color: theme.text
+        color: theme.text,
+        flexShrink: 0
       }}>
         <Eye style={{ width: '1rem', height: '1rem', color: theme.primary }} />
         <span>
@@ -552,7 +557,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
       </div>
 
       {/* Lista vizualizatori */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', minHeight: '2rem' }}>
         {/* Membri conectați */}
         {authenticatedViewers.map((viewer) => (
           <div
