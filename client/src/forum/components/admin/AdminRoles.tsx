@@ -14,7 +14,7 @@ import { Search, Users, Shield, CheckCircle, X, Save, UserCheck, Building, Troph
 import type { ForumRole } from '../../../services/forum/types';
 
 // Mapping între numele iconițelor din DB și componentele lucide-react
-const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string; style?: React.CSSProperties }>> = {
+const iconMap: Record<string, React.ComponentType<any>> = {
   'shield': Shield,
   'user-check': UserCheck,
   'building': Building,

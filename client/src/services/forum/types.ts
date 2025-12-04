@@ -446,7 +446,11 @@ export interface PaginatedResponse<T> {
 export interface ApiError {
     message: string
     code?: string
+    title?: string
     details?: unknown
+    restrictionType?: string
+    reason?: string
+    expiresAt?: string
 }
 
 export interface ApiResponse<T> {

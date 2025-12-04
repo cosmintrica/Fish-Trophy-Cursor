@@ -38,7 +38,7 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       
       // Refetch on mount - doar dacă datele sunt stale (optimizare pentru cache)
-      refetchOnMount: 'ifStale', // Refetch doar dacă datele sunt stale (nu la fiecare mount)
+      refetchOnMount: false, // Dezactivat - folosim doar cache și manual refetch
       
       // Structural sharing - React Query păstrează referințele obiectelor dacă datele nu s-au schimbat
       // Asta previne re-render-uri inutile

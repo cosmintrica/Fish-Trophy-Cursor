@@ -13,6 +13,8 @@ interface ThemeContextType {
     primary: string;
     secondary: string;
     accent: string;
+    error: string;
+    success: string;
   };
 }
 
@@ -71,7 +73,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     border: '#e5e7eb',
     primary: '#2563eb',
     secondary: '#059669',
-    accent: '#f59e0b'
+    accent: '#f59e0b',
+    error: '#dc2626',
+    success: '#059669'
   };
 
   const darkTheme = {
@@ -83,7 +87,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     border: '#334155',
     primary: '#3b82f6',
     secondary: '#10b981',
-    accent: '#fbbf24'
+    accent: '#fbbf24',
+    error: '#ef4444',
+    success: '#10b981'
   };
 
   const theme = isDarkMode ? darkTheme : lightTheme;

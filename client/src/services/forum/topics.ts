@@ -24,7 +24,7 @@ export async function getTopics(
     subcategoryId: string,
     page = 1,
     pageSize = 20
-): Promise<ApiResponse<PaginatedResponse<ForumTopic & { author_username?: string; author_avatar?: string; last_post_author?: string }>>> {
+): Promise<ApiResponse<PaginatedResponse<ForumTopic & { author_username?: string; author_avatar?: string; last_post_author?: string; slug?: string }>>> {
     try {
         // Try optimized RPC first (1 query instead of 2)
         const { data: rpcData, error: rpcError } = await supabase

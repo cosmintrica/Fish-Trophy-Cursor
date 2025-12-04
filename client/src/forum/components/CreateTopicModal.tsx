@@ -106,8 +106,7 @@ export default function CreateTopicModal({
         // Show custom restriction notification
         showToast(
           result.error.title ? `${result.error.title}: ${result.error.message}` : result.error.message,
-          'error',
-          { duration: 6000 } // Longer duration for restriction messages
+          'error'
         );
       } else {
         showToast(result.error?.message || 'A apărut o eroare la crearea topicului!', 'error');

@@ -730,8 +730,9 @@ export default function CategoryPage() {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#f8fafc';
                     // Prefetch topic-ul când utilizatorul trece cu mouse-ul
-                    if (topic.slug) {
-                      prefetchTopic(topic.slug, resolvedSubcategorySlug || undefined);
+                    const topicSlug = (topic as any).slug;
+                    if (topicSlug) {
+                      prefetchTopic(topicSlug, resolvedSubcategorySlug || undefined);
                     }
                   }}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}

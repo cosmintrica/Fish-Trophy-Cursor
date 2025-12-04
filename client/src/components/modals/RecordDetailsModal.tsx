@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Fish, MapPin, Calendar, Scale, Ruler, Info } from 'lucide-react';
+import { getR2ImageUrlProxy } from '@/lib/supabase';
 
 interface RecordDetailsModalProps {
     record: any;

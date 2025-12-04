@@ -971,7 +971,6 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
         initialMode="login"
         redirectAfterLogin={null} // Rămâne pe pagina curentă după login
         theme={theme}
-        isDarkMode={isDarkMode}
       />
 
       {/* Back to Top Button */}

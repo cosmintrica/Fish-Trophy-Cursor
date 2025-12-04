@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
-import { User, MessageSquare, Award, TrendingUp, Clock, Users } from 'lucide-react';
+import { User, MessageSquare, Award, TrendingUp, Clock, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useForumStats } from '../hooks/useForumStats';
 
 export default function ActiveMembers() {

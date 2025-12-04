@@ -15,6 +15,7 @@ import BackToTop from './BackToTop';
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
   const { trackUserAction } = useAnalytics();
+  const { prefetchProfile, prefetchRecords, prefetchSpecies, prefetchLeaderboards } = usePrefetch();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userUsername, setUserUsername] = useState<string | null>(null);

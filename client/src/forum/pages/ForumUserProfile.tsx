@@ -1188,8 +1188,7 @@ function PostsHistoryTab({
           padding: '2rem',
           color: theme.textSecondary
         }}>
-          {filter === 'all' ? 'Nu există postări' : 
-           filter === 'topics' ? 'Nu există topicuri create' : 
+          {filter === 'topics' ? 'Nu există topicuri create' : 
            filter === 'replies' ? 'Nu există răspunsuri' :
            filter === 'mentions' ? 'Nu există mențiuni (funcție în dezvoltare)' :
            'Nu există citări (funcție în dezvoltare)'}

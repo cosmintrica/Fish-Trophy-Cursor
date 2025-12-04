@@ -194,8 +194,7 @@ export default function TopicPage() {
           // Show custom restriction notification
           showToast(
             error.title ? `${error.title}: ${error.message}` : error.message,
-            'error',
-            { duration: 6000 } // Longer duration for restriction messages
+            'error'
           );
         } else {
           throw error;
@@ -214,8 +213,7 @@ export default function TopicPage() {
       if (error?.code === 'USER_RESTRICTED' && error?.title) {
         showToast(
           error.title ? `${error.title}: ${error.message}` : error.message,
-          'error',
-          { duration: 6000 }
+          'error'
         );
       } else {
         showToast('A apărut o eroare la postarea răspunsului!', 'error');

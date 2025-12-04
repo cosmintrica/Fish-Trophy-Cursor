@@ -27,8 +27,7 @@ const UnifiedAuthModal = ({
   onClose, 
   initialMode = 'login',
   redirectAfterLogin = null,
-  theme,
-  isDarkMode = false
+  theme
 }: UnifiedAuthModalProps) => {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const navigate = useNavigate();
@@ -279,10 +278,10 @@ const UnifiedAuthModal = ({
         }
 
         // Pass county and city to signUp
-        const result = await signUp(email, password, displayName, selectedCounty, selectedCity, username);
-        
-        if (result?.error) {
-          const errorMessage = result.error.message || '';
+        try {
+          await signUp(email, password, displayName, selectedCounty, selectedCity, username);
+        } catch (err: any) {
+          const errorMessage = err?.message || '';
           if (errorMessage.includes('already registered')) {
             setError('Acest email este deja înregistrat.');
           } else if (errorMessage.includes('username')) {
@@ -728,8 +727,6 @@ const UnifiedAuthModal = ({
                   }}
                   placeholder="email@example.com"
                   required
-                  onFocus={(e) => e.target.style.borderColor = activeTheme.primary}
-                  onBlur={(e) => e.target.style.borderColor = activeTheme.border}
                 />
                 {emailFocused && shouldShowEmailSuggestions() && filteredDomains.length > 0 && (
                   <div style={{
@@ -984,7 +981,6 @@ const UnifiedAuthModal = ({
                 placeholder="Selectează județul"
                 searchPlaceholder="Caută județ..."
                 theme={activeTheme}
-                isDarkMode={isDarkMode}
               />
             </div>
 
@@ -1006,7 +1002,6 @@ const UnifiedAuthModal = ({
                 searchPlaceholder="Caută oraș..."
                 disabled={!selectedCounty}
                 theme={activeTheme}
-                isDarkMode={isDarkMode}
               />
             </div>
 
