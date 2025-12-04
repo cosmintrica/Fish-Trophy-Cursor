@@ -313,8 +313,8 @@ export default function TopicPage() {
       }}>
         {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie › Topic - Toate linkuri funcționale */}
         <nav style={{ 
-          marginBottom: isMobile ? '0.75rem' : '1.5rem', 
-          fontSize: isMobile ? '0.75rem' : '0.875rem', 
+          marginBottom: isMobile ? '0.5rem' : '1.5rem', 
+          fontSize: isMobile ? '0.625rem' : '0.875rem', 
           color: '#6b7280',
           overflowX: 'auto',
           whiteSpace: 'nowrap',

@@ -11,7 +11,7 @@ export default function RegulationsPage() {
         <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
                 {/* Breadcrumbs */}
-                <nav style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <nav style={{ marginBottom: '2rem', fontSize: '0.75rem', color: '#6b7280' }}>
                     <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none' }}>Forum</Link>
                     <span style={{ margin: '0 0.5rem' }}>›</span>
                     <span>Regulament</span>

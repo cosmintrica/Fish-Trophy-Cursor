@@ -419,8 +419,8 @@ export default function CategoryPage() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
         {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie - Toate linkuri funcționale */}
         <nav style={{
-          marginBottom: isMobile ? '0.75rem' : '1.5rem',
-          fontSize: isMobile ? '0.75rem' : '0.875rem',
+          marginBottom: isMobile ? '0.5rem' : '1.5rem',
+          fontSize: isMobile ? '0.625rem' : '0.875rem',
           color: '#6b7280',
           overflowX: 'auto',
           whiteSpace: 'nowrap',

@@ -124,7 +124,9 @@ export default function RecentPosts() {
               avatar_url: forumUser?.avatar_url || null
             },
             subcategorySlug: subcategory?.slug || null,
+            subcategoryName: (subcategory as any)?.name || null,
             categorySlug: category?.slug || null,
+            categoryName: (category as any)?.name || null,
             post_number: post.post_number || null
           };
         });
@@ -241,13 +243,21 @@ export default function RecentPosts() {
           }}>
             {posts.map((post) => {
               const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
-              const topicLink = post.categorySlug && post.subcategorySlug && topic?.slug 
-                ? `/forum/${post.categorySlug}/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`
-                : post.subcategorySlug && topic?.slug 
-                ? `/forum/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`
-                : topic?.slug 
-                ? `/forum/topic/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`
-                : `/forum/topic/${topic?.id || post.topic_id}${post.post_number ? `#post${post.post_number}` : ''}`;
+              // Construiește permalink complet: /forum/categorySlug/subcategorySlug/topicSlug#postN
+              let topicLink = '';
+              if (post.categorySlug && post.subcategorySlug && topic?.slug) {
+                // URL complet cu categorie, subcategorie și topic
+                topicLink = `/forum/${post.categorySlug}/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
+              } else if (post.subcategorySlug && topic?.slug) {
+                // Fallback: doar subcategorie și topic (legacy)
+                topicLink = `/forum/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
+              } else if (topic?.slug) {
+                // Fallback: doar topic slug
+                topicLink = `/forum/topic/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
+              } else {
+                // Fallback final: topic ID
+                topicLink = `/forum/topic/${topic?.id || post.topic_id}${post.post_number ? `#post${post.post_number}` : ''}`;
+              }
 
               return (
                 <div
@@ -404,40 +414,72 @@ export default function RecentPosts() {
                         </span>
                       </div>
 
-                      {/* Topic link - Compact */}
-                      {topic && (
-                        <Link
-                          to={topicLink}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                            color: theme.primary,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.125rem',
-                            textDecoration: 'none',
-                            marginBottom: isMobile ? '0.25rem' : '0.375rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.textDecoration = 'underline';
-                            // Prefetch topic-ul când utilizatorul trece cu mouse-ul
-                            if (topic?.slug) {
-                              prefetchTopic(topic.slug, post.subcategorySlug || undefined);
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.textDecoration = 'none';
-                          }}
-                        >
-                          <MessageSquare size={isMobile ? 9 : 10} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {topic.title}
-                          </span>
-                        </Link>
-                      )}
+                      {/* Category and Topic link - Compact */}
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.125rem',
+                        marginBottom: isMobile ? '0.25rem' : '0.375rem'
+                      }}>
+                        {/* Category link */}
+                        {post.categoryName && post.categorySlug && (
+                          <Link
+                            to={`/forum/${post.categorySlug}`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                              color: theme.textSecondary,
+                              textDecoration: 'none',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.textDecoration = 'underline';
+                              e.currentTarget.style.color = theme.primary;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.textDecoration = 'none';
+                              e.currentTarget.style.color = theme.textSecondary;
+                            }}
+                          >
+                            {post.categoryName}
+                          </Link>
+                        )}
+                        {/* Topic link */}
+                        {topic && (
+                          <Link
+                            to={topicLink}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                              color: theme.primary,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.125rem',
+                              textDecoration: 'none',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.textDecoration = 'underline';
+                              // Prefetch topic-ul când utilizatorul trece cu mouse-ul
+                              if (topic?.slug) {
+                                prefetchTopic(topic.slug, post.subcategorySlug || undefined);
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.textDecoration = 'none';
+                            }}
+                          >
+                            <MessageSquare size={isMobile ? 9 : 10} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {topic.title}
+                            </span>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
 

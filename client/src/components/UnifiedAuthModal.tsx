@@ -809,8 +809,14 @@ const UnifiedAuthModal = ({
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
+                  onFocus={(e) => {
+                    setPasswordFocused(true);
+                    e.target.style.borderColor = activeTheme.primary;
+                  }}
+                  onBlur={(e) => {
+                    setPasswordFocused(false);
+                    e.target.style.borderColor = activeTheme.border;
+                  }}
                   style={{
                     width: '100%',
                     paddingLeft: '2.5rem',
@@ -827,8 +833,6 @@ const UnifiedAuthModal = ({
                   }}
                   placeholder="••••••••"
                   required
-                  onFocus={(e) => e.target.style.borderColor = activeTheme.primary}
-                  onBlur={(e) => e.target.style.borderColor = activeTheme.border}
                 />
                 <button
                   type="button"
