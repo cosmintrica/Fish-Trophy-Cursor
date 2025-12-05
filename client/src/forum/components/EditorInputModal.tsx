@@ -36,8 +36,7 @@ export default function EditorInputModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     setError('');
 
     if (!url.trim()) {
@@ -53,8 +52,22 @@ export default function EditorInputModal({
       return;
     }
 
+    // Previne scroll-ul - salvează poziția înainte
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // Inserează textul PRIMA DATĂ (înainte de a închide modal-ul)
     onInsert(url.trim(), linkText.trim() || url.trim());
-    onClose();
+    
+    // Așteaptă mai mult pentru ca inserarea să se facă complet, apoi închide modal-ul fără scroll
+    setTimeout(() => {
+      // Restaură poziția de scroll înainte de închidere
+      window.scrollTo({ top: scrollTop, behavior: 'auto' });
+      onClose();
+      // Restaură din nou după închidere pentru siguranță
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollTop, behavior: 'auto' });
+      });
+    }, 250);
   };
 
   const getTitle = () => {
@@ -142,7 +155,17 @@ export default function EditorInputModal({
             </h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Previne scroll-ul când modal-ul se închide
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              onClose();
+              // Restaură poziția de scroll imediat după închidere
+              setTimeout(() => {
+                window.scrollTo({ top: scrollTop, behavior: 'auto' });
+              }, 0);
+            }}
             style={{
               padding: '0.375rem',
               color: theme.textSecondary,
@@ -168,8 +191,11 @@ export default function EditorInputModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: isMobile ? '1rem' : '1.25rem' }}>
+        {/* Content - NU form, doar div pentru a evita form în form */}
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          style={{ padding: isMobile ? '1rem' : '1.25rem' }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* URL Input */}
             <div>
@@ -192,6 +218,13 @@ export default function EditorInputModal({
                 onChange={(e) => {
                   setUrl(e.target.value);
                   setError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubmit();
+                  }
                 }}
                 placeholder={getPlaceholder()}
                 autoFocus
@@ -236,6 +269,13 @@ export default function EditorInputModal({
                   type="text"
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSubmit();
+                    }
+                  }}
                   placeholder="Text link (dacă e gol, se folosește URL-ul)"
                   style={{
                     width: '100%',
@@ -287,7 +327,11 @@ export default function EditorInputModal({
             >
               <button
                 type="button"
-                onClick={onClose}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
                 style={{
                   padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.25rem',
                   backgroundColor: 'transparent',
@@ -311,7 +355,12 @@ export default function EditorInputModal({
                 Anulează
               </button>
               <button
-                type="submit"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSubmit();
+                }}
                 style={{
                   padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.25rem',
                   backgroundColor: theme.primary,
@@ -334,7 +383,7 @@ export default function EditorInputModal({
               </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

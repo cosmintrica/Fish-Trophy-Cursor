@@ -39,6 +39,8 @@ export function usePosts(topicId: string | null | undefined, page = 1, pageSize 
         staleTime: 1 * 60 * 1000, // 1 minut (postările se schimbă mai des)
         gcTime: 3 * 60 * 1000, // 3 minute
         refetchOnWindowFocus: false, // Dezactivăm pentru a evita erori
+        refetchOnMount: false, // Dezactivăm pentru a preveni refresh-ul la schimbarea pageSize
+        refetchOnReconnect: false, // Dezactivăm pentru a preveni refresh-ul
     })
 
     return {

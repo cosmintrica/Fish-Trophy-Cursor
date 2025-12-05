@@ -3,7 +3,7 @@
  * Inserează BBCode tags în textarea
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Bold, 
   Italic, 
@@ -26,12 +26,14 @@ import EditorInputModal from './EditorInputModal';
 interface EditorToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   onContentChange?: (newContent: string) => void;
+  currentContent?: string; // Content-ul curent din state
   isMobile?: boolean;
 }
 
-export default function EditorToolbar({ 
-  textareaRef, 
+export default function EditorToolbar({
+  textareaRef,
   onContentChange,
+  currentContent = '',
   isMobile = false 
 }: EditorToolbarProps) {
   const { theme } = useTheme();
@@ -39,15 +41,33 @@ export default function EditorToolbar({
     type: 'link',
     isOpen: false
   });
+  // Salvează poziția cursorului înainte de a deschide modal-ul
+  const savedCursorPositionRef = useRef<{ start: number; end: number; scrollTop: number } | null>(null);
 
   // Helper pentru inserarea textului în textarea la poziția cursorului
-  const insertText = (before: string, after: string = '', placeholder: string = '') => {
+  const insertText = (before: string, after: string = '', placeholder: string = '', useSavedPosition: boolean = false) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
+    let start: number;
+    let end: number;
+    let text: string;
+
+    // Folosește poziția salvată sau poziția curentă
+    if (useSavedPosition && savedCursorPositionRef.current) {
+      start = savedCursorPositionRef.current.start;
+      end = savedCursorPositionRef.current.end;
+      // Folosește currentContent dacă e disponibil, altfel textarea.value
+      text = currentContent || textarea.value;
+      // Resetăm poziția salvată
+      savedCursorPositionRef.current = null;
+    } else {
+      start = textarea.selectionStart;
+      end = textarea.selectionEnd;
+      // Folosește currentContent dacă e disponibil, altfel textarea.value
+      text = currentContent || textarea.value;
+    }
+
     const selectedText = text.substring(start, end);
     const hasSelection = start !== end && selectedText.length > 0;
 
@@ -66,16 +86,30 @@ export default function EditorToolbar({
       newCursorPos = start + before.length + placeholder.length;
     }
     
-    // Notifică schimbarea (va actualiza state-ul în AdvancedEditorModal)
+    // Notifică schimbarea (va actualiza state-ul)
     onContentChange?.(newText);
     
-    // Așteaptă ca React să actualizeze DOM-ul, apoi repoziționează cursorul
+    // Așteaptă ca React să actualizeze DOM-ul, apoi repoziționează cursorul fără scroll
     setTimeout(() => {
       if (textareaRef.current) {
+        // Previne scroll-ul când textarea primește focus
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        // Setează poziția cursorului
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        textareaRef.current.focus();
+        // Focus FĂRĂ scroll - folosește preventScroll
+        textareaRef.current.focus({ preventScroll: true });
+        // Restaură poziția de scroll imediat (fără delay)
+        window.scrollTo({ top: scrollTop, behavior: 'auto' });
+        // Double-check după un frame
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollTop, behavior: 'auto' });
+        });
+        // Triple-check după încă un frame
+        setTimeout(() => {
+          window.scrollTo({ top: scrollTop, behavior: 'auto' });
+        }, 50);
       }
-    }, 0);
+    }, 200);
   };
 
   // Formatare text simplă - fără placeholder, cursor între tag-uri
@@ -136,29 +170,134 @@ export default function EditorToolbar({
 
   // Link
   const formatLink = () => {
+    // Salvează poziția cursorului și scroll înainte de a deschide modal-ul
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
     setInputModal({ type: 'link', isOpen: true });
   };
 
   const handleLinkInsert = (url: string, text?: string) => {
-    insertText(`[url=${url}]`, '[/url]', text || url);
+    // Salvează poziția scroll-ului înainte de inserare
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    
+    // Inserează textul folosind poziția salvată
+    if (savedCursorPositionRef.current) {
+      // Așteaptă puțin pentru ca modal-ul să se închidă, apoi inserează
+      setTimeout(() => {
+        insertText(`[url=${url}]`, '[/url]', text || url, true);
+        // Restaură poziția scroll-ului după inserare
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      // Fallback: inserează la sfârșitul textului dacă nu avem poziție salvată
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[url=${url}]${text || url}[/url]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
   };
 
   // Image
   const formatImage = () => {
+    // Salvează poziția cursorului și scroll înainte de a deschide modal-ul
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
     setInputModal({ type: 'image', isOpen: true });
   };
 
   const handleImageInsert = (url: string) => {
-    insertText(`[img]`, '[/img]', url);
+    // Salvează poziția scroll-ului înainte de inserare
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    
+    // Inserează textul folosind poziția salvată
+    if (savedCursorPositionRef.current) {
+      // Așteaptă puțin pentru ca modal-ul să se închidă, apoi inserează
+      setTimeout(() => {
+        insertText(`[img]`, '[/img]', url, true);
+        // Restaură poziția scroll-ului după inserare
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      // Fallback: inserează la sfârșitul textului dacă nu avem poziție salvată
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[img]${url}[/img]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
   };
 
   // Video (YouTube/Vimeo)
   const formatVideo = () => {
+    // Salvează poziția cursorului și scroll înainte de a deschide modal-ul
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
     setInputModal({ type: 'video', isOpen: true });
   };
 
   const handleVideoInsert = (url: string) => {
-    insertText(`[video]`, '[/video]', url);
+    // Salvează poziția scroll-ului înainte de inserare
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    
+    // Inserează textul folosind poziția salvată
+    if (savedCursorPositionRef.current) {
+      // Așteaptă puțin pentru ca modal-ul să se închidă, apoi inserează
+      setTimeout(() => {
+        insertText(`[video]`, '[/video]', url, true);
+        // Restaură poziția scroll-ului după inserare
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      // Fallback: inserează la sfârșitul textului dacă nu avem poziție salvată
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[video]${url}[/video]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
   };
 
   // Emoji (placeholder)

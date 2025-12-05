@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
 import { useTopic } from '../hooks/useTopics';
@@ -7,12 +7,12 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import MessageContainer from '../components/MessageContainer';
 import ActiveViewers from '../components/ActiveViewers';
 import QuickReplyBox from '../components/QuickReplyBox';
-import AdvancedEditorModal from '../components/AdvancedEditorModal';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { ForumTopic, ForumPost } from '../types/forum';
 import { useMarkTopicAsRead } from '../hooks/useTopicReadStatus';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function TopicPage() {
   // Acceptă:
@@ -28,6 +28,7 @@ export default function TopicPage() {
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const { showToast } = useToast();
+  const { theme } = useTheme();
   
   // Paginare - salvat în localStorage pentru preferințe utilizator
   const [page, setPage] = useState(() => {
@@ -38,10 +39,6 @@ export default function TopicPage() {
     const saved = localStorage.getItem('forum_posts_page_size');
     return saved ? parseInt(saved, 10) : 20;
   });
-
-  // Advanced Editor Modal state
-  const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
-  const [advancedEditorContent, setAdvancedEditorContent] = useState<string>('');
 
   // Folosește topicSlug dacă există (clean URL), altfel topicId (legacy)
   const topicIdentifier = topicSlug || topicId || '';
@@ -80,10 +77,21 @@ export default function TopicPage() {
   }, []);
 
   // Scroll automat la hash când se încarcă pagina (ex: #post1, #post2)
+  // IMPORTANT: Nu scroll când se schimbă doar pageSize (doar când se schimbă hash-ul sau pagina)
+  const lastHashRef = useRef<string | null>(null);
+  const lastPageRef = useRef<number>(page);
   useEffect(() => {
     if (posts.length > 0) {
       const hash = window.location.hash;
-      if (hash) {
+      const currentPage = page;
+      
+      // Scroll doar dacă:
+      // 1. Există hash-ul în URL
+      // 2. Hash-ul s-a schimbat SAU pagina s-a schimbat
+      const hashChanged = hash && hash !== lastHashRef.current;
+      const pageChanged = currentPage !== lastPageRef.current;
+      
+      if (hash && (hashChanged || pageChanged)) {
         // Așteaptă ca posturile să fie randate
         const scrollTimeout = setTimeout(() => {
           const element = document.getElementById(hash.substring(1)); // Remove #
@@ -91,10 +99,20 @@ export default function TopicPage() {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 200);
+        
+        lastHashRef.current = hash;
+        lastPageRef.current = currentPage;
+        
         return () => clearTimeout(scrollTimeout);
+      } else if (!hash) {
+        // Dacă nu mai există hash, resetează ref-ul
+        lastHashRef.current = null;
       }
+      
+      // Actualizează pagina curentă în ref
+      lastPageRef.current = currentPage;
     }
-  }, [posts.length]);
+  }, [posts.length, page]);
 
   // Nu mai folosim loading state - afișăm conținutul instant
 
@@ -459,37 +477,11 @@ export default function TopicPage() {
             topicId={actualTopicId}
             pageSize={pageSize}
             onPageSizeChange={(newSize) => {
-              // Nu resetăm pagina - păstrăm poziția utilizatorului
-              // Doar schimbăm numărul de postări pe pagină
-              setPageSize(newSize);
               localStorage.setItem('forum_posts_page_size', newSize.toString());
-              // Nu resetăm page - păstrăm poziția curentă
-              // React Query va reîncărca automat datele pentru query key nou
+              setPageSize(newSize);
             }}
             onPostCreated={() => {
               refetchPosts();
-            }}
-            onOpenAdvancedEditor={(content) => {
-              setAdvancedEditorContent(content);
-              setIsAdvancedEditorOpen(true);
-            }}
-          />
-        )}
-
-        {/* Advanced Editor Modal */}
-        {actualTopicId && (
-          <AdvancedEditorModal
-            isOpen={isAdvancedEditorOpen}
-            onClose={() => {
-              setIsAdvancedEditorOpen(false);
-              setAdvancedEditorContent(''); // Clear content when closing
-            }}
-            topicId={actualTopicId}
-            initialContent={advancedEditorContent}
-            onPostCreated={() => {
-              refetchPosts();
-              setIsAdvancedEditorOpen(false);
-              setAdvancedEditorContent(''); // Clear content after posting
             }}
           />
         )}

@@ -354,7 +354,7 @@ export default function CategoryPage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-            <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Categorie lipsă!</div>
+            <div style={{ color: theme.error || '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Categorie lipsă!</div>
             <div style={{ color: theme.textSecondary, marginBottom: '1rem' }}>Categoria pe care o cauți nu există.</div>
             <Link to="/forum" style={{ color: theme.primary, textDecoration: 'none', marginTop: '1rem', display: 'inline-block' }}>
               ← Înapoi la forum
@@ -373,7 +373,7 @@ export default function CategoryPage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-            <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Categorie nu a fost găsită!</div>
+            <div style={{ color: theme.error || '#dc2626', marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>Categorie nu a fost găsită!</div>
             <div style={{ color: theme.textSecondary, marginBottom: '1rem' }}>Categoria pe care o cauți nu există sau a fost ștearsă.</div>
             <Link to="/forum" style={{ color: theme.primary, textDecoration: 'none', marginTop: '1rem', display: 'inline-block' }}>
               ← Înapoi la forum
@@ -390,16 +390,16 @@ export default function CategoryPage() {
     return (
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-          <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
+          <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
-            <div style={{ color: '#dc2626', marginBottom: '1rem' }}>Eroare la încărcarea topicurilor</div>
-            <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>{topicsError.message}</div>
+            <div style={{ color: theme.error || '#dc2626', marginBottom: '1rem' }}>Eroare la încărcarea topicurilor</div>
+            <div style={{ color: theme.textSecondary, fontSize: '0.875rem' }}>{topicsError.message}</div>
             <button
               onClick={() => navigate('/forum')}
               style={{
                 marginTop: '1rem',
                 padding: '0.5rem 1rem',
-                backgroundColor: '#2563eb',
+                backgroundColor: theme.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '0.5rem',
@@ -421,19 +421,19 @@ export default function CategoryPage() {
         <nav style={{
           marginBottom: isMobile ? '0.5rem' : '1.5rem',
           fontSize: isMobile ? '0.625rem' : '0.875rem',
-          color: '#6b7280',
+          color: theme.textSecondary,
           overflowX: 'auto',
           whiteSpace: 'nowrap',
           paddingBottom: '0.25rem'
         }}>
-          <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
+          <Link to="/forum" style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
           {/* Dacă avem categorySlug și subcategorySlug, afișăm categoria părinte */}
           {categorySlug && subcategorySlug && parentCategoryName && parentCategorySlug && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <Link
                 to={`/forum/${parentCategorySlug}`}
-                style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}
               >
                 {parentCategoryName}
               </Link>
@@ -442,24 +442,24 @@ export default function CategoryPage() {
           {/* Dacă avem doar categorySlug (categorie), afișăm categoria */}
           {categorySlug && !subcategorySlug && categoryName && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              <span style={{ color: '#6b7280', fontWeight: '500' }}>{categoryName}</span>
+              <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+              <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{categoryName}</span>
             </>
           )}
           {/* Dacă avem subcategorySlug (subcategorie), afișăm subcategoria */}
           {subcategorySlug && subcategoryName && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              <span style={{ color: '#6b7280', fontWeight: '500' }}>{subcategoryName}</span>
+              <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+              <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{subcategoryName}</span>
             </>
           )}
           {/* Fallback pentru legacy routes */}
           {!categorySlug && !subcategorySlug && parentCategoryName && parentCategoryId && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+              <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <Link
                 to={parentCategorySlug ? `/forum/${parentCategorySlug}` : `/forum#category-${parentCategoryId}`}
-                style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}
                 onClick={(e) => {
                   if (!parentCategorySlug && parentCategoryId) {
                     // Scroll la categorie pe homepage
@@ -480,8 +480,8 @@ export default function CategoryPage() {
           )}
           {!categorySlug && !subcategorySlug && subcategoryName && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              <span style={{ color: '#6b7280', fontWeight: '500' }}>{subcategoryName}</span>
+              <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+              <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{subcategoryName}</span>
             </>
           )}
         </nav>
@@ -489,9 +489,9 @@ export default function CategoryPage() {
         {/* Header categorie - Compact pentru mobil */}
         <div
           style={{
-            backgroundColor: 'white',
+            backgroundColor: theme.surface,
             borderRadius: isMobile ? '0.5rem' : '1rem',
-            border: '1px solid #e5e7eb',
+            border: `1px solid ${theme.border}`,
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
             marginBottom: isMobile ? '0.75rem' : '1.5rem',
             overflow: 'hidden'
@@ -539,9 +539,9 @@ export default function CategoryPage() {
         {/* Lista topicuri SAU subcategorii */}
         <div
           style={{
-            backgroundColor: 'white',
+            backgroundColor: theme.surface,
             borderRadius: '1rem',
-            border: '1px solid #e5e7eb',
+            border: `1px solid ${theme.border}`,
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
             overflow: 'hidden'
           }}
@@ -563,10 +563,10 @@ export default function CategoryPage() {
                         color: 'inherit'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                        e.currentTarget.style.backgroundColor = theme.surfaceHover;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
+                        e.currentTarget.style.backgroundColor = theme.surface;
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -581,16 +581,16 @@ export default function CategoryPage() {
                           <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>{subcat.icon}</div>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem', color: '#111827' }}>
+                          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem', color: theme.text }}>
                             {subcat.name}
                           </h3>
                           {subcat.description && (
-                            <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.5' }}>
+                            <p style={{ fontSize: '0.875rem', color: theme.textSecondary, lineHeight: '1.5' }}>
                               {subcat.description}
                             </p>
                           )}
                         </div>
-                        <div style={{ color: '#9ca3af', fontSize: '1.25rem' }}>›</div>
+                        <div style={{ color: theme.textSecondary, fontSize: '1.25rem' }}>›</div>
                       </div>
                     </Link>
                   ))}
@@ -599,10 +599,10 @@ export default function CategoryPage() {
                   {forumUser && categorySubcategories.length > 0 && (
                     <div style={{
                       padding: '1rem 1.5rem',
-                      borderTop: '1px solid #e5e7eb',
-                      backgroundColor: '#f9fafb',
+                      borderTop: `1px solid ${theme.border}`,
+                      backgroundColor: theme.background,
                       fontSize: '0.875rem',
-                      color: '#6b7280',
+                      color: theme.textSecondary,
                       display: 'flex',
                       alignItems: 'center',
                       gap: '1.5rem',
@@ -623,10 +623,14 @@ export default function CategoryPage() {
                 <div style={{
                   padding: '4rem 2rem',
                   textAlign: 'center',
-                  color: '#6b7280'
+                  color: theme.textSecondary,
+                  backgroundColor: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.75rem',
+                  margin: '1rem'
                 }}>
                   <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: '#111827' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: theme.text }}>
                     Nu există subcategorii în această categorie
                   </div>
                 </div>
@@ -636,15 +640,15 @@ export default function CategoryPage() {
             <>
               {/* Header pentru topicuri - Optimizat pentru mobil */}
               <div className="hidden sm:grid" style={{
-                backgroundColor: '#f8fafc',
-                borderBottom: '1px solid #e5e7eb',
+                backgroundColor: theme.surface,
+                borderBottom: `1px solid ${theme.border}`,
                 padding: '0.75rem 1rem',
                 gridTemplateColumns: '1fr 80px 80px 180px',
                 gap: '0.75rem',
                 alignItems: 'center',
                 fontSize: '0.75rem',
                 fontWeight: '600',
-                color: '#6b7280',
+                color: theme.textSecondary,
                 textTransform: 'uppercase',
                 letterSpacing: '0.025em'
               }}>
@@ -661,16 +665,18 @@ export default function CategoryPage() {
               <div style={{
                 padding: '4rem 2rem',
                 textAlign: 'center',
-                color: '#6b7280',
-                backgroundColor: '#f9fafb',
-                borderRadius: '0.5rem',
-                margin: '1rem'
+                color: theme.textSecondary,
+                backgroundColor: theme.surface,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '0.75rem',
+                margin: '1rem',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
               }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: '#111827' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: theme.text }}>
                   Niciun topic încă în această categorie
                 </div>
-                <div style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: theme.textSecondary }}>
                   Fii primul care creează un topic și pornește o discuție!
                 </div>
                 <button
@@ -686,7 +692,7 @@ export default function CategoryPage() {
                     alignItems: 'center',
                     gap: '0.5rem',
                     padding: '0.75rem 1.5rem',
-                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
                     color: 'white',
                     fontSize: '0.875rem',
                     fontWeight: '600',
@@ -697,11 +703,11 @@ export default function CategoryPage() {
                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8, #4338ca)';
+                    e.currentTarget.style.opacity = '0.9';
                     e.currentTarget.style.boxShadow = '0 8px 12px rgba(0, 0, 0, 0.15)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb, #4f46e5)';
+                    e.currentTarget.style.opacity = '1';
                     e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                   }}
                 >
@@ -716,7 +722,7 @@ export default function CategoryPage() {
                   className="topic-item"
                   style={{
                     padding: isMobile ? '0.5rem' : '0.75rem',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: `1px solid ${theme.border}`,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: isMobile ? '0.5rem' : '0.75rem',
@@ -728,7 +734,7 @@ export default function CategoryPage() {
                     boxSizing: 'border-box'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
                     // Prefetch topic-ul când utilizatorul trece cu mouse-ul
                     const topicSlug = (topic as any).slug;
                     if (topicSlug) {
@@ -749,17 +755,17 @@ export default function CategoryPage() {
                         />
                       )}
                       {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
-                      {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#6b7280' }} />}
+                      {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: theme.textSecondary }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: '#111827', marginBottom: '0.125rem', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                      <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '0.125rem', lineHeight: '1.3', wordBreak: 'break-word' }}>
                         {topic.title}
                       </h3>
-                      <div style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', color: '#6b7280', marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
-                        de <span style={{ color: '#2563eb', fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span>
+                      <div style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', color: theme.textSecondary, marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
+                        de <span style={{ color: theme.primary, fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span>
                       </div>
                       {/* Statistici pe mobil - sub titlu */}
-                      <div className="sm:hidden" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      <div className="sm:hidden" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: theme.textSecondary, marginTop: '0.25rem' }}>
                         <span>💬 {topic.reply_count}</span>
                         <span>👁️ {topic.view_count.toLocaleString('ro-RO')}</span>
                         {topic.last_post_at && (
@@ -775,7 +781,7 @@ export default function CategoryPage() {
                     justifyContent: 'center',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    color: '#059669',
+                    color: theme.success || '#059669',
                     minHeight: '2rem'
                   }}>
                     {topic.reply_count}
@@ -787,7 +793,7 @@ export default function CategoryPage() {
                     justifyContent: 'center',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    color: '#6b7280',
+                    color: theme.textSecondary,
                     minHeight: '2rem'
                   }}>
                     {topic.view_count.toLocaleString('ro-RO')}
@@ -800,7 +806,7 @@ export default function CategoryPage() {
                     justifyContent: 'center',
                     textAlign: 'center',
                     fontSize: '0.75rem',
-                    color: '#6b7280',
+                    color: theme.textSecondary,
                     minHeight: '2rem'
                   }}>
                     <div style={{ fontWeight: '500', marginBottom: '0.125rem' }}>
@@ -823,7 +829,7 @@ export default function CategoryPage() {
               alignItems: 'center',
               gap: '0.5rem',
               padding: '0.75rem 1.5rem',
-              background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+              background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
               color: 'white',
               fontSize: '0.875rem',
               fontWeight: '600',
@@ -834,11 +840,11 @@ export default function CategoryPage() {
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8, #4338ca)';
+              e.currentTarget.style.opacity = '0.9';
               e.currentTarget.style.boxShadow = '0 8px 12px rgba(0, 0, 0, 0.15)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb, #4f46e5)';
+              e.currentTarget.style.opacity = '1';
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
             onClick={() => {

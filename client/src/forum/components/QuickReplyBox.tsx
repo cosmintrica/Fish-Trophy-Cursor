@@ -4,18 +4,19 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Edit3 } from 'lucide-react';
+import { Send, Smile, Edit3, Eye, X, Save, MessageSquare, Quote, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useCreatePost } from '../hooks/usePosts';
 import { useToast } from '../contexts/ToastContext';
+import EditorToolbar from './EditorToolbar';
+import { parseBBCodePreview } from '../utils/bbcodePreview';
 
 interface QuickReplyBoxProps {
   topicId: string;
   pageSize?: number;
   onPageSizeChange?: (newSize: number) => void;
   onPostCreated?: () => void;
-  onOpenAdvancedEditor?: (content: string) => void;
   placeholder?: string;
 }
 
@@ -24,7 +25,6 @@ export default function QuickReplyBox({
   pageSize = 20,
   onPageSizeChange,
   onPostCreated,
-  onOpenAdvancedEditor,
   placeholder = 'Scrie răspunsul tău aici...'
 }: QuickReplyBoxProps) {
   const { theme } = useTheme();
@@ -33,8 +33,26 @@ export default function QuickReplyBox({
   const { create, creating } = useCreatePost();
   const [content, setContent] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPageSizeOpen, setIsPageSizeOpen] = useState(false);
+  const pageSizeDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Undo/Redo history (simplificat - pentru moment doar pentru shortcuts)
+  const [history, setHistory] = useState<string[]>(['']);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoRef = useRef(false);
+  
+  const MAX_CHARS = 10000;
+  const DRAFT_KEY_ADVANCED = `forum-editor-draft-${topicId}`;
+  
+  // Refs pentru a preveni restore-ul multiplu
+  const hasRestoredSimpleRef = useRef(false);
+  const hasRestoredAdvancedRef = useRef(false);
+  const lastSavedContentRef = useRef('');
+  const isResettingHeightRef = useRef(false);
 
   // Detect mobile
   useEffect(() => {
@@ -46,48 +64,203 @@ export default function QuickReplyBox({
 
   // Auto-resize textarea
   useEffect(() => {
-    if (textareaRef.current) {
+    // Nu ajusta dacă suntem în proces de resetare
+    if (isResettingHeightRef.current) {
+      return;
+    }
+    
+    if (textareaRef.current && !isAdvancedMode) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
       const maxHeight = isMobile ? 150 : 200;
-      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+      const minHeight = isMobile ? 60 : 80;
+      textareaRef.current.style.height = `${Math.max(minHeight, Math.min(scrollHeight, maxHeight))}px`;
+    } else if (textareaRef.current && isAdvancedMode) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [content, isMobile]);
+  }, [content, isMobile, isAdvancedMode]);
 
-  // Restore draft from localStorage (doar dacă există și nu e gol)
+  // Restore draft from localStorage (doar la mount sau când se schimbă topicId)
   useEffect(() => {
-    if (forumUser && topicId) {
+    if (!forumUser || !topicId || isAdvancedMode) {
+      hasRestoredSimpleRef.current = false;
+      return;
+    }
+    
+    // Restore doar dacă nu am restaurat deja pentru acest topicId
+    // IMPORTANT: Nu suprascrie content-ul dacă deja există (poate fi conținut nou scris de user)
+    if (!hasRestoredSimpleRef.current) {
       const draftKey = `forum_reply_draft_${topicId}_${forumUser.id}`;
       const savedDraft = localStorage.getItem(draftKey);
+      
+      // Verifică dacă există deja conținut în state (nu doar în localStorage)
+      const currentContent = content || '';
+      
       if (savedDraft && savedDraft.trim()) {
-        setContent(savedDraft);
+        // Restore doar dacă nu există deja conținut (nu suprascrie ce scrie user-ul)
+        if (!currentContent || currentContent.trim() === '') {
+          setContent(savedDraft);
+          lastSavedContentRef.current = savedDraft;
+        } else {
+          // Dacă există deja conținut, actualizează doar ref-ul (nu suprascrie)
+          lastSavedContentRef.current = currentContent;
+        }
       } else {
         // Șterge draft-ul dacă e gol
         if (savedDraft) {
           localStorage.removeItem(draftKey);
         }
-        setContent('');
-      }
-    }
-  }, [forumUser, topicId]);
-
-  // Save draft to localStorage (doar dacă nu e gol)
-  useEffect(() => {
-    if (forumUser && topicId) {
-      const draftKey = `forum_reply_draft_${topicId}_${forumUser.id}`;
-      const timeoutId = setTimeout(() => {
-        if (content.trim()) {
-          // Salvează doar dacă există conținut
-          localStorage.setItem(draftKey, content);
+        // Nu reseta content-ul dacă deja există
+        if (!currentContent) {
+          setContent('');
         } else {
-          // Șterge draft-ul dacă e gol
-          localStorage.removeItem(draftKey);
+          lastSavedContentRef.current = currentContent;
         }
-      }, 500); // Debounce 500ms
-
-      return () => clearTimeout(timeoutId);
+      }
+      hasRestoredSimpleRef.current = true;
     }
-  }, [content, forumUser, topicId]);
+  }, [topicId, forumUser?.id]); // topicId și forumUser.id - nu isAdvancedMode
+  
+  // Restore draft pentru modul avansat (doar când se activează modul avansat)
+  useEffect(() => {
+    if (!forumUser || !topicId) {
+      hasRestoredAdvancedRef.current = false;
+      return;
+    }
+    
+    if (!isAdvancedMode) {
+      hasRestoredAdvancedRef.current = false;
+      return;
+    }
+    
+    // Restore doar dacă nu am restaurat deja pentru acest topicId în mod avansat
+    // NU reseta content-ul dacă deja există (poate fi conținut nou scris de user)
+    if (!hasRestoredAdvancedRef.current) {
+      const savedDraft = localStorage.getItem(DRAFT_KEY_ADVANCED);
+      if (savedDraft && savedDraft.trim()) {
+        // Restore doar dacă nu există deja conținut (nu suprascrie ce scrie user-ul)
+        if (!content || content.trim() === '') {
+          setContent(savedDraft);
+          lastSavedContentRef.current = savedDraft;
+        } else {
+          // Dacă există deja conținut, actualizează doar ref-ul
+          lastSavedContentRef.current = content;
+        }
+      } else {
+        // Nu reseta content-ul dacă deja există
+        if (!content) {
+          setContent('');
+        }
+      }
+      hasRestoredAdvancedRef.current = true;
+    }
+  }, [isAdvancedMode, topicId, forumUser?.id]); // isAdvancedMode, topicId și forumUser.id - nu content
+
+  // Save draft to localStorage (doar dacă nu e gol) - salvează și la blur
+  useEffect(() => {
+    if (forumUser && topicId && !isAdvancedMode) {
+      const draftKey = `forum_reply_draft_${topicId}_${forumUser.id}`;
+      
+      // Salvează imediat dacă conținutul s-a schimbat semnificativ
+      const saveDraft = () => {
+        if (content.trim()) {
+          localStorage.setItem(draftKey, content);
+          lastSavedContentRef.current = content;
+        } else {
+          localStorage.removeItem(draftKey);
+          lastSavedContentRef.current = '';
+        }
+      };
+      
+      const timeoutId = setTimeout(saveDraft, 500); // Debounce 500ms
+      
+      // Salvează și la blur (când pierde focus-ul)
+      const handleBlur = () => {
+        saveDraft();
+      };
+      
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.addEventListener('blur', handleBlur);
+      }
+      
+      // Salvează și când se schimbă tab-ul sau se minimizează
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          saveDraft();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (textarea) {
+          textarea.removeEventListener('blur', handleBlur);
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [content, forumUser, topicId, isAdvancedMode]);
+  
+  // Auto-save draft pentru modul avansat (fiecare 30 secunde) + clear când e gol + save la blur/visibility change
+  useEffect(() => {
+    if (!isAdvancedMode || !forumUser || !topicId) return;
+    
+    const saveDraft = () => {
+      if (content.trim()) {
+        localStorage.setItem(DRAFT_KEY_ADVANCED, content);
+        lastSavedContentRef.current = content;
+      } else {
+        localStorage.removeItem(DRAFT_KEY_ADVANCED);
+        lastSavedContentRef.current = '';
+      }
+    };
+    
+    if (content.trim()) {
+      const autoSaveTimer = setInterval(saveDraft, 30000); // 30 seconds
+      
+      // Salvează și la blur
+      const handleBlur = () => {
+        saveDraft();
+      };
+      
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.addEventListener('blur', handleBlur);
+      }
+      
+      // Salvează și când se schimbă tab-ul sau se minimizează
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          saveDraft();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        clearInterval(autoSaveTimer);
+        if (textarea) {
+          textarea.removeEventListener('blur', handleBlur);
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    } else {
+      // Șterge draft-ul dacă e gol
+      localStorage.removeItem(DRAFT_KEY_ADVANCED);
+      lastSavedContentRef.current = '';
+    }
+  }, [content, isAdvancedMode, forumUser, topicId]); // Nu mai includem DRAFT_KEY_ADVANCED
+  
+  // Clear draft când conținutul devine gol în mod avansat
+  useEffect(() => {
+    if (isAdvancedMode && !content.trim()) {
+      localStorage.removeItem(DRAFT_KEY_ADVANCED);
+      lastSavedContentRef.current = '';
+    }
+  }, [content, isAdvancedMode]); // Nu mai includem DRAFT_KEY_ADVANCED
 
   // Clear draft
   const clearDraft = () => {
@@ -109,6 +282,11 @@ export default function QuickReplyBox({
       showToast('Trebuie să fii autentificat pentru a posta!', 'warning');
       return;
     }
+    
+    if (isAdvancedMode && content.length > MAX_CHARS) {
+      showToast(`Mesajul depășește ${MAX_CHARS} caractere!`, 'error');
+      return;
+    }
 
     const result = await create({
       topic_id: topicId,
@@ -119,6 +297,14 @@ export default function QuickReplyBox({
       // Clear content and draft
       setContent('');
       clearDraft();
+      
+      if (isAdvancedMode) {
+        localStorage.removeItem(DRAFT_KEY_ADVANCED);
+        setIsAdvancedMode(false);
+        setShowPreview(false);
+        setHistory(['']);
+        setHistoryIndex(0);
+      }
       
       // Reset textarea height
       if (textareaRef.current) {
@@ -141,9 +327,165 @@ export default function QuickReplyBox({
       showToast(errorMessage, 'error');
     }
   };
+  
+  const handleSaveDraft = () => {
+    if (isAdvancedMode) {
+      localStorage.setItem(DRAFT_KEY_ADVANCED, content);
+      showToast('Draft salvat!', 'success');
+    }
+  };
+  
+  const handleClearDraft = () => {
+    if (isAdvancedMode) {
+      localStorage.removeItem(DRAFT_KEY_ADVANCED);
+      setContent('');
+      lastSavedContentRef.current = '';
+      hasRestoredAdvancedRef.current = false;
+      showToast('Draft șters!', 'info');
+    }
+  };
 
-  // Handle Ctrl+Enter / Cmd+Enter to submit
+  // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+A - selectează doar textarea (nu tot forumul)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      if (textareaRef.current) {
+        textareaRef.current.select();
+      }
+      return;
+    }
+    
+    // Ctrl+B - Bold
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+      e.preventDefault();
+      if (isAdvancedMode && textareaRef.current) {
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+        const text = textareaRef.current.value;
+        const selectedText = text.substring(start, end);
+        const hasSelection = start !== end && selectedText.length > 0;
+        
+        if (hasSelection) {
+          const newText = text.substring(0, start) + '[b]' + selectedText + '[/b]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3 + selectedText.length + 4, start + 3 + selectedText.length + 4);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        } else {
+          const newText = text.substring(0, start) + '[b][/b]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3, start + 3);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        }
+      }
+      return;
+    }
+    
+    // Ctrl+I - Italic
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+      e.preventDefault();
+      if (isAdvancedMode && textareaRef.current) {
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+        const text = textareaRef.current.value;
+        const selectedText = text.substring(start, end);
+        const hasSelection = start !== end && selectedText.length > 0;
+        
+        if (hasSelection) {
+          const newText = text.substring(0, start) + '[i]' + selectedText + '[/i]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3 + selectedText.length + 4, start + 3 + selectedText.length + 4);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        } else {
+          const newText = text.substring(0, start) + '[i][/i]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3, start + 3);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        }
+      }
+      return;
+    }
+    
+    // Ctrl+U - Underline
+    if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+      e.preventDefault();
+      if (isAdvancedMode && textareaRef.current) {
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+        const text = textareaRef.current.value;
+        const selectedText = text.substring(start, end);
+        const hasSelection = start !== end && selectedText.length > 0;
+        
+        if (hasSelection) {
+          const newText = text.substring(0, start) + '[u]' + selectedText + '[/u]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3 + selectedText.length + 4, start + 3 + selectedText.length + 4);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        } else {
+          const newText = text.substring(0, start) + '[u][/u]' + text.substring(end);
+          setContent(newText);
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(start + 3, start + 3);
+              textareaRef.current.focus();
+            }
+          }, 0);
+        }
+      }
+      return;
+    }
+    
+    // Ctrl+Z - Undo (simplificat - pentru început doar pentru mod avansat)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      if (isAdvancedMode && historyIndex > 0) {
+        isUndoRedoRef.current = true;
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setContent(history[newIndex]);
+        setTimeout(() => {
+          isUndoRedoRef.current = false;
+        }, 100);
+      }
+      return;
+    }
+    
+    // Ctrl+Y sau Ctrl+Shift+Z - Redo
+    if (((e.ctrlKey || e.metaKey) && e.key === 'y') || ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey)) {
+      e.preventDefault();
+      if (isAdvancedMode && historyIndex < history.length - 1) {
+        isUndoRedoRef.current = true;
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setContent(history[newIndex]);
+        setTimeout(() => {
+          isUndoRedoRef.current = false;
+        }, 100);
+      }
+      return;
+    }
+    
+    // Ctrl+Enter / Cmd+Enter to submit
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (content.trim() && !creating) {
@@ -151,12 +493,46 @@ export default function QuickReplyBox({
       }
     }
   };
+  
+  // Track history pentru undo/redo în mod avansat (simplificat - adaugă la history când content se schimbă manual)
+  useEffect(() => {
+    if (isAdvancedMode && !isUndoRedoRef.current && content !== (history[historyIndex] || '')) {
+      // Adaugă la history doar dacă content-ul s-a schimbat manual (nu prin undo/redo)
+      setHistory(prev => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        newHistory.push(content);
+        if (newHistory.length > 50) {
+          newHistory.shift();
+          setHistoryIndex(newHistory.length - 1);
+          return newHistory;
+        }
+        setHistoryIndex(newHistory.length - 1);
+        return newHistory;
+      });
+    }
+  }, [content, isAdvancedMode]); // Track doar content changes manuale
 
   // Insert emoji (placeholder - va fi implementat cu emoji picker)
   const handleEmojiClick = () => {
     // TODO: Open emoji picker modal
     showToast('Emoji picker - în dezvoltare', 'info');
   };
+
+  // Close pageSize dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pageSizeDropdownRef.current && !pageSizeDropdownRef.current.contains(event.target as Node)) {
+        setIsPageSizeOpen(false);
+      }
+    };
+
+    if (isPageSizeOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isPageSizeOpen]);
 
   if (!forumUser) {
     return null; // Nu afișăm dacă nu este autentificat
@@ -171,150 +547,658 @@ export default function QuickReplyBox({
         right: 0,
         backgroundColor: theme.surface,
         borderTop: `1px solid ${theme.border}`,
+        borderRadius: isMobile ? '0.5rem' : '0.75rem',
         padding: isMobile ? '0.75rem' : '1rem',
         zIndex: 100,
         boxShadow: isFocused ? '0 -4px 12px rgba(0, 0, 0, 0.1)' : '0 -2px 8px rgba(0, 0, 0, 0.05)',
         transition: 'all 0.2s'
       }}
-    >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {/* Textarea */}
-        <div style={{ position: 'relative' }}>
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={creating}
-            style={{
-              width: '100%',
-              minHeight: isMobile ? '60px' : '80px',
-              maxHeight: isMobile ? '150px' : '200px',
-              padding: isMobile ? '0.625rem 2.5rem 0.625rem 0.75rem' : '0.75rem 3rem 0.75rem 1rem',
-              border: `1px solid ${isFocused ? theme.primary : theme.border}`,
-              borderRadius: '0.5rem',
-              fontSize: isMobile ? '0.875rem' : '0.9375rem',
-              fontFamily: 'inherit',
-              lineHeight: '1.5',
-              color: theme.text,
-              backgroundColor: theme.background,
-              outline: 'none',
-              resize: 'none',
-              overflowY: 'auto',
-              transition: 'all 0.2s',
-              opacity: creating ? 0.7 : 1,
-              cursor: creating ? 'not-allowed' : 'text'
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {/* Editor Toolbar - doar în mod avansat */}
+        {isAdvancedMode && (
+          <EditorToolbar
+            textareaRef={textareaRef}
+            currentContent={content}
+            onContentChange={(newContent) => {
+              if (newContent.length <= MAX_CHARS) {
+                setContent(newContent);
+              }
             }}
+            isMobile={isMobile}
           />
-
-          {/* Emoji button */}
-          <button
-            type="button"
-            onClick={handleEmojiClick}
-            disabled={creating}
+        )}
+        
+        {/* Toolbar secundar - Preview, Draft actions - doar în mod avansat */}
+        {isAdvancedMode && (
+          <div
             style={{
-              position: 'absolute',
-              bottom: isMobile ? '0.5rem' : '0.625rem',
-              right: isMobile ? '2.5rem' : '3rem',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: isMobile ? '1.75rem' : '2rem',
-              height: isMobile ? '1.75rem' : '2rem',
-              padding: 0,
-              border: 'none',
-              backgroundColor: 'transparent',
-              color: theme.textSecondary,
-              cursor: creating ? 'not-allowed' : 'pointer',
-              borderRadius: '0.375rem',
-              transition: 'all 0.2s',
-              opacity: creating ? 0.5 : 1
+              gap: '0.5rem',
+              padding: '0.5rem 0',
+              flexWrap: 'wrap'
             }}
-            onMouseEnter={(e) => {
-              if (!creating) {
-                e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                e.currentTarget.style.color = theme.primary;
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!creating) {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = theme.textSecondary;
-              }
-            }}
-            title="Adaugă emoji"
           >
-            <Smile size={isMobile ? 16 : 18} />
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: isMobile ? '0.375rem 0.625rem' : '0.5rem 0.75rem',
+                backgroundColor: showPreview ? theme.primary : 'transparent',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '0.375rem',
+                color: showPreview ? 'white' : theme.text,
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Eye size={isMobile ? 14 : 16} />
+              <span>{showPreview ? 'Editare' : 'Preview'}</span>
+            </button>
+
+            <div style={{ flex: 1 }} />
+
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={!content.trim()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: isMobile ? '0.375rem 0.625rem' : '0.5rem 0.75rem',
+                backgroundColor: 'transparent',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '0.375rem',
+                color: theme.textSecondary,
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontWeight: '500',
+                cursor: !content.trim() ? 'not-allowed' : 'pointer',
+                opacity: !content.trim() ? 0.5 : 1,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (content.trim()) {
+                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  e.currentTarget.style.borderColor = theme.primary;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (content.trim()) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = theme.border;
+                }
+              }}
+            >
+              <Save size={isMobile ? 14 : 16} />
+              <span>{isMobile ? 'Draft' : 'Salvează Draft'}</span>
+            </button>
+
+            {localStorage.getItem(DRAFT_KEY_ADVANCED) && (
+              <button
+                type="button"
+                onClick={handleClearDraft}
+                style={{
+                  padding: isMobile ? '0.375rem 0.625rem' : '0.5rem 0.75rem',
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.375rem',
+                  color: theme.textSecondary,
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.error;
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = theme.textSecondary;
+                }}
+              >
+                {isMobile ? 'Șterge' : 'Șterge Draft'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Content Area - Textarea sau Preview */}
+        <div style={{ position: 'relative' }}>
+          {isAdvancedMode && showPreview ? (
+            /* Preview Mode - Exact ca un post real */
+            <div
+              style={{
+                backgroundColor: theme.surface,
+                border: isMobile ? `1px solid ${theme.border}` : `2px solid ${theme.border}`,
+                borderRadius: isMobile ? '0.5rem' : '0.75rem',
+                overflow: 'hidden',
+                boxShadow: isMobile ? '0 1px 3px rgba(0, 0, 0, 0.05)' : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                minHeight: isMobile ? '150px' : '200px'
+              }}
+            >
+              {/* Layout: Sidebar + Content - Exact ca MessageContainer */}
+              <div style={{ 
+                display: 'flex', 
+                minHeight: isMobile ? '150px' : '200px', 
+                flexDirection: 'row',
+                width: '100%',
+                maxWidth: '100%',
+                overflow: 'hidden'
+              }}>
+                {/* Sidebar Placeholder - Exact ca MessageSidebar */}
+                <div style={{
+                  width: isMobile ? '100px' : '200px',
+                  minWidth: isMobile ? '100px' : '200px',
+                  maxWidth: isMobile ? '100px' : '200px',
+                  backgroundColor: theme.background,
+                  borderRight: `1px solid ${theme.border}`,
+                  padding: isMobile ? '0.5rem 0.375rem' : '1.5rem 1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  flexShrink: 0,
+                  overflow: 'hidden'
+                }}>
+                  {/* Avatar Placeholder */}
+                  <div
+                    style={{
+                      width: isMobile ? '2.5rem' : '4rem',
+                      height: isMobile ? '2.5rem' : '4rem',
+                      borderRadius: '50%',
+                      background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: isMobile ? '1rem' : '1.5rem',
+                      fontWeight: '600',
+                      marginBottom: isMobile ? '0.375rem' : '0.75rem',
+                      border: `2px solid ${theme.border}`,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      flexShrink: 0,
+                      opacity: 0.7
+                    }}
+                  >
+                    ?
+                  </div>
+
+                  {/* Nume Placeholder */}
+                  <div style={{
+                    fontWeight: '600',
+                    color: theme.textSecondary,
+                    fontSize: isMobile ? '0.6875rem' : '0.875rem',
+                    marginBottom: isMobile ? '0.25rem' : '0.5rem',
+                    opacity: 0.7
+                  }}>
+                    {forumUser?.username || 'Tu'}
+                  </div>
+
+                  {/* Rang Placeholder */}
+                  <div style={{
+                    fontSize: isMobile ? '0.5625rem' : '0.75rem',
+                    color: theme.textSecondary,
+                    marginBottom: isMobile ? '0.375rem' : '0.75rem',
+                    opacity: 0.7
+                  }}>
+                    🎣 Pescar
+                  </div>
+
+                  {/* Respect Placeholder */}
+                  <div style={{
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.375rem',
+                    padding: isMobile ? '0.25rem 0.375rem' : '0.5rem',
+                    marginBottom: isMobile ? '0.375rem' : '0.75rem',
+                    width: '100%',
+                    opacity: 0.7
+                  }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '0.5625rem' : '0.75rem', 
+                      color: theme.textSecondary, 
+                      marginBottom: '0.125rem'
+                    }}>
+                      {isMobile ? 'Rep.' : 'Respect'}
+                    </div>
+                    <div style={{
+                      fontWeight: '600',
+                      fontSize: isMobile ? '0.75rem' : '1rem',
+                      color: theme.textSecondary
+                    }}>
+                      +0
+                    </div>
+                  </div>
+
+                  {/* Equipment Button - Placeholder */}
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      fontSize: isMobile ? '0.5625rem' : '0.75rem',
+                      color: theme.textSecondary,
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.375rem',
+                      padding: isMobile ? '0.25rem 0.375rem' : '0.375rem 0.75rem',
+                      cursor: 'not-allowed',
+                      width: '100%',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      opacity: 0.7
+                    }}
+                  >
+                    {isMobile ? '📋' : '📋 Echipament'}
+                  </button>
+                </div>
+
+                {/* Content area - Exact ca MessageContainer content */}
+                <div style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  minWidth: 0,
+                  maxWidth: '100%'
+                }}>
+                  {/* Message content - Exact styling ca post real */}
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? '0.75rem' : '1.5rem',
+                      fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                      color: theme.text,
+                      lineHeight: '1.6',
+                      position: 'relative',
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      maxWidth: '100%',
+                      overflowX: 'hidden'
+                    }}
+                  >
+                    <div style={{
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      maxWidth: '100%'
+                    }}
+                      dangerouslySetInnerHTML={{
+                        __html: content.trim() 
+                          ? parseBBCodePreview(content) 
+                          : `<span style="color: ${theme.textSecondary}; font-style: italic;">Preview-ul va apărea aici...</span>`
+                      }}
+                    />
+                  </div>
+
+                  {/* Actions - Butoane reale placeholder */}
+                  <div style={{
+                    backgroundColor: theme.background,
+                    borderTop: `1px solid ${theme.border}`,
+                    padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      {/* Reply Button */}
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          backgroundColor: 'transparent',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.375rem',
+                          color: theme.textSecondary,
+                          cursor: 'not-allowed',
+                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          transition: 'all 0.2s',
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                          opacity: 0.7
+                        }}
+                      >
+                        <MessageSquare style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+                        <span>Răspunde</span>
+                      </button>
+
+                      {/* Quote Button */}
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          backgroundColor: 'transparent',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.375rem',
+                          color: theme.textSecondary,
+                          cursor: 'not-allowed',
+                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          transition: 'all 0.2s',
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                          opacity: 0.7
+                        }}
+                      >
+                        <Quote style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+                        <span>Citează</span>
+                      </button>
+                    </div>
+
+                    {/* Reputation Buttons - Placeholder */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          backgroundColor: 'transparent',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.375rem',
+                          color: theme.textSecondary,
+                          cursor: 'not-allowed',
+                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          transition: 'all 0.2s',
+                          opacity: 0.7
+                        }}
+                      >
+                        <ThumbsUp style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
+                        <span>0</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          backgroundColor: 'transparent',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.375rem',
+                          color: theme.textSecondary,
+                          cursor: 'not-allowed',
+                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          transition: 'all 0.2s',
+                          opacity: 0.7
+                        }}
+                      >
+                        <ThumbsDown style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
+                        <span>0</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Edit Mode - Textarea */
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => {
+                const newContent = e.target.value;
+                if (newContent.length <= MAX_CHARS) {
+                  setContent(newContent);
+                }
+              }}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              disabled={creating}
+              style={{
+                width: '100%',
+                minHeight: isAdvancedMode 
+                  ? (isMobile ? '200px' : '300px')
+                  : (isMobile ? '60px' : '80px'),
+                maxHeight: isAdvancedMode ? 'none' : (isMobile ? '150px' : '200px'),
+                padding: isAdvancedMode
+                  ? '1rem'
+                  : (isMobile ? '0.625rem 2.5rem 0.625rem 0.75rem' : '0.75rem 3rem 0.75rem 1rem'),
+                border: `1px solid ${isFocused ? theme.primary : theme.border}`,
+                borderRadius: '0.5rem',
+                fontSize: isMobile ? '0.875rem' : isAdvancedMode ? '0.875rem' : '0.9375rem',
+                fontFamily: 'inherit',
+                lineHeight: isAdvancedMode ? '1.6' : '1.5',
+                color: theme.text,
+                backgroundColor: theme.background,
+                outline: 'none',
+                resize: isAdvancedMode ? 'vertical' : 'none',
+                overflowY: 'auto',
+                transition: 'all 0.2s',
+                opacity: creating ? 0.7 : 1,
+                cursor: creating ? 'not-allowed' : 'text'
+              }}
+            />
+          )}
+
+          {/* Emoji button - doar în mod simplu */}
+          {!isAdvancedMode && (
+            <button
+              type="button"
+              onClick={handleEmojiClick}
+              disabled={creating}
+              style={{
+                position: 'absolute',
+                bottom: isMobile ? '0.5rem' : '0.625rem',
+                right: isMobile ? '2.5rem' : '3rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: isMobile ? '1.75rem' : '2rem',
+                height: isMobile ? '1.75rem' : '2rem',
+                padding: 0,
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: theme.textSecondary,
+                cursor: creating ? 'not-allowed' : 'pointer',
+                borderRadius: '0.375rem',
+                transition: 'all 0.2s',
+                opacity: creating ? 0.5 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!creating) {
+                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  e.currentTarget.style.color = theme.primary;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!creating) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = theme.textSecondary;
+                }
+              }}
+              title="Adaugă emoji"
+            >
+              <Smile size={isMobile ? 16 : 18} />
+            </button>
+          )}
+          
+          {/* Character Counter - doar în mod avansat */}
+          {isAdvancedMode && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '0.5rem',
+                fontSize: '0.75rem',
+                color: theme.textSecondary
+              }}
+            >
+              <span>
+                {content.length} / {MAX_CHARS} caractere
+              </span>
+              {content.length > MAX_CHARS * 0.9 && (
+                <span style={{ color: content.length >= MAX_CHARS ? theme.error : theme.accent }}>
+                  {content.length >= MAX_CHARS ? 'Limita atinsă!' : 'Aproape de limită'}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Actions bar */}
+        {/* Actions bar - Butoanele (ÎN FORM) */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {/* Left side - PageSize picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            {/* PageSize Picker - Mic și compact */}
-            {onPageSizeChange && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <label
-                  htmlFor="pageSize-select"
-                  style={{
-                    fontSize: isMobile ? '0.625rem' : '0.6875rem',
-                    color: theme.textSecondary,
-                    fontWeight: '500',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {isMobile ? 'Pag:' : 'Postări/pag:'}
-                </label>
-                <select
-                  id="pageSize-select"
-                  value={pageSize}
-                  onChange={(e) => {
-                    const newSize = parseInt(e.target.value, 10);
-                    onPageSizeChange(newSize);
-                  }}
+          {/* Left side - PageSize Selector (Custom Dropdown) */}
+          {onPageSizeChange && (
+            <div
+              ref={pageSizeDropdownRef}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                position: 'relative'
+              }}
+            >
+              <span
+                style={{
+                  fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                  color: theme.textSecondary,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {isMobile ? 'Pag:' : 'Postări/pag:'}
+              </span>
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => !creating && setIsPageSizeOpen(!isPageSizeOpen)}
                   disabled={creating}
                   style={{
-                    padding: isMobile ? '0.25rem 0.375rem' : '0.3125rem 0.5rem',
-                    backgroundColor: theme.background,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.375rem',
+                    padding: isMobile ? '0.375rem 0.75rem' : '0.5rem 1rem',
+                    paddingRight: isMobile ? '1.75rem' : '2rem',
+                    backgroundColor: theme.surface,
                     border: `1px solid ${theme.border}`,
-                    borderRadius: '0.25rem',
+                    borderRadius: '0.375rem',
                     color: theme.text,
-                    fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                    fontSize: isMobile ? '0.75rem' : '0.8125rem',
                     fontWeight: '500',
                     cursor: creating ? 'not-allowed' : 'pointer',
                     outline: 'none',
                     transition: 'all 0.2s',
                     opacity: creating ? 0.5 : 1,
-                    minWidth: isMobile ? '45px' : '55px',
-                    height: isMobile ? '1.75rem' : '2rem'
+                    minWidth: isMobile ? '48px' : '56px',
+                    textAlign: 'center'
                   }}
                   onMouseEnter={(e) => {
                     if (!creating) {
                       e.currentTarget.style.borderColor = theme.primary;
+                      e.currentTarget.style.backgroundColor = theme.surfaceHover;
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!creating) {
                       e.currentTarget.style.borderColor = theme.border;
+                      e.currentTarget.style.backgroundColor = theme.surface;
                     }
                   }}
                 >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-            )}
-          </div>
+                  <span>{pageSize}</span>
+                  <ChevronDown
+                    size={isMobile ? 12 : 14}
+                    style={{
+                      position: 'absolute',
+                      right: isMobile ? '0.5rem' : '0.75rem',
+                      top: '50%',
+                      transform: `translateY(-50%) ${isPageSizeOpen ? 'rotate(180deg)' : ''}`,
+                      transition: 'transform 0.2s',
+                      opacity: 0.7,
+                      pointerEvents: 'none'
+                    }}
+                  />
+                </button>
 
-          {/* Right side - Butoane și character count */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
-            {/* Character count (optional - hidden on mobile if space is limited) */}
-            {!isMobile && content.length > 0 && (
+                {/* Dropdown Menu */}
+                {isPageSizeOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '0.25rem',
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.375rem',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      zIndex: 1000,
+                      minWidth: isMobile ? '48px' : '56px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {[10, 20, 50].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => {
+                          if (size !== pageSize && onPageSizeChange) {
+                            onPageSizeChange(size);
+                          }
+                          setIsPageSizeOpen(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                          textAlign: 'center',
+                          fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                          fontWeight: '500',
+                          color: size === pageSize ? 'white' : theme.text,
+                          backgroundColor: size === pageSize ? theme.primary : 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          outline: 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (size !== pageSize) {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (size !== pageSize) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Right side - Butoanele */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Character count (optional - hidden on mobile if space is limited, doar în mod simplu) */}
+            {!isMobile && !isAdvancedMode && content.length > 0 && (
               <span
                 style={{
                   fontSize: '0.75rem',
@@ -325,84 +1209,111 @@ export default function QuickReplyBox({
               </span>
             )}
 
-            {/* Buton Răspuns Complex - design identic cu Postează */}
-            {onOpenAdvancedEditor && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (onOpenAdvancedEditor) {
-                    // Trimite conținutul la Advanced Editor
-                    onOpenAdvancedEditor(content);
-                    // Resetează conținutul în QuickReplyBox și șterge draft-ul
-                    setContent('');
-                    clearDraft();
-                  }
-                }}
-                disabled={creating}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  padding: isMobile ? '0.5rem 0.75rem' : '0.5625rem 1rem',
-                  background: creating
-                    ? theme.surfaceHover
-                    : theme.border,
-                  color: creating ? theme.textSecondary : theme.text,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '0.375rem',
-                  fontSize: isMobile ? '0.75rem' : '0.8125rem',
-                  fontWeight: '500',
-                  cursor: creating ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  opacity: creating ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!creating) {
-                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                    e.currentTarget.style.borderColor = theme.primary;
-                    e.currentTarget.style.color = theme.primary;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!creating) {
-                    e.currentTarget.style.backgroundColor = theme.border;
-                    e.currentTarget.style.borderColor = theme.border;
-                    e.currentTarget.style.color = theme.text;
-                  }
-                }}
-              >
-                <Edit3 size={isMobile ? 13 : 14} />
-                <span>{isMobile ? 'Complex' : 'Răspuns Complex'}</span>
-              </button>
-            )}
-
+            {/* Buton Răspuns Complex - toggle modul avansat inline */}
             <button
-              type="submit"
-              disabled={creating || !content.trim()}
+              type="button"
+              onClick={() => {
+                if (!isAdvancedMode) {
+                  // Activează modul avansat - păstrează conținutul
+                  setIsAdvancedMode(true);
+                  // Inițializează history cu conținutul curent
+                  const initialHistory = content.trim() ? ['', content] : [''];
+                  setHistory(initialHistory);
+                  setHistoryIndex(initialHistory.length - 1);
+                } else {
+                  // Dezactivează modul avansat
+                  setIsAdvancedMode(false);
+                  setShowPreview(false);
+                  // Reset history
+                  setHistory(['']);
+                  setHistoryIndex(0);
+                  // Reset textarea height la dimensiunea originală (minimă)
+                  if (textareaRef.current) {
+                    isResettingHeightRef.current = true;
+                    const originalHeight = isMobile ? '60px' : '80px';
+                    textareaRef.current.style.height = originalHeight;
+                    textareaRef.current.style.minHeight = originalHeight;
+                    textareaRef.current.style.maxHeight = isMobile ? '150px' : '200px';
+                    // Force reflow și reset flag după un scurt delay
+                    requestAnimationFrame(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.style.height = originalHeight;
+                      }
+                      setTimeout(() => {
+                        isResettingHeightRef.current = false;
+                      }, 100);
+                    });
+                  }
+                }
+              }}
+              disabled={creating}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.375rem',
                 padding: isMobile ? '0.5rem 0.75rem' : '0.5625rem 1rem',
-                background: creating || !content.trim()
+                background: creating
+                  ? theme.surfaceHover
+                  : isAdvancedMode
+                    ? theme.primary
+                    : theme.border,
+                color: creating ? theme.textSecondary : isAdvancedMode ? 'white' : theme.text,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '0.375rem',
+                fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                fontWeight: '500',
+                cursor: creating ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: creating ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!creating) {
+                  e.currentTarget.style.backgroundColor = isAdvancedMode ? theme.primary : theme.surfaceHover;
+                  e.currentTarget.style.borderColor = theme.primary;
+                  if (!isAdvancedMode) {
+                    e.currentTarget.style.color = theme.primary;
+                  }
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!creating) {
+                  e.currentTarget.style.backgroundColor = isAdvancedMode ? theme.primary : theme.border;
+                  e.currentTarget.style.borderColor = theme.border;
+                  e.currentTarget.style.color = isAdvancedMode ? 'white' : theme.text;
+                }
+              }}
+            >
+              <Edit3 size={isMobile ? 13 : 14} />
+              <span>{isMobile ? (isAdvancedMode ? 'Simplu' : 'Complex') : (isAdvancedMode ? 'Mod Simplu' : 'Răspuns Complex')}</span>
+            </button>
+
+            <button
+              type="submit"
+              disabled={creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: isMobile ? '0.5rem 0.75rem' : '0.5625rem 1rem',
+                background: creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS)
                   ? theme.surfaceHover
                   : theme.primary,
-                color: creating || !content.trim() ? theme.textSecondary : 'white',
+                color: creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS) ? theme.textSecondary : 'white',
                 border: 'none',
                 borderRadius: '0.375rem',
                 fontSize: isMobile ? '0.75rem' : '0.8125rem',
                 fontWeight: '500',
-                cursor: creating || !content.trim() ? 'not-allowed' : 'pointer',
+                cursor: creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
-                opacity: creating || !content.trim() ? 0.6 : 1
+                opacity: creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS) ? 0.6 : 1
               }}
               onMouseEnter={(e) => {
-                if (!creating && content.trim()) {
+                if (!creating && content.trim() && !(isAdvancedMode && content.length > MAX_CHARS)) {
                   e.currentTarget.style.opacity = '0.9';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!creating && content.trim()) {
+                if (!creating && content.trim() && !(isAdvancedMode && content.length > MAX_CHARS)) {
                   e.currentTarget.style.opacity = '1';
                 }
               }}
@@ -413,8 +1324,8 @@ export default function QuickReplyBox({
                     style={{
                       width: '1rem',
                       height: '1rem',
-                      border: `2px solid ${creating || !content.trim() ? theme.textSecondary : 'rgba(255, 255, 255, 0.3)'}`,
-                      borderTop: `2px solid ${creating || !content.trim() ? theme.textSecondary : 'white'}`,
+                      border: `2px solid ${creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS) ? theme.textSecondary : 'rgba(255, 255, 255, 0.3)'}`,
+                      borderTop: `2px solid ${creating || !content.trim() || (isAdvancedMode && content.length > MAX_CHARS) ? theme.textSecondary : 'white'}`,
                       borderRadius: '50%',
                       animation: 'spin 1s linear infinite'
                     }}
@@ -425,7 +1336,7 @@ export default function QuickReplyBox({
                 <>
                   <Send size={isMobile ? 14 : 16} />
                   <span>Postează</span>
-                  {!isMobile && (
+                  {!isMobile && !isAdvancedMode && (
                     <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
                       (Ctrl+Enter)
                     </span>
