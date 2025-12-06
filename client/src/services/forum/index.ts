@@ -30,8 +30,12 @@ export {
     deleteCategory,
     reorderCategories,
     createSubforum,
+    updateSubforum,
+    deleteSubforum,
     getSubcategories,
-    createSubcategory
+    createSubcategory,
+    updateSubcategory,
+    deleteSubcategory
 } from './categories'
 
 // Marketplace

@@ -43,7 +43,20 @@ export const extractCoordinatesFromUrl = async (url: string): Promise<{ lat: num
       extractedName = extractedName.replace(/[\/\?&#].*$/, '').trim();
     }
     
-    // Format 1 & 2: Extract coordinates - look for @lat,lng pattern (works for both /@lat,lng and /place/Name/@lat,lng)
+    // PRIORITY 1: Extract PRECISE coordinates from !3d and !4d format (most accurate)
+    // Format: !8m2!3d44.4227421!4d24.3619634 (3d = latitude, 4d = longitude)
+    const preciseCoordMatch = url.match(/!3d(-?\d+\.?\d*)(?:!|&|$)/);
+    const preciseLngMatch = url.match(/!4d(-?\d+\.?\d*)(?:!|&|$)/);
+    if (preciseCoordMatch && preciseLngMatch) {
+      return {
+        lat: parseFloat(preciseCoordMatch[1]),
+        lng: parseFloat(preciseLngMatch[1]),
+        name: extractedName || undefined
+      };
+    }
+    
+    // PRIORITY 2: Extract coordinates from @lat,lng pattern (works for both /@lat,lng and /place/Name/@lat,lng)
+    // Capture ALL decimal places - no truncation
     const coordMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (coordMatch) {
       return {

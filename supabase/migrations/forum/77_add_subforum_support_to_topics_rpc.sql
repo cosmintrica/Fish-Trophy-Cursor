@@ -1,0 +1,218 @@
+-- =============================================
+-- Migration 77: Add Subforum Support to Topics RPC
+-- =============================================
+-- Descriere: Modifică get_topics_with_authors să accepte și p_subforum_id
+-- pentru a permite afișarea topicurilor din subforums
+-- =============================================
+
+-- Drop old function
+DROP FUNCTION IF EXISTS get_topics_with_authors(UUID, INT, INT);
+
+-- Create optimized RPC function with subforum support
+CREATE OR REPLACE FUNCTION get_topics_with_authors(
+  p_subcategory_id UUID DEFAULT NULL,
+  p_subforum_id UUID DEFAULT NULL,
+  p_page INT DEFAULT 1,
+  p_page_size INT DEFAULT 20
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_offset INT;
+  v_total INT;
+  v_result JSON;
+  v_subcategory_exists BOOLEAN;
+  v_subforum_exists BOOLEAN;
+BEGIN
+  -- Validate: must have either subcategory_id OR subforum_id (not both, not neither)
+  IF (p_subcategory_id IS NULL AND p_subforum_id IS NULL) OR (p_subcategory_id IS NOT NULL AND p_subforum_id IS NOT NULL) THEN
+    RETURN json_build_object(
+      'data', '[]'::json,
+      'total', 0,
+      'page', p_page,
+      'page_size', p_page_size,
+      'has_more', false,
+      'error', 'Must specify either subcategory_id or subforum_id (not both, not neither)'
+    );
+  END IF;
+  
+  v_offset := (p_page - 1) * p_page_size;
+  
+  -- Handle subcategory case
+  IF p_subcategory_id IS NOT NULL THEN
+    -- Security check: Verify subcategory exists and is active
+    SELECT EXISTS (
+      SELECT 1 FROM forum_subcategories
+      WHERE id = p_subcategory_id AND is_active = true
+    ) INTO v_subcategory_exists;
+    
+    IF NOT v_subcategory_exists THEN
+      RETURN json_build_object(
+        'data', '[]'::json,
+        'total', 0,
+        'page', p_page,
+        'page_size', p_page_size,
+        'has_more', false,
+        'error', 'Subcategory not found or inactive'
+      );
+    END IF;
+    
+    -- Get total count (only topics directly in subcategory, not in subforums)
+    SELECT COUNT(*) INTO v_total
+    FROM forum_topics
+    WHERE subcategory_id = p_subcategory_id 
+      AND subforum_id IS NULL 
+      AND is_deleted = false;
+    
+    -- Build result with topics and author info
+    SELECT json_build_object(
+      'data', COALESCE(
+        (
+          SELECT json_agg(topic_data)
+          FROM (
+            SELECT 
+              t.id,
+              t.subcategory_id,
+              t.subforum_id,
+              t.user_id,
+              t.title,
+              t.slug,
+              t.topic_type,
+              t.is_pinned,
+              t.is_locked,
+              t.is_deleted,
+              t.view_count,
+              t.reply_count,
+              t.last_post_at,
+              t.last_post_user_id,
+              t.created_at,
+              t.updated_at,
+              -- Author data from profiles
+              COALESCE(pr.display_name, pr.username, SPLIT_PART(pr.email, '@', 1), 'Unknown') AS author_username,
+              pr.photo_url AS author_avatar,
+              -- Last post author
+              COALESCE(pr_last.display_name, pr_last.username, SPLIT_PART(pr_last.email, '@', 1), NULL) AS last_post_author
+            FROM forum_topics t
+            LEFT JOIN profiles pr ON t.user_id = pr.id
+            LEFT JOIN profiles pr_last ON t.last_post_user_id = pr_last.id
+            WHERE t.subcategory_id = p_subcategory_id 
+              AND t.subforum_id IS NULL 
+              AND t.is_deleted = false
+            ORDER BY t.is_pinned DESC, t.last_post_at DESC NULLS LAST
+            LIMIT p_page_size
+            OFFSET v_offset
+          ) AS topic_data
+        ),
+        '[]'::json
+      ),
+      'total', v_total,
+      'page', p_page,
+      'page_size', p_page_size,
+      'has_more', (v_offset + p_page_size) < v_total
+    ) INTO v_result;
+    
+    RETURN v_result;
+  END IF;
+  
+  -- Handle subforum case
+  IF p_subforum_id IS NOT NULL THEN
+    -- Security check: Verify subforum exists and is active
+    SELECT EXISTS (
+      SELECT 1 FROM forum_subforums
+      WHERE id = p_subforum_id AND is_active = true
+    ) INTO v_subforum_exists;
+    
+    IF NOT v_subforum_exists THEN
+      RETURN json_build_object(
+        'data', '[]'::json,
+        'total', 0,
+        'page', p_page,
+        'page_size', p_page_size,
+        'has_more', false,
+        'error', 'Subforum not found or inactive'
+      );
+    END IF;
+    
+    -- Get total count (topics in subforum)
+    SELECT COUNT(*) INTO v_total
+    FROM forum_topics
+    WHERE subforum_id = p_subforum_id 
+      AND is_deleted = false;
+    
+    -- Build result with topics and author info
+    SELECT json_build_object(
+      'data', COALESCE(
+        (
+          SELECT json_agg(topic_data)
+          FROM (
+            SELECT 
+              t.id,
+              t.subcategory_id,
+              t.subforum_id,
+              t.user_id,
+              t.title,
+              t.slug,
+              t.topic_type,
+              t.is_pinned,
+              t.is_locked,
+              t.is_deleted,
+              t.view_count,
+              t.reply_count,
+              t.last_post_at,
+              t.last_post_user_id,
+              t.created_at,
+              t.updated_at,
+              -- Author data from profiles
+              COALESCE(pr.display_name, pr.username, SPLIT_PART(pr.email, '@', 1), 'Unknown') AS author_username,
+              pr.photo_url AS author_avatar,
+              -- Last post author
+              COALESCE(pr_last.display_name, pr_last.username, SPLIT_PART(pr_last.email, '@', 1), NULL) AS last_post_author
+            FROM forum_topics t
+            LEFT JOIN profiles pr ON t.user_id = pr.id
+            LEFT JOIN profiles pr_last ON t.last_post_user_id = pr_last.id
+            WHERE t.subforum_id = p_subforum_id 
+              AND t.is_deleted = false
+            ORDER BY t.is_pinned DESC, t.last_post_at DESC NULLS LAST
+            LIMIT p_page_size
+            OFFSET v_offset
+          ) AS topic_data
+        ),
+        '[]'::json
+      ),
+      'total', v_total,
+      'page', p_page,
+      'page_size', p_page_size,
+      'has_more', (v_offset + p_page_size) < v_total
+    ) INTO v_result;
+    
+    RETURN v_result;
+  END IF;
+  
+  -- Should never reach here, but just in case
+  RETURN json_build_object(
+    'data', '[]'::json,
+    'total', 0,
+    'page', p_page,
+    'page_size', p_page_size,
+    'has_more', false,
+    'error', 'Invalid parameters'
+  );
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION get_topics_with_authors(UUID, UUID, INT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_topics_with_authors(UUID, UUID, INT, INT) TO anon;
+
+-- Update index for optimal query performance (include subforum_id)
+CREATE INDEX IF NOT EXISTS idx_forum_topics_subforum_pinned_lastpost 
+  ON forum_topics(subforum_id, is_pinned DESC, last_post_at DESC NULLS LAST) 
+  WHERE subforum_id IS NOT NULL AND is_deleted = false;
+
+-- Comment
+COMMENT ON FUNCTION get_topics_with_authors IS 
+'Optimized RPC: Returns paginated topics with author data (display_name, avatar) in a single query. Supports both subcategories (direct topics) and subforums. Replaces 2 queries pattern with 1 query.';
+

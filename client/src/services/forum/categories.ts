@@ -28,12 +28,9 @@ export async function getCategoriesWithHierarchy(): Promise<ApiResponse<Category
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_categories_with_stats')
 
         if (!rpcError && rpcData) {
-            // RPC returned data - transform to expected format
             return { data: rpcData as CategoryWithChildren[] }
         }
 
-        // Fallback to old method if RPC doesn't exist yet
-        console.warn('Optimized RPC not available, using fallback method')
         return getCategoriesWithHierarchyFallback()
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
@@ -59,14 +56,6 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
         // Get subforums and subcategories
         const categoriesWithChildren: CategoryWithChildren[] = await Promise.all(
             (categories || []).map(async (category) => {
-                // Get subforums
-                const { data: subforums } = await supabase
-                    .from('forum_subforums')
-                    .select('*')
-                    .eq('category_id', category.id)
-                    .eq('is_active', true)
-                    .order('sort_order', { ascending: true })
-
                 // Get subcategories (direct children) - include slug și calculează statistici
                 const { data: subcategoriesRaw } = await supabase
                     .from('forum_subcategories')
@@ -78,6 +67,13 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
                 // Calculează statistici pentru fiecare subcategorie
                 const subcategories = await Promise.all(
                     (subcategoriesRaw || []).map(async (subcat) => {
+                        // Get subforums for this subcategory (NEW STRUCTURE: subforums are under subcategories)
+                        const { data: subforums } = await supabase
+                            .from('forum_subforums')
+                            .select('*')
+                            .eq('subcategory_id', subcat.id)
+                            .eq('is_active', true)
+                            .order('sort_order', { ascending: true })
                         // Count topics
                         const { count: topicCount } = await supabase
                             .from('forum_topics')
@@ -149,6 +145,17 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
                                 const month = (postDate.getMonth() + 1).toString().padStart(2, '0');
                                 const year = postDate.getFullYear();
 
+                                // Get subforum slug if topic is in a subforum
+                                let subforumSlug = null;
+                                if (topicData?.subforum_id) {
+                                    const { data: subforum } = await supabase
+                                        .from('forum_subforums')
+                                        .select('slug')
+                                        .eq('id', topicData.subforum_id)
+                                        .maybeSingle();
+                                    subforumSlug = subforum?.slug || null;
+                                }
+
                                 lastPost = {
                                     topicId: latestPost.topic_id,
                                     topicTitle,
@@ -158,16 +165,20 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
                                     date: isToday ? null : `${day}.${month}.${year}`,
                                     timeOnly: `${hours}:${minutes}`,
                                     postNumber: latestPost.post_number || null,
-                                    subcategorySlug: subcat.slug || null
+                                    categorySlug: category.slug || null,
+                                    subcategorySlug: subcat.slug || null,
+                                    subforumSlug: subforumSlug
                                 };
                             }
                         }
+
 
                         return {
                             ...subcat,
                             topicCount: topicCount || 0,
                             postCount: postCount || 0,
-                            lastPost
+                            lastPost,
+                            subforums: subforums || [] // Add subforums to subcategory (NEW STRUCTURE)
                         };
                     })
                 )
@@ -178,7 +189,7 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
 
                 return {
                     ...category,
-                    subforums: subforums || [],
+                    subforums: [], // Empty array - subforums are now under subcategories, not categories
                     subcategories: subcategories || [],
                     totalTopics,
                     totalPosts,
@@ -337,17 +348,25 @@ export async function reorderCategories(
  * Create subforum (admin only)
  */
 export async function createSubforum(params: {
-    category_id: string
+    subcategory_id: string  // Changed from category_id to subcategory_id (NEW STRUCTURE)
     name: string
     description?: string
     icon?: string
     sort_order?: number
 }): Promise<ApiResponse<ForumSubforum>> {
     try {
+        // Get category_id from subcategory for reference
+        const { data: subcategory } = await supabase
+            .from('forum_subcategories')
+            .select('category_id')
+            .eq('id', params.subcategory_id)
+            .single()
+
         const { data, error } = await supabase
             .from('forum_subforums')
             .insert({
-                category_id: params.category_id,
+                subcategory_id: params.subcategory_id,
+                category_id: subcategory?.category_id || null,  // Optional reference
                 name: params.name,
                 description: params.description,
                 icon: params.icon,
@@ -362,6 +381,58 @@ export async function createSubforum(params: {
         }
 
         return { data }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Update subforum (admin only)
+ */
+export async function updateSubforum(
+    subforumId: string,
+    params: {
+        name?: string
+        description?: string
+        icon?: string
+        sort_order?: number
+        is_active?: boolean
+        subcategory_id?: string
+    }
+): Promise<ApiResponse<ForumSubforum>> {
+    try {
+        const { data, error } = await supabase
+            .from('forum_subforums')
+            .update(params)
+            .eq('id', subforumId)
+            .select()
+            .single()
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Delete subforum (soft delete - set is_active = false)
+ */
+export async function deleteSubforum(subforumId: string): Promise<ApiResponse<void>> {
+    try {
+        const { error } = await supabase
+            .from('forum_subforums')
+            .update({ is_active: false })
+            .eq('id', subforumId)
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data: undefined }
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
     }
@@ -398,6 +469,58 @@ export async function getSubcategories(
         }
 
         return { data: data || [] }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Update subcategory (admin only)
+ */
+export async function updateSubcategory(
+    subcategoryId: string,
+    params: {
+        name?: string
+        description?: string
+        icon?: string
+        moderator_only?: boolean
+        sort_order?: number
+        is_active?: boolean
+    }
+): Promise<ApiResponse<ForumSubcategory>> {
+    try {
+        const { data, error } = await supabase
+            .from('forum_subcategories')
+            .update(params)
+            .eq('id', subcategoryId)
+            .select()
+            .single()
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Delete subcategory (soft delete - set is_active = false)
+ */
+export async function deleteSubcategory(subcategoryId: string): Promise<ApiResponse<void>> {
+    try {
+        const { error } = await supabase
+            .from('forum_subcategories')
+            .update({ is_active: false })
+            .eq('id', subcategoryId)
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data: undefined }
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
     }

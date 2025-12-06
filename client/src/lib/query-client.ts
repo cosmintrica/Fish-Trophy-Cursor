@@ -14,10 +14,10 @@ export const queryClient = new QueryClient({
     queries: {
       // Stale time - cât timp datele sunt considerate "fresh" (similar cu SWR dedupingInterval)
       // Datele sunt returnate instant din cache dacă sunt "fresh"
-      staleTime: 5 * 60 * 1000, // 5 minute - datele sunt fresh mai mult timp (cache mai persistent)
+      staleTime: 30 * 1000, // 30 secunde - cache scurt
       
       // Cache time - cât timp datele rămân în cache după ce nu mai sunt folosite
-      gcTime: 10 * 60 * 1000, // 10 minute - mai lung pentru cache persistence între navigări
+      gcTime: 2 * 60 * 1000, // 2 minute - cache scurt
       
       // Retry logic - doar pentru erori de rețea, nu pentru 404/400
       retry: (failureCount, error: any) => {
@@ -61,8 +61,8 @@ export const queryClient = new QueryClient({
  * Helper functions pentru generarea query keys
  */
 export const queryKeys = {
-  topics: (subcategoryId: string, page = 1, pageSize = 20) => 
-    ['topics', subcategoryId, page, pageSize] as const,
+  topics: (id: string, page = 1, pageSize = 20, type: 'subcategory' | 'subforum' = 'subcategory') => 
+    ['topics', type, id, page, pageSize] as const,
   
   posts: (topicId: string, page = 1, pageSize = 20) => 
     ['posts', topicId, page, pageSize] as const,
@@ -111,5 +111,9 @@ export const queryKeys = {
   
   // Forum user profile
   forumUserProfile: (userId: string) => ['forum-user-profile', userId] as const,
+  
+  // Subcategory or subforum by slug
+  subcategoryOrSubforum: (categorySlug: string, potentialSlug: string) => 
+    ['subcategory-or-subforum', categorySlug, potentialSlug] as const,
 }
 

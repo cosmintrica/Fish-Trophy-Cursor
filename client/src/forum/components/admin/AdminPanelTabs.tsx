@@ -10,6 +10,7 @@ import { ChevronDown } from 'lucide-react';
 
 export type AdminTab = 
   | 'dashboard' 
+  | 'categorii'
   | 'moderare' 
   | 'reputatie' 
   | 'badges' 
@@ -29,6 +30,7 @@ export default function AdminPanelTabs({ activeTab, onTabChange }: AdminPanelTab
 
   const tabs: { id: AdminTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'categorii', label: 'Categorii', icon: '📁' },
     { id: 'moderare', label: 'Moderare', icon: '🛡️' },
     { id: 'reputatie', label: 'Reputație', icon: '⭐' },
     { id: 'badges', label: 'Badge-uri', icon: '🏆' },

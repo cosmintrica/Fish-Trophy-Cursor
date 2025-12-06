@@ -6,6 +6,7 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
 import AdminPanelTabs, { AdminTab } from '../components/admin/AdminPanelTabs';
 import AdminDashboard from '../components/admin/AdminDashboard';
+import AdminCategories from '../components/admin/AdminCategories';
 import AdminModeration from '../components/admin/AdminModeration';
 import AdminReputation from '../components/admin/AdminReputation';
 import AdminBadges from '../components/admin/AdminBadges';
@@ -116,6 +117,8 @@ export default function AdminForum() {
     switch (activeTab) {
       case 'dashboard':
         return <AdminDashboard />;
+      case 'categorii':
+        return <AdminCategories />;
       case 'moderare':
         return <AdminModeration />;
       case 'reputatie':

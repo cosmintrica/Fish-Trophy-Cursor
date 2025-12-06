@@ -1,6 +1,6 @@
 /**
  * Forum BBCode Parser
- * Parses custom BBCode tags for fish records, gear, and quotes
+ * Parses custom BBCode tags for fish records, gear, quotes, videos, images, and text formatting
  */
 
 import type { BBCodeParseResult } from './types'
@@ -25,112 +25,415 @@ const BB_CODE_PATTERNS = {
 // ============================================
 
 /**
- * Parse BBCode and convert to HTML
- */
-export function parseBBCode(content: string): BBCodeParseResult {
-    let html = content
-    const embeds: BBCodeParseResult['embeds'] = {
-        records: [],
-        gear: [],
-        quotes: []
-    }
-
-    // Parse [record] tags
-    html = html.replace(BB_CODE_PATTERNS.record, (match, recordId) => {
-        embeds.records.push(recordId)
-        return `<div class="bbcode-record-embed" data-record-id="${recordId}">
-      <div class="loading">Loading record ${recordId}...</div>
-    </div>`
-    })
-
-    // Parse [gear] tags
-    html = html.replace(BB_CODE_PATTERNS.gear, (match, gearId) => {
-        embeds.gear.push(gearId)
-        return `<div class="bbcode-gear-embed" data-gear-id="${gearId}">
-      <div class="loading">Loading gear ${gearId}...</div>
-    </div>`
-    })
-
-    // Parse [quote] tags
-    html = html.replace(BB_CODE_PATTERNS.quote, (match, username, postId, text) => {
-        embeds.quotes.push({ user: username, post_id: postId, text })
-        return `<blockquote class="bbcode-quote" data-post-id="${postId}">
-      <div class="quote-header">
-        <span class="quote-author">${escapeHtml(username)}</span>
-        <a href="/forum/post/${postId}" class="quote-link">Vezi postare</a>
-      </div>
-      <div class="quote-content">${escapeHtml(text)}</div>
-    </blockquote>`
-    })
-
-    // Parse video embeds (YouTube)
-    html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
-        return `<div class="bbcode-video youtube">
-      <iframe
-        src="https://www.youtube.com/embed/${videoId}"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>`
-    })
-
-    // Parse video embeds (Vimeo)
-    html = html.replace(BB_CODE_PATTERNS.video_vimeo, (match, fullUrl, videoId) => {
-        return `<div class="bbcode-video vimeo">
-      <iframe
-        src="https://player.vimeo.com/video/${videoId}"
-        frameborder="0"
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>`
-    })
-
-    // Auto-detect YouTube links (without tags)
-    html = html.replace(BB_CODE_PATTERNS.auto_youtube, (match, fullUrl, videoId) => {
-        // Only convert if not already in an embed
-        if (html.includes(`youtube.com/embed/${videoId}`)) {
-            return match
-        }
-        return `<div class="bbcode-video youtube auto-detected">
-      <iframe
-        src="https://www.youtube.com/embed/${videoId}"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>`
-    })
-
-    // Auto-detect Vimeo links (without tags)
-    html = html.replace(BB_CODE_PATTERNS.auto_vimeo, (match, fullUrl, videoId) => {
-        if (html.includes(`vimeo.com/video/${videoId}`)) {
-            return match
-        }
-        return `<div class="bbcode-video vimeo auto-detected">
-      <iframe
-        src="https://player.vimeo.com/video/${videoId}"
-        frameborder="0"
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-    </div>`
-    })
-
-    // Convert line breaks
-    html = html.replace(/\n/g, '<br>')
-
-    return { html, embeds }
-}
-
-/**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text: string): string {
     const div = document.createElement('div')
     div.textContent = text
     return div.innerHTML
+}
+
+/**
+ * Parse quote content recursively to display images, videos, formatting, etc.
+ * This function parses BBCode within quotes but makes media smaller
+ */
+function parseQuoteContent(content: string): string {
+    let html = content
+    const replacements: Array<{ original: string; replacement: string }> = []
+    
+    // Parse images in quotes (smaller)
+    html = html.replace(/\[img\](.*?)\[\/img\]/gi, (match, url) => {
+        const cleanUrl = url.trim()
+        const replacement = `<div class="bbcode-image-container bbcode-quote-media">
+      <img src="${escapeHtml(cleanUrl)}" alt="Imagine" class="bbcode-image bbcode-quote-image" onerror="this.style.display='none'; this.nextElementSibling?.style.display='block';" />
+      <div style="display: none; color: #dc2626; font-size: 0.75rem; padding: 0.25rem; background: rgba(220, 38, 38, 0.1); border-radius: 0.25rem; margin: 0.25rem 0;">Eroare: Imaginea nu poate fi încărcată</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    
+    // Parse videos in quotes (smaller)
+    html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
+        const replacement = `<div class="bbcode-video youtube bbcode-quote-media">
+      <iframe
+        src="https://www.youtube.com/embed/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    
+    html = html.replace(BB_CODE_PATTERNS.video_vimeo, (match, fullUrl, videoId) => {
+        const replacement = `<div class="bbcode-video vimeo bbcode-quote-media">
+      <iframe
+        src="https://player.vimeo.com/video/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    
+    // Parse links
+    html = html.replace(/\[url=([^\]]+)\](.*?)\[\/url\]/gi, (match, url, text) => {
+        const replacement = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="bbcode-link">${escapeHtml(text)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[url\](.*?)\[\/url\]/gi, (match, url) => {
+        const replacement = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="bbcode-link">${escapeHtml(url)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    
+    // Parse formatting
+    html = html.replace(/\[b\](.*?)\[\/b\]/gi, (match, text) => {
+        const replacement = `<strong class="bbcode-bold">${escapeHtml(text)}</strong>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[i\](.*?)\[\/i\]/gi, (match, text) => {
+        const replacement = `<em class="bbcode-italic">${escapeHtml(text)}</em>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[u\](.*?)\[\/u\]/gi, (match, text) => {
+        const replacement = `<u class="bbcode-underline">${escapeHtml(text)}</u>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[s\](.*?)\[\/s\]/gi, (match, text) => {
+        const replacement = `<s class="bbcode-strikethrough">${escapeHtml(text)}</s>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    
+    // Protect placeholders
+    const placeholderMap = new Map<string, string>()
+    replacements.forEach((repl, index) => {
+        const placeholder = `__QUOTE_REPLACEMENT_${index}__`
+        const safePlaceholder = `__QUOTE_SAFE_${index}__`
+        placeholderMap.set(safePlaceholder, repl.replacement)
+        html = html.replace(placeholder, safePlaceholder)
+    })
+    
+    // Convert line breaks
+    const brPlaceholder = '__QUOTE_BR_PLACEHOLDER__'
+    html = html.replace(/\n/g, brPlaceholder)
+    
+    // Escape remaining text
+    const escapedHtml = escapeHtml(html)
+    
+    // Restore safe placeholders
+    let finalHtml = escapedHtml
+    placeholderMap.forEach((replacement, safePlaceholder) => {
+        const escapedPlaceholder = escapeHtml(safePlaceholder)
+        finalHtml = finalHtml.replace(escapedPlaceholder, replacement)
+    })
+    
+    // Restore <br> tags
+    finalHtml = finalHtml.replace(new RegExp(escapeHtml(brPlaceholder), 'g'), '<br>')
+    
+    return finalHtml
+}
+
+/**
+ * Parse BBCode and convert to HTML
+ * Strategy: Process BBCode tags first, then escape remaining text
+ * 
+ * IMPORTANT: If content already contains HTML (like <iframe>), it means it was
+ * already processed or saved as HTML. In that case, we should return it as-is
+ * (with proper sanitization) instead of trying to parse BBCode.
+ * 
+ * @param content - BBCode content to parse
+ * @param options - Optional parameters for generating permalinks in quotes
+ */
+export function parseBBCode(
+    content: string,
+    options?: {
+        categorySlug?: string;
+        subcategorySlug?: string;
+        topicSlug?: string;
+        getPostPermalink?: (postId: string) => string;
+    }
+): BBCodeParseResult {
+    // Check if content already contains HTML tags (like <iframe>, <div>, etc.)
+    // If it does, it's likely already HTML and shouldn't be processed as BBCode
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
+    
+    // If content has HTML tags but no BBCode tags, return as-is (already processed)
+    const hasBBCodeTags = /\[(video|img|url|b|i|u|s|h[1-3]|list|code|quote|record|gear)/i.test(content);
+    
+    if (hasHtmlTags && !hasBBCodeTags) {
+        // Content is already HTML, return as-is (but still escape for security)
+        // Actually, if it's already HTML from our parser, we should trust it
+        // But to be safe, we'll still sanitize it
+        return {
+            html: content, // Return as-is if it's already HTML
+            embeds: {
+                records: [],
+                gear: [],
+                quotes: []
+            }
+        };
+    }
+    
+    let html = content
+    
+    // Debug: log content to see what we're parsing
+    if (content.includes('[video]') || content.includes('youtube') || content.includes('youtu.be')) {
+        console.log('[BBCode Parser] Parsing content:', content.substring(0, 200));
+    }
+    const embeds: BBCodeParseResult['embeds'] = {
+        records: [],
+        gear: [],
+        quotes: []
+    }
+
+    // Store positions of BBCode tags to preserve them during escape
+    const replacements: Array<{ original: string; replacement: string }> = []
+
+    // Parse [record] tags
+    html = html.replace(BB_CODE_PATTERNS.record, (match, recordId) => {
+        embeds.records.push(recordId)
+        const replacement = `<div class="bbcode-record-embed" data-record-id="${escapeHtml(recordId)}">
+      <div class="loading">Loading record ${escapeHtml(recordId)}...</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse [gear] tags
+    html = html.replace(BB_CODE_PATTERNS.gear, (match, gearId) => {
+        embeds.gear.push(gearId)
+        const replacement = `<div class="bbcode-gear-embed" data-gear-id="${escapeHtml(gearId)}">
+      <div class="loading">Loading gear ${escapeHtml(gearId)}...</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse [quote] tags - Parsează recursiv conținutul pentru a afișa poze, videouri, etc.
+    html = html.replace(BB_CODE_PATTERNS.quote, (match, username, postId, text) => {
+        embeds.quotes.push({ user: username, post_id: postId, text })
+        // Parsează recursiv conținutul quote-ului pentru a afișa poze, videouri, formatări
+        const parsedQuoteContent = parseQuoteContent(text)
+        
+        // Generează permalink-ul corect
+        let permalink = `/forum/post/${escapeHtml(postId)}`; // Fallback la UUID
+        if (options?.getPostPermalink) {
+            permalink = options.getPostPermalink(postId);
+        } else if (options?.categorySlug && options?.subcategorySlug && options?.topicSlug) {
+            // Construim permalink-ul manual dacă avem slug-urile
+            // Format: /forum/{categorySlug}/{subcategorySlug}/{topicSlug}#post{postNumber}
+            // Dar nu avem postNumber aici, deci folosim postId ca fallback
+            permalink = `/forum/${options.categorySlug}/${options.subcategorySlug}/${options.topicSlug}#post-${escapeHtml(postId)}`;
+        }
+        
+        const replacement = `<blockquote class="bbcode-quote" data-post-id="${escapeHtml(postId)}">
+      <div class="quote-header">
+        <span class="quote-author">${escapeHtml(username)}</span>
+        <a href="${permalink}" class="quote-link">Vezi postare</a>
+      </div>
+      <div class="quote-content">${parsedQuoteContent}</div>
+    </blockquote>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse video embeds (YouTube)
+    html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
+        console.log('[BBCode Parser] Found YouTube video:', videoId, 'Match:', match);
+        const replacement = `<div class="bbcode-video youtube">
+      <iframe
+        src="https://www.youtube.com/embed/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse video embeds (Vimeo)
+    html = html.replace(BB_CODE_PATTERNS.video_vimeo, (match, fullUrl, videoId) => {
+        const replacement = `<div class="bbcode-video vimeo">
+      <iframe
+        src="https://player.vimeo.com/video/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Auto-detect YouTube links (without tags)
+    html = html.replace(BB_CODE_PATTERNS.auto_youtube, (match, fullUrl, videoId) => {
+        // Only convert if not already in an embed
+        if (!html.includes(`youtube.com/embed/${videoId}`)) {
+            const replacement = `<div class="bbcode-video youtube auto-detected">
+      <iframe
+        src="https://www.youtube.com/embed/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+            replacements.push({ original: match, replacement })
+            return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+        }
+        return match
+    })
+
+    // Auto-detect Vimeo links (without tags)
+    html = html.replace(BB_CODE_PATTERNS.auto_vimeo, (match, fullUrl, videoId) => {
+        if (!html.includes(`vimeo.com/video/${videoId}`)) {
+            const replacement = `<div class="bbcode-video vimeo auto-detected">
+      <iframe
+        src="https://player.vimeo.com/video/${escapeHtml(videoId)}"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>`
+            replacements.push({ original: match, replacement })
+            return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+        }
+        return match
+    })
+
+    // Parse images [img]url[/img]
+    html = html.replace(/\[img\](.*?)\[\/img\]/gi, (match, url) => {
+        const cleanUrl = url.trim()
+        const replacement = `<div class="bbcode-image-container">
+      <img src="${escapeHtml(cleanUrl)}" alt="Imagine" class="bbcode-image" onerror="this.style.display='none'; this.nextElementSibling?.style.display='block';" />
+      <div style="display: none; color: #dc2626; font-size: 0.875rem; padding: 0.5rem; background: rgba(220, 38, 38, 0.1); border-radius: 0.375rem; margin: 0.5rem 0;">Eroare: Imaginea nu poate fi încărcată</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse links [url=...]text[/url] and [url]url[/url]
+    html = html.replace(/\[url=([^\]]+)\](.*?)\[\/url\]/gi, (match, url, text) => {
+        const replacement = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="bbcode-link">${escapeHtml(text)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[url\](.*?)\[\/url\]/gi, (match, url) => {
+        const replacement = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="bbcode-link">${escapeHtml(url)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse headings [h1], [h2], [h3]
+    html = html.replace(/\[h1\](.*?)\[\/h1\]/gi, (match, text) => {
+        const replacement = `<h1 class="bbcode-heading bbcode-h1">${escapeHtml(text)}</h1>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[h2\](.*?)\[\/h2\]/gi, (match, text) => {
+        const replacement = `<h2 class="bbcode-heading bbcode-h2">${escapeHtml(text)}</h2>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[h3\](.*?)\[\/h3\]/gi, (match, text) => {
+        const replacement = `<h3 class="bbcode-heading bbcode-h3">${escapeHtml(text)}</h3>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse lists [list] and [list=1]
+    html = html.replace(/\[list\](.*?)\[\/list\]/gis, (match, content) => {
+        const items = content.split(/\[\*\]/).filter((item: string) => item.trim())
+        const listItems = items.map((item: string) => `<li class="bbcode-list-item">${escapeHtml(item.trim())}</li>`).join('')
+        const replacement = `<ul class="bbcode-list bbcode-list-unordered">${listItems}</ul>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[list=1\](.*?)\[\/list\]/gis, (match, content) => {
+        const items = content.split(/\[\*\]/).filter((item: string) => item.trim())
+        const listItems = items.map((item: string) => `<li class="bbcode-list-item">${escapeHtml(item.trim())}</li>`).join('')
+        const replacement = `<ol class="bbcode-list bbcode-list-ordered">${listItems}</ol>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse code blocks [code]...[/code]
+    html = html.replace(/\[code\](.*?)\[\/code\]/gis, (match, content) => {
+        const replacement = `<pre class="bbcode-code-block"><code>${escapeHtml(content)}</code></pre>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse inline formatting - trebuie după toate celelalte pentru a nu afecta tag-urile
+    html = html.replace(/\[b\](.*?)\[\/b\]/gi, (match, text) => {
+        const replacement = `<strong class="bbcode-bold">${escapeHtml(text)}</strong>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[i\](.*?)\[\/i\]/gi, (match, text) => {
+        const replacement = `<em class="bbcode-italic">${escapeHtml(text)}</em>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[u\](.*?)\[\/u\]/gi, (match, text) => {
+        const replacement = `<u class="bbcode-underline">${escapeHtml(text)}</u>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+    html = html.replace(/\[s\](.*?)\[\/s\]/gi, (match, text) => {
+        const replacement = `<s class="bbcode-strikethrough">${escapeHtml(text)}</s>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Now escape the remaining text (everything that's not a placeholder)
+    // But first, we need to protect placeholders from being escaped
+    // We'll use a temporary marker that won't be escaped
+    const placeholderMap = new Map<string, string>()
+    replacements.forEach((repl, index) => {
+        const placeholder = `__BBCODE_REPLACEMENT_${index}__`
+        const safePlaceholder = `__SAFE_PLACEHOLDER_${index}__`
+        placeholderMap.set(safePlaceholder, repl.replacement)
+        html = html.replace(placeholder, safePlaceholder)
+    })
+
+    // Convert line breaks to placeholders BEFORE escaping
+    // This way <br> tags won't be escaped
+    const brPlaceholder = '__BBCODE_BR_PLACEHOLDER__'
+    html = html.replace(/\n/g, brPlaceholder)
+
+    // Now escape the remaining text (but not the safe placeholders)
+    // We need to escape HTML but preserve our safe placeholders
+    const escapedHtml = escapeHtml(html)
+    
+    // Restore safe placeholders (they contain valid HTML, don't escape them)
+    let finalHtml = escapedHtml
+    placeholderMap.forEach((replacement, safePlaceholder) => {
+        // Escape the safe placeholder itself so it doesn't get escaped
+        const escapedPlaceholder = escapeHtml(safePlaceholder)
+        finalHtml = finalHtml.replace(escapedPlaceholder, replacement)
+    })
+    
+    // Restore <br> tags AFTER escaping (so they're not escaped)
+    finalHtml = finalHtml.replace(new RegExp(escapeHtml(brPlaceholder), 'g'), '<br>')
+    
+    html = finalHtml
+
+    // Debug: log final HTML if it contains video
+    if (html.includes('bbcode-video') || html.includes('youtube.com/embed')) {
+        console.log('[BBCode Parser] Final HTML (first 500 chars):', html.substring(0, 500));
+    }
+
+    return { html, embeds }
 }
 
 /**
@@ -165,6 +468,15 @@ export function stripBBCode(content: string): string {
     stripped = stripped.replace(/\[gear\][\w-]+\[\/gear\]/gi, '[Echipament]')
     stripped = stripped.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '[Quote]')
     stripped = stripped.replace(/\[video\][^\[]+\[\/video\]/gi, '[Video]')
+    stripped = stripped.replace(/\[img\][^\[]+\[\/img\]/gi, '[Imagine]')
+    stripped = stripped.replace(/\[url[^\]]*\][^\[]+\[\/url\]/gi, '[Link]')
+    stripped = stripped.replace(/\[b\](.*?)\[\/b\]/gi, '$1')
+    stripped = stripped.replace(/\[i\](.*?)\[\/i\]/gi, '$1')
+    stripped = stripped.replace(/\[u\](.*?)\[\/u\]/gi, '$1')
+    stripped = stripped.replace(/\[s\](.*?)\[\/s\]/gi, '$1')
+    stripped = stripped.replace(/\[h[1-3]\](.*?)\[\/h[1-3]\]/gi, '$1')
+    stripped = stripped.replace(/\[list[^\]]*\](.*?)\[\/list\]/gis, '$1')
+    stripped = stripped.replace(/\[code\](.*?)\[\/code\]/gis, '$1')
 
     return stripped.trim()
 }

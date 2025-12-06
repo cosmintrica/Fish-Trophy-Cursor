@@ -17,19 +17,26 @@ import type {
 // ============================================
 
 /**
- * Get topics for a subcategory (paginated)
+ * Get topics for a subcategory or subforum (paginated)
  * OPTIMIZED: Uses RPC function to get topics with authors in 1 query
  */
 export async function getTopics(
-    subcategoryId: string,
+    subcategoryId?: string,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
+    subforumId?: string
 ): Promise<ApiResponse<PaginatedResponse<ForumTopic & { author_username?: string; author_avatar?: string; last_post_author?: string; slug?: string }>>> {
     try {
+        // Validate: must have either subcategoryId or subforumId
+        if (!subcategoryId && !subforumId) {
+            return { error: { message: 'Must specify either subcategoryId or subforumId', code: 'INVALID_PARAMS' } };
+        }
+
         // Try optimized RPC first (1 query instead of 2)
         const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_topics_with_authors', {
-                p_subcategory_id: subcategoryId,
+                p_subcategory_id: subcategoryId || null,
+                p_subforum_id: subforumId || null,
                 p_page: page,
                 p_page_size: pageSize
             });
@@ -47,9 +54,7 @@ export async function getTopics(
             };
         }
 
-        // Fallback to old method if RPC not available
-        console.warn('RPC get_topics_with_authors not available, using fallback method');
-        return getTopicsFallback(subcategoryId, page, pageSize);
+        return getTopicsFallback(subcategoryId || subforumId || '', page, pageSize, subforumId ? 'subforum' : 'subcategory');
 
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
@@ -60,17 +65,25 @@ export async function getTopics(
  * Fallback method for getTopics (original N+1 pattern)
  */
 async function getTopicsFallback(
-    subcategoryId: string,
+    id: string,
     page: number,
-    pageSize: number
+    pageSize: number,
+    type: 'subcategory' | 'subforum' = 'subcategory'
 ): Promise<ApiResponse<PaginatedResponse<ForumTopic & { author_username?: string }>>> {
     const offset = (page - 1) * pageSize
 
-    const { data, error, count } = await supabase
+    let query = supabase
         .from('forum_topics')
         .select('*', { count: 'exact' })
-        .eq('subcategory_id', subcategoryId)
-        .eq('is_deleted', false)
+        .eq('is_deleted', false);
+
+    if (type === 'subforum') {
+        query = query.eq('subforum_id', id);
+    } else {
+        query = query.eq('subcategory_id', id).is('subforum_id', null);
+    }
+
+    const { data, error, count } = await query
         .order('is_pinned', { ascending: false })
         .order('last_post_at', { ascending: false, nullsFirst: false })
         .range(offset, offset + pageSize - 1)
@@ -126,7 +139,13 @@ async function getTopicsFallback(
  * @param topicId - UUID sau slug al topicului
  * @param subcategorySlug - Slug-ul subcategoriei (opțional, pentru a evita duplicate)
  */
-export async function getTopicById(topicId: string, subcategorySlug?: string): Promise<ApiResponse<ForumTopic & {
+export async function getTopicById(
+    topicId: string, 
+    subcategorySlug?: string, 
+    subforumSlug?: string,
+    subcategoryId?: string,
+    subforumId?: string
+): Promise<ApiResponse<ForumTopic & {
     subcategory_slug?: string;
     subcategory_name?: string;
     category_slug?: string;
@@ -134,6 +153,11 @@ export async function getTopicById(topicId: string, subcategorySlug?: string): P
     category_id?: string;
 }>> {
     try {
+        // IMPORTANT: Dacă avem ID-uri directe (din cache), le folosim pentru o căutare mai precisă
+        if (subcategoryId || subforumId) {
+            return getTopicByIdFallback(topicId, subcategorySlug, subforumSlug, subcategoryId, subforumId);
+        }
+
         // Try optimized RPC first (1 query instead of 4-5)
         const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_topic_with_hierarchy', {
@@ -161,7 +185,7 @@ export async function getTopicById(topicId: string, subcategorySlug?: string): P
 
         // Fallback to old method if RPC not available
         console.warn('RPC get_topic_with_hierarchy not available, using fallback');
-        return getTopicByIdFallback(topicId, subcategorySlug);
+        return getTopicByIdFallback(topicId, subcategorySlug, subforumSlug, subcategoryId, subforumId);
 
     } catch (error) {
         return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
@@ -171,44 +195,85 @@ export async function getTopicById(topicId: string, subcategorySlug?: string): P
 /**
  * Fallback method for getTopicById (used when RPC is not available)
  */
-async function getTopicByIdFallback(topicId: string, subcategorySlug?: string): Promise<ApiResponse<ForumTopic & { subcategory_slug?: string }>> {
+async function getTopicByIdFallback(
+    topicId: string, 
+    subcategorySlug?: string, 
+    subforumSlug?: string,
+    subcategoryIdParam?: string,
+    subforumIdParam?: string
+): Promise<ApiResponse<ForumTopic & { subcategory_slug?: string }>> {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(topicId);
 
     let data, error;
+    let subcategoryId: string | null = subcategoryIdParam || null;
+    let subforumId: string | null = subforumIdParam || null;
+
+    // IMPORTANT: Dacă nu avem ID-uri directe, le obținem din slug-uri
+    if (!subcategoryId && !subforumId) {
+        // Detectăm automat dacă slug-ul este subcategorie sau subforum
+        if (subcategorySlug || subforumSlug) {
+            const slugToCheck = subcategorySlug || subforumSlug;
+            
+            // Mai întâi verificăm dacă e subforum
+            if (slugToCheck) {
+                const { data: subforumData } = await supabase
+                    .from('forum_subforums')
+                    .select('id, subcategory_id')
+                    .eq('slug', slugToCheck)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                
+                if (subforumData) {
+                    subforumId = subforumData.id;
+                    subcategoryId = subforumData.subcategory_id;
+                } else {
+                    // Dacă nu e subforum, verificăm dacă e subcategorie
+                    const { data: subcategoryData } = await supabase
+                        .from('forum_subcategories')
+                        .select('id')
+                        .eq('slug', slugToCheck)
+                        .eq('is_active', true)
+                        .maybeSingle();
+                    
+                    if (subcategoryData) {
+                        subcategoryId = subcategoryData.id;
+                    }
+                }
+            }
+        }
+    }
 
     if (isUUID) {
-        const result = await supabase
+        // Pentru UUID, folosim ID-urile directe
+        let query = supabase
             .from('forum_topics')
             .select('*')
             .eq('id', topicId)
-            .eq('is_deleted', false)
-            .maybeSingle();
+            .eq('is_deleted', false);
+        
+        if (subforumId) {
+            query = query.eq('subforum_id', subforumId);
+        } else if (subcategoryId) {
+            query = query.eq('subcategory_id', subcategoryId).is('subforum_id', null);
+        }
+        
+        const result = await query.maybeSingle();
         data = result.data;
         error = result.error;
     } else {
-        let subcategoryId: string | null = null;
-
-        if (subcategorySlug) {
-            const { data: subcategory } = await supabase
-                .from('forum_subcategories')
-                .select('id')
-                .eq('slug', subcategorySlug)
-                .eq('is_active', true)
-                .maybeSingle();
-
-            if (subcategory) {
-                subcategoryId = subcategory.id;
-            }
-        }
-
+        // Pentru slug, folosim ID-urile pentru o căutare precisă
         let query = supabase
             .from('forum_topics')
             .select(`*, subcategory:forum_subcategories!subcategory_id(slug)`)
             .eq('slug', topicId)
             .eq('is_deleted', false);
 
-        if (subcategoryId) {
-            query = query.eq('subcategory_id', subcategoryId);
+        if (subforumId) {
+            // Dacă avem subforum, caută topicul în subforum
+            query = query.eq('subforum_id', subforumId);
+        } else if (subcategoryId) {
+            // Dacă avem doar subcategorie, caută topicul direct în subcategorie (fără subforum)
+            query = query.eq('subcategory_id', subcategoryId).is('subforum_id', null);
         }
 
         const result = await query.limit(1).maybeSingle();

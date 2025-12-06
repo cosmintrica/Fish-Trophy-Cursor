@@ -1,4 +1,4 @@
--- Migration: Create batch function for checking multiple subcategories unread status
+-- Migration 67: Create batch function for checking multiple subcategories unread status
 -- This reduces N+1 queries to a single query for homepage loading
 
 -- Function to check unread status for multiple subcategories at once
@@ -12,6 +12,16 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Security check: User can only check their own unread status (or admin can check anyone)
+  IF p_user_id != auth.uid() AND NOT EXISTS (
+    SELECT 1 FROM forum_users fu
+    JOIN forum_roles fr ON fu.role_id = fr.id
+    WHERE fu.user_id = auth.uid()
+      AND fr.name = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Access denied. You can only check your own unread status.';
+  END IF;
+  
   -- Returns a table with each subcategory and whether it has unread topics
   RETURN QUERY
   SELECT 

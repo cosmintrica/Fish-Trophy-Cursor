@@ -70,8 +70,14 @@ export interface ForumSubcategory {
     last_post?: {
       topicId: string;
       topicTitle: string;
+      topicSlug?: string;
       author: string;
       time: string;
+      date?: string | null;
+      timeOnly?: string;
+      postNumber?: number | null;
+      categorySlug?: string | null;
+      subcategorySlug?: string | null;
       created_at?: string;
       user_name?: string;
       topic_title?: string;
@@ -80,8 +86,14 @@ export interface ForumSubcategory {
   lastPost?: {
     topicId: string;
     topicTitle: string;
+    topicSlug?: string;
     author: string;
     time: string;
+    date?: string | null;
+    timeOnly?: string;
+    postNumber?: number | null;
+    categorySlug?: string | null;
+    subcategorySlug?: string | null;
     created_at?: string;
     user_name?: string;
     topic_title?: string;
@@ -108,8 +120,14 @@ export interface ForumCategory {
     last_post?: {
       topicId: string;
       topicTitle: string;
+      topicSlug?: string;
       author: string;
       time: string;
+      date?: string | null;
+      timeOnly?: string;
+      postNumber?: number | null;
+      categorySlug?: string | null;
+      subcategorySlug?: string | null;
       created_at?: string;
       user_name?: string;
       topic_title?: string;
@@ -118,8 +136,14 @@ export interface ForumCategory {
   lastPost?: {
     topicId: string;
     topicTitle: string;
+    topicSlug?: string;
     author: string;
     time: string;
+    date?: string | null;
+    timeOnly?: string;
+    postNumber?: number | null;
+    categorySlug?: string | null;
+    subcategorySlug?: string | null;
     created_at?: string;
     user_name?: string;
     topic_title?: string;

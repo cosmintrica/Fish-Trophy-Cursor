@@ -27,9 +27,10 @@ export function useCategories() {
             }
             return result.data || []
         },
-        staleTime: 5 * 60 * 1000, // 5 minute (categoriile nu se schimbă des)
+        staleTime: 5 * 60 * 1000, // 5 minute
         gcTime: 10 * 60 * 1000, // 10 minute
-        refetchOnWindowFocus: false, // Categoriile nu se schimbă des
+        refetchOnMount: false, // Categoriile se schimbă rar
+        refetchOnWindowFocus: false,
     })
 
     return {

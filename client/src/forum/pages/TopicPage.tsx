@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
 import { useTopic } from '../hooks/useTopics';
 import { usePosts, useCreatePost } from '../hooks/usePosts';
@@ -13,18 +13,27 @@ import type { ForumTopic, ForumPost } from '../types/forum';
 import { useMarkTopicAsRead } from '../hooks/useTopicReadStatus';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
 
 export default function TopicPage() {
   // Acceptă:
-  // - /:categorySlug/:subcategorySlug/:topicSlug (clean - complet)
+  // - /:categorySlug/:subforumSlug/:topicSlug (clean - subforum tratat ca subcategorie în URL)
+  // - /:categorySlug/:subcategorySlug/:topicSlug (clean - subcategorie)
   // - /:subcategorySlug/:topicSlug (legacy - pentru compatibilitate)
   // - /topic/:id (legacy)
-  const { topicId, topicSlug, subcategorySlug, categorySlug } = useParams<{ 
+  // IMPORTANT: subforumSlug este acum în subcategorySlug - detectăm automat dacă e subforum sau subcategorie
+  // IMPORTANT: Unificăm parametrii - potentialSlug poate fi subcategorie SAU subforum
+  const { topicId, topicSlug, subcategorySlug, subforumSlug, potentialSlug, categorySlug } = useParams<{ 
     topicId?: string; 
     topicSlug?: string; 
     subcategorySlug?: string;
+    subforumSlug?: string;
+    potentialSlug?: string; // Unificat pentru subcategorie/subforum
     categorySlug?: string;
   }>();
+  
+  // Determinăm slug-ul real (subcategorie sau subforum)
+  const actualSubcategoryOrSubforumSlug = potentialSlug || subforumSlug || subcategorySlug;
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const { showToast } = useToast();
@@ -40,12 +49,38 @@ export default function TopicPage() {
     return saved ? parseInt(saved, 10) : 20;
   });
 
+  // Multi-Quote System
+  const [isMultiQuoteMode, setIsMultiQuoteMode] = useState(false);
+  const [selectedQuotes, setSelectedQuotes] = useState<Set<string>>(new Set());
+  const insertQuotesRef = useRef<((quotes: Array<{ postId: string; author: string; content: string }>) => void) | null>(null);
+  const quickReplyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   // Folosește topicSlug dacă există (clean URL), altfel topicId (legacy)
   const topicIdentifier = topicSlug || topicId || '';
   
-  // Supabase hooks
-  // Folosim subcategorySlug pentru a evita duplicate (slug-ul nu e unic global)
-  const { topic, loading: topicLoading, error: topicError } = useTopic(topicIdentifier, subcategorySlug);
+  // IMPORTANT: Folosim hook-ul pentru a detecta automat dacă e subcategorie sau subforum
+  // Asta ne permite să folosim datele din cache și să găsim topicul corect
+  const { data: subcategoryOrSubforumData } = useSubcategoryOrSubforum(
+    categorySlug,
+    actualSubcategoryOrSubforumSlug
+  );
+  
+  // Determinăm subcategoryId și subforumId din datele din cache
+  const subcategoryIdFromCache = subcategoryOrSubforumData?.type === 'subcategory' 
+    ? subcategoryOrSubforumData.subcategory?.id 
+    : null;
+  const subforumIdFromCache = subcategoryOrSubforumData?.type === 'subforum'
+    ? subcategoryOrSubforumData.subforum?.id
+    : null;
+  
+  // Supabase hooks - folosim ID-urile din cache pentru o căutare precisă
+  const { topic, loading: topicLoading, error: topicError } = useTopic(
+    topicIdentifier, 
+    actualSubcategoryOrSubforumSlug, 
+    subforumIdFromCache ? actualSubcategoryOrSubforumSlug : undefined,
+    subcategoryIdFromCache || undefined,
+    subforumIdFromCache || undefined
+  );
   
   // IMPORTANT: Folosim topic.id (UUID) în loc de slug pentru usePosts
   // Astfel evităm duplicatele și erorile de "Topic not found"
@@ -77,42 +112,56 @@ export default function TopicPage() {
   }, []);
 
   // Scroll automat la hash când se încarcă pagina (ex: #post1, #post2)
-  // IMPORTANT: Nu scroll când se schimbă doar pageSize (doar când se schimbă hash-ul sau pagina)
+  // IMPORTANT: Scroll instant fără delay când posturile sunt încărcate
   const lastHashRef = useRef<string | null>(null);
   const lastPageRef = useRef<number>(page);
+  const scrollAttemptsRef = useRef<number>(0);
+  
   useEffect(() => {
-    if (posts.length > 0) {
-      const hash = window.location.hash;
-      const currentPage = page;
-      
-      // Scroll doar dacă:
-      // 1. Există hash-ul în URL
-      // 2. Hash-ul s-a schimbat SAU pagina s-a schimbat
-      const hashChanged = hash && hash !== lastHashRef.current;
+    const hash = window.location.hash;
+    const currentPage = page;
+    
+    if (posts.length > 0 && hash) {
+      const hashChanged = hash !== lastHashRef.current;
       const pageChanged = currentPage !== lastPageRef.current;
       
-      if (hash && (hashChanged || pageChanged)) {
-        // Așteaptă ca posturile să fie randate
-        const scrollTimeout = setTimeout(() => {
+      if (hashChanged || pageChanged) {
+        // Încearcă să găsească elementul și să facă scroll
+        // Reîncearcă de câteva ori dacă elementul nu este găsit imediat (poate se încarcă încă)
+        const attemptScroll = () => {
           const element = document.getElementById(hash.substring(1)); // Remove #
           if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll instant folosind scrollTo pentru a evita orice delay
+            const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
+            window.scrollTo({ top: elementTop - 100, behavior: 'auto' }); // -100 pentru offset
+            lastHashRef.current = hash;
+            lastPageRef.current = currentPage;
+            scrollAttemptsRef.current = 0;
+            return true;
           }
-        }, 200);
+          return false;
+        };
         
-        lastHashRef.current = hash;
-        lastPageRef.current = currentPage;
-        
-        return () => clearTimeout(scrollTimeout);
-      } else if (!hash) {
-        // Dacă nu mai există hash, resetează ref-ul
-        lastHashRef.current = null;
+        // Încearcă imediat
+        if (!attemptScroll()) {
+          // Dacă nu găsește, reîncearcă rapid (pentru cazul în care DOM-ul se încarcă)
+          scrollAttemptsRef.current = 0;
+          const retryInterval = setInterval(() => {
+            scrollAttemptsRef.current += 1;
+            if (attemptScroll() || scrollAttemptsRef.current > 10) {
+              clearInterval(retryInterval);
+            }
+          }, 50); // Reîncearcă la fiecare 50ms, maxim 10 ori (500ms)
+          
+          return () => clearInterval(retryInterval);
+        }
       }
-      
-      // Actualizează pagina curentă în ref
-      lastPageRef.current = currentPage;
+    } else if (!hash) {
+      lastHashRef.current = null;
     }
-  }, [posts.length, page]);
+    
+    lastPageRef.current = currentPage;
+  }, [posts.length, page, posts]); // Adăugăm posts în dependencies pentru a reîncerca când se schimbă
 
   // Nu mai folosim loading state - afișăm conținutul instant
 
@@ -301,15 +350,16 @@ export default function TopicPage() {
           paddingBottom: '0.25rem'
         }}>
           <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
-          {(categoryName || subcategoryName || displayTopic.title) && (
+          {(categoryName || subcategoryName || displayTopic.title || categorySlug) && (
             <>
               <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              {categoryName && (resolvedCategorySlug || categoryId) && (
+              {/* Folosim categorySlug direct din URL dacă este disponibil, altfel așteptăm datele */}
+              {(categorySlug || (categoryName && (resolvedCategorySlug || categoryId))) && (
                 <Link 
-                  to={resolvedCategorySlug ? `/forum/${resolvedCategorySlug}` : `/forum#category-${categoryId}`}
+                  to={categorySlug ? `/forum/${categorySlug}` : (resolvedCategorySlug ? `/forum/${resolvedCategorySlug}` : `/forum#category-${categoryId}`)}
                   style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                   onClick={(e) => {
-                    if (!resolvedCategorySlug && categoryId) {
+                    if (!categorySlug && !resolvedCategorySlug && categoryId) {
                       // Legacy: scroll la categorie pe homepage
                       e.preventDefault();
                       navigate('/forum');
@@ -322,16 +372,17 @@ export default function TopicPage() {
                     }
                   }}
                 >
-                  {categoryName}
+                  {categoryName || categorySlug}
                 </Link>
               )}
-              {categoryName && subcategoryName && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
-              {subcategoryName && resolvedSubcategorySlug && (
+              {(categorySlug || categoryName) && (subcategorySlug || subcategoryName) && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
+              {/* Folosim subcategorySlug direct din URL dacă este disponibil */}
+              {(subcategorySlug || (subcategoryName && resolvedSubcategorySlug)) && (
                 <Link 
-                  to={resolvedCategorySlug ? `/forum/${resolvedCategorySlug}/${resolvedSubcategorySlug}` : `/forum/${resolvedSubcategorySlug}`}
+                  to={subcategorySlug && categorySlug ? `/forum/${categorySlug}/${subcategorySlug}` : (resolvedCategorySlug ? `/forum/${resolvedCategorySlug}/${resolvedSubcategorySlug}` : `/forum/${resolvedSubcategorySlug}`)}
                   style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                 >
-                  {subcategoryName}
+                  {subcategoryName || subcategorySlug}
                 </Link>
               )}
               {subcategoryName && displayTopic.title && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
@@ -450,12 +501,65 @@ export default function TopicPage() {
             isOriginalPost={index === 0 && page === 1}
             postNumber={(post as any).post_number || null} // Post number REAL din database
             topicId={topic?.id || topicIdentifier}
+            categorySlug={categorySlug}
+            subcategorySlug={subcategorySlug}
+            topicSlug={topicSlug || (topic as any)?.slug}
             onRespectChange={(postId, delta, comment) => {
               console.log(`Respect ${delta > 0 ? 'oferit' : 'retras'} pentru ${post.author_username}: "${comment}"`);
               alert(`Ai ${delta > 0 ? 'oferit' : 'retras'} respect pentru ${post.author_username}!`);
             }}
-            onReply={() => console.log(`Reply to ${post.author_username}`)}
-            onQuote={() => console.log(`Quote ${post.author_username}`)}
+            onReply={() => {
+              // Focus pe QuickReplyBox
+              if (quickReplyTextareaRef.current) {
+                quickReplyTextareaRef.current.focus();
+                quickReplyTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            onQuote={(postId) => {
+              if (isMultiQuoteMode) {
+                // Toggle selecție în multi-quote mode
+                setSelectedQuotes(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(postId)) {
+                    newSet.delete(postId);
+                  } else {
+                    newSet.add(postId);
+                  }
+                  return newSet;
+                });
+              } else {
+                // Quote normal - inserare directă în editor
+                const selectedPost = posts.find(p => p.id === postId);
+                if (selectedPost && insertQuotesRef.current) {
+                  // Inserează quote-ul direct în editor
+                  insertQuotesRef.current([{
+                    postId: selectedPost.id,
+                    author: selectedPost.author_username || 'Unknown',
+                    content: selectedPost.content
+                  }]);
+                  // Focus pe QuickReplyBox
+                  if (quickReplyTextareaRef.current) {
+                    quickReplyTextareaRef.current.focus();
+                    quickReplyTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }
+              }
+            }}
+            isMultiQuoteMode={isMultiQuoteMode}
+            isQuoteSelected={selectedQuotes.has(post.id)}
+            onMultiQuoteToggle={(postId) => {
+              // Toggle selecție multi-quote
+              setSelectedQuotes(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(postId)) {
+                  newSet.delete(postId);
+                } else {
+                  newSet.add(postId);
+                }
+                return newSet;
+              });
+            }}
+            isMultiQuoteSelected={selectedQuotes.has(post.id)}
             onReputationChange={() => {
               // Reîncarcă postările pentru a actualiza reputația
               refetchPosts();
@@ -482,7 +586,40 @@ export default function TopicPage() {
             }}
             onPostCreated={() => {
               refetchPosts();
+              // Reset multi-quote după postare
+              setIsMultiQuoteMode(false);
+              setSelectedQuotes(new Set());
             }}
+            isMultiQuoteMode={isMultiQuoteMode}
+            selectedQuotesCount={selectedQuotes.size}
+            onToggleMultiQuote={() => {
+              setIsMultiQuoteMode(prev => !prev);
+              if (isMultiQuoteMode) {
+                // Dezactivează - șterge selecțiile
+                setSelectedQuotes(new Set());
+              }
+            }}
+            onInsertQuotes={(insertFn) => {
+              // Salvează funcția de inserare pentru a o folosi când se apasă butonul "Quote" sau "Postează"
+              insertQuotesRef.current = insertFn;
+            }}
+            onInsertSelectedQuotes={(quotes) => {
+              // Colectează posturile selectate și le inserează
+              const selectedPosts = posts.filter(p => selectedQuotes.has(p.id));
+              const quotesToInsert = selectedPosts.map(post => ({
+                postId: post.id,
+                author: post.author_username || 'Unknown',
+                content: post.content
+              }));
+              
+              if (insertQuotesRef.current && quotesToInsert.length > 0) {
+                insertQuotesRef.current(quotesToInsert);
+                // Reset selecțiile după inserare
+                setSelectedQuotes(new Set());
+                setIsMultiQuoteMode(false);
+              }
+            }}
+            focusRef={quickReplyTextareaRef}
           />
         )}
 

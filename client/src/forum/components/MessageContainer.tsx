@@ -3,15 +3,21 @@
  * Refactorizat: folosește componente separate pentru claritate și mentenanță
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Save, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { parseBBCode } from '../../services/forum/bbcode';
+import { useUpdatePost } from '../hooks/usePosts';
+import { useToast } from '../contexts/ToastContext';
+import ImageZoom from './ImageZoom';
+import EditorToolbar from './EditorToolbar';
 import MessageSidebar from './message/MessageSidebar';
 import MessageActions from './message/MessageActions';
 import GearModal from './message/GearModal';
 import EditInfo from './message/EditInfo';
-import { DeletePostModal, EditPostModal } from './message/MessageModals';
+import { DeletePostModal } from './message/MessageModals';
 import type { MessagePost } from './message/types';
 
 interface MessageContainerProps {
@@ -34,12 +40,20 @@ interface MessageContainerProps {
   isOriginalPost?: boolean;
   postNumber?: number;
   topicId?: string;
+  // Permalink info pentru quote-uri
+  categorySlug?: string;
+  subcategorySlug?: string;
+  topicSlug?: string;
   onRespectChange?: (postId: string, delta: number, comment: string) => void;
   onReply?: (postId: string) => void;
   onQuote?: (postId: string) => void;
+  onMultiQuoteToggle?: (postId: string) => void;
   onReputationChange?: () => void;
   onPostDeleted?: () => void;
   onPostEdited?: () => void;
+  isMultiQuoteMode?: boolean;
+  isQuoteSelected?: boolean;
+  isMultiQuoteSelected?: boolean;
 }
 
 export default function MessageContainer({
@@ -47,20 +61,82 @@ export default function MessageContainer({
   isOriginalPost = false,
   postNumber,
   topicId,
+  categorySlug,
+  subcategorySlug,
+  topicSlug,
   onRespectChange,
   onReply,
   onQuote,
+  onMultiQuoteToggle,
   onReputationChange,
   onPostDeleted,
-  onPostEdited
+  onPostEdited,
+  isMultiQuoteMode = false,
+  isQuoteSelected = false,
+  isMultiQuoteSelected = false
 }: MessageContainerProps) {
   const { theme } = useTheme();
   const { forumUser } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   const [showGearModal, setShowGearModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [editReason, setEditReason] = useState('');
   const [userGear, setUserGear] = useState<any[]>([]);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const { update, updating } = useUpdatePost();
+  const { showToast } = useToast();
+
+  // Parse BBCode content for display
+  const parsedContent = useMemo(() => {
+    // Funcție helper pentru generarea permalink-urilor în quote-uri
+    const getPostPermalink = (postId: string): string => {
+      // Dacă avem toate slug-urile, construim permalink-ul corect
+      if (categorySlug && subcategorySlug && topicSlug) {
+        // Format: /forum/{categorySlug}/{subcategorySlug}/{topicSlug}#post{postNumber}
+        // Dar nu avem postNumber pentru quote-uri, deci folosim postId ca fallback
+        return `/forum/${categorySlug}/${subcategorySlug}/${topicSlug}#post-${postId}`;
+      }
+      // Fallback la UUID
+      return `/forum/post/${postId}`;
+    };
+    
+    const parsed = parseBBCode(post.content, {
+      categorySlug,
+      subcategorySlug,
+      topicSlug,
+      getPostPermalink
+    });
+    return parsed.html;
+  }, [post.content, categorySlug, subcategorySlug, topicSlug]);
+
+  // Add click handlers for images to enable zoom
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    const images = contentRef.current.querySelectorAll('.bbcode-image');
+    const handleImageClick = (e: Event) => {
+      const img = e.target as HTMLImageElement;
+      if (img && img.src) {
+        setZoomedImage({ src: img.src, alt: img.alt || 'Imagine' });
+      }
+    };
+
+    images.forEach(img => {
+      const imgElement = img as HTMLImageElement;
+      imgElement.style.cursor = 'zoom-in';
+      imgElement.addEventListener('click', handleImageClick);
+    });
+
+    return () => {
+      images.forEach(img => {
+        img.removeEventListener('click', handleImageClick);
+      });
+    };
+  }, [parsedContent]);
   const [isLoadingGear, setIsLoadingGear] = useState(false);
 
   useEffect(() => {
@@ -101,7 +177,40 @@ export default function MessageContainer({
   };
 
   const handleEdit = () => {
-    setShowEditModal(true);
+    setIsEditing(true);
+    setEditContent(post.content);
+    setEditReason('');
+    // Focus textarea după ce se montează
+    setTimeout(() => {
+      editTextareaRef.current?.focus();
+    }, 100);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(post.content);
+    setEditReason('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim()) {
+      showToast('Conținutul nu poate fi gol!', 'error');
+      return;
+    }
+
+    if (forumUser?.isAdmin && !editReason.trim()) {
+      showToast('Motivul este obligatoriu pentru editare!', 'error');
+      return;
+    }
+
+    const result = await update(post.id, editContent.trim(), editReason.trim() || undefined);
+    if (result.success) {
+      showToast('Postarea a fost editată cu succes', 'success');
+      setIsEditing(false);
+      onPostEdited?.();
+    } else {
+      showToast(result.error?.message || 'Eroare la editarea postării', 'error');
+    }
   };
 
   const handlePostDeleted = () => {
@@ -114,7 +223,7 @@ export default function MessageContainer({
   };
 
   const handlePostEdited = () => {
-    setShowEditModal(false);
+    setIsEditing(false);
     onPostEdited?.();
     // Reîncarcă postările
     if (onPostEdited) {
@@ -151,15 +260,15 @@ export default function MessageContainer({
           backgroundColor: theme.surface,
           border: isMobile ? `1px solid ${theme.border}` : `2px solid ${theme.border}`,
           borderRadius: isMobile ? '0.5rem' : '0.75rem',
-          marginBottom: isMobile ? '1rem' : '1.5rem',
+          marginBottom: isMobile ? '0.5rem' : '0.75rem',
           overflow: 'hidden',
           boxShadow: isMobile ? '0 1px 3px rgba(0, 0, 0, 0.05)' : '0 2px 8px rgba(0, 0, 0, 0.1)',
           transition: 'all 0.3s ease',
           position: 'relative'
         }}
       >
-        {/* Permalink simplu în colțul dreapta sus - #1, #2, etc. */}
-        {postNumber && topicId && (
+        {/* Permalink simplu în colțul dreapta sus - #1, #2, etc. - ascuns în editare */}
+        {postNumber && topicId && !isEditing && (
           <a
             href={`#${postAnchorId}`}
             onClick={(e) => {
@@ -183,7 +292,9 @@ export default function MessageContainer({
               border: `1px solid ${theme.border}`,
               zIndex: 10,
               transition: 'all 0.2s',
-              fontWeight: '500'
+              fontWeight: '500',
+              opacity: isEditing ? 0 : 1,
+              pointerEvents: isEditing ? 'none' : 'auto'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = theme.primary;
@@ -237,40 +348,218 @@ export default function MessageContainer({
                 overflowWrap: 'break-word',
                 wordBreak: 'break-word',
                 maxWidth: '100%',
-                overflowX: 'hidden'
+                overflowX: 'hidden',
+                transition: 'all 0.3s ease-in-out'
               }}
             >
-              <div style={{
-                whiteSpace: 'pre-wrap',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                maxWidth: '100%'
-              }}>
-                {post.content}
-              </div>
-              
-              {/* Edit Info - afișează informații despre editare */}
-              {post.editedAt && (
-                <EditInfo
-                  editedAt={post.editedAt}
-                  editedByUsername={post.editedByUsername}
-                  editReason={post.editReason}
-                />
+              {isEditing ? (
+                /* Editor inline pentru editare */
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '0.75rem',
+                    animation: 'fadeIn 0.3s ease-in-out'
+                  }}
+                >
+                  {/* Editor Toolbar */}
+                  <EditorToolbar
+                    textareaRef={editTextareaRef}
+                    onContentChange={setEditContent}
+                    currentContent={editContent}
+                    isMobile={isMobile}
+                  />
+                  
+                  {/* Textarea pentru editare */}
+                  <textarea
+                    ref={editTextareaRef}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: isMobile ? '200px' : '300px',
+                      padding: '0.75rem',
+                      fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                      fontFamily: 'inherit',
+                      color: theme.text,
+                      backgroundColor: theme.background,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      resize: 'vertical',
+                      lineHeight: '1.6',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = theme.primary;
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = theme.border;
+                    }}
+                  />
+                  
+                  {/* Motiv editare (doar pentru admin) */}
+                  {forumUser?.isAdmin && (
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          marginBottom: '0.5rem',
+                          fontSize: '0.8125rem',
+                          color: theme.textSecondary,
+                          fontWeight: '500'
+                        }}
+                      >
+                        Motiv editare (obligatoriu):
+                      </label>
+                      <input
+                        type="text"
+                        value={editReason}
+                        onChange={(e) => setEditReason(e.target.value)}
+                        placeholder="Ex: Corectare greșeală, clarificare..."
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.8125rem',
+                          fontFamily: 'inherit',
+                          color: theme.text,
+                          backgroundColor: theme.background,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.375rem',
+                          outline: 'none',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = theme.primary;
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = theme.border;
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Butoane Salvează/Anulează */}
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={updating}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 1rem',
+                        backgroundColor: 'transparent',
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '0.375rem',
+                        color: theme.textSecondary,
+                        cursor: updating ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: '500',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!updating) {
+                          e.currentTarget.style.borderColor = theme.textSecondary;
+                          e.currentTarget.style.color = theme.text;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = theme.border;
+                        e.currentTarget.style.color = theme.textSecondary;
+                      }}
+                    >
+                      <X size={16} />
+                      Anulează
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={updating || !editContent.trim() || (forumUser?.isAdmin && !editReason.trim())}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 1rem',
+                        backgroundColor: updating || !editContent.trim() || (forumUser?.isAdmin && !editReason.trim()) ? '#9ca3af' : theme.primary,
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        color: 'white',
+                        cursor: updating || !editContent.trim() || (forumUser?.isAdmin && !editReason.trim()) ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: '600',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!updating && editContent.trim() && (!forumUser?.isAdmin || editReason.trim())) {
+                          e.currentTarget.style.opacity = '0.9';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      <Save size={16} />
+                      {updating ? 'Se salvează...' : 'Salvează'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Conținut normal al postului */
+                <div
+                  style={{
+                    animation: 'fadeIn 0.3s ease-in-out'
+                  }}
+                >
+                  <div 
+                    ref={contentRef}
+                    style={{
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      maxWidth: '100%'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: parsedContent }}
+                  />
+                  
+                  {/* Image Zoom Modal */}
+                  {zoomedImage && (
+                    <ImageZoom
+                      src={zoomedImage.src}
+                      alt={zoomedImage.alt}
+                      className="bbcode-image"
+                      onClose={() => setZoomedImage(null)}
+                    />
+                  )}
+                  
+                  {/* Edit Info - afișează informații despre editare */}
+                  {post.editedAt && (
+                    <EditInfo
+                      editedAt={post.editedAt}
+                      editedByUsername={post.editedByUsername}
+                      editReason={post.editReason}
+                    />
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Actions */}
-            <MessageActions
-              postId={post.id}
-              authorId={post.authorId}
-              onRespectChange={onRespectChange}
-              onReply={onReply}
-              onQuote={onQuote}
-              onDelete={forumUser?.isAdmin ? handleDelete : undefined}
-              onEdit={forumUser?.isAdmin ? handleEdit : undefined}
-              onReputationChange={onReputationChange}
-              isAdmin={forumUser?.isAdmin || false}
-            />
+            {/* Actions - ascunse când se editează */}
+            {!isEditing && (
+              <MessageActions
+                postId={post.id}
+                authorId={post.authorId}
+                onRespectChange={onRespectChange}
+                onReply={onReply}
+                onQuote={onQuote}
+                onMultiQuoteToggle={onMultiQuoteToggle}
+                onDelete={forumUser?.isAdmin ? handleDelete : undefined}
+                onEdit={forumUser?.isAdmin ? handleEdit : undefined}
+                onReputationChange={onReputationChange}
+                isAdmin={forumUser?.isAdmin || false}
+                isMultiQuoteMode={isMultiQuoteMode}
+                isQuoteSelected={isQuoteSelected}
+                isMultiQuoteSelected={isMultiQuoteSelected}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -295,15 +584,6 @@ export default function MessageContainer({
         />
       )}
 
-      {showEditModal && (
-        <EditPostModal
-          postId={post.id}
-          postContent={post.content}
-          isAdmin={forumUser?.isAdmin || false}
-          onEdited={handlePostEdited}
-          onClose={() => setShowEditModal(false)}
-        />
-      )}
     </>
   );
 }

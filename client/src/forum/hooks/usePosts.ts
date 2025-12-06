@@ -36,11 +36,11 @@ export function usePosts(topicId: string | null | undefined, page = 1, pageSize 
             return result.data!
         },
         enabled: !!queryKey, // Nu rulează query-ul dacă nu avem topicId
-        staleTime: 1 * 60 * 1000, // 1 minut (postările se schimbă mai des)
-        gcTime: 3 * 60 * 1000, // 3 minute
-        refetchOnWindowFocus: false, // Dezactivăm pentru a evita erori
-        refetchOnMount: false, // Dezactivăm pentru a preveni refresh-ul la schimbarea pageSize
-        refetchOnReconnect: false, // Dezactivăm pentru a preveni refresh-ul
+        staleTime: 30 * 1000, // 30 secunde
+        gcTime: 2 * 60 * 1000, // 2 minute
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
 
     return {

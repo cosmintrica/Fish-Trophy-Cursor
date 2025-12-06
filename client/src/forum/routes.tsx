@@ -37,10 +37,16 @@ const ForumRoutes: React.FC = () => {
             {/* IMPORTANT: Această rută trebuie să fie înainte de categoriile generice */}
             <Route path="/user/:username" element={<ForumUserProfile />} />
 
-            {/* URL-uri clean și ierarhice: /forum/categorySlug/subcategorySlug/topicSlug */}
+            {/* URL-uri clean și ierarhice: /forum/categorySlug/subforumSlug/topicSlug */}
+            {/* IMPORTANT: Ordinea rutelor este CRITICĂ - mai specific înainte de mai general */}
+            {/* IMPORTANT: Subforums sunt tratate ca subcategorii în URL-uri: category/subforum (nu category/subcategory/subforum) */}
 
-            {/* Rute topicuri (category/subcategory/topic) */}
-            <Route path="/:categorySlug/:subcategorySlug/:topicSlug" element={<TopicPage />} />
+            {/* Rute topicuri - unificate: category/potentialSlug/topic (potentialSlug poate fi subcategorie SAU subforum) */}
+            {/* IMPORTANT: Unificăm rutele - TopicPage detectează automat dacă e subcategorie sau subforum */}
+            <Route path="/:categorySlug/:potentialSlug/:topicSlug" element={<TopicPage />} />
+
+            {/* Rute subforums (category/subforum) - 2 segmente, TREBUIE înainte de subcategorii */}
+            <Route path="/:categorySlug/:subforumSlug" element={<CategoryPage />} />
 
             {/* Rute subcategorii (category/subcategory) */}
             <Route path="/:categorySlug/:subcategorySlug" element={<CategoryPage />} />

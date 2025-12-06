@@ -424,9 +424,12 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
       const feature = getFeatureUnderCursor(e.point);
 
       if (feature) {
-        // If in Edit Mode, DO NOT START DRAG.
-        // Just return, so the click event can propagate to handleMouseUp (which handles the click-to-edit).
+        // If in Edit Mode, store clicked feature for handleMouseUp to process
         if (state.isEditMode) {
+          // Store the clicked feature so handleMouseUp can open edit dialog
+          draggedFeatureIdRef.current = feature.properties?.id || null;
+          draggedFeatureTypeRef.current = feature.properties?.locationType as MapLocationType || null;
+          hasDraggedRef.current = false; // Mark as not dragged
           return;
         }
 
@@ -668,69 +671,13 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
     const handleMouseUp = async (e: maplibregl.MapMouseEvent) => {
       const state = latestStateRef.current;
 
-      // 1. Handle Drag End
-      if (isDraggingRef.current && draggedFeatureIdRef.current) {
-        // Only save if we actually dragged
-        if (hasDraggedRef.current && draggedFeatureTypeRef.current) {
-          const lat = e.lngLat.lat;
-          const lng = e.lngLat.lng;
-          const locationType = draggedFeatureTypeRef.current;
-          const locationId = draggedFeatureIdRef.current;
+      // 0. Handle Click on Marker in Edit Mode (BEFORE drag check)
+      // This must be checked first because in edit mode, isDraggingRef is false
+      if (state.isEditMode && draggedFeatureIdRef.current && !isDraggingRef.current && !hasDraggedRef.current) {
+        const locationId = draggedFeatureIdRef.current;
+        const locationType = draggedFeatureTypeRef.current;
 
-          // Call the update function
-          if (locationType === 'fishing_location') {
-            handleLocationDragEnd(locationId, lat, lng);
-          } else {
-            // For other types, we need to manually update supabase here or call a helper
-            try {
-              let table = '';
-              if (locationType === 'shop') table = 'fishing_shops';
-              else if (locationType === 'ajvps_office') table = 'ajvps_offices';
-              else if (locationType === 'accommodation') table = 'accommodations';
-
-              if (table) {
-                const { error } = await supabase
-                  .from(table)
-                  .update({ latitude: lat, longitude: lng, updated_at: new Date().toISOString() })
-                  .eq('id', locationId);
-                if (error) throw error;
-                toast.success('Coordonate actualizate!');
-
-                // Update local state to reflect change immediately
-                if (locationType === 'shop') {
-                  state.shopMarkers = state.shopMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
-                  setShopMarkers([...state.shopMarkers]);
-                } else if (locationType === 'ajvps_office') {
-                  state.ajvpsMarkers = state.ajvpsMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
-                  setAjvpsMarkers([...state.ajvpsMarkers]);
-                } else if (locationType === 'accommodation') {
-                  state.accommodationMarkers = state.accommodationMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
-                  setAccommodationMarkers([...state.accommodationMarkers]);
-                }
-
-                // Force map update
-                addAllMarkersToMap();
-              }
-            } catch (err: any) {
-              toast.error('Eroare update: ' + err.message);
-              // Revert map
-              addAllMarkersToMap();
-            }
-          }
-        } else {
-          // If we didn't drag (just clicked), we should treat it as a click
-          // We can manually trigger the click logic here or let the click event fire?
-          // Since we prevented default on mousedown, click might not fire reliably.
-          // Let's manually trigger the edit dialog here if it was just a click on a marker
-          // ONLY IF IN EDIT MODE
-          if (state.isEditMode) {
-            const feature = getFeatureUnderCursor(e.point);
-            if (feature) {
-              const properties = feature.properties;
-              const locationType = properties?.locationType as MapLocationType;
-              const locationId = properties?.id;
-
-              if (locationId) {
+        if (locationId && locationType) {
                 if (locationType === 'fishing_location') {
                   // Fetch raw database data to preserve correct types (lac/rau vs lake/river)
                   const { data } = await supabase.from('fishing_locations').select('*').eq('id', locationId).single();
@@ -840,11 +787,65 @@ export const MapEditor: React.FC<MapEditorProps> = ({ onLocationUpdate }) => {
                   }
                 }
               }
+          
+          // Clear refs after processing click
+          draggedFeatureIdRef.current = null;
+          draggedFeatureTypeRef.current = null;
+          return;
+        }
+
+      // 1. Handle Drag End
+      if (isDraggingRef.current && draggedFeatureIdRef.current) {
+        // Only save if we actually dragged
+        if (hasDraggedRef.current && draggedFeatureTypeRef.current) {
+          const lat = e.lngLat.lat;
+          const lng = e.lngLat.lng;
+          const locationType = draggedFeatureTypeRef.current;
+          const locationId = draggedFeatureIdRef.current;
+
+          // Call the update function
+          if (locationType === 'fishing_location') {
+            handleLocationDragEnd(locationId, lat, lng);
+          } else {
+            // For other types, we need to manually update supabase here or call a helper
+            try {
+              let table = '';
+              if (locationType === 'shop') table = 'fishing_shops';
+              else if (locationType === 'ajvps_office') table = 'ajvps_offices';
+              else if (locationType === 'accommodation') table = 'accommodations';
+
+              if (table) {
+                const { error } = await supabase
+                  .from(table)
+                  .update({ latitude: lat, longitude: lng, updated_at: new Date().toISOString() })
+                  .eq('id', locationId);
+                if (error) throw error;
+                toast.success('Coordonate actualizate!');
+
+                // Update local state to reflect change immediately
+                if (locationType === 'shop') {
+                  state.shopMarkers = state.shopMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
+                  setShopMarkers([...state.shopMarkers]);
+                } else if (locationType === 'ajvps_office') {
+                  state.ajvpsMarkers = state.ajvpsMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
+                  setAjvpsMarkers([...state.ajvpsMarkers]);
+                } else if (locationType === 'accommodation') {
+                  state.accommodationMarkers = state.accommodationMarkers.map(m => m.id === locationId ? { ...m, coords: [lng, lat] } : m);
+                  setAccommodationMarkers([...state.accommodationMarkers]);
+                }
+
+                // Force map update
+                addAllMarkersToMap();
+              }
+            } catch (err: any) {
+              toast.error('Eroare update: ' + err.message);
+              // Revert map
+              addAllMarkersToMap();
             }
           }
         }
 
-
+        // Clear drag state
         isDraggingRef.current = false;
         hasDraggedRef.current = false;
         draggedFeatureIdRef.current = null;

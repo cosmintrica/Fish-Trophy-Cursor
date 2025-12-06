@@ -2,7 +2,7 @@
  * Acțiuni pentru postare: Respect, Reply, Quote, Admin Controls
  */
 
-import { MessageSquare, Quote } from 'lucide-react';
+import { MessageSquare, Quote, Copy } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import ReputationButtons from '../ReputationButtons';
 
@@ -12,10 +12,14 @@ interface MessageActionsProps {
   onRespectChange?: (postId: string, delta: number, comment: string) => void;
   onReply?: (postId: string) => void;
   onQuote?: (postId: string) => void;
+  onMultiQuoteToggle?: (postId: string) => void;
   onDelete?: () => void;
   onEdit?: () => void;
   onReputationChange?: () => void;
   isAdmin?: boolean;
+  isMultiQuoteMode?: boolean;
+  isQuoteSelected?: boolean;
+  isMultiQuoteSelected?: boolean;
 }
 
 export default function MessageActions({
@@ -24,10 +28,14 @@ export default function MessageActions({
   onRespectChange,
   onReply,
   onQuote,
+  onMultiQuoteToggle,
   onDelete,
   onEdit,
   onReputationChange,
-  isAdmin = false
+  isAdmin = false,
+  isMultiQuoteMode = false,
+  isQuoteSelected = false,
+  isMultiQuoteSelected = false
 }: MessageActionsProps) {
   const { theme } = useTheme();
 
@@ -40,79 +48,39 @@ export default function MessageActions({
       padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1.5rem',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       gap: '0.5rem',
       flexWrap: 'wrap'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {/* Traditional actions */}
-        <button
-          onClick={() => onReply?.(postId)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem',
-            padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
-            backgroundColor: 'transparent',
-            border: `1px solid ${theme.border}`,
-            borderRadius: '0.375rem',
-            color: theme.textSecondary,
-            cursor: 'pointer',
-            fontSize: isMobile ? '0.6875rem' : '0.75rem',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <MessageSquare style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
-          <span>Răspunde</span>
-        </button>
+      {/* Reputation Buttons - În stânga, dar tot în dreapta paginii */}
+      {authorId && (
+        <div style={{ flexShrink: 0, marginRight: 'auto' }}>
+          <ReputationButtons
+            postId={postId}
+            receiverUserId={authorId}
+            onReputationChange={onReputationChange}
+          />
+        </div>
+      )}
 
-        <button
-          onClick={() => onQuote?.(postId)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem',
-            padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
-            backgroundColor: 'transparent',
-            border: `1px solid ${theme.border}`,
-            borderRadius: '0.375rem',
-            color: theme.textSecondary,
-            cursor: 'pointer',
-            fontSize: isMobile ? '0.6875rem' : '0.75rem',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Quote style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
-          <span>Citează</span>
-        </button>
-
-        {/* Admin Controls */}
+      {/* Action Buttons - În dreapta, mai mici */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flexShrink: 0 }}>
+        {/* Admin Controls - În stânga butoanelor normale */}
         {isAdmin && (
           <>
-            <div style={{
-              width: '1px',
-              height: '1.5rem',
-              backgroundColor: theme.border,
-              margin: '0 0.5rem'
-            }} />
-
             <button
               onClick={onDelete}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.25rem',
-                padding: isMobile ? '0.375rem 0.5rem' : '0.375rem 0.75rem',
+                padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
                 backgroundColor: '#dc2626',
                 border: 'none',
                 borderRadius: '0.375rem',
                 color: 'white',
                 cursor: 'pointer',
-                fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                fontSize: isMobile ? '0.625rem' : '0.6875rem',
                 fontWeight: '600',
                 transition: 'all 0.2s',
                 flexShrink: 0
@@ -133,13 +101,13 @@ export default function MessageActions({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.25rem',
-                padding: isMobile ? '0.375rem 0.5rem' : '0.375rem 0.75rem',
+                padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
                 backgroundColor: '#f59e0b',
                 border: 'none',
                 borderRadius: '0.375rem',
                 color: 'white',
                 cursor: 'pointer',
-                fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                fontSize: isMobile ? '0.625rem' : '0.6875rem',
                 fontWeight: '600',
                 transition: 'all 0.2s',
                 flexShrink: 0
@@ -153,20 +121,115 @@ export default function MessageActions({
             >
               ✏️ {!isMobile && <span>Editează</span>}
             </button>
+
+            <div style={{
+              width: '1px',
+              height: '1.25rem',
+              backgroundColor: theme.border,
+              margin: '0 0.25rem'
+            }} />
           </>
         )}
-      </div>
 
-      {/* Reputation Buttons */}
-      {authorId && (
-        <div style={{ flexShrink: 0 }}>
-          <ReputationButtons
-            postId={postId}
-            receiverUserId={authorId}
-            onReputationChange={onReputationChange}
-          />
-        </div>
-      )}
+        {/* Butoane normale - Răspunde, Citează, Multi */}
+        <button
+          onClick={() => onReply?.(postId)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
+            backgroundColor: 'transparent',
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.375rem',
+            color: theme.textSecondary,
+            cursor: 'pointer',
+            fontSize: isMobile ? '0.625rem' : '0.6875rem',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.primary;
+            e.currentTarget.style.color = theme.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.border;
+            e.currentTarget.style.color = theme.textSecondary;
+          }}
+        >
+          <MessageSquare style={{ width: isMobile ? '0.6875rem' : '0.75rem', height: isMobile ? '0.6875rem' : '0.75rem' }} />
+          <span>Răspunde</span>
+        </button>
+
+        <button
+          onClick={() => onQuote?.(postId)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
+            backgroundColor: 'transparent',
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.375rem',
+            color: theme.textSecondary,
+            cursor: 'pointer',
+            fontSize: isMobile ? '0.625rem' : '0.6875rem',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.primary;
+            e.currentTarget.style.color = theme.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.border;
+            e.currentTarget.style.color = theme.textSecondary;
+          }}
+        >
+          <Quote style={{ width: isMobile ? '0.6875rem' : '0.75rem', height: isMobile ? '0.6875rem' : '0.75rem' }} />
+          <span>Citează</span>
+        </button>
+
+        {/* Multi-Quote Toggle Button */}
+        {onMultiQuoteToggle && (
+          <button
+            onClick={() => onMultiQuoteToggle(postId)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
+              backgroundColor: isMultiQuoteSelected ? theme.primary : 'transparent',
+              border: `1px solid ${isMultiQuoteSelected ? theme.primary : theme.border}`,
+              borderRadius: '0.375rem',
+              color: isMultiQuoteSelected ? 'white' : theme.textSecondary,
+              cursor: 'pointer',
+              fontSize: isMobile ? '0.625rem' : '0.6875rem',
+              fontWeight: isMultiQuoteSelected ? '600' : 'normal',
+              transition: 'all 0.2s',
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              if (!isMultiQuoteSelected) {
+                e.currentTarget.style.borderColor = theme.primary;
+                e.currentTarget.style.color = theme.primary;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isMultiQuoteSelected) {
+                e.currentTarget.style.borderColor = theme.border;
+                e.currentTarget.style.color = theme.textSecondary;
+              }
+            }}
+          >
+            <Copy style={{ width: isMobile ? '0.6875rem' : '0.75rem', height: isMobile ? '0.6875rem' : '0.75rem' }} />
+            <span>Multi</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

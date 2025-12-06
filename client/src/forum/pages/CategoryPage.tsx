@@ -11,18 +11,24 @@ import { supabase } from '../../lib/supabase';
 import ReadStatusMarker from '../components/ReadStatusMarker';
 import { useMultipleTopicsReadStatus, useMultipleSubcategoriesUnreadStatus } from '../hooks/useTopicReadStatus';
 import { usePrefetch } from '../hooks/usePrefetch';
+import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
 
 export default function CategoryPage() {
   // Acceptă:
   // - /:categorySlug (categorie)
-  // - /:categorySlug/:subcategorySlug (subcategorie)
+  // - /:categorySlug/:subcategorySlug (subcategorie SAU subforum - detectăm automat)
   // - /category/:id (legacy)
   // - /:subcategorySlug (legacy - pentru compatibilitate)
-  const { id: categoryIdFromParams, categorySlug, subcategorySlug } = useParams<{ 
+  const { id: categoryIdFromParams, categorySlug, subcategorySlug, subforumSlug } = useParams<{ 
     id?: string; 
     categorySlug?: string; 
     subcategorySlug?: string;
+    subforumSlug?: string;
   }>();
+  
+  // IMPORTANT: subforumSlug este acum în subcategorySlug SAU subforumSlug - detectăm dacă e subforum sau subcategorie
+  // Ruta pentru subforum folosește subforumSlug, ruta pentru subcategorie folosește subcategorySlug
+  const potentialSubforumSlug = subforumSlug || subcategorySlug;
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -35,55 +41,74 @@ export default function CategoryPage() {
   const isSubcategory = !!(subcategorySlug || (categorySlug && !subcategorySlug && categoryIdFromParams === undefined));
   const slugToUse = subcategorySlug || categorySlug || categoryIdFromParams;
 
-  // Obține ID-ul subcategoriei din slug
-  const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
+  // Folosim React Query hook pentru subcategorie/subforum - cache automat, fără flickering
+  const { data: subcategoryOrSubforumData, isLoading: loadingSubcategoryOrSubforum } = useSubcategoryOrSubforum(
+    categorySlug,
+    potentialSubforumSlug
+  );
+
+  // Extragem datele din hook folosind useMemo pentru performanță
+  const {
+    subcategoryId,
+    subforumId,
+    subcategoryName,
+    subcategoryDescription,
+    subforumName,
+    parentCategory,
+    subforums,
+  } = useMemo(() => {
+    if (!subcategoryOrSubforumData) {
+      return {
+        subcategoryId: null,
+        subforumId: null,
+        subcategoryName: '',
+        subcategoryDescription: '',
+        subforumName: '',
+        parentCategory: null,
+        subforums: [],
+      };
+    }
+
+    if (subcategoryOrSubforumData.type === 'subcategory' && subcategoryOrSubforumData.subcategory) {
+      return {
+        subcategoryId: subcategoryOrSubforumData.subcategory.id,
+        subforumId: null,
+        subcategoryName: subcategoryOrSubforumData.subcategory.name,
+        subcategoryDescription: subcategoryOrSubforumData.subcategory.description || '',
+        subforumName: '',
+        parentCategory: subcategoryOrSubforumData.parentCategory,
+        subforums: subcategoryOrSubforumData.subforums,
+      };
+    }
+
+    if (subcategoryOrSubforumData.type === 'subforum' && subcategoryOrSubforumData.subforum) {
+      return {
+        subcategoryId: null,
+        subforumId: subcategoryOrSubforumData.subforum.id,
+        subcategoryName: '',
+        subcategoryDescription: subcategoryOrSubforumData.subforum.description || '',
+        subforumName: subcategoryOrSubforumData.subforum.name,
+        parentCategory: subcategoryOrSubforumData.parentCategory,
+        subforums: [],
+      };
+    }
+
+    return {
+      subcategoryId: null,
+      subforumId: null,
+      subcategoryName: '',
+      subcategoryDescription: '',
+      subforumName: '',
+      parentCategory: null,
+      subforums: [],
+    };
+  }, [subcategoryOrSubforumData]);
+
   const [categoryName, setCategoryName] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const getSubcategoryId = async () => {
-      // Dacă e doar categorie (categorySlug && !subcategorySlug), nu căuta subcategorii
-      if (categorySlug && !subcategorySlug) {
-        setSubcategoryId(null);
-        return;
-      }
-
-      // Folosim DOAR subcategorySlug (nu slugToUse care poate fi categorySlug)
-      // slugToUse este folosit doar pentru legacy routes fără categorySlug
-      const slugToSearch = subcategorySlug || (categorySlug ? null : slugToUse);
-
-      if (!slugToSearch) {
-        // No slug provided sau e doar categorie
-        setSubcategoryId(null);
-        return;
-      }
-
-      // Looking for subcategory with slug
-
-      // Caută DOAR după slug (nu mai folosim UUID)
-      // Încearcă mai întâi cu exact match (cel mai rapid și sigur)
-      const { data: subcategoryExact, error: exactError } = await supabase
-        .from('forum_subcategories')
-        .select('id, slug, name')
-        .eq('slug', slugToSearch)
-        .eq('is_active', true)
-        .maybeSingle(); // Folosim maybeSingle pentru a evita erori
-
-      if (subcategoryExact) {
-        // Found subcategory with exact match
-        setSubcategoryId(subcategoryExact.id);
-      } else {
-        // No subcategory found - nu mai încercăm cu ilike pentru a evita eroarea 406
-        // Dacă exact match nu funcționează, înseamnă că nu există subcategorie cu acest slug
-        setSubcategoryId(null);
-      }
-    };
-
-    getSubcategoryId();
-  }, [slugToUse, categorySlug, subcategorySlug]);
-
-  // Supabase hooks - folosește subcategoryId (UUID) pentru query (intern folosim UUID, extern slug)
-  const { topics, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId || '', 1, 50);
+  // Supabase hooks - folosește subcategoryId sau subforumId (UUID) pentru query (intern folosim UUID, extern slug)
+  const { topics, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId, 1, 50, subforumId || undefined);
   
   // Hook pentru prefetch pe hover
   const { prefetchTopic } = usePrefetch();
@@ -92,12 +117,9 @@ export default function CategoryPage() {
   const topicIds = topics.map(topic => topic.id);
   const { unreadMap, hasUnread: hasUnreadPost } = useMultipleTopicsReadStatus(topicIds);
 
-  const [subcategoryName, setSubcategoryName] = useState('');
-  const [subcategoryDescription, setSubcategoryDescription] = useState('');
-  const [parentCategoryName, setParentCategoryName] = useState('');
-  const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
-  const [parentCategorySlug, setParentCategorySlug] = useState<string | null>(categorySlug || null);
-  const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug || null);
+  // Folosim categorySlug direct din URL pentru breadcrumbs - nu așteptăm query-ul
+  const displayCategorySlug = categorySlug || parentCategory?.slug || null;
+  const displayCategoryName = parentCategory?.name || categoryName || categorySlug || '';
   const [categorySubcategories, setCategorySubcategories] = useState<any[]>([]);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -134,84 +156,7 @@ export default function CategoryPage() {
     return () => clearTimeout(ensureTop);
   }, [location.pathname]);
 
-  // Load subcategory by slug și categoria părinte
-  useEffect(() => {
-    const loadHierarchy = async () => {
-      // Dacă e doar categorie (categorySlug && !subcategorySlug), nu căuta subcategorii aici
-      if (categorySlug && !subcategorySlug) {
-        // Nu căuta subcategorii când e doar categorie
-        setSubcategoryName('');
-        setSubcategoryDescription('');
-        setParentCategoryName('');
-        setParentCategoryId(null);
-        return; // Va fi gestionat în alt useEffect
-      }
-
-      // Dacă avem categorySlug și subcategorySlug, folosim subcategorySlug
-      // IMPORTANT: Nu folosim slugToUse aici pentru că poate fi categorySlug
-      const slugToSearch = subcategorySlug;
-
-      if (!slugToSearch || slugToSearch.trim() === '') {
-        setSubcategoryName('');
-        setSubcategoryDescription('');
-        setParentCategoryName('');
-        return;
-      }
-
-      try {
-        // Caută subcategoria după slug - exact match mai întâi
-        const { data: subcategory, error: subError } = await supabase
-          .from('forum_subcategories')
-          .select('id, name, description, slug, category_id')
-          .eq('slug', slugToSearch)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (subError) {
-          console.error('CategoryPage: Error loading subcategory name:', subError);
-        }
-
-        if (subcategory) {
-          setSubcategoryName(subcategory.name);
-          setSubcategoryDescription(subcategory.description || '');
-          setResolvedSubcategorySlug(subcategory.slug || null);
-
-          // Obține categoria părinte
-          if (subcategory.category_id) {
-            setParentCategoryId(subcategory.category_id);
-            const { data: parentCategory } = await supabase
-              .from('forum_categories')
-              .select('name, slug')
-              .eq('id', subcategory.category_id)
-              .maybeSingle();
-
-            if (parentCategory) {
-              setParentCategoryName(parentCategory.name);
-              setParentCategorySlug(parentCategory.slug || null);
-            }
-          }
-          return;
-        }
-
-        // Nu mai folosim ilike - dacă exact match nu funcționează, înseamnă că nu există subcategorie
-        // Eliminăm ilike pentru a evita eroarea 406
-
-        // Nu s-a găsit nimic (nu e subcategorie)
-        setSubcategoryName('');
-        setSubcategoryDescription('');
-        setParentCategoryName('');
-        setParentCategoryId(null);
-      } catch (error) {
-        console.error('Error loading hierarchy:', error);
-        setSubcategoryName('');
-        setSubcategoryDescription('');
-        setParentCategoryName('');
-        setParentCategoryId(null);
-      }
-    };
-
-    loadHierarchy();
-  }, [slugToUse, categorySlug, subcategorySlug]);
+  // loadHierarchy a fost eliminat - folosim useSubcategoryOrSubforum hook care face tot ce trebuie
 
   // Detect and redirect if categorySlug is actually a subcategory
   useEffect(() => {
@@ -284,10 +229,6 @@ export default function CategoryPage() {
         if (category) {
           setCategoryName(category.name);
           setCategoryId(category.id);
-          setSubcategoryName('');
-          setSubcategoryDescription('');
-          setParentCategoryName('');
-          setParentCategoryId(null);
           
           // Încarcă subcategoriile pentru această categorie
           const { data: subcategories, error: subcatsError } = await supabase
@@ -320,21 +261,25 @@ export default function CategoryPage() {
 
   const handleTopicClick = (topic: { id: string; slug?: string }) => {
     const topicSlug = topic.slug || topic.id;
-    // URL clean: /forum/categorySlug/subcategorySlug/topicSlug
-    if (categorySlug && subcategorySlug) {
-      // Format complet: category/subcategory/topic
-      navigate(`/forum/${categorySlug}/${subcategorySlug}/${topicSlug}`);
-    } else if (subcategorySlug) {
-      // Legacy: doar subcategorySlug (fără category)
-      navigate(`/forum/${subcategorySlug}/${topicSlug}`);
-    } else if (parentCategorySlug && resolvedSubcategorySlug) {
-      // Dacă avem parentCategorySlug și subcategorySlug din state
-      navigate(`/forum/${parentCategorySlug}/${resolvedSubcategorySlug}/${topicSlug}`);
+    // URL clean: IMPORTANT - subforums sunt tratate ca subcategorii în URL-uri
+    // Format: category/subforum/topic (nu category/subcategory/subforum/topic)
+    if (categorySlug && subforumId) {
+      // Suntem într-un subforum: category/subforum/topic
+      navigate(`/forum/${categorySlug}/${potentialSubforumSlug}/${topicSlug}`);
+    } else if (categorySlug && subcategoryId) {
+      // Suntem într-o subcategorie: category/subcategory/topic
+      navigate(`/forum/${categorySlug}/${potentialSubforumSlug}/${topicSlug}`);
+    } else if (potentialSubforumSlug) {
+      // Legacy: doar subforumSlug (fără category)
+      navigate(`/forum/${potentialSubforumSlug}/${topicSlug}`);
+    } else if (displayCategorySlug && potentialSubforumSlug) {
+      // Dacă avem categorySlug și potentialSubforumSlug
+      navigate(`/forum/${displayCategorySlug}/${potentialSubforumSlug}/${topicSlug}`);
     } else {
       // Fallback - încearcă să găsească slug-urile
-      const subcategorySlugToUse = resolvedSubcategorySlug || slugToUse || 'unknown';
-      if (parentCategorySlug) {
-        navigate(`/forum/${parentCategorySlug}/${subcategorySlugToUse}/${topicSlug}`);
+      const subcategorySlugToUse = potentialSubforumSlug || slugToUse || 'unknown';
+      if (displayCategorySlug) {
+        navigate(`/forum/${displayCategorySlug}/${subcategorySlugToUse}/${topicSlug}`);
       } else {
         navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
       }
@@ -427,46 +372,63 @@ export default function CategoryPage() {
           paddingBottom: '0.25rem'
         }}>
           <Link to="/forum" style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
-          {/* Dacă avem categorySlug și subcategorySlug, afișăm categoria părinte */}
-          {categorySlug && subcategorySlug && parentCategoryName && parentCategorySlug && (
+          {/* Dacă avem categorySlug și potentialSubforumSlug, afișăm categoria părinte PRIMUL */}
+          {displayCategorySlug && potentialSubforumSlug && (
             <>
               <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <Link
-                to={`/forum/${parentCategorySlug}`}
+                to={`/forum/${displayCategorySlug}`}
                 style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}
               >
-                {parentCategoryName}
+                {displayCategoryName}
               </Link>
+              {/* Apoi subforum-ul SAU subcategoria - detectăm automat */}
+              {subforumId && subforumName ? (
+                <>
+                  <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+                  <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{subforumName}</span>
+                </>
+              ) : subcategoryName ? (
+                <>
+                  <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+                  <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{subcategoryName}</span>
+                </>
+              ) : potentialSubforumSlug ? (
+                <>
+                  <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
+                  <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{potentialSubforumSlug}</span>
+                </>
+              ) : null}
             </>
           )}
-          {/* Dacă avem doar categorySlug (categorie), afișăm categoria */}
-          {categorySlug && !subcategorySlug && categoryName && (
+          {/* Dacă avem doar categorySlug (categorie), afișăm categoria - dar NU dacă suntem într-un subforum sau subcategorie */}
+          {categorySlug && !subcategorySlug && !potentialSubforumSlug && categoryName && (
             <>
               <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{categoryName}</span>
             </>
           )}
-          {/* Dacă avem subcategorySlug (subcategorie), afișăm subcategoria */}
-          {subcategorySlug && subcategoryName && (
+          {/* Fallback: Dacă avem subcategorySlug dar nu categorySlug (legacy), afișăm subcategoria */}
+          {!categorySlug && subcategorySlug && subcategoryName && (
             <>
               <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <span style={{ color: theme.textSecondary, fontWeight: '500' }}>{subcategoryName}</span>
             </>
           )}
           {/* Fallback pentru legacy routes */}
-          {!categorySlug && !subcategorySlug && parentCategoryName && parentCategoryId && (
+          {!categorySlug && !subcategorySlug && parentCategory && (
             <>
               <span style={{ margin: '0 0.375rem', color: theme.textSecondary }}>›</span>
               <Link
-                to={parentCategorySlug ? `/forum/${parentCategorySlug}` : `/forum#category-${parentCategoryId}`}
+                to={parentCategory.slug ? `/forum/${parentCategory.slug}` : `/forum#category-${parentCategory.id}`}
                 style={{ color: theme.primary, textDecoration: 'none', fontWeight: '500' }}
                 onClick={(e) => {
-                  if (!parentCategorySlug && parentCategoryId) {
+                  if (!parentCategory.slug && parentCategory.id) {
                     // Scroll la categorie pe homepage
                     e.preventDefault();
                     navigate('/forum');
                     setTimeout(() => {
-                      const element = document.getElementById(`category-${parentCategoryId}`);
+                      const element = document.getElementById(`category-${parentCategory.id}`);
                       if (element) {
                         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
@@ -474,7 +436,7 @@ export default function CategoryPage() {
                   }
                 }}
               >
-                {parentCategoryName}
+                {parentCategory.name}
               </Link>
             </>
           )}
@@ -527,27 +489,54 @@ export default function CategoryPage() {
             </Link>
             <div style={{ minWidth: 0, flex: 1 }}>
               <h1 style={{ fontSize: isMobile ? '1rem' : '1.5rem', fontWeight: '600', marginBottom: '0.125rem', lineHeight: '1.2' }}>
-                {subcategoryName || categoryName || '\u00A0'}
+                {subforumName || subcategoryName || categoryName || (potentialSubforumSlug ? potentialSubforumSlug : categorySlug) || '\u00A0'}
               </h1>
               <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: isMobile ? '0.75rem' : '0.875rem', lineHeight: '1.3' }}>
-                {subcategoryDescription || 'Selectează o subcategorie pentru a vedea topicurile'}
+                {subcategoryDescription || (potentialSubforumSlug ? '' : 'Selectează o subcategorie pentru a vedea topicurile')}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Lista topicuri SAU subcategorii */}
-        <div
-          style={{
+        {/* Loading state - afișăm skeleton când se încarcă datele pentru subcategorie/subforum */}
+        {/* IMPORTANT: Nu afișăm conținutul categoriei când se încarcă datele pentru subcategorie/subforum */}
+        {loadingSubcategoryOrSubforum && potentialSubforumSlug ? (
+          <div style={{
             backgroundColor: theme.surface,
             borderRadius: '1rem',
             border: `1px solid ${theme.border}`,
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Dacă e doar categorie (fără subcategorie), afișează subcategoriile */}
-          {categorySlug && !subcategorySlug && categoryId ? (
+            padding: '2rem',
+            textAlign: 'center',
+            color: theme.textSecondary
+          }}>
+            Se încarcă...
+          </div>
+        ) : !loadingSubcategoryOrSubforum && potentialSubforumSlug && !subcategoryId && !subforumId ? (
+          <div style={{
+            backgroundColor: theme.surface,
+            borderRadius: '1rem',
+            border: `1px solid ${theme.border}`,
+            padding: '2rem',
+            textAlign: 'center',
+            color: theme.error || '#dc2626'
+          }}>
+            Subcategorie sau subforum nu a fost găsit
+          </div>
+        ) : (
+          <>
+            {/* Lista topicuri SAU subcategorii */}
+            {/* Dacă e doar categorie (fără subcategorie sau subforum), afișează subcategoriile */}
+            {/* IMPORTANT: Verificăm dacă avem subcategoryId sau subforumId - dacă avem, afișăm topicurile, altfel subcategoriile */}
+            {categorySlug && !subcategoryId && !subforumId && categoryId && !potentialSubforumSlug ? (
+          <div
+            style={{
+              backgroundColor: theme.surface,
+              borderRadius: '1rem',
+              border: `1px solid ${theme.border}`,
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden'
+            }}
+          >
             <div>
               {categorySubcategories.length > 0 ? (
                 <div className="divide-y divide-gray-200">
@@ -636,87 +625,161 @@ export default function CategoryPage() {
                 </div>
               )}
             </div>
-          ) : (
-            <>
-              {/* Header pentru topicuri - Optimizat pentru mobil */}
-              <div className="hidden sm:grid" style={{
-                backgroundColor: theme.surface,
-                borderBottom: `1px solid ${theme.border}`,
-                padding: '0.75rem 1rem',
-                gridTemplateColumns: '1fr 80px 80px 180px',
-                gap: '0.75rem',
-                alignItems: 'center',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: theme.textSecondary,
-                textTransform: 'uppercase',
-                letterSpacing: '0.025em'
-              }}>
-                <div>Topic</div>
-                <div style={{ textAlign: 'center' }}>Răspunsuri</div>
-                <div style={{ textAlign: 'center' }}>Vizualizări</div>
-                <div style={{ textAlign: 'center' }}>Ultima postare</div>
-              </div>
-
-              {/* Topicuri */}
-              <div>
-            {/* Fără skeleton - afișăm direct datele când sunt gata */}
-            {topics.length === 0 && !topicsIsLoading && subcategoryId ? (
-              <div style={{
-                padding: '4rem 2rem',
-                textAlign: 'center',
-                color: theme.textSecondary,
-                backgroundColor: theme.surface,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.75rem',
-                margin: '1rem',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: theme.text }}>
-                  Niciun topic încă în această categorie
-                </div>
-                <div style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: theme.textSecondary }}>
-                  Fii primul care creează un topic și pornește o discuție!
-                </div>
-                <button
-                  onClick={() => {
-                    if (forumUser) {
-                      setShowCreateModal(true);
-                    } else {
-                      alert('Te rog să te conectezi pentru a crea un topic!');
-                    }
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
-                    color: 'white',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
+          </div>
+        ) : (
+          <>
+              {/* Subforums - afișate doar când ești într-o subcategorie, deasupra topicelor */}
+              {subcategoryId && subforums.length > 0 && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: '0.75rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9';
-                    e.currentTarget.style.boxShadow = '0 8px 12px rgba(0, 0, 0, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                  }}
-                >
-                  <MessageSquare style={{ width: '1rem', height: '1rem' }} />
-                  Creează primul topic
-                </button>
-              </div>
-            ) : (
-              topics.map((topic) => (
+                    overflow: 'hidden'
+                  }}>
+                    {/* Header pentru subforums */}
+                    <div style={{
+                      backgroundColor: theme.background,
+                      borderBottom: `1px solid ${theme.border}`,
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: theme.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.025em'
+                    }}>
+                      Sub-forumuri
+                    </div>
+                    {/* Lista subforums */}
+                    {subforums.map((subforum, index) => (
+                      <div
+                        key={subforum.id}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          borderBottom: index === subforums.length - 1 ? 'none' : `1px solid ${theme.border}`,
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem'
+                        }}
+                        onClick={() => {
+                          // Navigate to subforum - IMPORTANT: format category/subforum (nu category/subcategory/subforum)
+                          if (categorySlug && subforum.slug) {
+                            navigate(`/forum/${categorySlug}/${subforum.slug}`);
+                          }
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.surfaceHover}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.surface}
+                      >
+                        <div style={{ fontSize: '1.25rem' }}>
+                          {subforum.icon || '📁'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
+                            {subforum.name}
+                          </div>
+                          {subforum.description && (
+                            <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
+                              {subforum.description}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: theme.textSecondary, textAlign: 'right' }}>
+                          <div>{subforum.topicCount || 0} subiecte</div>
+                          <div>{subforum.postCount || 0} postări</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Topicuri directe din subcategorie (nu din subforums) - Container separat complet */}
+              {subcategoryId && !subforumId && (
+                <div style={{ marginTop: subforums.length > 0 ? '1.5rem' : '0' }}>
+                  <div style={{
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.75rem',
+                    overflow: 'hidden'
+                  }}>
+                    {/* Header pentru topicuri directe */}
+                    <div className="hidden sm:grid" style={{
+                      backgroundColor: theme.background,
+                      borderBottom: `1px solid ${theme.border}`,
+                      padding: '0.75rem 1rem',
+                      gridTemplateColumns: '1fr 80px 80px 180px',
+                      gap: '0.75rem',
+                      alignItems: 'center',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: theme.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.025em'
+                    }}>
+                      <div>Topic</div>
+                      <div style={{ textAlign: 'center' }}>Răspunsuri</div>
+                      <div style={{ textAlign: 'center' }}>Vizualizări</div>
+                      <div style={{ textAlign: 'center' }}>Ultima postare</div>
+                    </div>
+                  
+                    {/* Fără skeleton - afișăm direct datele când sunt gata */}
+                    {topics.length === 0 && !topicsIsLoading ? (
+                      <div style={{
+                        padding: '4rem 2rem',
+                        textAlign: 'center',
+                        color: theme.textSecondary,
+                        backgroundColor: theme.surface,
+                        borderRadius: '0.75rem',
+                        margin: '1rem',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: theme.text }}>
+                          Niciun topic încă în această categorie
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: theme.textSecondary }}>
+                          Fii primul care creează un topic și pornește o discuție!
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (forumUser) {
+                              setShowCreateModal(true);
+                            } else {
+                              alert('Te rog să te conectezi pentru a crea un topic!');
+                            }
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1.5rem',
+                            background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
+                            color: 'white',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            borderRadius: '0.75rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '0.9';
+                            e.currentTarget.style.boxShadow = '0 8px 12px rgba(0, 0, 0, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '1';
+                            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                          }}
+                        >
+                          <MessageSquare style={{ width: '1rem', height: '1rem' }} />
+                          Creează primul topic
+                        </button>
+                      </div>
+                    ) : (
+                      topics.map((topic) => (
                 <div
                   key={topic.id}
                   className="topic-item"
@@ -738,7 +801,7 @@ export default function CategoryPage() {
                     // Prefetch topic-ul când utilizatorul trece cu mouse-ul
                     const topicSlug = (topic as any).slug;
                     if (topicSlug) {
-                      prefetchTopic(topicSlug, resolvedSubcategorySlug || undefined);
+                      prefetchTopic(topicSlug, potentialSubforumSlug || undefined);
                     }
                   }}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -814,14 +877,16 @@ export default function CategoryPage() {
                     </div>
                   </div>
                 </div>
-              )))}
-              </div>
+              ))
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
-        </div>
 
-        {/* Buton creare topic nou - doar dacă e subcategorie (nu categorie) */}
-        {subcategorySlug && (
+        {/* Buton creare topic nou - doar dacă e subcategorie sau subforum (nu categorie) */}
+        {(potentialSubforumSlug || subcategoryId || subforumId) && (
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
           <button
             style={{
@@ -859,6 +924,8 @@ export default function CategoryPage() {
             Creează Topic Nou
           </button>
           </div>
+        )}
+          </>
         )}
 
         {/* Create Topic Modal - Fixed to use slugToUse for both legacy and clean URLs */}

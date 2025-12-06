@@ -20,13 +20,33 @@ DECLARE
   v_offset INT;
   v_total INT;
   v_result JSON;
+  v_subcategory_exists BOOLEAN;
 BEGIN
+  -- Security check: Verify subcategory exists and is active
+  SELECT EXISTS (
+    SELECT 1 FROM forum_subcategories
+    WHERE id = p_subcategory_id AND is_active = true
+  ) INTO v_subcategory_exists;
+  
+  IF NOT v_subcategory_exists THEN
+    RETURN json_build_object(
+      'data', '[]'::json,
+      'total', 0,
+      'page', p_page,
+      'page_size', p_page_size,
+      'has_more', false,
+      'error', 'Subcategory not found or inactive'
+    );
+  END IF;
+  
   v_offset := (p_page - 1) * p_page_size;
   
-  -- Get total count
+  -- Get total count (only topics directly in subcategory, not in subforums)
   SELECT COUNT(*) INTO v_total
   FROM forum_topics
-  WHERE subcategory_id = p_subcategory_id AND is_deleted = false;
+  WHERE subcategory_id = p_subcategory_id 
+    AND subforum_id IS NULL 
+    AND is_deleted = false;
   
   -- Build result with topics and author info
   SELECT json_build_object(
@@ -37,6 +57,7 @@ BEGIN
           SELECT 
             t.id,
             t.subcategory_id,
+            t.subforum_id,
             t.user_id,
             t.title,
             t.slug,
@@ -58,7 +79,9 @@ BEGIN
           FROM forum_topics t
           LEFT JOIN profiles pr ON t.user_id = pr.id
           LEFT JOIN profiles pr_last ON t.last_post_user_id = pr_last.id
-          WHERE t.subcategory_id = p_subcategory_id AND t.is_deleted = false
+          WHERE t.subcategory_id = p_subcategory_id 
+            AND t.subforum_id IS NULL 
+            AND t.is_deleted = false
           ORDER BY t.is_pinned DESC, t.last_post_at DESC NULLS LAST
           LIMIT p_page_size
           OFFSET v_offset
@@ -83,8 +106,8 @@ GRANT EXECUTE ON FUNCTION get_topics_with_authors(UUID, INT, INT) TO anon;
 -- Create index for optimal query performance
 CREATE INDEX IF NOT EXISTS idx_forum_topics_subcategory_pinned_lastpost 
   ON forum_topics(subcategory_id, is_pinned DESC, last_post_at DESC NULLS LAST) 
-  WHERE is_deleted = false;
+  WHERE subcategory_id IS NOT NULL AND subforum_id IS NULL AND is_deleted = false;
 
 -- Comment
 COMMENT ON FUNCTION get_topics_with_authors IS 
-'Optimized RPC: Returns paginated topics with author data (display_name, avatar) in a single query. Replaces 2 queries pattern with 1 query.';
+'Optimized RPC: Returns paginated topics with author data (display_name, avatar) in a single query. Replaces 2 queries pattern with 1 query. Supports only subcategories (direct topics). For subforums, use migration 77.';

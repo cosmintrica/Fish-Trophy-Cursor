@@ -106,22 +106,33 @@
 ```
 FORUM
 ├─ CATEGORIE PRINCIPALĂ (Ex: "Tehnici de Pescuit")
-│  ├─ SUB-FORUM (opțional - la începutul categoriei pentru organizare)
-│  │  ├─ SUBCATEGORIE
-│  │  └─ SUBCATEGORIE
+│  ├─ SUBCATEGORIE (Ex: "Pescuit cu Muscă")
+│  │  ├─ SUB-FORUM (opțional - sub-subcategorie pentru organizare)
+│  │  │  ├─ TOPIC/SUBIECT (Ex: "Fly Tying Techniques")
+│  │  │  │  ├─ POST PRINCIPAL (primul post care deschide discuția)
+│  │  │  │  ├─ RĂSPUNS (reply)
+│  │  │  │  └─ RĂSPUNS
+│  │  │  ├─ TOPIC
+│  │  │  └─ TOPIC
+│  │  ├─ SUB-FORUM (alt subforum în aceeași subcategorie)
+│  │  │  └─ TOPIC
+│  │  ├─ TOPIC/SUBIECT (direct în subcategorie, fără subforum)
+│  │  │  ├─ POST PRINCIPAL
+│  │  │  └─ RĂSPUNS
+│  │  └─ TOPIC
 │  ├─ SUBCATEGORIE (Ex: "Pescuit la Crap")
 │  │  ├─ TOPIC/SUBIECT (Ex: "Montaj Hair Rig pentru crap")
-│  │  │  ├─ POST PRINCIPAL (primul post care deschide discuția)
-│  │  │  ├─ RĂSPUNS (reply)
+│  │  │  ├─ POST PRINCIPAL
 │  │  │  ├─ RĂSPUNS
 │  │  │  └─ RĂSPUNS
-│  │  ├─ TOPIC
 │  │  └─ TOPIC
-│  ├─ SUBCATEGORIE
 │  └─ SUBCATEGORIE
 ├─ CATEGORIE PRINCIPALĂ
 └─ CATEGORIE PRINCIPALĂ
 ```
+
+**Notă importantă:** Sub-forumurile sunt acum **sub-subcategorii** - apar în interiorul unei subcategorii, nu invers. 
+Un subforum poate conține topicuri direct, iar o subcategorie poate avea atât subforums, cât și topicuri directe.
 
 ### Tipuri de Topicuri
 - **Normal**: Topic standard

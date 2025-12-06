@@ -88,10 +88,12 @@ BEGIN
   LEFT JOIN profiles pr ON t.user_id = pr.id
   WHERE t.id = v_topic_id;
   
-  -- Increment view count (fire and forget)
+  -- Increment view count only if topic exists and is not deleted
+  -- This is safe because we already verified v_topic_id exists and is not deleted above
   UPDATE forum_topics
   SET view_count = view_count + 1
-  WHERE id = v_topic_id;
+  WHERE id = v_topic_id
+    AND is_deleted = false;
   
   RETURN v_result;
 END;

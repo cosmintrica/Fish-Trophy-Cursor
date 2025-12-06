@@ -1,4 +1,4 @@
--- Migration: Optimized function for loading forum categories with all stats in single query
+-- Migration 68: Optimized function for loading forum categories with all stats in single query
 -- This replaces 50+ sequential queries with one optimized query using JOINs and aggregations
 
 -- Function to get all categories with subcategories, stats, and last post info
@@ -30,7 +30,7 @@ BEGIN
     GROUP BY sc.id, sc.category_id, sc.name, sc.description, sc.icon, sc.slug, sc.sort_order
   ),
   last_posts AS (
-    -- Get last post for each subcategory
+    -- Get last post for each subcategory (including topics in subforums)
     SELECT DISTINCT ON (sc.id)
       sc.id as subcategory_id,
       p.id as post_id,
@@ -40,12 +40,20 @@ BEGIN
       t.id as topic_id,
       t.title as topic_title,
       t.slug as topic_slug,
+      t.subforum_id,
       sc.slug as subcategory_slug,
+      c.slug as category_slug,
+      sf.slug as subforum_slug,
       pr.display_name,
       pr.username
     FROM forum_subcategories sc
-    JOIN forum_topics t ON t.subcategory_id = sc.id AND t.is_deleted = false
+    JOIN forum_categories c ON c.id = sc.category_id
+    JOIN forum_topics t ON (
+      (t.subcategory_id = sc.id AND t.subforum_id IS NULL) OR
+      (t.subforum_id IN (SELECT id FROM forum_subforums WHERE subcategory_id = sc.id))
+    ) AND t.is_deleted = false
     JOIN forum_posts p ON p.topic_id = t.id AND p.is_deleted = false
+    LEFT JOIN forum_subforums sf ON sf.id = t.subforum_id
     LEFT JOIN profiles pr ON pr.id = p.user_id
     WHERE sc.is_active = true
     ORDER BY sc.id, p.created_at DESC
@@ -79,7 +87,9 @@ BEGIN
                 END,
                 'timeOnly', to_char(lp.created_at AT TIME ZONE 'Europe/Bucharest', 'HH24:MI'),
                 'postNumber', lp.post_number,
-                'subcategorySlug', lp.subcategory_slug
+                'categorySlug', lp.category_slug,
+                'subcategorySlug', lp.subcategory_slug,
+                'subforumSlug', lp.subforum_slug
               )
             ELSE NULL
           END

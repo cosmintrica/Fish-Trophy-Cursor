@@ -75,6 +75,7 @@ export interface ForumUserRank {
 
 export interface ForumCategory {
     id: string
+    slug?: string // Slug pentru URL-uri frumoase (ex: tehnici-de-pescuit)
     name: string
     description?: string
     icon?: string
@@ -88,29 +89,20 @@ export interface ForumCategory {
 
 export interface ForumSubforum {
     id: string
-    category_id: string
+    subcategory_id: string  // Changed: subforums are now under subcategories
+    category_id?: string  // Optional: reference to parent category (derived from subcategory)
     name: string
     description?: string
     icon?: string
+    slug?: string
     sort_order: number
     is_active: boolean
     created_at: string
     updated_at: string
-}
-
-export interface ForumSubcategory {
-    id: string
-    slug?: string // Slug pentru URL-uri frumoase (ex: pescuit-nocturn)
-    category_id?: string
-    subforum_id?: string
-    name: string
-    description?: string
-    icon?: string
-    sort_order: number
-    is_active: boolean
-    moderator_only: boolean
-    created_at: string
-    updated_at: string
+    category_slug?: string
+    category_name?: string
+    subcategory_slug?: string
+    subcategory_name?: string
     topicCount?: number
     postCount?: number
     lastPost?: {
@@ -122,6 +114,38 @@ export interface ForumSubcategory {
         date?: string | null
         timeOnly?: string
         postNumber?: number | null
+        categorySlug?: string | null
+        subcategorySlug?: string | null
+        subforumSlug?: string | null
+    }
+}
+
+export interface ForumSubcategory {
+    id: string
+    slug?: string // Slug pentru URL-uri frumoase (ex: pescuit-nocturn)
+    category_id?: string
+    subforum_id?: string  // Deprecated: no longer used, kept for compatibility
+    name: string
+    description?: string
+    icon?: string
+    sort_order: number
+    is_active: boolean
+    moderator_only: boolean
+    created_at: string
+    updated_at: string
+    subforums?: ForumSubforum[]  // NEW: subforums are now under subcategories
+    topicCount?: number  // Direct topics (not in subforums)
+    postCount?: number  // Direct posts (not in subforums)
+    lastPost?: {
+        topicId: string
+        topicTitle: string
+        topicSlug?: string
+        author: string
+        time: string
+        date?: string | null
+        timeOnly?: string
+        postNumber?: number | null
+        categorySlug?: string | null
         subcategorySlug?: string | null
         created_at?: string
         user_name?: string
@@ -161,7 +185,8 @@ export interface ForumUserRestriction {
 
 export interface ForumTopic {
     id: string
-    subcategory_id: string
+    subcategory_id?: string  // Optional: topic can be in subcategory OR subforum
+    subforum_id?: string  // Optional: topic can be in subforum (NEW STRUCTURE)
     user_id: string // FK to auth.users
     title: string
     topic_type: TopicType
@@ -331,8 +356,7 @@ export interface CategoryUpdateParams extends Partial<CategoryCreateParams> {
 }
 
 export interface CategoryWithChildren extends ForumCategory {
-    subforums: ForumSubforum[]
-    subcategories: ForumSubcategory[]
+    subcategories?: ForumSubcategory[]  // Subcategories contain subforums
     lastPost?: {
         topicId: string
         topicTitle: string
@@ -342,7 +366,9 @@ export interface CategoryWithChildren extends ForumCategory {
         date?: string | null
         timeOnly?: string
         postNumber?: number | null
+        categorySlug?: string | null
         subcategorySlug?: string | null
+        subforumSlug?: string | null
         created_at?: string
         user_name?: string
         topic_title?: string

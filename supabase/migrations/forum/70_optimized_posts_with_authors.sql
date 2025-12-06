@@ -20,7 +20,25 @@ DECLARE
   v_offset INT;
   v_total INT;
   v_result JSON;
+  v_topic_exists BOOLEAN;
 BEGIN
+  -- Security check: Verify topic exists and is not deleted
+  SELECT EXISTS (
+    SELECT 1 FROM forum_topics
+    WHERE id = p_topic_id AND is_deleted = false
+  ) INTO v_topic_exists;
+  
+  IF NOT v_topic_exists THEN
+    RETURN json_build_object(
+      'data', '[]'::json,
+      'total', 0,
+      'page', p_page,
+      'page_size', p_page_size,
+      'has_more', false,
+      'error', 'Topic not found or deleted'
+    );
+  END IF;
+  
   v_offset := (p_page - 1) * p_page_size;
   
   SELECT COUNT(*) INTO v_total

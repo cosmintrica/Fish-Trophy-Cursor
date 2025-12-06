@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCreatePost } from '../hooks/usePosts';
 import { useToast } from '../contexts/ToastContext';
 import EditorToolbar from './EditorToolbar';
-import { parseBBCodePreview } from '../utils/bbcodePreview';
+import { parseBBCode } from '../../services/forum/bbcode';
 
 interface QuickReplyBoxProps {
   topicId: string;
@@ -18,6 +18,15 @@ interface QuickReplyBoxProps {
   onPageSizeChange?: (newSize: number) => void;
   onPostCreated?: () => void;
   placeholder?: string;
+  // Multi-Quote props
+  isMultiQuoteMode?: boolean;
+  selectedQuotesCount?: number;
+  onToggleMultiQuote?: () => void;
+  onInsertQuotes?: (insertFn: (quotes: Array<{ postId: string; author: string; content: string }>) => void) => void;
+  // Focus ref pentru butonul "Răspuns"
+  focusRef?: React.RefObject<HTMLTextAreaElement>;
+  // Callback pentru inserare quote-uri selectate
+  onInsertSelectedQuotes?: (quotes: Array<{ postId: string; author: string; content: string }>) => void;
 }
 
 export default function QuickReplyBox({
@@ -25,7 +34,13 @@ export default function QuickReplyBox({
   pageSize = 20,
   onPageSizeChange,
   onPostCreated,
-  placeholder = 'Scrie răspunsul tău aici...'
+  placeholder = 'Scrie răspunsul tău aici...',
+  isMultiQuoteMode = false,
+  selectedQuotesCount = 0,
+  onToggleMultiQuote,
+  onInsertQuotes,
+  focusRef,
+  onInsertSelectedQuotes
 }: QuickReplyBoxProps) {
   const { theme } = useTheme();
   const { forumUser } = useAuth();
@@ -261,6 +276,59 @@ export default function QuickReplyBox({
       lastSavedContentRef.current = '';
     }
   }, [content, isAdvancedMode]); // Nu mai includem DRAFT_KEY_ADVANCED
+
+  // Funcție pentru inserare quote-uri în editor
+  const insertQuotes = (quotes: Array<{ postId: string; author: string; content: string }>) => {
+    if (!textareaRef.current || quotes.length === 0) return;
+
+    const textarea = textareaRef.current;
+    const currentContent = content;
+    const cursorPos = textarea.selectionStart || currentContent.length;
+    
+    // Generează BBCode pentru fiecare quote
+    const quoteBlocks = quotes.map(quote => {
+      // Păstrăm conținutul complet (cu poze, videouri, formatări), dar eliminăm nested quotes
+      let quoteContent = quote.content
+        .replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '') // Remove nested quotes
+        .trim();
+      
+      return `[quote user="${quote.author}" post_id="${quote.postId}"]\n${quoteContent}\n[/quote]`;
+    }).join('\n\n');
+    
+    // Inserează quote-urile la poziția cursorului
+    const newContent = 
+      currentContent.substring(0, cursorPos) + 
+      (currentContent.substring(cursorPos).length > 0 && !currentContent.substring(cursorPos).match(/^\s*$/) ? '\n\n' : '') +
+      quoteBlocks + 
+      (currentContent.substring(cursorPos).length > 0 ? '\n\n' : '') +
+      currentContent.substring(cursorPos);
+    
+    setContent(newContent);
+    
+    // Repoziționează cursorul după quote-uri
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newCursorPos = cursorPos + quoteBlocks.length + (currentContent.substring(cursorPos).length > 0 ? 2 : 0);
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus({ preventScroll: true });
+      }
+    }, 0);
+  };
+
+  // Expozăm funcția de inserare quote-uri către TopicPage
+  useEffect(() => {
+    if (onInsertQuotes) {
+      // onInsertQuotes este un callback care primește funcția de inserare
+      onInsertQuotes(insertQuotes);
+    }
+  }, [onInsertQuotes]);
+
+  // Expune textareaRef către parent prin focusRef
+  useEffect(() => {
+    if (focusRef && 'current' in focusRef) {
+      (focusRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = textareaRef.current;
+    }
+  }, [focusRef]);
 
   // Clear draft
   const clearDraft = () => {
@@ -827,14 +895,13 @@ export default function QuickReplyBox({
                     }}
                   >
                     <div style={{
-                      whiteSpace: 'pre-wrap',
                       wordWrap: 'break-word',
                       overflowWrap: 'break-word',
                       maxWidth: '100%'
                     }}
                       dangerouslySetInnerHTML={{
                         __html: content.trim() 
-                          ? parseBBCodePreview(content) 
+                          ? parseBBCode(content).html
                           : `<span style="color: ${theme.textSecondary}; font-style: italic;">Preview-ul va apărea aici...</span>`
                       }}
                     />
@@ -1207,6 +1274,61 @@ export default function QuickReplyBox({
               >
                 {content.length} / 10000
               </span>
+            )}
+
+            {/* Buton Multi-Quote Toggle - Inserează quote-urile când se apasă */}
+            {onToggleMultiQuote && selectedQuotesCount > 0 && onInsertSelectedQuotes && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Inserează quote-urile selectate în editor
+                  // TopicPage va furniza quote-urile prin onInsertSelectedQuotes
+                  if (onInsertSelectedQuotes) {
+                    onInsertSelectedQuotes([]); // Array gol - TopicPage va colecta quote-urile
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.5625rem 1rem',
+                  background: theme.primary,
+                  border: `1px solid ${theme.primary}`,
+                  borderRadius: '0.375rem',
+                  color: 'white',
+                  fontSize: isMobile ? '0.75rem' : '0.8125rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <Quote size={isMobile ? 14 : 16} />
+                <span>{isMobile ? 'Inserează' : 'Inserează Quote-uri'}</span>
+                <span
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: isMobile ? '18px' : '20px',
+                    height: isMobile ? '18px' : '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                    fontWeight: '600',
+                    marginLeft: '0.25rem'
+                  }}
+                >
+                  {selectedQuotesCount}
+                </span>
+              </button>
             )}
 
             {/* Buton Răspuns Complex - toggle modul avansat inline */}

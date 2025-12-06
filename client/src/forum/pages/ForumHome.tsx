@@ -10,6 +10,7 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import MobileOptimizedCategories from '../components/MobileOptimizedCategories';
 import ForumSeeder from '../components/ForumSeeder';
 import ActiveViewers from '../components/ActiveViewers';
+import { supabase } from '../../lib/supabase';
 
 export default function ForumHome() {
   const { forumUser, signOut } = useAuth();
@@ -28,9 +29,37 @@ export default function ForumHome() {
   // Use Supabase categories
   const { categories, loading, error } = useCategories();
   
+  // Preloading DISABLED - cauzează probleme cu cache-ul
+  // useAggressivePreload(categories, loading);
+  
   // Real stats from database
   const { stats: forumStatsData, loading: statsLoading } = useForumStats();
   const { users: onlineUsers, loading: onlineUsersLoading } = useOnlineUsers();
+  
+  // Get anonymous visitors count from forum_active_viewers
+  const [anonymousVisitors, setAnonymousVisitors] = useState(0);
+  useEffect(() => {
+    const getAnonymousVisitors = async () => {
+      try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { count, error } = await supabase
+          .from('forum_active_viewers')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_anonymous', true)
+          .gte('last_seen_at', fiveMinutesAgo);
+        
+        if (!error && count !== null) {
+          setAnonymousVisitors(count);
+        }
+      } catch (error) {
+        console.error('Error fetching anonymous visitors:', error);
+      }
+    };
+    
+    getAnonymousVisitors();
+    const interval = setInterval(getAnonymousVisitors, 15000); // Update every 15 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Categories loaded
 
@@ -51,9 +80,14 @@ export default function ForumHome() {
     await signOut();
   };
 
-  const handleSubcategoryClick = (subcategoryId: string) => {
-    // subcategoryId este de fapt slug-ul acum - URL clean
-    navigate(`/forum/${subcategoryId}`);
+  const handleSubcategoryClick = (subcategoryId: string, categorySlug?: string, subcategorySlug?: string) => {
+    // Construiește URL-ul corect din start, cu categorySlug dacă este disponibil
+    if (categorySlug && subcategorySlug) {
+      navigate(`/forum/${categorySlug}/${subcategorySlug}`);
+    } else {
+      // Fallback la formatul vechi dacă categorySlug nu este disponibil
+      navigate(`/forum/${subcategoryId}`);
+    }
   };
 
   // Funcție helper pentru a obține doar iconul rangului
@@ -145,7 +179,7 @@ export default function ForumHome() {
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
-                  {onlineUsers.length}
+                  {onlineUsers.length + anonymousVisitors}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
               </div>
@@ -169,10 +203,24 @@ export default function ForumHome() {
                     backgroundColor: theme.secondary,
                     borderRadius: '50%'
                   }} />
-                  Utilizatori Online ({onlineUsers.length})
+                  Utilizatori Online
                 </h4>
+                {/* Afișare format: "Utilizatori online în acest moment: 229 (53 membri și 176 vizitatori)" */}
+                <div style={{ 
+                  fontSize: '0.75rem', 
+                  color: theme.textSecondary, 
+                  marginBottom: '0.75rem',
+                  padding: '0.5rem',
+                  backgroundColor: theme.background,
+                  borderRadius: '0.5rem',
+                  border: `1px solid ${theme.border}`
+                }}>
+                  <strong style={{ color: theme.text }}>Utilizatori online în acest moment:</strong>{' '}
+                  {onlineUsers.length + anonymousVisitors} ({onlineUsers.length} {onlineUsers.length === 1 ? 'membru' : 'membri'} 
+                  {anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
+                </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {onlineUsers.length === 0 ? (
+                  {onlineUsers.length === 0 && anonymousVisitors === 0 ? (
                     <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
                   ) : (
                     onlineUsers.map((user) => (
@@ -274,7 +322,7 @@ export default function ForumHome() {
                     <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
                   </div>
                   <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Utilizatori online:</strong> {onlineUsers.length}
+                    <strong>Utilizatori online:</strong> {onlineUsers.length + anonymousVisitors} ({onlineUsers.length} {onlineUsers.length === 1 ? 'membru' : 'membri'}{anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
                   </div>
                   <div>
                     <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}

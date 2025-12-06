@@ -333,3 +333,294 @@
   font-size: 0.8rem;
   font-weight: 500;
 }
+
+/* ============================================
+   BBCode Styling - Videouri, Imagini, Formatare
+   ============================================ */
+
+/* Videouri YouTube/Vimeo - Centrate cu max-width optim, fără bari negre */
+.bbcode-video {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 1rem auto;
+  aspect-ratio: 16 / 9; /* Forțează aspect ratio 16:9 exact */
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: #000; /* Fundal negru pentru a elimina bariile */
+}
+
+.bbcode-video iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0.5rem;
+  /* Forțează iframe-ul să umple complet container-ul */
+  object-fit: cover;
+  transform: scale(1.01); /* Mică ajustare pentru a elimina bariile */
+}
+
+.bbcode-video.youtube {
+  background: #000;
+}
+
+.bbcode-video.youtube iframe {
+  /* YouTube iframe-urile - forțează umplere completă */
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.bbcode-video.vimeo {
+  background: #000;
+}
+
+.bbcode-video.vimeo iframe {
+  /* Vimeo iframe-urile - forțează umplere completă */
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Suport pentru Shorts (9:16) - dacă e necesar în viitor */
+.bbcode-video.shorts {
+  aspect-ratio: 9 / 16; /* 9:16 aspect ratio pentru shorts */
+  max-width: 400px; /* Mai îngust pentru shorts */
+}
+
+/* Imagini - Responsive cu max-width */
+.bbcode-image-container {
+  margin: 1rem 0;
+  text-align: center;
+  width: 100%;
+}
+
+.bbcode-image {
+  max-width: 600px;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .bbcode-image {
+    max-width: 100%;
+  }
+}
+
+.bbcode-image:hover {
+  transform: scale(1.02);
+}
+
+/* Link-uri */
+.bbcode-link {
+  color: #2563eb;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.bbcode-link:hover {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+/* Animații smooth pentru editare inline */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Headings */
+.bbcode-heading {
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.bbcode-h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.bbcode-h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.bbcode-h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* Lists */
+.bbcode-list {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.bbcode-list-unordered {
+  list-style-type: disc;
+}
+
+.bbcode-list-ordered {
+  list-style-type: decimal;
+}
+
+.bbcode-list-item {
+  margin: 0.25rem 0;
+}
+
+/* Code blocks */
+.bbcode-code-block {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.bbcode-code-block code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Inline formatting */
+.bbcode-bold {
+  font-weight: 700;
+}
+
+.bbcode-italic {
+  font-style: italic;
+}
+
+.bbcode-underline {
+  text-decoration: underline;
+}
+
+.bbcode-strikethrough {
+  text-decoration: line-through;
+}
+
+/* Quote blocks */
+.bbcode-quote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-left: 3px solid #2563eb;
+  border-radius: 0.375rem;
+}
+
+.bbcode-quote .quote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.bbcode-quote .quote-author {
+  color: #2563eb;
+}
+
+.bbcode-quote .quote-link {
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 0.8125rem;
+}
+
+.bbcode-quote .quote-link:hover {
+  text-decoration: underline;
+}
+
+.bbcode-quote .quote-content {
+  color: inherit;
+  line-height: 1.6;
+}
+
+/* Media în quote-uri - mai mic */
+.bbcode-quote-media {
+  margin: 0.5rem 0;
+}
+
+.bbcode-quote-image {
+  max-width: 300px !important;
+  width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.bbcode-quote-image:hover {
+  transform: scale(1.02);
+}
+
+.bbcode-quote .bbcode-video {
+  max-width: 400px;
+  margin: 0.5rem 0;
+}
+
+.bbcode-quote .bbcode-video iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .bbcode-quote-image {
+    max-width: 100% !important;
+  }
+  
+  .bbcode-quote .bbcode-video {
+    max-width: 100%;
+  }
+}
+
+/* Record and Gear embeds */
+.bbcode-record-embed,
+.bbcode-gear-embed {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .bbcode-code-block {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .bbcode-quote {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .bbcode-record-embed,
+  .bbcode-gear-embed {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
