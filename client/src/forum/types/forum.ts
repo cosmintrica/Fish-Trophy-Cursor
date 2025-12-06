@@ -78,6 +78,7 @@ export interface ForumSubcategory {
       postNumber?: number | null;
       categorySlug?: string | null;
       subcategorySlug?: string | null;
+      subforumSlug?: string | null;
       created_at?: string;
       user_name?: string;
       topic_title?: string;
@@ -94,6 +95,7 @@ export interface ForumSubcategory {
     postNumber?: number | null;
     categorySlug?: string | null;
     subcategorySlug?: string | null;
+    subforumSlug?: string | null;
     created_at?: string;
     user_name?: string;
     topic_title?: string;
@@ -128,6 +130,7 @@ export interface ForumCategory {
       postNumber?: number | null;
       categorySlug?: string | null;
       subcategorySlug?: string | null;
+      subforumSlug?: string | null;
       created_at?: string;
       user_name?: string;
       topic_title?: string;
@@ -144,6 +147,7 @@ export interface ForumCategory {
     postNumber?: number | null;
     categorySlug?: string | null;
     subcategorySlug?: string | null;
+    subforumSlug?: string | null;
     created_at?: string;
     user_name?: string;
     topic_title?: string;

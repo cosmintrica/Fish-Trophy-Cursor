@@ -147,6 +147,7 @@ export interface ForumSubcategory {
         postNumber?: number | null
         categorySlug?: string | null
         subcategorySlug?: string | null
+        subforumSlug?: string | null
         created_at?: string
         user_name?: string
         topic_title?: string
@@ -357,6 +358,7 @@ export interface CategoryUpdateParams extends Partial<CategoryCreateParams> {
 
 export interface CategoryWithChildren extends ForumCategory {
     subcategories?: ForumSubcategory[]  // Subcategories contain subforums
+    subforums?: ForumSubforum[]  // Legacy: direct subforums under category (rare, but possible)
     lastPost?: {
         topicId: string
         topicTitle: string
