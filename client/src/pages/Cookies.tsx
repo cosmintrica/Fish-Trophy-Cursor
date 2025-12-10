@@ -4,15 +4,7 @@ import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import Layout from '@/components/Layout';
 import ForumLayout, { forumUserToLayoutUser } from '@/forum/components/ForumLayout';
-
-// Default theme pentru site-ul principal
-const defaultTheme = {
-  text: '#1f2937',
-  textSecondary: '#6b7280',
-  primary: '#3b82f6',
-  surface: '#ffffff',
-  border: '#e5e7eb'
-};
+import { cn } from '@/lib/utils';
 
 // Hook-uri safe care returnează valori default dacă nu sunt în context
 function useSafeForumAuth() {
@@ -26,466 +18,342 @@ function useSafeForumAuth() {
   }
 }
 
-function useSafeForumTheme() {
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { useTheme } = require('@/forum/contexts/ThemeContext');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useTheme();
-  } catch {
-    return { theme: defaultTheme };
-  }
-}
-
 export default function Cookies() {
   const location = useLocation();
   const isForum = location.pathname.startsWith('/forum');
-  
+
   // Folosim hook-urile safe care returnează valori default dacă nu sunt în context
   const authResult = useSafeForumAuth();
-  const themeResult = useSafeForumTheme();
   const forumUser = isForum ? (authResult?.forumUser || null) : null;
-  const theme = isForum ? (themeResult?.theme || defaultTheme) : defaultTheme;
-  
+
   const { websiteData, organizationData } = useStructuredData();
 
-  const cookiesUrl = isForum 
-    ? 'https://fishtrophy.ro/forum/cookies' 
+  const cookiesUrl = isForum
+    ? 'https://fishtrophy.ro/forum/cookies'
     : 'https://fishtrophy.ro/cookies';
 
   const content = (
-    <div style={isForum ? {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '1rem',
-      color: theme.text
-    } : {
-      maxWidth: '1100px',
-      margin: '0 auto',
-      padding: '2rem 1rem'
-    }}>
-      <div style={isForum ? {
-        backgroundColor: theme.surface,
-        border: `1px solid ${theme.border}`,
-        borderRadius: '0.5rem',
-        padding: '2rem'
-      } : {
-        backgroundColor: 'white',
-        borderRadius: '1rem',
-        padding: '3rem',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-      }}>
+    <div className={cn(
+      "mx-auto transition-colors duration-200",
+      isForum ? "max-w-[1200px] p-4 text-slate-900 dark:text-slate-100" : "max-w-[1100px] py-8 px-4 text-gray-800"
+    )}>
+      <div className={cn(
+        "rounded-2xl transition-all duration-200",
+        isForum
+          ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8"
+          : "bg-white p-12 shadow-xl rounded-2xl"
+      )}>
         {/* Header */}
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            backgroundColor: isForum ? theme.primary + '20' : '#3b82f6',
-            color: isForum ? theme.primary : 'white',
-            marginBottom: '1rem'
-          }}>
+        <div className="mb-8 text-center">
+          <div className={cn(
+            "inline-flex items-center justify-center w-16 h-16 rounded-full mb-4",
+            isForum
+              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+              : "bg-blue-500 text-white"
+          )}>
             <Cookie size={32} />
           </div>
-          <h1 style={{
-            fontSize: isForum ? '1.75rem' : '2.5rem',
-            fontWeight: '700',
-            color: isForum ? theme.text : '#1f2937',
-            marginBottom: '0.5rem'
-          }}>
+          <h1 className={cn(
+            "font-bold mb-2",
+            isForum ? "text-3xl text-slate-900 dark:text-white" : "text-4xl text-gray-900"
+          )}>
             Politica de Cookie-uri
           </h1>
-          <p style={{
-            color: isForum ? theme.textSecondary : '#6b7280',
-            fontSize: '1rem'
-          }}>
+          <p className={cn(
+            "text-base",
+            isForum ? "text-slate-500 dark:text-slate-400" : "text-gray-500"
+          )}>
             Ultima actualizare: 10 decembrie 2025
           </p>
         </div>
 
         {/* Introduction */}
-        <section style={{ marginBottom: '2rem' }}>
-          <p style={{
-            fontSize: '1.1rem',
-            lineHeight: '1.8',
-            color: isForum ? theme.text : '#374151',
-            marginBottom: '1rem'
-          }}>
-            Această Politică de Cookie-uri explică ce sunt cookie-urile, cum le folosim pe site-ul <strong>Fish Trophy</strong>, 
+        <section className="mb-8">
+          <p className={cn(
+            "text-lg leading-relaxed mb-4",
+            isForum ? "text-slate-800 dark:text-slate-200" : "text-gray-700"
+          )}>
+            Această Politică de Cookie-uri explică ce sunt cookie-urile, cum le folosim pe site-ul <strong>Fish Trophy</strong>,
             și cum poți gestiona preferințele tale. Respectăm legislația GDPR și oferim control complet asupra cookie-urilor.
           </p>
         </section>
 
         {/* 1. Ce sunt cookie-urile */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4 flex items-center gap-2",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             <Info size={24} />
             1. Ce sunt cookie-urile?
           </h2>
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '1rem'
-            }}>
-              Cookie-urile sunt fișiere text mici stocate pe dispozitivul tău când vizitezi un site web. 
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <p className={cn(
+              "leading-relaxed mb-4",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
+              Cookie-urile sunt fișiere text mici stocate pe dispozitivul tău când vizitezi un site web.
               Ele permit site-ului să-ți amintească preferințele, să îmbunătățească experiența și să ofere funcții personalizate.
             </p>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <p className={cn(
+              "leading-relaxed",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Cookie-urile nu conțin informații personale identificabile direct și nu pot dăuna dispozitivului tău.
             </p>
           </div>
         </section>
 
         {/* 2. Tipuri de cookie-uri */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4 flex items-center gap-2",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             <Settings size={24} />
             2. Tipuri de cookie-uri pe care le folosim
           </h2>
 
           {/* Necessary Cookies */}
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`,
-            marginBottom: '1rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.75rem'
-            }}>
-              <Shield size={20} style={{ color: isForum ? theme.primary : '#3b82f6' }} />
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: isForum ? theme.text : '#1f2937'
-              }}>
+          <div className={cn(
+            "p-6 rounded-lg border mb-4",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <div className="flex items-center gap-2 mb-3">
+              <Shield size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <h3 className={cn(
+                "text-xl font-semibold",
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+              )}>
                 2.1. Cookie-uri Necesare (Întotdeauna Active)
               </h3>
             </div>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '0.75rem'
-            }}>
+            <p className={cn(
+              "leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Aceste cookie-uri sunt esențiale pentru funcționarea site-ului și nu pot fi dezactivate:
             </p>
-            <ul style={{
-              listStyle: 'disc',
-              paddingLeft: '1.5rem',
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <ul className={cn(
+              "list-disc pl-6 space-y-2 leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               <li><strong>Autentificare:</strong> mențin sesiunea ta de utilizator</li>
               <li><strong>Securitate:</strong> protejează împotriva atacurilor și fraudelor</li>
               <li><strong>Preferințe:</strong> rețin setările tale (tema, limba)</li>
               <li><strong>Funcționalitate:</strong> permit funcții de bază (formulare, căutare)</li>
             </ul>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.textSecondary : '#6b7280',
-              marginTop: '0.75rem',
-              fontSize: '0.9rem',
-              fontStyle: 'italic'
-            }}>
+            <p className="text-sm italic text-gray-500 dark:text-gray-400">
               Durată: Sesiune sau până la 1 an
             </p>
           </div>
 
           {/* Analytics Cookies */}
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`,
-            marginBottom: '1rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.75rem'
-            }}>
-              <BarChart3 size={20} style={{ color: isForum ? theme.primary : '#3b82f6' }} />
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: isForum ? theme.text : '#1f2937'
-              }}>
+          <div className={cn(
+            "p-6 rounded-lg border mb-4",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <h3 className={cn(
+                "text-xl font-semibold",
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+              )}>
                 2.2. Cookie-uri de Analiză (Cu Consimțământ)
               </h3>
             </div>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '0.75rem'
-            }}>
+            <p className={cn(
+              "leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Ne ajută să înțelegem cum folosești site-ul pentru a-l îmbunătăți:
             </p>
-            <ul style={{
-              listStyle: 'disc',
-              paddingLeft: '1.5rem',
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <ul className={cn(
+              "list-disc pl-6 space-y-2 leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               <li><strong>Google Analytics:</strong> analizează traficul, paginile populare, comportamentul utilizatorilor</li>
               <li><strong>Performanță:</strong> identifică probleme tehnice și zone de îmbunătățire</li>
               <li><strong>Statistici:</strong> număr de vizitatori, surse de trafic, conversii</li>
             </ul>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.textSecondary : '#6b7280',
-              marginTop: '0.75rem',
-              fontSize: '0.9rem',
-              fontStyle: 'italic'
-            }}>
-              Durată: Până la 2 ani | Furnizor: Google LLC (conform{' '}
-              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: isForum ? theme.primary : '#3b82f6', textDecoration: 'underline' }}>
-                Google Privacy Policy
-              </a>)
+            <p className="text-sm italic text-gray-500 dark:text-gray-400">
+              Durată: Până la 2 ani | Furnizor: Google LLC (conform <a href="https://policies.google.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>)
             </p>
           </div>
 
           {/* Marketing Cookies */}
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.75rem'
-            }}>
-              <Target size={20} style={{ color: isForum ? theme.primary : '#3b82f6' }} />
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: isForum ? theme.text : '#1f2937'
-              }}>
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <div className="flex items-center gap-2 mb-3">
+              <Target size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <h3 className={cn(
+                "text-xl font-semibold",
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+              )}>
                 2.3. Cookie-uri de Marketing (Cu Consimțământ)
               </h3>
             </div>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '0.75rem'
-            }}>
+            <p className={cn(
+              "leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Folosite pentru publicitate personalizată și măsurarea campaniilor (în viitor):
             </p>
-            <ul style={{
-              listStyle: 'disc',
-              paddingLeft: '1.5rem',
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <ul className={cn(
+              "list-disc pl-6 space-y-2 leading-relaxed mb-3",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               <li><strong>Publicitate:</strong> afișează anunțuri relevante pentru tine</li>
               <li><strong>Retargeting:</strong> reafișează anunțuri pentru utilizatori care au vizitat site-ul</li>
               <li><strong>Măsurare:</strong> evaluează eficacitatea campaniilor publicitare</li>
             </ul>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.textSecondary : '#6b7280',
-              marginTop: '0.75rem',
-              fontSize: '0.9rem',
-              fontStyle: 'italic'
-            }}>
+            <p className="text-sm italic text-gray-500 dark:text-gray-400">
               Durată: Până la 1 an | Momentan nu folosim cookie-uri de marketing
             </p>
           </div>
         </section>
 
         {/* 3. Gestionarea cookie-urilor */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             3. Cum poți gestiona cookie-urile
           </h2>
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '1rem'
-            }}>
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <p className={cn(
+              "leading-relaxed mb-4",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Ai control complet asupra cookie-urilor:
             </p>
-            <ul style={{
-              listStyle: 'disc',
-              paddingLeft: '1.5rem',
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <ul className={cn(
+              "list-disc pl-6 space-y-2 leading-relaxed mb-4",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               <li><strong>Banner de consimțământ:</strong> la prima vizită, poți alege ce cookie-uri să accepti</li>
               <li><strong>Setări browser:</strong> poți șterge sau bloca cookie-uri din setările browser-ului</li>
               <li><strong>Actualizare preferințe:</strong> poți schimba preferințele oricând din banner-ul de cookie-uri</li>
             </ul>
-            <div style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              backgroundColor: isForum ? theme.primary + '10' : '#eff6ff',
-              borderRadius: '0.5rem',
-              border: `1px solid ${isForum ? theme.primary + '30' : '#bfdbfe'}`
-            }}>
-              <p style={{
-                lineHeight: '1.8',
-                color: isForum ? theme.text : '#1e40af',
-                fontWeight: '500',
-                margin: 0
-              }}>
-                ⚠️ <strong>Notă:</strong> Dezactivarea cookie-urilor necesare poate afecta funcționalitatea site-ului.
+            <div className={cn(
+              "p-4 rounded-lg border",
+              isForum
+                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                : "bg-blue-50 border-blue-200"
+            )}>
+              <p className={cn(
+                "font-medium m-0 flex items-center gap-2",
+                isForum ? "text-blue-800 dark:text-blue-300" : "text-blue-900"
+              )}>
+                <span>⚠️</span>
+                <strong>Notă:</strong> Dezactivarea cookie-urilor necesare poate afecta funcționalitatea site-ului.
               </p>
             </div>
           </div>
         </section>
 
         {/* 4. Cookie-uri terți */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             4. Cookie-uri de la terți
           </h2>
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '1rem'
-            }}>
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <p className={cn(
+              "leading-relaxed mb-4",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Folosim servicii terțe care pot seta cookie-uri:
             </p>
-            <ul style={{
-              listStyle: 'disc',
-              paddingLeft: '1.5rem',
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
-              <li><strong>Google Analytics:</strong> pentru analiză (vezi{' '}
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: isForum ? theme.primary : '#3b82f6', textDecoration: 'underline' }}>
-                  Google Privacy Policy
-                </a>)
-              </li>
-              <li><strong>Supabase:</strong> pentru autentificare și bază de date (vezi{' '}
-                <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: isForum ? theme.primary : '#3b82f6', textDecoration: 'underline' }}>
-                  Supabase Privacy Policy
-                </a>)
-              </li>
+            <ul className={cn(
+              "list-disc pl-6 space-y-2 leading-relaxed",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
+              <li><strong>Google Analytics:</strong> pentru analiză (vezi <a href="https://policies.google.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>)</li>
+              <li><strong>Supabase:</strong> pentru autentificare și bază de date (vezi <a href="https://supabase.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Supabase Privacy Policy</a>)</li>
             </ul>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginTop: '1rem',
-              fontStyle: 'italic'
-            }}>
+            <p className="mt-4 italic text-sm text-gray-500 dark:text-gray-400">
               Aceste servicii au propriile politici de confidențialitate și cookie-uri.
             </p>
           </div>
         </section>
 
         {/* 5. Actualizări */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             5. Actualizări ale acestei politici
           </h2>
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
-              Putem actualiza această politică periodic pentru a reflecta schimbări în practicile noastre sau în legislație. 
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <p className={cn(
+              "leading-relaxed",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
+              Putem actualiza această politică periodic pentru a reflecta schimbări în practicile noastre sau în legislație.
               Vom notifica utilizatorii despre modificări semnificative prin banner sau email.
             </p>
           </div>
         </section>
 
         {/* 6. Contact */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: isForum ? theme.primary : '#3b82f6',
-            marginBottom: '1rem'
-          }}>
+        <section className="mb-8">
+          <h2 className={cn(
+            "text-2xl font-semibold mb-4",
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+          )}>
             6. Contact
           </h2>
-          <div style={{
-            backgroundColor: isForum ? theme.surface : '#f9fafb',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            border: `1px solid ${isForum ? theme.border : '#e5e7eb'}`
-          }}>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151',
-              marginBottom: '0.5rem'
-            }}>
+          <div className={cn(
+            "p-6 rounded-lg border",
+            isForum
+              ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+              : "bg-gray-50 border-gray-200"
+          )}>
+            <p className={cn(
+              "leading-relaxed mb-2",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               Pentru întrebări despre cookie-uri:
             </p>
-            <p style={{
-              lineHeight: '1.8',
-              color: isForum ? theme.text : '#374151'
-            }}>
+            <p className={cn(
+              "leading-relaxed",
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+            )}>
               <strong>Email:</strong>{' '}
-              <a href="mailto:privacy@fishtrophy.ro" style={{ color: isForum ? theme.primary : '#3b82f6', textDecoration: 'underline' }}>
+              <a href="mailto:privacy@fishtrophy.ro" className="text-blue-600 dark:text-blue-400 hover:underline">
                 privacy@fishtrophy.ro
               </a>
             </p>
@@ -493,21 +361,19 @@ export default function Cookies() {
         </section>
 
         {/* Footer */}
-        <div style={{
-          marginTop: '3rem',
-          paddingTop: '2rem',
-          borderTop: `2px solid ${isForum ? theme.border : '#e5e7eb'}`,
-          textAlign: 'center',
-          color: isForum ? theme.textSecondary : '#6b7280',
-          fontSize: '0.9rem'
-        }}>
+        <div className={cn(
+          "mt-12 pt-8 border-t text-center text-sm",
+          isForum
+            ? "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
+            : "border-gray-200 text-gray-500"
+        )}>
           <p>
             Pentru mai multe informații despre confidențialitate, consultă{' '}
-            <a href={isForum ? '/forum/privacy' : '/privacy'} style={{ color: isForum ? theme.primary : '#3b82f6', textDecoration: 'underline' }}>
+            <a href={isForum ? '/forum/privacy' : '/privacy'} className="text-blue-600 dark:text-blue-400 hover:underline">
               Politica de Confidențialitate
             </a>.
           </p>
-          <p style={{ marginTop: '0.5rem' }}>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
             Ultima actualizare: 10 decembrie 2025
           </p>
         </div>
@@ -529,8 +395,8 @@ export default function Cookies() {
       {isForum ? (
         <ForumLayout
           user={forumUserToLayoutUser(forumUser)}
-          onLogin={() => {}}
-          onLogout={() => {}}
+          onLogin={() => { }}
+          onLogout={() => { }}
         >
           {content}
         </ForumLayout>

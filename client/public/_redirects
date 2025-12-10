@@ -1,17 +1,17 @@
-# Netlify redirects file
-# This file takes precedence over netlify.toml redirects
-# IMPORTANT: In development, Netlify Dev proxies Vite routes automatically
-# These redirects only apply in production
+# Vite dev server routes - must be excluded from SPA redirect
+# These routes are handled by Vite dev server in development
+/src/*  /src/:splat  200
+/@vite/*  /@vite/:splat  200
+/@id/*  /@id/:splat  200
+/assets/*  /assets/:splat  200
+/node_modules/*  /node_modules/:splat  200
 
 # API routes
 /api/og.png  /.netlify/functions/og  200
 /sitemap.xml  /.netlify/functions/sitemap  200
 /api/*  /.netlify/functions/:splat  200
 
-# Static assets (production only - in dev, Vite handles these)
-/assets/*  /assets/:splat  200
-
-# Catch-all for SPA - must be last
-# Note: /src/*, /@vite/*, /@id/* are handled by Vite dev server in development
+# Catch-all for SPA - must come LAST
 /*  /index.html  200
+
 

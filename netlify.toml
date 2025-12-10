@@ -29,15 +29,17 @@
 # Cache optimization - using built-in Netlify cache
 
 [dev]
+  framework = "vite"
   command = "npm run dev:client"
   port = 8889
   targetPort = 5173
-  # Proxy all requests to Vite dev server in development
-  # This ensures /src/*, /assets/*, etc. are handled by Vite
-  publish = "client/dist"
+  autoLaunch = false
+  # Netlify Dev should proxy unmatched routes to targetPort
+  # If /src/* doesn't work through proxy, access Vite directly on port 5173
 
-# API redirects - must come BEFORE catch-all redirect
+# API redirects - apply in both dev and production
 # Order is CRITICAL - most specific routes first!
+# These are specific enough to not interfere with Vite routes (/src/*, /@vite/*, /@id/*)
 
 [[redirects]]
   from = "/api/og.png"
@@ -57,13 +59,13 @@
   status = 200
   force = true
 
-# Catch-all redirect for SPA - must come LAST
-# IMPORTANT: In development, Netlify Dev proxies /src/*, /assets/*, /node_modules/* to Vite
-# This redirect only applies to routes that don't match static assets
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Production-only redirects
+# In development, Netlify Dev should proxy /src/*, /@vite/*, /@id/* to Vite automatically
+[context.production]
+  [[redirects]]
+    from = "/*"
+    to = "/index.html"
+    status = 200
 
 [functions]
   directory = "netlify/functions"

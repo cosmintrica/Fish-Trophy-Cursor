@@ -78,7 +78,7 @@ function ProfileCompletionWrapper({ children }: { children: React.ReactNode }) {
       {needsProfileCompletion && user && (
         <CompleteGoogleProfileModal
           isOpen={needsProfileCompletion}
-          onClose={() => {}} // Don't allow closing without completing
+          onClose={() => { }} // Don't allow closing without completing
           onComplete={handleComplete}
           userEmail={user.email || ''}
         />
@@ -100,13 +100,13 @@ function AppContent() {
         <Layout>
           <ScrollToTop />
           <Routes>
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 <Suspense fallback={<PageLoader />}>
                   <Home />
                 </Suspense>
-              } 
+              }
             />
             <Route path="/email-confirmation" element={<EmailConfirmation />} />
             <Route path="/species" element={<Species />} />
@@ -163,7 +163,7 @@ function QueryProvider({ children }: { children: React.ReactNode }) {
       {/* IMPORTANT: DevTools NU apare în production - doar în development */}
       {/* Doar dezvoltatorii care rulează local văd acest icon */}
       {import.meta.env.DEV && (
-        <ReactQueryDevtools 
+        <ReactQueryDevtools
           initialIsOpen={false}
         />
       )}
@@ -185,6 +185,7 @@ function App() {
               </AnalyticsWrapper>
             </RealtimeMessagesWrapper>
             <MessageNotificationManager />
+            <CookieConsent />
           </Router>
           <Toaster
             position="bottom-right"
@@ -198,7 +199,6 @@ function App() {
               className: 'toast-message'
             }}
           />
-          <CookieConsent />
         </AuthProvider>
       </QueryProvider>
     </HelmetProvider>

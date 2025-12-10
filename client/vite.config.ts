@@ -15,6 +15,7 @@ export default defineConfig({
       overlay: false, // Disable error overlay to reduce console noise
       // HMR va folosi automat host-ul server-ului (0.0.0.0 permite acces din rețea)
       protocol: 'ws', // WebSocket protocol
+      clientPort: 8889, // Force HMR to go through Netlify Dev proxy
     },
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

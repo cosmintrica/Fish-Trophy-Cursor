@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Cookie, Shield, Settings } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { X, Shield, Settings, Fish, BarChart3, Target } from 'lucide-react';
 import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 // Extend Window interface for GTM dataLayer
 declare global {
@@ -19,16 +21,43 @@ interface CookieConsentState {
 }
 
 export default function CookieConsent() {
+  const location = useLocation();
+  const isForum = location.pathname.startsWith('/forum');
+
   const [showBanner, setShowBanner] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [consent, setConsent] = useState<CookieConsentState>({
-    necessary: true, // Always true, cannot be disabled
+    necessary: true,
     analytics: false,
     marketing: false,
   });
 
   useEffect(() => {
-    // Check if user has already given consent
+    // Sync dark mode
+    const syncDarkMode = () => {
+      const isDataThemeDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const shouldBeDark = isForum && isDataThemeDark;
+      document.documentElement.classList.toggle('dark', shouldBeDark);
+    };
+
+    syncDarkMode();
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          syncDarkMode();
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, [isForum]);
+
+  useEffect(() => {
     const savedConsent = localStorage.getItem(COOKIE_CONSENT_KEY);
     if (!savedConsent) {
       setShowBanner(true);
@@ -36,7 +65,6 @@ export default function CookieConsent() {
       try {
         const parsed = JSON.parse(savedConsent);
         setConsent(parsed);
-        // Update gtag consent based on saved preferences
         updateGtagConsent(parsed);
       } catch (e) {
         setShowBanner(true);
@@ -46,8 +74,6 @@ export default function CookieConsent() {
 
   const updateGtagConsent = (consentState: CookieConsentState) => {
     if (typeof window !== 'undefined' && window.dataLayer) {
-      // Consent Mode v2 - Update consent via GTM dataLayer
-      // This works with Google Tag Manager
       window.dataLayer.push({
         'event': 'consent_update',
         'consent': {
@@ -57,8 +83,6 @@ export default function CookieConsent() {
           'analytics_storage': consentState.analytics ? 'granted' : 'denied'
         }
       });
-      
-      // Also push gtag consent update for compatibility
       window.dataLayer.push({
         'event': 'gtag.consent',
         'gtag.consent': {
@@ -74,13 +98,13 @@ export default function CookieConsent() {
   const saveConsent = (consentState: CookieConsentState) => {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + COOKIE_CONSENT_EXPIRY_DAYS);
-    
+
     const consentData = {
       ...consentState,
       timestamp: new Date().toISOString(),
       expiry: expiryDate.toISOString(),
     };
-    
+
     localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consentData));
     updateGtagConsent(consentState);
     setShowBanner(false);
@@ -122,158 +146,200 @@ export default function CookieConsent() {
   if (!showBanner && !showSettings) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] p-3 sm:p-4 md:p-6">
-      <div className="max-w-2xl md:max-w-3xl mx-auto bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-3 sm:px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <Cookie className="w-5 h-5 md:w-6 md:h-6 text-white flex-shrink-0" />
-            <h3 className="text-white font-semibold text-sm sm:text-base md:text-lg">
-              {showSettings ? 'Setări Cookie-uri' : 'Cookie-uri și Confidențialitate'}
-            </h3>
+    <>
+      <style>{`
+        @keyframes swim {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-3px) rotate(-5deg); }
+          75% { transform: translateY(3px) rotate(5deg); }
+        }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .fish-swim {
+          animation: swim 4s ease-in-out infinite;
+        }
+        .bg-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+          background-size: 200% 100%;
+          animation: shimmer 3s infinite linear;
+        }
+        .dark .bg-shimmer {
+          animation-duration: 8s; /* Slower animation in dark mode/forum */
+        }
+      `}</style>
+      <div className={cn(
+        "fixed bottom-4 right-4 z-[9999] p-4 max-w-md w-full transition-all duration-500 ease-out transform translate-y-0 opacity-100",
+        "animate-in slide-in-from-bottom-8 fade-in leading-relaxed print:hidden"
+      )}>
+        <div className={cn(
+          "rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] backdrop-blur-xl border border-white/20 overflow-hidden",
+          "bg-white/80 dark:bg-slate-900/80 dark:border-slate-700/50",
+          "relative group transition-all hover:bg-white/90 dark:hover:bg-slate-900/90"
+        )}>
+          {/* Animated Shimmer Overlay */}
+          <div className="absolute inset-0 pointer-events-none bg-shimmer opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+          {/* Decorative Gradient Border Top */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_10px_rgba(56,189,248,0.5)]" />
+
+          {/* Header */}
+          <div className="p-4 flex items-start justify-between relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="relative group/icon">
+                <div className="absolute -inset-2 rounded-full bg-blue-400/20 dark:bg-blue-400/10 blur-xl animate-pulse group-hover/icon:bg-blue-400/30 transition-all" />
+                <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center border border-blue-200/50 dark:border-blue-700/30 shadow-inner">
+                  <Fish className="w-5 h-5 text-blue-600 dark:text-blue-400 fish-swim" />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight tracking-tight">
+                  {showSettings ? 'Setări Năluci' : 'Prindem Cookie-uri?'}
+                </h3>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mt-0.5">
+                  Confidențialitate & Date
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowBanner(false);
+                setShowSettings(false);
+              }}
+              className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-200 transition-all p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 active:scale-95"
+              aria-label="Închide"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setShowBanner(false);
-              setShowSettings(false);
-            }}
-            className="text-white hover:bg-white/20 rounded-full p-1 transition-colors"
-            aria-label="Închide"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="p-3 sm:p-4 md:p-6">
-          {!showSettings ? (
-            <>
-              <p className="text-gray-700 text-xs sm:text-sm md:text-base mb-3 md:mb-4 leading-relaxed">
-                Folosim cookie-uri pentru a îmbunătăți experiența ta pe site, pentru analiză și pentru personalizare. 
-                Cookie-urile necesare sunt întotdeauna active. Poți alege să activezi sau să dezactivezi cookie-urile 
-                pentru analiză și marketing.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  onClick={handleAcceptAll}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Acceptă toate
-                </Button>
-                <Button
-                  onClick={handleRejectAll}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Respinge toate
-                </Button>
-                <Button
-                  onClick={() => setShowSettings(true)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Personalizează
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-4 mb-6">
-                {/* Necessary Cookies */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-blue-600" />
-                      <span className="font-semibold text-gray-900">Cookie-uri Necesare</span>
-                    </div>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">Întotdeauna active</span>
+          {/* Content */}
+          <div className="px-4 pb-4 relative z-10">
+            {!showSettings ? (
+              <>
+                <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed mb-4 font-medium">
+                  Folosim cookie-uri pentru a-ți asigura <span className="text-blue-600 dark:text-blue-400 font-bold">"captura cea mare"</span> (experiență optimă).
+                  Analizăm curenții (traficul) și personalizăm echipamentul.
+                </p>
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleAcceptAll}
+                    className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg shadow-blue-500/25 rounded-xl py-4 h-auto font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    Acceptă Toată Captura 🎣
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleRejectAll}
+                      variant="ghost"
+                      className="flex-1 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400 rounded-xl h-9 text-xs transition-colors"
+                    >
+                      Respinge
+                    </Button>
+                    <Button
+                      onClick={() => setShowSettings(true)}
+                      variant="ghost"
+                      className="flex-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl h-9 text-xs transition-colors"
+                    >
+                      Personalizează
+                    </Button>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    Aceste cookie-uri sunt esențiale pentru funcționarea site-ului și nu pot fi dezactivate.
-                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4 max-h-[250px] overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                  {/* Necessary Cookies */}
+                  <div className="rounded-xl p-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-100 dark:border-slate-700/50">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="font-bold text-xs text-gray-900 dark:text-white">Strict Necesare</span>
+                      </div>
+                      <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">OBLIGATORIU</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                      Esențiale pentru funcționarea apelor. Fără ele, barca nu plutește.
+                    </p>
+                  </div>
+
+                  {/* Analytics Cookies */}
+                  <div className="rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-gray-100 dark:hover:border-slate-700/50 transition-all cursor-pointer group/item">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 group-hover/item:scale-110 transition-transform" />
+                        <span className="font-bold text-xs text-gray-900 dark:text-white">Analiză</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer scale-75 origin-right">
+                        <input
+                          type="checkbox"
+                          checked={consent.analytics}
+                          onChange={handleToggleAnalytics}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                      Măsurăm dimensiunea capturilor pentru statistici.
+                    </p>
+                  </div>
+
+                  {/* Marketing Cookies */}
+                  <div className="rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-gray-100 dark:hover:border-slate-700/50 transition-all cursor-pointer group/item">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 group-hover/item:scale-110 transition-transform" />
+                        <span className="font-bold text-xs text-gray-900 dark:text-white">Marketing</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer scale-75 origin-right">
+                        <input
+                          type="checkbox"
+                          checked={consent.marketing}
+                          onChange={handleToggleMarketing}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                      Reclame relevante pentru tine.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Analytics Cookies */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Cookie className="w-5 h-5 text-green-600" />
-                      <span className="font-semibold text-gray-900">Cookie-uri de Analiză</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={consent.analytics}
-                        onChange={handleToggleAnalytics}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Ne ajută să înțelegem cum interacționezi cu site-ul prin Google Analytics.
-                  </p>
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleSavePreferences}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md py-4 h-auto text-sm"
+                  >
+                    Salvează setările
+                  </Button>
+                  <Button
+                    onClick={() => setShowSettings(false)}
+                    variant="ghost"
+                    className="w-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 h-8 text-xs"
+                  >
+                    Înapoi
+                  </Button>
                 </div>
+              </>
+            )}
 
-                {/* Marketing Cookies */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Cookie className="w-5 h-5 text-purple-600" />
-                      <span className="font-semibold text-gray-900">Cookie-uri de Marketing</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={consent.marketing}
-                        onChange={handleToggleMarketing}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Folosite pentru publicitate personalizată și măsurarea performanței campaniilor.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  onClick={handleSavePreferences}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Salvează preferințele
-                </Button>
-                <Button
-                  onClick={() => setShowSettings(false)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Înapoi
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer Link */}
-        <div className="px-3 sm:px-4 md:px-6 py-2 md:py-3 bg-gray-50 border-t border-gray-200">
-          <p className="text-[10px] sm:text-xs text-gray-600 text-center">
-            Pentru mai multe informații, consultă{' '}
-            <a href="/privacy" className="text-blue-600 hover:underline">
-              Politica de Confidențialitate
-            </a>
-            {' '}și{' '}
-            <a href="/cookies" className="text-blue-600 hover:underline">
-              Politica de Cookie-uri
-            </a>
-            .
-          </p>
+            {/* Footer Link */}
+            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800/50 flex justify-center items-center gap-2 whitespace-nowrap">
+              <a href={isForum ? "/forum/privacy" : "/privacy"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
+                Politică Confidențialitate
+              </a>
+              <span className="text-[9px] text-gray-300 dark:text-slate-700">•</span>
+              <a href={isForum ? "/forum/cookies" : "/cookies"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
+                Politică Cookie-uri
+              </a>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
-

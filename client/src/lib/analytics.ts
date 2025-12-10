@@ -49,7 +49,7 @@ class AnalyticsTracker {
       // Track page view
       await this.trackEvent('page_view', {
         page_path: window.location.pathname,
-    page_title: document.title,
+        page_title: document.title,
         referrer: document.referrer || undefined
       });
 
@@ -68,6 +68,14 @@ class AnalyticsTracker {
   private async detectUserLocation() {
     try {
       // Use a free IP geolocation service
+      // Skip on localhost to avoid CORS errors
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('Running on localhost, skipping IP geolocation');
+        this.userCountry = 'Development';
+        this.userCity = 'Localhost';
+        return;
+      }
+
       const response = await fetch('https://ipapi.co/json/');
       if (response.ok) {
         const data = await response.json();
