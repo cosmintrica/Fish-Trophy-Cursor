@@ -32,6 +32,9 @@
   command = "npm run dev:client"
   port = 8889
   targetPort = 5173
+  # Proxy all requests to Vite dev server in development
+  # This ensures /src/*, /assets/*, etc. are handled by Vite
+  publish = "client/dist"
 
 # API redirects - must come BEFORE catch-all redirect
 # Order is CRITICAL - most specific routes first!
@@ -55,6 +58,8 @@
   force = true
 
 # Catch-all redirect for SPA - must come LAST
+# Note: In development (netlify dev), Vite dev server handles /src/*, /assets/*, etc.
+# This redirect only applies in production
 [[redirects]]
   from = "/*"
   to = "/index.html"
