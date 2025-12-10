@@ -1,21 +1,32 @@
 ﻿<!DOCTYPE html>
 <html lang="ro">
   <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VBGXDNPKJE"></script>
+    <!-- Google Tag Manager - Consent Mode v2 -->
+    <!-- CRITICAL: Set consent default BEFORE GTM loads -->
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      // Set default consent mode to 'denied' until user gives consent
-      gtag('consent', 'default', {
-        'analytics_storage': 'denied',
-        'ad_storage': 'denied'
+      
+      // Set default consent to 'denied' for Consent Mode v2
+      // This must be set BEFORE GTM container loads
+      // Format for GTM: use 'gtag.consent' event
+      window.dataLayer.push({
+        'event': 'gtag.consent',
+        'gtag.consent': {
+          'ad_storage': 'denied',
+          'ad_user_data': 'denied',
+          'ad_personalization': 'denied',
+          'analytics_storage': 'denied',
+          'wait_for_update': 500 // Wait 500ms for consent banner to update
+        }
       });
-
-      gtag('config', 'G-VBGXDNPKJE');
     </script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-WFSK9N29');</script>
+    <!-- End Google Tag Manager -->
     
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -109,6 +120,10 @@
     <title>Fish Trophy - Platforma Pescarilor din România</title>
   </head>
   <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WFSK9N29"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script>
       // Register Service Worker for PWA

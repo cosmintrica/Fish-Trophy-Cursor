@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { X, Cookie, Shield, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 
-// Extend Window interface for gtag
+// Extend Window interface for GTM dataLayer
 declare global {
   interface Window {
     dataLayer: any[];
-    gtag: (...args: any[]) => void;
   }
 }
 
@@ -46,10 +45,28 @@ export default function CookieConsent() {
   }, []);
 
   const updateGtagConsent = (consentState: CookieConsentState) => {
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('consent', 'update', {
-        analytics_storage: consentState.analytics ? 'granted' : 'denied',
-        ad_storage: consentState.marketing ? 'granted' : 'denied',
+    if (typeof window !== 'undefined' && window.dataLayer) {
+      // Consent Mode v2 - Update consent via GTM dataLayer
+      // This works with Google Tag Manager
+      window.dataLayer.push({
+        'event': 'consent_update',
+        'consent': {
+          'ad_storage': consentState.marketing ? 'granted' : 'denied',
+          'ad_user_data': consentState.marketing ? 'granted' : 'denied',
+          'ad_personalization': consentState.marketing ? 'granted' : 'denied',
+          'analytics_storage': consentState.analytics ? 'granted' : 'denied'
+        }
+      });
+      
+      // Also push gtag consent update for compatibility
+      window.dataLayer.push({
+        'event': 'gtag.consent',
+        'gtag.consent': {
+          'ad_storage': consentState.marketing ? 'granted' : 'denied',
+          'ad_user_data': consentState.marketing ? 'granted' : 'denied',
+          'ad_personalization': consentState.marketing ? 'granted' : 'denied',
+          'analytics_storage': consentState.analytics ? 'granted' : 'denied'
+        }
       });
     }
   };
