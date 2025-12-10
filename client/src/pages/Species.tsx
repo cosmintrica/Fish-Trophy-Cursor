@@ -305,10 +305,10 @@ const Species = () => {
 
   const speciesStructuredData = createSpeciesData({
     name: 'Catalog de Specii de Pești',
+    scientificName: 'Fish Species Catalog',
     description: speciesDescription,
     image: speciesImage,
-    url: speciesUrl,
-    speciesCount: species.length
+    url: speciesUrl
   });
 
   return (

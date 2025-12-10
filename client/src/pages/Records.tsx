@@ -22,6 +22,7 @@ interface FishRecord {
   captured_at: string;
   notes?: string;
   photo_url?: string;
+  image_url?: string; // Alias pentru photo_url
   video_url?: string;
   status: string;
   created_at: string;

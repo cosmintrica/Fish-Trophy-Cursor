@@ -395,38 +395,61 @@ export default function NotFound404() {
     border: 'none'
   };
 
-  return (
-    <div style={containerStyle}>
-      <div style={{ maxWidth: '1000px', width: '100%', textAlign: 'center' }}>
-        {/* 404 Title */}
-        <div style={titleStyle}>
-          404
-        </div>
+  // Conținutul paginii 404
+  const gameContent = (
+    <div style={{ maxWidth: '1000px', width: '100%', textAlign: 'center' }}>
+      {/* 404 Title */}
+      <div style={titleStyle}>
+        404
+      </div>
 
-        {/* Message */}
-        <h1 style={messageStyle}>
-          Pagină negăsită
-        </h1>
+      {/* Message */}
+      <h1 style={messageStyle}>
+        Pagină negăsită
+      </h1>
 
-        <p style={textStyle}>
-          Se pare că ai ajuns într-un loc unde nu există nimic... sau poate doar un pește!
-        </p>
+      <p style={textStyle}>
+        Se pare că ai ajuns într-un loc unde nu există nimic... sau poate doar un pește!
+      </p>
 
-        {/* Game Canvas */}
-        <div style={gameContainerStyle}>
-          <canvas
-            ref={canvasRef}
-            style={{
-              display: 'block',
-              width: '100%',
-              height: 'auto',
-              borderRadius: '0.5rem',
-              backgroundColor: '#1a1a2e',
-              cursor: isPlaying ? 'crosshair' : 'pointer'
-            }}
+      {/* Game Canvas */}
+      <div style={gameContainerStyle}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            borderRadius: '0.5rem',
+            backgroundColor: '#1a1a2e',
+            cursor: isPlaying ? 'crosshair' : 'pointer'
+          }}
+          onClick={() => {
+            if (!isPlaying) {
+              setIsPlaying(true);
+              setFishCaught(0);
+              if (gameStateRef.current) {
+                gameStateRef.current.fish = [];
+                gameStateRef.current.bubbles = [];
+                gameStateRef.current.score = 0;
+              }
+            }
+          }}
+        />
+        
+        {/* Game Controls */}
+        <div style={{
+          marginTop: '0.75rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem',
+          flexWrap: 'wrap'
+        }}>
+          <button
             onClick={() => {
+              setIsPlaying(!isPlaying);
               if (!isPlaying) {
-                setIsPlaying(true);
                 setFishCaught(0);
                 if (gameStateRef.current) {
                   gameStateRef.current.fish = [];
@@ -435,104 +458,9 @@ export default function NotFound404() {
                 }
               }
             }}
-          />
-          
-          {/* Game Controls */}
-          <div style={{
-            marginTop: '0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.75rem',
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => {
-                setIsPlaying(!isPlaying);
-                if (!isPlaying) {
-                  setFishCaught(0);
-                  if (gameStateRef.current) {
-                    gameStateRef.current.fish = [];
-                    gameStateRef.current.bubbles = [];
-                    gameStateRef.current.score = 0;
-                  }
-                }
-              }}
-              style={{
-                ...buttonStyle,
-                backgroundColor: isPlaying ? theme.error : theme.primary,
-                color: 'white'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.9';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              <Fish size={14} />
-              {isPlaying ? 'Pauză' : 'Joacă'}
-            </button>
-
-            <div style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: theme.background,
-              border: `1px solid ${theme.border}`,
-              borderRadius: '0.375rem',
-              fontSize: '0.8125rem',
-              color: theme.text,
-              fontWeight: '500'
-            }}>
-              🐟 {fishCaught}
-            </div>
-          </div>
-
-          {!isPlaying && (
-            <p style={{
-              marginTop: '0.5rem',
-              fontSize: '0.75rem',
-              color: theme.textSecondary,
-              fontStyle: 'italic'
-            }}>
-              Apasă pe canvas sau butonul "Joacă" pentru a începe. Mută mouse-ul pentru a controla cârligul.
-            </p>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.75rem',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={() => navigate(-1)}
             style={{
               ...buttonStyle,
-              backgroundColor: theme.surface,
-              border: `1px solid ${theme.border}`,
-              color: theme.text
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.surfaceHover || theme.surface;
-              e.currentTarget.style.borderColor = theme.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.surface;
-              e.currentTarget.style.borderColor = theme.border;
-            }}
-          >
-            <ArrowLeft size={16} />
-            Înapoi
-          </button>
-
-          <button
-            onClick={() => navigate(isForum ? '/forum' : '/')}
-            style={{
-              ...buttonStyle,
-              backgroundColor: theme.primary,
+              backgroundColor: isPlaying ? theme.error : theme.primary,
               color: 'white'
             }}
             onMouseEnter={(e) => {
@@ -542,10 +470,81 @@ export default function NotFound404() {
               e.currentTarget.style.opacity = '1';
             }}
           >
-            <Home size={16} />
-            {isForum ? 'Forum' : 'Acasă'}
+            <Fish size={14} />
+            {isPlaying ? 'Pauză' : 'Joacă'}
           </button>
+
+          <div style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: theme.background,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.375rem',
+            fontSize: '0.8125rem',
+            color: theme.text,
+            fontWeight: '500'
+          }}>
+            🐟 {fishCaught}
+          </div>
         </div>
+
+        {!isPlaying && (
+          <p style={{
+            marginTop: '0.5rem',
+            fontSize: '0.75rem',
+            color: theme.textSecondary,
+            fontStyle: 'italic'
+          }}>
+            Apasă pe canvas sau butonul "Joacă" pentru a începe. Mută mouse-ul pentru a controla cârligul.
+          </p>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.75rem',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            ...buttonStyle,
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            color: theme.text
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.surfaceHover || theme.surface;
+            e.currentTarget.style.borderColor = theme.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = theme.surface;
+            e.currentTarget.style.borderColor = theme.border;
+          }}
+        >
+          <ArrowLeft size={16} />
+          Înapoi
+        </button>
+
+        <button
+          onClick={() => navigate(isForum ? '/forum' : '/')}
+          style={{
+            ...buttonStyle,
+            backgroundColor: theme.primary,
+            color: 'white'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '0.9';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '1';
+          }}
+        >
+          <Home size={16} />
+          {isForum ? 'Forum' : 'Acasă'}
+        </button>
       </div>
     </div>
   );
@@ -559,7 +558,7 @@ export default function NotFound404() {
         onLogout={() => {}}
       >
         <div style={containerStyle}>
-          {content}
+          {gameContent}
         </div>
       </ForumLayout>
     );
@@ -568,7 +567,7 @@ export default function NotFound404() {
   // Pentru site-ul principal, returnăm direct
   return (
     <div style={containerStyle}>
-      {content}
+      {gameContent}
     </div>
   );
 }

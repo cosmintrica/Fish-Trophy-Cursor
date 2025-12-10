@@ -190,6 +190,7 @@ export interface ForumTopic {
     subforum_id?: string  // Optional: topic can be in subforum (NEW STRUCTURE)
     user_id: string // FK to auth.users
     title: string
+    slug?: string // Slug pentru URL-uri frumoase
     topic_type: TopicType
     is_locked: boolean
     is_pinned: boolean

@@ -3,7 +3,7 @@
  * Displays user profile with header, tabs, and detailed information
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +15,9 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { getUserReputationLogs } from '../../services/forum/reputation';
 import { getAllUserRestrictions } from '../../services/forum/moderation';
 import { parseBBCode } from '../../services/forum/bbcode';
+import SEOHead from '../../components/SEOHead';
+import ShareButton from '../../components/ShareButton';
+import { useStructuredData } from '../../hooks/useStructuredData';
 import {
   User,
   Award,
@@ -1131,11 +1134,11 @@ function PostsHistoryTab({
     gcTime: 5 * 60 * 1000
   });
 
-  // Fetch mentions - postări care conțin @username
+  // Fetch mentions - postări care conțin [mention]username[/mention]
   const { data: mentions = [], isLoading: isLoadingMentions } = useQuery({
     queryKey: ['user-mentions', username],
     queryFn: async () => {
-      // Caută postări care conțin @username în conținut
+      // Caută postări care conțin [mention]username[/mention] în conținut
       const { data: mentionsData, error } = await supabase
         .from('forum_posts')
         .select(`
@@ -1244,12 +1247,12 @@ function PostsHistoryTab({
         .limit(50);
 
       if (error) {
-        console.error('Error fetching mentions:', error);
+        console.error('Error fetching quotes:', error);
         throw error;
       }
 
       // Get subcategory and category slugs
-      const subcategoryIds = [...new Set((mentionsData || []).map(p => {
+      const subcategoryIds = [...new Set((quotesData || []).map(p => {
         const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
         return topic?.subcategory_id;
       }).filter(Boolean))];

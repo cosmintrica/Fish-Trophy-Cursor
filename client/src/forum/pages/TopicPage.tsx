@@ -236,6 +236,7 @@ export default function TopicPage() {
   const displayTopic = topic || {
     title: '',
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     view_count: 0,
     reply_count: 0
   };
@@ -277,7 +278,7 @@ export default function TopicPage() {
     description: topicDescription,
     image: topicImage,
     datePublished: displayTopic.created_at,
-    dateModified: displayTopic.updated_at || displayTopic.created_at,
+    dateModified: topic?.updated_at || displayTopic.created_at,
     author: topicAuthor,
     url: topicUrl
   }) : null;
@@ -294,7 +295,7 @@ export default function TopicPage() {
           type="article"
           author={topicAuthor}
           publishedTime={displayTopic.created_at}
-          modifiedTime={displayTopic.updated_at || displayTopic.created_at}
+          modifiedTime={topic?.updated_at || displayTopic.created_at}
           section={subcategoryName || 'Forum'}
           tags={topicTags}
           structuredData={articleStructuredData ? [websiteData, organizationData, articleStructuredData] as unknown as Record<string, unknown>[] : [websiteData, organizationData] as unknown as Record<string, unknown>[]}

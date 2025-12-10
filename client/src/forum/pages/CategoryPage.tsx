@@ -89,6 +89,8 @@ export default function CategoryPage() {
     subcategoryName,
     subcategoryDescription,
     subforumName,
+    subforumDescription,
+    categoryDescription,
     parentCategory,
     subforums,
   } = useMemo(() => {
@@ -99,6 +101,8 @@ export default function CategoryPage() {
         subcategoryName: '',
         subcategoryDescription: '',
         subforumName: '',
+        subforumDescription: '',
+        categoryDescription: '',
         parentCategory: null,
         subforums: [],
       };
@@ -111,6 +115,8 @@ export default function CategoryPage() {
         subcategoryName: subcategoryOrSubforumData.subcategory.name,
         subcategoryDescription: subcategoryOrSubforumData.subcategory.description || '',
         subforumName: '',
+        subforumDescription: '',
+        categoryDescription: (subcategoryOrSubforumData.parentCategory as any)?.description || '',
         parentCategory: subcategoryOrSubforumData.parentCategory,
         subforums: subcategoryOrSubforumData.subforums,
       };
@@ -121,8 +127,10 @@ export default function CategoryPage() {
         subcategoryId: null,
         subforumId: subcategoryOrSubforumData.subforum.id,
         subcategoryName: '',
-        subcategoryDescription: subcategoryOrSubforumData.subforum.description || '',
+        subcategoryDescription: '',
         subforumName: subcategoryOrSubforumData.subforum.name,
+        subforumDescription: subcategoryOrSubforumData.subforum.description || '',
+        categoryDescription: (subcategoryOrSubforumData.parentCategory as any)?.description || '',
         parentCategory: subcategoryOrSubforumData.parentCategory,
         subforums: [],
       };
@@ -134,6 +142,8 @@ export default function CategoryPage() {
       subcategoryName: '',
       subcategoryDescription: '',
       subforumName: '',
+      subforumDescription: '',
+      categoryDescription: '',
       parentCategory: null,
       subforums: [],
     };

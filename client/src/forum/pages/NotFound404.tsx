@@ -305,7 +305,7 @@ export default function NotFound404() {
   }, [theme, isPlaying]);
 
   return (
-    <ForumLayout>
+    <ForumLayout user={null} onLogin={() => {}} onLogout={() => {}}>
       <div style={{
         maxWidth: '1000px',
         margin: '1rem auto',

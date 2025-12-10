@@ -813,13 +813,13 @@ export default function QuickReplyBox({
                       width: isMobile ? '2.5rem' : '4rem',
                       height: isMobile ? '2.5rem' : '4rem',
                       borderRadius: '50%',
-                      background: (forumUser?.photo_url || forumUser?.avatar_url)
-                        ? `url(${forumUser.photo_url || forumUser.avatar_url}) center/cover`
+                      background: (forumUser?.avatar_url)
+                        ? `url(${forumUser.avatar_url}) center/cover`
                         : `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: (forumUser?.photo_url || forumUser?.avatar_url) ? 'transparent' : 'white',
+                      color: (forumUser?.avatar_url) ? 'transparent' : 'white',
                       fontSize: isMobile ? '1rem' : '1.5rem',
                       fontWeight: '600',
                       marginBottom: isMobile ? '0.375rem' : '0.75rem',
@@ -829,7 +829,7 @@ export default function QuickReplyBox({
                       opacity: 0.7
                     }}
                   >
-                    {!(forumUser?.photo_url || forumUser?.avatar_url) && (forumUser?.username?.charAt(0).toUpperCase() || '?')}
+                    {!(forumUser?.avatar_url) && (forumUser?.username?.charAt(0).toUpperCase() || '?')}
                   </div>
 
                   {/* Nume Placeholder */}

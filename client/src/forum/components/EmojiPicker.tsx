@@ -680,9 +680,10 @@ export default function EmojiPicker({ isOpen, onClose, onSelect, anchorRef }: Em
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Prevenim propagarea evenimentului
-                if (e.stopImmediatePropagation) {
-                  e.stopImmediatePropagation();
+                // Prevenim propagarea evenimentului - folosim nativeEvent
+                const nativeEvent = e.nativeEvent as Event;
+                if (nativeEvent && typeof nativeEvent.stopImmediatePropagation === 'function') {
+                  nativeEvent.stopImmediatePropagation();
                 }
                 onSelect(insertText);
                 // Nu închidem picker-ul imediat - lasă utilizatorul să selecteze mai multe
