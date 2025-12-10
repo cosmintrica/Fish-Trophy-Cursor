@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { MessageSquare, Clock, TrendingUp, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePrefetch } from '../hooks/usePrefetch';
 import { parseBBCode } from '../../services/forum/bbcode';
+import { RecentPostListSkeleton } from '../../components/skeletons/RecentPostSkeleton';
 
 export default function RecentPosts() {
   const { forumUser } = useAuth();
@@ -24,7 +25,7 @@ export default function RecentPosts() {
     postsThisWeek: 0,
     mostActiveUser: null as { username: string; count: number } | null
   });
-  
+
   const POSTS_PER_PAGE = 30;
 
   // Detect mobile
@@ -66,15 +67,15 @@ export default function RecentPosts() {
       try {
         setLoading(true);
         const offset = (currentPage - 1) * POSTS_PER_PAGE;
-        
+
         // Get total count first
         const { count: totalCount } = await supabase
           .from('forum_posts')
           .select('*', { count: 'exact', head: true })
           .eq('is_deleted', false);
-        
+
         setTotalPosts(totalCount || 0);
-        
+
         // Get posts with topic info and post_number (paginated)
         const { data: postsData, error: postsError } = await supabase
           .from('forum_posts')
@@ -123,13 +124,13 @@ export default function RecentPosts() {
           .in('id', subcategoryIds);
 
         const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
-        
+
         const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
         const { data: categoriesData } = await supabase
           .from('forum_categories')
           .select('id, slug')
           .in('id', categoryIds);
-        
+
         const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
 
         // Combine data
@@ -139,7 +140,7 @@ export default function RecentPosts() {
           const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
           const forumUser = forumUsersMap.get(post.user_id);
           const profile = profilesMap.get(post.user_id);
-          
+
           // Use photo_url from profiles (real profile picture) or avatar_url from forum_users as fallback
           const photoUrl = profile?.photo_url || forumUser?.avatar_url || null;
           const username = forumUser?.username || 'Anonim';
@@ -204,14 +205,14 @@ export default function RecentPosts() {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
-    
+
     const isToday = date.getDate() === now.getDate() &&
-                    date.getMonth() === now.getMonth() &&
-                    date.getFullYear() === now.getFullYear();
-    
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+
     if (isToday) {
       return `${hours}:${minutes}`;
     } else {
@@ -237,37 +238,39 @@ export default function RecentPosts() {
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
         padding: isMobile ? '0.75rem 0.75rem' : '1rem 1rem',
         width: '100%',
         overflowX: 'hidden'
       }}>
-        <h1 style={{ 
-          fontSize: isMobile ? '1.25rem' : '1.75rem', 
-          fontWeight: '700', 
-          color: theme.text, 
-          marginBottom: isMobile ? '1rem' : '1.5rem' 
+        <h1 style={{
+          fontSize: isMobile ? '1.25rem' : '1.75rem',
+          fontWeight: '700',
+          color: theme.text,
+          marginBottom: isMobile ? '1rem' : '1.5rem'
         }}>
           📝 Postări Recente
         </h1>
 
-        {posts.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: isMobile ? '2rem 1rem' : '4rem', 
-            backgroundColor: theme.surface, 
-            borderRadius: '0.5rem', 
-            border: `1px solid ${theme.border}` 
+        {loading ? (
+          <RecentPostListSkeleton count={POSTS_PER_PAGE} />
+        ) : posts.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: isMobile ? '2rem 1rem' : '4rem',
+            backgroundColor: theme.surface,
+            borderRadius: '0.5rem',
+            border: `1px solid ${theme.border}`
           }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</div>
             <div style={{ color: theme.textSecondary }}>Nu există postări recente</div>
           </div>
         ) : (
-          <div 
+          <div
             ref={postsContainerRef}
-            style={{ 
+            style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
               gap: isMobile ? '0.5rem' : '0.75rem'
@@ -365,9 +368,9 @@ export default function RecentPosts() {
                   )}
 
                   {/* Compact Header: Avatar + Username + Date */}
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: isMobile ? '0.375rem' : '0.5rem', 
+                  <div style={{
+                    display: 'flex',
+                    gap: isMobile ? '0.375rem' : '0.5rem',
                     marginBottom: isMobile ? '0.375rem' : '0.5rem',
                     alignItems: 'flex-start',
                     paddingRight: post.post_number ? (isMobile ? '2.5rem' : '3rem') : '0'
@@ -377,11 +380,11 @@ export default function RecentPosts() {
                       width: isMobile ? '1.75rem' : '2rem',
                       height: isMobile ? '1.75rem' : '2rem',
                       borderRadius: '50%',
-                      background: post.author?.photo_url 
+                      background: post.author?.photo_url
                         ? `url(${post.author.photo_url}) center/cover`
                         : post.author?.avatar_url
-                        ? `url(${post.author.avatar_url}) center/cover`
-                        : generateUserColor(post.author?.username || 'User'),
+                          ? `url(${post.author.avatar_url}) center/cover`
+                          : generateUserColor(post.author?.username || 'User'),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -391,16 +394,16 @@ export default function RecentPosts() {
                       flexShrink: 0,
                       border: `1.5px solid ${theme.border}`
                     }}>
-                      {!post.author?.photo_url && !post.author?.avatar_url && 
+                      {!post.author?.photo_url && !post.author?.avatar_url &&
                         (post.author?.username?.charAt(0).toUpperCase() || '?')}
                     </div>
 
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {/* Username + Date in one line */}
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: isMobile ? '0.25rem' : '0.375rem',
                         marginBottom: isMobile ? '0.125rem' : '0.25rem',
                         flexWrap: 'wrap'
@@ -424,14 +427,14 @@ export default function RecentPosts() {
                         >
                           {post.author?.username || 'Anonim'}
                         </Link>
-                        <span style={{ 
-                          fontSize: isMobile ? '0.625rem' : '0.6875rem', 
-                          color: theme.textSecondary 
+                        <span style={{
+                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                          color: theme.textSecondary
                         }}>
                           •
                         </span>
-                        <span style={{ 
-                          fontSize: isMobile ? '0.625rem' : '0.6875rem', 
+                        <span style={{
+                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
                           color: theme.textSecondary,
                           display: 'flex',
                           alignItems: 'center',
@@ -767,7 +770,7 @@ export default function RecentPosts() {
               {Array.from({ length: Math.min(5, Math.ceil(totalPosts / POSTS_PER_PAGE)) }, (_, i) => {
                 const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
                 let pageNum: number;
-                
+
                 if (totalPages <= 5) {
                   pageNum = i + 1;
                 } else if (currentPage <= 3) {

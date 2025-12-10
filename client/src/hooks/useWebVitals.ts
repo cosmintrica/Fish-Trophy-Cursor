@@ -16,91 +16,35 @@ export const useWebVitals = () => {
     // Import web-vitals library dynamically
     import('web-vitals').then((webVitals) => {
       const { onCLS, onINP, onFCP, onLCP, onTTFB } = webVitals;
-      // Cumulative Layout Shift (CLS)
-      onCLS((metric: WebVitalsMetric) => {
-        // // console.log('CLS:', metric);
-        // Send to analytics
-        if ((window as any).gtag) {
-          (window as any).gtag('event', 'web_vitals', {
-            event_category: 'Performance',
-            event_label: 'CLS',
-            value: Math.round(metric.value * 1000), // Convert to milliseconds
-            custom_map: {
-              metric_id: metric.id,
-              metric_delta: metric.delta,
-              metric_navigation_type: metric.navigationType
-            }
-          });
-        }
-      });
 
-      // Interaction to Next Paint (INP) - replaces FID in Core Web Vitals
-      onINP((metric: WebVitalsMetric) => {
-        // console.log('INP:', metric);
-        if ((window as any).gtag) {
-          (window as any).gtag('event', 'web_vitals', {
+      const sendToGTM = (metric: WebVitalsMetric) => {
+        if (window.dataLayer) {
+          window.dataLayer.push({
+            event: 'web_vitals',
             event_category: 'Performance',
-            event_label: 'INP',
-            value: Math.round(metric.value),
-            custom_map: {
-              metric_id: metric.id,
-              metric_delta: metric.delta,
-              metric_navigation_type: metric.navigationType
-            }
+            event_label: metric.name,
+            value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+            metric_id: metric.id,
+            metric_delta: metric.delta,
+            metric_navigation_type: metric.navigationType
           });
         }
-      });
+      };
+
+      // Cumulative Layout Shift (CLS)
+      onCLS(sendToGTM);
+
+      // Interaction to Next Paint (INP)
+      onINP(sendToGTM);
 
       // First Contentful Paint (FCP)
-      onFCP((metric: WebVitalsMetric) => {
-        // console.log('FCP:', metric);
-        if ((window as any).gtag) {
-          (window as any).gtag('event', 'web_vitals', {
-            event_category: 'Performance',
-            event_label: 'FCP',
-            value: Math.round(metric.value),
-            custom_map: {
-              metric_id: metric.id,
-              metric_delta: metric.delta,
-              metric_navigation_type: metric.navigationType
-            }
-          });
-        }
-      });
+      onFCP(sendToGTM);
 
       // Largest Contentful Paint (LCP)
-      onLCP((metric: WebVitalsMetric) => {
-        // console.log('LCP:', metric);
-        if ((window as any).gtag) {
-          (window as any).gtag('event', 'web_vitals', {
-            event_category: 'Performance',
-            event_label: 'LCP',
-            value: Math.round(metric.value),
-            custom_map: {
-              metric_id: metric.id,
-              metric_delta: metric.delta,
-              metric_navigation_type: metric.navigationType
-            }
-          });
-        }
-      });
+      onLCP(sendToGTM);
 
       // Time to First Byte (TTFB)
-      onTTFB((metric: WebVitalsMetric) => {
-        // console.log('TTFB:', metric);
-        if ((window as any).gtag) {
-          (window as any).gtag('event', 'web_vitals', {
-            event_category: 'Performance',
-            event_label: 'TTFB',
-            value: Math.round(metric.value),
-            custom_map: {
-              metric_id: metric.id,
-              metric_delta: metric.delta,
-              metric_navigation_type: metric.navigationType
-            }
-          });
-        }
-      });
+      onTTFB(sendToGTM);
     }).catch((error) => {
       console.warn('Failed to load web-vitals:', error);
     });

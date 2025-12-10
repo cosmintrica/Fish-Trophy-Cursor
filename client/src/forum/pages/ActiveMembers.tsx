@@ -6,6 +6,7 @@ import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
 import { User, MessageSquare, Award, TrendingUp, Clock, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useForumStats } from '../hooks/useForumStats';
+import { MemberListSkeleton } from '../../components/skeletons/MemberSkeleton';
 
 export default function ActiveMembers() {
   const { forumUser } = useAuth();
@@ -22,7 +23,7 @@ export default function ActiveMembers() {
     totalReputation: 0
   });
   const { stats: forumStats } = useForumStats();
-  
+
   const MEMBERS_PER_PAGE = 20;
 
   // Detect mobile
@@ -38,14 +39,14 @@ export default function ActiveMembers() {
       try {
         setLoading(true);
         const offset = (currentPage - 1) * MEMBERS_PER_PAGE;
-        
+
         // Get total count first
         const { count: totalCount } = await supabase
           .from('forum_users')
           .select('*', { count: 'exact', head: true });
-        
+
         setTotalMembers(totalCount || 0);
-        
+
         // Get forum_users data (paginated)
         const { data: forumUsersData, error: forumUsersError } = await supabase
           .from('forum_users')
@@ -163,14 +164,14 @@ export default function ActiveMembers() {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
-    
+
     const isToday = date.getDate() === now.getDate() &&
-                    date.getMonth() === now.getMonth() &&
-                    date.getFullYear() === now.getFullYear();
-    
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+
     if (isToday) {
       return `Astăzi ${hours}:${minutes}`;
     } else {
@@ -183,42 +184,44 @@ export default function ActiveMembers() {
 
   return (
     <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
         padding: isMobile ? '0.75rem 0.75rem' : '1rem 1rem',
         width: '100%',
         overflowX: 'hidden'
       }}>
-        <h1 style={{ 
-          fontSize: isMobile ? '1.25rem' : '1.75rem', 
-          fontWeight: '700', 
-          color: theme.text, 
-          marginBottom: isMobile ? '1rem' : '1.5rem' 
+        <h1 style={{
+          fontSize: isMobile ? '1.25rem' : '1.75rem',
+          fontWeight: '700',
+          color: theme.text,
+          marginBottom: isMobile ? '1rem' : '1.5rem'
         }}>
           👥 Membri Activi
         </h1>
 
-        {members.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: isMobile ? '2rem 1rem' : '4rem', 
-            backgroundColor: theme.surface, 
-            borderRadius: '0.5rem', 
-            border: `1px solid ${theme.border}` 
+        {loading ? (
+          <MemberListSkeleton count={MEMBERS_PER_PAGE} />
+        ) : members.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: isMobile ? '2rem 1rem' : '4rem',
+            backgroundColor: theme.surface,
+            borderRadius: '0.5rem',
+            border: `1px solid ${theme.border}`
           }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>👤</div>
             <div style={{ color: theme.textSecondary }}>Nu există membri înregistrați</div>
           </div>
         ) : (
-          <div style={{ 
+          <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: isMobile ? '0.5rem' : '0.75rem'
           }}>
             {members.map((member) => {
               const rankInfo = getRankDisplay(member.rank || 'ou_de_peste');
-              
+
               return (
                 <div
                   key={member.user_id || member.id}
@@ -261,9 +264,9 @@ export default function ActiveMembers() {
                   )}
 
                   {/* Header: Avatar + Username + Rank */}
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: isMobile ? '0.5rem' : '0.75rem', 
+                  <div style={{
+                    display: 'flex',
+                    gap: isMobile ? '0.5rem' : '0.75rem',
                     marginBottom: isMobile ? '0.5rem' : '0.75rem',
                     alignItems: 'center'
                   }}>
@@ -272,11 +275,11 @@ export default function ActiveMembers() {
                       width: isMobile ? '2.5rem' : '3rem',
                       height: isMobile ? '2.5rem' : '3rem',
                       borderRadius: '50%',
-                      background: member.photo_url 
+                      background: member.photo_url
                         ? `url(${member.photo_url}) center/cover`
                         : member.avatar_url
-                        ? `url(${member.avatar_url}) center/cover`
-                        : generateUserColor(member.username || 'User'),
+                          ? `url(${member.avatar_url}) center/cover`
+                          : generateUserColor(member.username || 'User'),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -287,7 +290,7 @@ export default function ActiveMembers() {
                       border: `2px solid ${theme.border}`,
                       position: 'relative'
                     }}>
-                      {!member.photo_url && !member.avatar_url && 
+                      {!member.photo_url && !member.avatar_url &&
                         (member.username?.charAt(0).toUpperCase() || '?')}
                     </div>
 
@@ -296,9 +299,9 @@ export default function ActiveMembers() {
                       <Link
                         to={`/forum/user/${member.username}`}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ 
-                          fontWeight: '600', 
-                          color: theme.text, 
+                        style={{
+                          fontWeight: '600',
+                          color: theme.text,
                           fontSize: isMobile ? '0.875rem' : '1rem',
                           marginBottom: '0.125rem',
                           overflow: 'hidden',
@@ -316,7 +319,7 @@ export default function ActiveMembers() {
                       >
                         {member.username}
                       </Link>
-                      <div style={{ 
+                      <div style={{
                         fontSize: isMobile ? '0.6875rem' : '0.75rem',
                         color: rankInfo.color,
                         fontWeight: '500',
@@ -491,7 +494,7 @@ export default function ActiveMembers() {
               {Array.from({ length: Math.min(5, Math.ceil(totalMembers / MEMBERS_PER_PAGE)) }, (_, i) => {
                 const totalPages = Math.ceil(totalMembers / MEMBERS_PER_PAGE);
                 let pageNum: number;
-                
+
                 if (totalPages <= 5) {
                   pageNum = i + 1;
                 } else if (currentPage <= 3) {

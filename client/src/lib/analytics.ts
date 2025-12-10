@@ -69,7 +69,7 @@ class AnalyticsTracker {
     try {
       // Use a free IP geolocation service
       // Skip on localhost to avoid CORS errors
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         console.log('Running on localhost, skipping IP geolocation');
         this.userCountry = 'Development';
         this.userCity = 'Localhost';

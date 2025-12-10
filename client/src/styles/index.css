@@ -242,6 +242,8 @@ button,
     -webkit-text-size-adjust: 100%;
     /* Optimizează font loading */
     font-display: swap;
+    /* Basic background to prevent white flashes */
+    background-color: #f8fafc;
   }
 
   body {
@@ -252,29 +254,28 @@ button,
     /* Previne layout shift */
     margin: 0;
     padding: 0;
-    /* Fundal consistent pentru iPhone și mobile */
-    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
-    background-attachment: fixed;
+    /* Setează background pe body, nu pe html pentru a evita dublarea */
+    background-color: #f8fafc;
     min-height: 100vh;
+    /* Fix for 100vh on mobile */
     min-height: -webkit-fill-available;
   }
 
-  html {
-    /* Fundal pentru iPhone safe area */
-    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
-    background-attachment: fixed;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* Suport pentru safe area insets pe iPhone */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Dark mode overrides */
+  .dark body {
+    background-color: #0f172a;
   }
 
+  /* Root container handles the gradient/main content background if needed */
   #root {
-    /* Asigură că root-ul are fundal */
-    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff);
-    background-attachment: fixed;
     min-height: 100vh;
     min-height: -webkit-fill-available;
+    /* Gradient subtil doar pe root */
+    background: linear-gradient(to bottom right, #eff6ff, #ffffff, #f0f9ff);
+  }
+
+  .dark #root {
+    background: linear-gradient(to bottom right, #0f172a, #1e293b);
   }
 
   /* Fonturile sunt încărcate în index.html (Montserrat) */
@@ -348,9 +349,6 @@ button,
   body {
     @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Fundal gradient pentru mobile - override bg-background pentru a preveni negru pe iPhone */
-    background: linear-gradient(to bottom right, #dbeafe, #ffffff, #e0e7ff) !important;
-    background-attachment: fixed;
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }

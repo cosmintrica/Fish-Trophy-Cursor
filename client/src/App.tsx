@@ -162,11 +162,12 @@ function QueryProvider({ children }: { children: React.ReactNode }) {
       {/* DevTools doar în development - icon-ul cu palmierul apare doar în development */}
       {/* IMPORTANT: DevTools NU apare în production - doar în development */}
       {/* Doar dezvoltatorii care rulează local văd acest icon */}
-      {import.meta.env.DEV && (
+      {/* User requested removal of DevTools icon even in dev mode */}
+      {/* {import.meta.env.DEV && (
         <ReactQueryDevtools
           initialIsOpen={false}
         />
-      )}
+      )} */}
     </QueryClientProvider>
   );
 }

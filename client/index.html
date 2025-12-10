@@ -1,121 +1,162 @@
 ﻿<!DOCTYPE html>
 <html lang="ro">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#3b82f6" />
-    
-    <!-- Prevent dark mode flash - set theme IMMEDIATELY before render -->
-    <script>
-      (function() {
-        try {
-          const theme = localStorage.getItem('fish-trophy-theme') || 'light';
-          const isDark = theme === 'dark';
-          
-          // Set attribute immediately
-          document.documentElement.setAttribute('data-theme', theme);
-          
-          // Apply background color IMMEDIATELY to prevent white flash
-          const bgColor = isDark ? '#0f172a' : '#f8fafc';
-          document.documentElement.style.backgroundColor = bgColor;
-          document.documentElement.style.color = isDark ? '#f1f5f9' : '#1f2937';
-          
-          // Also apply to body if it exists (will be applied later if not)
-          if (document.body) {
-            document.body.style.backgroundColor = bgColor;
-            document.body.style.color = isDark ? '#f1f5f9' : '#1f2937';
-          }
-          
-          // Set meta theme-color for mobile browsers
-          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-          if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', bgColor);
-          }
-        } catch (e) {
-          console.error('Error setting theme:', e);
+
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-WFSK9N29');</script>
+  <!-- End Google Tag Manager -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#f8fafc" />
+
+  <!-- Prevent dark mode flash - set theme IMMEDIATELY before render -->
+  <script>
+    (function () {
+      try {
+        const theme = localStorage.getItem('fish-trophy-theme') || 'light';
+        const isDark = theme === 'dark';
+
+        // Set attribute immediately
+        document.documentElement.setAttribute('data-theme', theme);
+
+        // Apply background color IMMEDIATELY to prevent white flash
+        // UPDATE: Always use neutral background for initial load to prevent "blue flash"
+        const bgColor = isDark ? '#0f172a' : '#f8fafc';
+        document.documentElement.style.backgroundColor = bgColor;
+        document.documentElement.style.color = isDark ? '#f1f5f9' : '#1f2937';
+
+        // Also apply to body if it exists (will be applied later if not)
+        if (document.body) {
+          document.body.style.backgroundColor = bgColor;
+          document.body.style.color = isDark ? '#f1f5f9' : '#1f2937';
         }
-      })();
-    </script>
-    <style>
-      /* Prevent white flash - apply background immediately */
-      html {
-        background-color: #f8fafc;
-        color: #1f2937;
+
+        // Set meta theme-color for mobile browsers
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          // Check if we are on homepage (simple check based on pathname, though this script runs early)
+          // On initial load, pathname is available.
+          const isHomepage = window.location.pathname === '/' || window.location.pathname === '/index.html';
+
+          // Homepage gets blue brand color, others get bg color
+          // UPDATE: User requested removal of "blue bars" on mobile. Setting strictly to background color.
+          if (isDark) {
+            metaThemeColor.setAttribute('content', '#0f172a'); // Dark slate
+          } else {
+            metaThemeColor.setAttribute('content', '#f8fafc'); // Neutral slate-50/white
+          }
+        }
+      } catch (e) {
+        console.error('Error setting theme:', e);
       }
-      html[data-theme="dark"] {
-        background-color: #0f172a !important;
-        color: #f1f5f9 !important;
-      }
-      body {
-        background-color: inherit;
-        color: inherit;
-        margin: 0;
-        padding: 0;
-      }
-      #root {
-        background-color: inherit;
-        color: inherit;
-      }
-    </style>
+    })();
+  </script>
+  <style>
+    /* Prevent white flash - apply background immediately */
+    html {
+      background-color: #f8fafc;
+      color: #1f2937;
+    }
 
-    <!-- Google Fonts - Montserrat (optimizat) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet"></noscript>
+    html[data-theme="dark"] {
+      background-color: #0f172a !important;
+      color: #f1f5f9 !important;
+    }
 
-    <!-- Prevent caching issues -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <meta http-equiv="Last-Modified" content="0" />
-    <!-- PWA features -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Fish Trophy" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="msapplication-TileColor" content="#3b82f6" />
-    <meta name="msapplication-tap-highlight" content="no" />
+    body {
+      background-color: inherit;
+      color: inherit;
+      margin: 0;
+      padding: 0;
+    }
 
-    <link rel="manifest" href="/manifest.json" />
+    #root {
+      background-color: inherit;
+      color: inherit;
+    }
+  </style>
 
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon.png" />
+  <!-- Google Fonts - Montserrat (optimizat) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload"
+    href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet">
+  </noscript>
 
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Fish Trophy - Platforma Pescarilor din România" />
-    <meta property="og:description" content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://fishtrophy.ro" />
-    <meta property="og:image" content="https://fishtrophy.ro/social-media-banner-v2.jpg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:site_name" content="Fish Trophy" />
-    <meta property="og:locale" content="ro_RO" />
+  <!-- Prevent caching issues -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta http-equiv="Last-Modified" content="0" />
+  <!-- PWA features -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fish Trophy" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="msapplication-TileColor" content="#3b82f6" />
+  <meta name="msapplication-tap-highlight" content="no" />
 
-    <!-- Twitter Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Fish Trophy - Platforma Pescarilor din România" />
-    <meta name="twitter:description" content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
-    <meta name="twitter:image" content="https://fishtrophy.ro/social-media-banner-v2.jpg" />
-    <meta name="twitter:image:alt" content="Fish Trophy - Platforma Pescarilor din România" />
+  <link rel="manifest" href="/manifest.json" />
 
-    <!-- Additional Meta Tags -->
-    <meta name="description" content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
-    <meta name="keywords" content="pescuit, romania, locatii, recorduri, harta, rauri, lacuri, balti" />
-    <meta name="author" content="Fish Trophy" />
-    <meta name="robots" content="index, follow" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon.png" />
 
-    <title>Fish Trophy - Platforma Pescarilor din România</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <!-- Service Worker will be registered in main.tsx -->
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Fish Trophy - Platforma Pescarilor din România" />
+  <meta property="og:description"
+    content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://fishtrophy.ro" />
+  <meta property="og:image" content="https://fishtrophy.ro/social-media-banner-v2.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:site_name" content="Fish Trophy" />
+  <meta property="og:locale" content="ro_RO" />
+
+  <!-- Twitter Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Fish Trophy - Platforma Pescarilor din România" />
+  <meta name="twitter:description"
+    content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
+  <meta name="twitter:image" content="https://fishtrophy.ro/social-media-banner-v2.jpg" />
+  <meta name="twitter:image:alt" content="Fish Trophy - Platforma Pescarilor din România" />
+
+  <!-- Additional Meta Tags -->
+  <meta name="description"
+    content="Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii." />
+  <meta name="keywords" content="pescuit, romania, locatii, recorduri, harta, rauri, lacuri, balti" />
+  <meta name="author" content="Fish Trophy" />
+  <meta name="robots" content="index, follow" />
+
+  <title>Fish Trophy - Platforma Pescarilor din România</title>
+</head>
+
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WFSK9N29" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <div id="root"></div>
+  <!-- Service Worker will be registered in main.tsx -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

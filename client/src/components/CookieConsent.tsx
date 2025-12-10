@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { X, Shield, Settings, Fish, BarChart3, Target } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,7 @@ export default function CookieConsent() {
 
   const [showBanner, setShowBanner] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [consent, setConsent] = useState<CookieConsentState>({
     necessary: true,
     analytics: false,
@@ -109,6 +110,7 @@ export default function CookieConsent() {
     updateGtagConsent(consentState);
     setShowBanner(false);
     setShowSettings(false);
+    setIsMinimized(false);
   };
 
   const handleAcceptAll = () => {
@@ -143,7 +145,69 @@ export default function CookieConsent() {
     setConsent(prev => ({ ...prev, marketing: !prev.marketing }));
   };
 
-  if (!showBanner && !showSettings) return null;
+  const handleMinimize = () => {
+    setIsMinimized(true);
+    setShowBanner(false);
+  };
+
+  const handleRestore = () => {
+    setIsMinimized(false);
+    setShowBanner(true);
+    setShowSettings(false); // Restore to main view so user can "Accept All" easily
+  };
+
+  // Floating Cookie Token Component
+  const CookieToken = () => (
+    <div
+      onClick={handleRestore}
+      className={cn(
+        "fixed bottom-4 left-4 z-[9998] cursor-pointer group animate-in fade-in zoom-in duration-300",
+        "transition-transform hover:scale-110 active:scale-95"
+      )}
+      title="Setări Personalizare"
+    >
+      <div className="relative">
+        {/* Glow effect */}
+        <div className="absolute -inset-1 rounded-full bg-blue-400/30 dark:bg-blue-400/20 blur-md group-hover:bg-blue-400/50 transition-all" />
+
+        {/* Token Circle */}
+        <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-white to-blue-50 dark:from-slate-800 dark:to-slate-900 border border-blue-200 dark:border-blue-700/50 shadow-lg shadow-blue-500/20 flex items-center justify-center overflow-hidden">
+          {/* Animated Fish inside */}
+          <Fish className="w-6 h-6 text-blue-600 dark:text-blue-400 fish-swim relative z-10" />
+
+          {/* Token Shine */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
+
+        {/* Label on hover (Desktop only) */}
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md border border-gray-100 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0 pointer-events-none whitespace-nowrap hidden md:block">
+          Preferințe
+          <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-transparent border-r-white dark:border-r-slate-800" />
+        </div>
+      </div>
+    </div>
+  );
+
+  // If banner is hidden OR minimized, show the token
+  // Check if consent is saved (localStorage logic handled in effect), so if showBanner is false, we assume consent is saved OR user minimized.
+  // We ALWAYS want to persist the choice to re-edit.
+  if (!showBanner || isMinimized) {
+    return (
+      <>
+        <style>{`
+          @keyframes swim {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-3px) rotate(-5deg); }
+            75% { transform: translateY(3px) rotate(5deg); }
+          }
+          .fish-swim {
+            animation: swim 4s ease-in-out infinite;
+          }
+        `}</style>
+        <CookieToken />
+      </>
+    );
+  }
 
   return (
     <>
@@ -170,7 +234,7 @@ export default function CookieConsent() {
         }
       `}</style>
       <div className={cn(
-        "fixed bottom-4 right-4 z-[9999] p-4 max-w-md w-full transition-all duration-500 ease-out transform translate-y-0 opacity-100",
+        "fixed bottom-4 left-4 right-4 md:left-4 md:right-auto z-[9999] md:w-full max-w-md mx-auto md:mx-0 transition-all duration-500 ease-out transform translate-y-0 opacity-100",
         "animate-in slide-in-from-bottom-8 fade-in leading-relaxed print:hidden"
       )}>
         <div className={cn(
@@ -202,13 +266,11 @@ export default function CookieConsent() {
                 </p>
               </div>
             </div>
+            {/* Close/Minimize button */}
             <button
-              onClick={() => {
-                setShowBanner(false);
-                setShowSettings(false);
-              }}
-              className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-200 transition-all p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 active:scale-95"
-              aria-label="Închide"
+              onClick={handleMinimize}
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              title="Minimizează"
             >
               <X className="w-4 h-4" />
             </button>
@@ -329,13 +391,13 @@ export default function CookieConsent() {
 
             {/* Footer Link */}
             <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800/50 flex justify-center items-center gap-2 whitespace-nowrap">
-              <a href={isForum ? "/forum/privacy" : "/privacy"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
+              <Link to={isForum ? "/forum/privacy" : "/privacy"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
                 Politică Confidențialitate
-              </a>
+              </Link>
               <span className="text-[9px] text-gray-300 dark:text-slate-700">•</span>
-              <a href={isForum ? "/forum/cookies" : "/cookies"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
+              <Link to={isForum ? "/forum/cookies" : "/cookies"} className="text-[9px] font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-wide">
                 Politică Cookie-uri
-              </a>
+              </Link>
             </div>
           </div>
         </div>
