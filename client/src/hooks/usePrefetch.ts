@@ -73,7 +73,7 @@ export function usePrefetch() {
       queryFn: async () => {
         const { data, error } = await supabase
           .from('records')
-          .select('*, fish_species:species(name), profiles:user_id(username, display_name, photo_url)')
+          .select('*, fish_species:species_id(name), profiles!records_user_id_fkey(username, display_name, photo_url)')
           .order('created_at', { ascending: false })
           .limit(50);
 
@@ -104,7 +104,7 @@ export function usePrefetch() {
       queryKey,
       queryFn: async () => {
         const { data, error } = await supabase
-          .from('species')
+          .from('fish_species')
           .select('*')
           .order('name', { ascending: true });
 
@@ -136,7 +136,7 @@ export function usePrefetch() {
       queryFn: async () => {
         const { data, error } = await supabase
           .from('records')
-          .select('*, fish_species:species(name), profiles:user_id(username, display_name, photo_url)')
+          .select('*, fish_species:species_id(name), profiles!records_user_id_fkey(username, display_name, photo_url)')
           .order('created_at', { ascending: false })
           .limit(50);
 

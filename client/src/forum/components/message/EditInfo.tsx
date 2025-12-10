@@ -4,6 +4,7 @@
  * Exact ca în screenshot: ora în roșu, restul text normal
  */
 
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface EditInfoProps {
@@ -56,7 +57,28 @@ export default function EditInfo({ editedAt, editedByUsername, editReason }: Edi
       fontStyle: 'italic'
     }}>
       Ultima modificare făcută de{' '}
-      <span style={{ fontStyle: 'italic' }}>{displayUsername}</span>
+      {editedByUsername ? (
+        <Link
+          to={`/forum/user/${encodeURIComponent(editedByUsername)}`}
+          style={{
+            color: theme.primary,
+            textDecoration: 'none',
+            fontStyle: 'italic',
+            fontWeight: '500',
+            transition: 'color 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.textDecoration = 'underline';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.textDecoration = 'none';
+          }}
+        >
+          {displayUsername}
+        </Link>
+      ) : (
+        <span style={{ fontStyle: 'italic' }}>{displayUsername}</span>
+      )}
       ; {date && `${date} la `}
       <span style={{ color: '#dc2626' }}>{time}</span>
       {editReason && (

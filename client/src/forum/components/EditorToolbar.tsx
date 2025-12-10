@@ -18,10 +18,13 @@ import {
   Link,
   Image,
   Video,
-  Smile
+  Smile,
+  EyeOff,
+  AtSign
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import EditorInputModal from './EditorInputModal';
+import EmojiPicker from './EmojiPicker';
 
 interface EditorToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -41,6 +44,8 @@ export default function EditorToolbar({
     type: 'link',
     isOpen: false
   });
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   // Salvează poziția cursorului înainte de a deschide modal-ul
   const savedCursorPositionRef = useRef<{ start: number; end: number; scrollTop: number } | null>(null);
 
@@ -300,10 +305,54 @@ export default function EditorToolbar({
     }
   };
 
-  // Emoji (placeholder)
+  // Spoiler
+  const formatSpoiler = () => {
+    insertText('[spoiler]', '[/spoiler]', 'Text spoiler aici');
+  };
+
+  // Mention - inserează direct tag-urile fără modal
+  const formatMention = () => {
+    insertText('[mention]', '[/mention]', 'username');
+  };
+
+  // Emoji picker
   const formatEmoji = () => {
-    // TODO: Deschide emoji picker
-    alert('Emoji picker - în dezvoltare');
+    // Salvează poziția cursorului înainte de a deschide picker-ul
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
+    setShowEmojiPicker(true);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    
+    if (savedCursorPositionRef.current) {
+      setTimeout(() => {
+        insertText(emoji, '', '', true);
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 50);
+    } else {
+      // Fallback: inserează la sfârșitul textului
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + emoji;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
   };
 
   // Stiluri pentru butoane
@@ -513,9 +562,44 @@ export default function EditorToolbar({
       {/* Separator */}
       <div style={{ width: '1px', height: '1.5rem', backgroundColor: theme.border, margin: '0 0.25rem' }} />
 
-      {/* Emoji */}
+      {/* Spoiler */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
         <button
+          type="button"
+          onClick={formatSpoiler}
+          title="Spoiler"
+          style={buttonStyle}
+          onMouseEnter={buttonHover}
+          onMouseLeave={buttonLeave}
+        >
+          <EyeOff size={isMobile ? 14 : 16} />
+        </button>
+      </div>
+
+      {/* Separator */}
+      <div style={{ width: '1px', height: '1.5rem', backgroundColor: theme.border, margin: '0 0.25rem' }} />
+
+      {/* Mention */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        <button
+          type="button"
+          onClick={formatMention}
+          title="Mențiune utilizator"
+          style={buttonStyle}
+          onMouseEnter={buttonHover}
+          onMouseLeave={buttonLeave}
+        >
+          <AtSign size={isMobile ? 14 : 16} />
+        </button>
+      </div>
+
+      {/* Separator */}
+      <div style={{ width: '1px', height: '1.5rem', backgroundColor: theme.border, margin: '0 0.25rem' }} />
+
+      {/* Emoji */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', position: 'relative' }}>
+        <button
+          ref={emojiButtonRef}
           type="button"
           onClick={formatEmoji}
           title="Emoji picker"
@@ -525,9 +609,16 @@ export default function EditorToolbar({
         >
           <Smile size={isMobile ? 14 : 16} />
         </button>
+        
+        <EmojiPicker
+          isOpen={showEmojiPicker}
+          onClose={() => setShowEmojiPicker(false)}
+          onSelect={handleEmojiSelect}
+          anchorRef={emojiButtonRef}
+        />
       </div>
 
-      {/* Modaluri pentru Link/Image/Video */}
+      {/* Modaluri pentru Link/Image/Video/Mention */}
       <EditorInputModal
         isOpen={inputModal.isOpen && inputModal.type === 'link'}
         type="link"
@@ -552,4 +643,8 @@ export default function EditorToolbar({
     </div>
   );
 }
+
+
+
+
 

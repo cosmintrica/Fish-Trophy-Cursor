@@ -58,13 +58,13 @@ interface Result {
 }
 
 export function useSubcategoryOrSubforum(
-  categorySlug: string | undefined,
+  categorySlug: string | undefined, // Opțional acum - nu mai este necesar
   potentialSlug: string | undefined
 ) {
   return useQuery<Result>({
     queryKey: queryKeys.subcategoryOrSubforum(categorySlug || '', potentialSlug || ''),
     queryFn: async () => {
-      if (!categorySlug || !potentialSlug) {
+      if (!potentialSlug) {
         return {
           type: null,
           subcategory: null,
@@ -76,6 +76,7 @@ export function useSubcategoryOrSubforum(
 
       // IMPORTANT: Căutăm mai întâi subforum (mai rar), apoi subcategorie (mai comun)
       // Asta reduce query-urile inutile și face prima încărcare mai rapidă
+      // NU mai verificăm categorySlug - slug-urile subcategoriilor/subforum-urilor sunt unice global
       const subforumResult = await supabase
         .from('forum_subforums')
         .select('id, slug, name, subcategory_id, category_id')
@@ -87,7 +88,7 @@ export function useSubcategoryOrSubforum(
       if (subforumResult.data) {
         const subforum = subforumResult.data;
         
-        // Verifică că subforum-ul aparține categoriei corecte
+        // Găsește categoria părinte (fără validare categorySlug)
         let categoryMatch = null;
         
         if (subforum.subcategory_id) {
@@ -99,9 +100,20 @@ export function useSubcategoryOrSubforum(
           
           if (subcategory) {
             const categoryData = (subcategory as any).category;
-            if (categoryData && categoryData.slug === categorySlug) {
+            if (categoryData) {
               categoryMatch = categoryData;
             }
+          }
+        } else if (subforum.category_id) {
+          // Subforum direct sub categorie (legacy)
+          const { data: category } = await supabase
+            .from('forum_categories')
+            .select('id, slug, name')
+            .eq('id', subforum.category_id)
+            .maybeSingle();
+          
+          if (category) {
+            categoryMatch = category;
           }
         }
 
@@ -138,12 +150,11 @@ export function useSubcategoryOrSubforum(
       if (subcategoryResult.data) {
         const subcategory = subcategoryResult.data;
         
-        // Verifică că subcategoria aparține categoriei corecte
+        // Găsește categoria părinte (fără validare categorySlug)
         const { data: category } = await supabase
           .from('forum_categories')
           .select('id, slug, name')
           .eq('id', subcategory.category_id)
-          .eq('slug', categorySlug)
           .maybeSingle();
 
         if (category) {
@@ -215,7 +226,7 @@ export function useSubcategoryOrSubforum(
         parentCategory: null,
       };
     },
-    enabled: !!categorySlug && !!potentialSlug,
+    enabled: !!potentialSlug, // Nu mai necesităm categorySlug
     staleTime: 30 * 1000, // 30 secunde
     gcTime: 2 * 60 * 1000, // 2 minute
     refetchOnMount: false,

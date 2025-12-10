@@ -13,12 +13,193 @@ const BB_CODE_PATTERNS = {
     record: /\[record\]([\w-]+)\[\/record\]/gi,
     gear: /\[gear\]([\w-]+)\[\/gear\]/gi,
     quote: /\[quote user="([^"]+)" post_id="([^"]+)"\]([\s\S]*?)\[\/quote\]/gi,
+    mention: /\[mention\](.+?)\[\/mention\]/gi,
     video_youtube: /\[video\](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+))\[\/video\]/gi,
     video_vimeo: /\[video\](https?:\/\/vimeo\.com\/(\d+))\[\/video\]/gi,
     // Auto-detect YouTube/Vimeo links
     auto_youtube: /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+))/gi,
     auto_vimeo: /(https?:\/\/vimeo\.com\/(\d+))/gi
 } as const
+
+// ============================================
+// LEGACY SMILEY CODES TO EMOJI MAPPING
+// ============================================
+
+const LEGACY_SMILEY_MAP: Record<string, string> = {
+    ':)': '😊',
+    ';)': '😉',
+    ':(': '☹️',
+    ':P': '😛',
+    ':p': '😛',
+    ':D': '😀',
+    'B-)': '😎',
+    ':O': '😮',
+    ':o': '😮',
+    ':-/': '😕',
+    ';;)': '😍',
+    ':">': '😊',
+    ':S': '😰',
+    ':s': '😰',
+    '>:)': '😈',
+    '=))': '🤣',
+    '8-|': '🙄',
+    '=P~': '🤤',
+    ':bz': '🐝',
+    '^#(^': '🤷',
+    ':-bd': '👍',
+    ':-q': '👎',
+    '\\m/': '🤘',
+    ':!!': '⏰',
+    'x_x': '😵',
+    ':-w': '⏳',
+    ':O)': '🤡',
+    '8->': '😴',
+    '/:)': '🤨',
+    '\\:D/': '💃',
+    '=(': '💔',
+    ':^o': '🤥',
+    ':ar!': '🏴‍☠️',
+    '[(': '🤐',
+    ':-t': '⏸️',
+    ':|': '😐',
+    '[-X': '🙈',
+    ':*': '😘',
+    '@-)': '😵',
+    ':-$': '🤫',
+    ':-h': '👋',
+    ':))': '😂',
+    ':)>-': '✌️',
+    ':-SS': '😬',
+    ':-&': '🤢',
+    '~X(': '😤',
+    ':((': '😭',
+    'b-(': '😓',
+    '=D>': '👏',
+    'L-)': '😎',
+    ':-c': '📞',
+    ':-"': '😗',
+    ':x': '😍',
+    '#-o': '🤦',
+    ':)]': '📱',
+    '#:-S': '😅',
+    '$-)': '💰',
+    ':-?': '🤔',
+    'I-)': '😴',
+    ':-j': '😏',
+    '[-O<': '🙏',
+    '>:D<': '🤗',
+    '=;': '🖐️',
+    '^:)^': '🙇',
+    '*-:)': '💡',
+    '(:|': '🥱',
+    ':-B': '🤓',
+    ':-@': '💬',
+    ':>': '😏',
+    '>:P': '😛',
+    '<:-P': '🎉',
+    '%(': '😤',
+    'O:-)': '😇',
+    ';))': '😄',
+    'X(': '😡',
+    ':-<': '😔',
+    '8-}': '😜',
+    ':-??': '🤷',
+    '>:/': '😤',
+    '[]==[]': '💪',
+    ':wink:': '😉',
+    '~^o^~<': '🎉',
+    ':(fight)': '👊',
+    'o|:-)': '🎣',
+    ':tongue:': '😛',
+    '%*-{': '😞',
+    'o|\\~': '🎤',
+    ':smile:': '😊',
+    '>%||:-{': '😞',
+    ':puke!': '🤮',
+    ':rolleyes:': '🙄',
+    '&[]': '🎁',
+    'o|^_^|o': '🎵',
+    ':redface:': '😊',
+    ':(tv)': '📺',
+    ':::^^:::': '🔥',
+    ':mad:': '😡',
+    '?@_@?': '📚',
+    "'+_+": '🥶',
+    ':frown:': '☹️',
+    ':->~~': '👻',
+    ':-(||>': '😔',
+    ':eek:': '😮',
+    '@-@': '🔍',
+    '^o^||3': '🍽️',
+    ':cool:': '😎',
+    ':(game)': '🎮',
+    '[]---': '👨‍🍳',
+    ':confused:': '😕',
+    ':-)/\\:-)': '🙌',
+    "'@^@|||": '😵',
+    ':biggrin:': '😀',
+    '<):)': '🤠',
+    '8-X': '💀',
+    '[..]': '🤖',
+    '~O)': '☕',
+    ':o3': '🐶',
+    '(~~)': '🎃',
+    '(*)': '⭐',
+    '**==': '🏳️',
+    '(%)': '☯️',
+    '%%-': '🍀',
+    'o-+': '🌷',
+    '@};-': '🌹',
+    'o=>': '👤',
+    '~:>': '🐔',
+    'o->': '👤',
+    ':(|)': '🐵',
+    ':-L': '😤',
+    '3:-O': '🐄',
+    '>-)': '👽',
+    ':@)': '🐷',
+    '=:)': '🐛',
+};
+
+/**
+ * Transformă codurile text clasice (ex: :), :D, \m/) în emoji Unicode
+ * Se aplică înainte de escape-ul HTML pentru a nu afecta codurile din BBCode tags
+ */
+function transformLegacySmileys(text: string): string {
+    let result = text;
+    
+    // Sortăm codurile după lungime (descrescător) pentru a evita transformări parțiale
+    // (ex: :)) trebuie să fie transformat înainte de :))
+    const sortedCodes = Object.keys(LEGACY_SMILEY_MAP).sort((a, b) => b.length - a.length);
+    
+    // Protejăm tag-urile BBCode și codurile din interiorul lor
+    const bbcodePlaceholders: string[] = [];
+    let placeholderIndex = 0;
+    
+    // Înlocuim tag-urile BBCode cu placeholders temporari
+    result = result.replace(/\[[^\]]+\]/g, (match) => {
+        const placeholder = `__BBCODE_TAG_${placeholderIndex}__`;
+        bbcodePlaceholders[placeholderIndex] = match;
+        placeholderIndex++;
+        return placeholder;
+    });
+    
+    // Transformăm codurile text în emoji
+    for (const code of sortedCodes) {
+        // Escapăm caracterele speciale pentru regex
+        const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Căutăm codul doar dacă nu este precedat sau urmat de caractere alfanumerice
+        const regex = new RegExp(`(^|[^\\w\\[\\]])${escapedCode}(?![\\w\\]])`, 'g');
+        result = result.replace(regex, `$1${LEGACY_SMILEY_MAP[code]}`);
+    }
+    
+    // Restaurăm tag-urile BBCode
+    bbcodePlaceholders.forEach((tag, index) => {
+        result = result.replace(`__BBCODE_TAG_${index}__`, tag);
+    });
+    
+    return result;
+}
 
 // ============================================
 // PARSER FUNCTIONS
@@ -37,9 +218,18 @@ function escapeHtml(text: string): string {
  * Parse quote content recursively to display images, videos, formatting, etc.
  * This function parses BBCode within quotes but makes media smaller
  */
-function parseQuoteContent(content: string): string {
+function parseQuoteContent(content: string, options?: { categorySlug?: string; subcategorySlug?: string; topicSlug?: string; getPostPermalink?: (postId: string) => string; postNumberMap?: Map<string, number>; skipNestedQuotes?: boolean }): string {
     let html = content
     const replacements: Array<{ original: string; replacement: string }> = []
+    
+    // ȘTERGEM LOGICA DE QUOTE ÎN QUOTE - conform cererii utilizatorului
+    // Când dăm quote, se dă quote strict doar la mesajul scris de user, nu la quote-ul din acel mesaj
+    // Eliminăm quote-urile din conținut înainte de procesare
+    if (!options?.skipNestedQuotes) {
+        html = html.replace(BB_CODE_PATTERNS.quote, '[Quote]');
+    }
+    
+    // Nu mai procesăm quote-uri nested - doar formatările de bază
     
     // Parse images in quotes (smaller)
     html = html.replace(/\[img\](.*?)\[\/img\]/gi, (match, url) => {
@@ -160,6 +350,7 @@ export function parseBBCode(
         subcategorySlug?: string;
         topicSlug?: string;
         getPostPermalink?: (postId: string) => string;
+        postNumberMap?: Map<string, number>; // Map postId -> postNumber pentru permalink-uri
     }
 ): BBCodeParseResult {
     // Check if content already contains HTML tags (like <iframe>, <div>, etc.)
@@ -218,33 +409,67 @@ export function parseBBCode(
         return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
     })
 
+    // Parse [spoiler] tags - trebuie înainte de quote pentru a nu fi afectate
+    html = html.replace(/\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi, (match, text) => {
+        const replacement = `<div class="bbcode-spoiler">
+      <button class="bbcode-spoiler-toggle" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.nextElementSibling.style.display === 'none' ? 'Afișează Spoiler' : 'Ascunde Spoiler';">
+        Afișează Spoiler
+      </button>
+      <div class="bbcode-spoiler-content" style="display: none;">${escapeHtml(text)}</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
     // Parse [quote] tags - Parsează recursiv conținutul pentru a afișa poze, videouri, etc.
-    html = html.replace(BB_CODE_PATTERNS.quote, (match, username, postId, text) => {
-        embeds.quotes.push({ user: username, post_id: postId, text })
-        // Parsează recursiv conținutul quote-ului pentru a afișa poze, videouri, formatări
-        const parsedQuoteContent = parseQuoteContent(text)
-        
-        // Generează permalink-ul corect
-        let permalink = `/forum/post/${escapeHtml(postId)}`; // Fallback la UUID
-        if (options?.getPostPermalink) {
-            permalink = options.getPostPermalink(postId);
-        } else if (options?.categorySlug && options?.subcategorySlug && options?.topicSlug) {
-            // Construim permalink-ul manual dacă avem slug-urile
-            // Format: /forum/{categorySlug}/{subcategorySlug}/{topicSlug}#post{postNumber}
-            // Dar nu avem postNumber aici, deci folosim postId ca fallback
-            permalink = `/forum/${options.categorySlug}/${options.subcategorySlug}/${options.topicSlug}#post-${escapeHtml(postId)}`;
-        }
-        
-        const replacement = `<blockquote class="bbcode-quote" data-post-id="${escapeHtml(postId)}">
+    // Folosim o abordare recursivă pentru a suporta quote-uri nested
+    let quoteDepth = 0;
+    const maxQuoteDepth = 10; // Previne infinite loops
+    
+    while (html.match(BB_CODE_PATTERNS.quote) && quoteDepth < maxQuoteDepth) {
+        html = html.replace(BB_CODE_PATTERNS.quote, (match, username, postId, text) => {
+            embeds.quotes.push({ user: username, post_id: postId, text })
+            
+            // Eliminăm quote-urile nested din conținut (conform cererii utilizatorului)
+            // Când dăm quote, se dă quote strict doar la mesajul scris de user, nu la quote-ul din acel mesaj
+            let cleanText = text.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '');
+            
+            // Parsează formatările de bază (imagini, videouri, text) - dar NU quote-uri
+            const parsedQuoteContent = parseQuoteContent(cleanText, { ...options, skipNestedQuotes: true } as any);
+            
+            // Generează permalink-ul corect
+            // postId poate fi fie postNumber (string) fie UUID
+            let permalink = `/forum/post/${escapeHtml(postId)}`; // Fallback la UUID
+            if (options?.getPostPermalink) {
+                permalink = options.getPostPermalink(postId);
+            } else if (options?.subcategorySlug && options?.topicSlug) {
+                // Dacă postId este un număr (postNumber), folosim direct
+                if (/^\d+$/.test(postId)) {
+                    permalink = `/forum/${options.subcategorySlug}/${options.topicSlug}#post${postId}`;
+                } else {
+                    // Dacă este UUID, căutăm în postNumberMap
+                    const postNumber = options?.postNumberMap?.get(postId);
+                    if (postNumber) {
+                        permalink = `/forum/${options.subcategorySlug}/${options.topicSlug}#post${postNumber}`;
+                    } else {
+                        // Fallback la postId dacă nu avem postNumber
+                        permalink = `/forum/${options.subcategorySlug}/${options.topicSlug}#post-${escapeHtml(postId)}`;
+                    }
+                }
+            }
+            
+            const replacement = `<blockquote class="bbcode-quote" data-post-id="${escapeHtml(postId)}">
       <div class="quote-header">
         <span class="quote-author">${escapeHtml(username)}</span>
         <a href="${permalink}" class="quote-link">Vezi postare</a>
       </div>
       <div class="quote-content">${parsedQuoteContent}</div>
     </blockquote>`
-        replacements.push({ original: match, replacement })
-        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
-    })
+            replacements.push({ original: match, replacement })
+            return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+        })
+        quoteDepth++;
+    }
 
     // Parse video embeds (YouTube)
     html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
@@ -389,6 +614,14 @@ export function parseBBCode(
         replacements.push({ original: match, replacement })
         return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
     })
+    // Parse [mention] tags - transformă în @username clickable către profil
+    html = html.replace(BB_CODE_PATTERNS.mention, (match, username) => {
+        const cleanUsername = username.trim();
+        const profileUrl = `/forum/user/${encodeURIComponent(cleanUsername)}`;
+        const replacement = `<a href="${profileUrl}" class="bbcode-mention" style="color: #3b82f6; font-weight: 500; text-decoration: none; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">@${escapeHtml(cleanUsername)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
     html = html.replace(/\[s\](.*?)\[\/s\]/gi, (match, text) => {
         const replacement = `<s class="bbcode-strikethrough">${escapeHtml(text)}</s>`
         replacements.push({ original: match, replacement })
@@ -405,6 +638,9 @@ export function parseBBCode(
         placeholderMap.set(safePlaceholder, repl.replacement)
         html = html.replace(placeholder, safePlaceholder)
     })
+
+    // Transformă codurile text clasice în emoji (înainte de escape)
+    html = transformLegacySmileys(html)
 
     // Convert line breaks to placeholders BEFORE escaping
     // This way <br> tags won't be escaped
@@ -467,6 +703,7 @@ export function stripBBCode(content: string): string {
     stripped = stripped.replace(/\[record\][\w-]+\[\/record\]/gi, '[Record]')
     stripped = stripped.replace(/\[gear\][\w-]+\[\/gear\]/gi, '[Echipament]')
     stripped = stripped.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '[Quote]')
+    stripped = stripped.replace(/\[mention\].+?\[\/mention\]/gi, '@username')
     stripped = stripped.replace(/\[video\][^\[]+\[\/video\]/gi, '[Video]')
     stripped = stripped.replace(/\[img\][^\[]+\[\/img\]/gi, '[Imagine]')
     stripped = stripped.replace(/\[url[^\]]*\][^\[]+\[\/url\]/gi, '[Link]')

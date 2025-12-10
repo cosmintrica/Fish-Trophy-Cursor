@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
+import ShareButton from '@/components/ShareButton';
 
 // Helper function for relative time
 const getRelativeTime = (date: string): string => {
@@ -592,6 +593,16 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {catchData && (
+              <ShareButton
+                url={`https://fishtrophy.ro/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`}
+                title={`Captură ${catchData.fish_species?.name || 'Pescuit'} - ${catchData.weight || 'N/A'}kg - Fish Trophy`}
+                description={`Captură de pescuit: ${catchData.fish_species?.name || 'Specie necunoscută'}${catchData.weight ? ` de ${catchData.weight}kg` : ''}, capturat la ${catchData.fishing_locations?.name || 'locație necunoscută'}.`}
+                image={catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
+                size="sm"
+                variant="ghost"
+              />
+            )}
             {/* Edit button for owner */}
             {isCatchOwner && onEdit && (
               <button

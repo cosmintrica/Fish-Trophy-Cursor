@@ -772,8 +772,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <span>Regulament</span>
                 </Link>
 
-                <a 
-                  href="/forum" 
+                <Link 
+                  to="/" 
+                  onClick={() => setShowMobileMenu(false)}
                   style={{ 
                     display: 'flex',
                     alignItems: 'center',
@@ -794,7 +795,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 >
                   <span style={{ fontSize: '1.25rem' }}>🎣</span>
                   <span>Fish Trophy</span>
-                </a>
+                </Link>
 
                 {user?.isAdmin && (
                   <Link 
@@ -893,8 +894,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
               >
                 Regulament
               </Link>
-              <a
-                href="/forum"
+              <Link
+                to="/"
                 style={{
                   color: theme.secondary,
                   textDecoration: 'none',
@@ -905,7 +906,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 }}
               >
                 Fish Trophy
-              </a>
+              </Link>
             </div>
           )}
         </div>

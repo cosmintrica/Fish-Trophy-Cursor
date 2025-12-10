@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, MessageSquare, Eye } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useTheme } from '../contexts/ThemeContext';
@@ -349,48 +350,29 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                               <span>{subcategory.lastPost.date} </span>
                             )}
                             <span>{subcategory.lastPost.timeOnly}</span>
-                            {subcategory.lastPost.subcategorySlug && subcategory.lastPost.topicSlug && subcategory.lastPost.postNumber && (() => {
-                              const hasCategorySlug = !!subcategory.lastPost.categorySlug;
-                              const hasSubforumSlug = !!subcategory.lastPost.subforumSlug;
-                              
-                              // Construiește linkul corect: category/subcategory/subforum/topic sau category/subcategory/topic
-                              let link = '';
-                              if (hasCategorySlug && hasSubforumSlug) {
-                                link = `/forum/${subcategory.lastPost.categorySlug}/${subcategory.lastPost.subcategorySlug}/${subcategory.lastPost.subforumSlug}/${subcategory.lastPost.topicSlug}#post${subcategory.lastPost.postNumber}`;
-                              } else if (hasCategorySlug) {
-                                link = `/forum/${subcategory.lastPost.categorySlug}/${subcategory.lastPost.subcategorySlug}/${subcategory.lastPost.topicSlug}#post${subcategory.lastPost.postNumber}`;
-                              } else {
-                                link = `/forum/${subcategory.lastPost.subcategorySlug}/${subcategory.lastPost.topicSlug}#post${subcategory.lastPost.postNumber}`;
-                              }
-                              
-                              return (
-                                <a
-                                  href={link}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    window.location.href = link;
-                                  }}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    color: theme.primary,
-                                    textDecoration: 'none',
-                                    marginLeft: '0.25rem',
-                                    transition: 'color 0.2s',
-                                    fontSize: '0.75rem'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = theme.secondary;
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = theme.primary;
-                                  }}
-                                  title="Permalink la ultima postare"
-                                >
-                                  &gt;
-                                </a>
-                              );
-                            })()}
+                            {subcategory.lastPost.topicSlug && (
+                              <Link
+                                to={`/forum/${subcategory.lastPost.subforumSlug || subcategory.lastPost.subcategorySlug || ''}/${subcategory.lastPost.topicSlug}${subcategory.lastPost.postNumber ? `#post${subcategory.lastPost.postNumber}` : ''}`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  // Navigate programmatically to ensure it works
+                                  window.location.href = `/forum/${subcategory.lastPost.subforumSlug || subcategory.lastPost.subcategorySlug || ''}/${subcategory.lastPost.topicSlug}${subcategory.lastPost.postNumber ? `#post${subcategory.lastPost.postNumber}` : ''}`;
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  color: theme.primary,
+                                  textDecoration: 'none',
+                                  marginLeft: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer'
+                                }}
+                                title="Permalink la ultima postare"
+                              >
+                                &gt;
+                              </Link>
+                            )}
                           </div>
                         </div>
                       ) : (

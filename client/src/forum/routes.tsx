@@ -14,6 +14,9 @@ import AdminForum from './pages/AdminForum';
 import RecentPosts from './pages/RecentPosts';
 import ActiveMembers from './pages/ActiveMembers';
 import ForumUserProfile from './pages/ForumUserProfile';
+import NotFound404 from '../components/NotFound404';
+import Privacy from '../pages/Privacy';
+import Cookies from '../pages/Cookies';
 
 // Componenta principală pentru rutele forum
 const ForumRoutes: React.FC = () => {
@@ -32,31 +35,33 @@ const ForumRoutes: React.FC = () => {
             <Route path="/rules" element={<RegulationsPage />} />
             <Route path="/messages" element={<div>Mesaje Private</div>} />
             <Route path="/admin" element={<AdminForum />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/cookies" element={<Cookies />} />
 
             {/* Rute utilizatori - folosim prefix /user/ pentru a evita conflicte cu categorii */}
             {/* IMPORTANT: Această rută trebuie să fie înainte de categoriile generice */}
             <Route path="/user/:username" element={<ForumUserProfile />} />
 
-            {/* URL-uri clean și ierarhice: /forum/categorySlug/subforumSlug/topicSlug */}
+            {/* Ruta explicită pentru 404 */}
+            <Route path="/404" element={<NotFound404 />} />
+
+            {/* URL-uri clean și ierarhice: /forum/subcategorySlug/topicSlug (FĂRĂ categorySlug) */}
             {/* IMPORTANT: Ordinea rutelor este CRITICĂ - mai specific înainte de mai general */}
-            {/* IMPORTANT: Subforums sunt tratate ca subcategorii în URL-uri: category/subforum (nu category/subcategory/subforum) */}
+            {/* IMPORTANT: Eliminăm categorySlug din URL-uri pentru URL-uri mai clean și mai scurte */}
 
-            {/* Rute topicuri - unificate: category/potentialSlug/topic (potentialSlug poate fi subcategorie SAU subforum) */}
-            {/* IMPORTANT: Unificăm rutele - TopicPage detectează automat dacă e subcategorie sau subforum */}
-            <Route path="/:categorySlug/:potentialSlug/:topicSlug" element={<TopicPage />} />
+            {/* Rute topicuri - subcategorySlug/topicSlug (potentialSlug poate fi subcategorie SAU subforum) */}
+            {/* IMPORTANT: TopicPage detectează automat dacă e subcategorie sau subforum */}
+            <Route path="/:potentialSlug/:topicSlug" element={<TopicPage />} />
 
-            {/* Rute subforums (category/subforum) - 2 segmente, TREBUIE înainte de subcategorii */}
-            <Route path="/:categorySlug/:subforumSlug" element={<CategoryPage />} />
-
-            {/* Rute subcategorii (category/subcategory) */}
-            <Route path="/:categorySlug/:subcategorySlug" element={<CategoryPage />} />
-
-            {/* Rute categorii (doar category slug) */}
-            <Route path="/:categorySlug" element={<CategoryPage />} />
+            {/* Rute subcategorii/subforums (doar subcategorySlug sau subforumSlug) */}
+            <Route path="/:subcategoryOrSubforumSlug" element={<CategoryPage />} />
 
             {/* Rute legacy pentru compatibilitate */}
             <Route path="/category/:id" element={<CategoryPage />} />
             <Route path="/topic/:id" element={<TopicPage />} />
+
+            {/* 404 - Catch all pentru rute invalide */}
+            <Route path="*" element={<NotFound404 />} />
 
           </Routes>
         </AuthProvider>

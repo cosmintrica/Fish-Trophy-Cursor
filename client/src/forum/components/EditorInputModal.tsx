@@ -3,12 +3,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Link, Image, Video } from 'lucide-react';
+import { X, Link, Image, Video, AtSign } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface EditorInputModalProps {
   isOpen: boolean;
-  type: 'link' | 'image' | 'video';
+  type: 'link' | 'image' | 'video' | 'mention';
   onClose: () => void;
   onInsert: (url: string, text?: string) => void;
   isMobile?: boolean;
@@ -39,24 +39,42 @@ export default function EditorInputModal({
   const handleSubmit = () => {
     setError('');
 
-    if (!url.trim()) {
-      setError('URL-ul este obligatoriu!');
-      return;
-    }
+    if (type === 'mention') {
+      // Pentru mențiuni, validăm username-ul
+      if (!url.trim()) {
+        setError('Username-ul este obligatoriu!');
+        return;
+      }
+      // Validare username simplă (doar alfanumerice, underscore, puncte)
+      if (!/^[a-zA-Z0-9_.-]+$/.test(url.trim())) {
+        setError('Username invalid! Folosește doar litere, cifre, puncte, underscore sau cratimă.');
+        return;
+      }
+    } else {
+      // Pentru link/image/video, validăm URL-ul
+      if (!url.trim()) {
+        setError('URL-ul este obligatoriu!');
+        return;
+      }
 
-    // Validare URL simplă
-    try {
-      new URL(url);
-    } catch {
-      setError('URL invalid!');
-      return;
+      // Validare URL simplă
+      try {
+        new URL(url);
+      } catch {
+        setError('URL invalid!');
+        return;
+      }
     }
 
     // Previne scroll-ul - salvează poziția înainte
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     
     // Inserează textul PRIMA DATĂ (înainte de a închide modal-ul)
-    onInsert(url.trim(), linkText.trim() || url.trim());
+    if (type === 'mention') {
+      onInsert(url.trim(), url.trim()); // Pentru mențiuni, folosim username-ul
+    } else {
+      onInsert(url.trim(), linkText.trim() || url.trim());
+    }
     
     // Așteaptă mai mult pentru ca inserarea să se facă complet, apoi închide modal-ul fără scroll
     setTimeout(() => {
@@ -78,6 +96,8 @@ export default function EditorInputModal({
         return 'Inserare Imagine';
       case 'video':
         return 'Inserare Video';
+      case 'mention':
+        return 'Mențiune Utilizator';
     }
   };
 
@@ -89,6 +109,8 @@ export default function EditorInputModal({
         return <Image size={isMobile ? 18 : 20} />;
       case 'video':
         return <Video size={isMobile ? 18 : 20} />;
+      case 'mention':
+        return <AtSign size={isMobile ? 18 : 20} />;
     }
   };
 
@@ -100,6 +122,8 @@ export default function EditorInputModal({
         return 'https://example.com/image.jpg';
       case 'video':
         return 'https://www.youtube.com/watch?v=... sau https://vimeo.com/...';
+      case 'mention':
+        return 'username';
     }
   };
 
@@ -209,11 +233,11 @@ export default function EditorInputModal({
                   marginBottom: '0.5rem'
                 }}
               >
-                URL {type === 'video' && '(YouTube sau Vimeo)'}
+                {type === 'mention' ? 'Username' : `URL ${type === 'video' ? '(YouTube sau Vimeo)' : ''}`}
               </label>
               <input
                 id="url-input"
-                type="url"
+                type={type === 'mention' ? 'text' : 'url'}
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
@@ -249,7 +273,7 @@ export default function EditorInputModal({
               />
             </div>
 
-            {/* Link Text Input - doar pentru link */}
+            {/* Link Text Input - doar pentru link (nu pentru mention) */}
             {type === 'link' && (
               <div>
                 <label

@@ -19,6 +19,7 @@ import { queryClient } from '@/lib/query-client';
 analytics;
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from '@/components/ScrollToTop';
+import CookieConsent from '@/components/CookieConsent';
 
 // Loading component pentru lazy loaded pages
 const PageLoader = () => (
@@ -45,7 +46,10 @@ import PublicProfile from '@/pages/PublicProfile';
 import FishingShops from '@/pages/FishingShops';
 import EmailConfirmation from '@/pages/EmailConfirmation';
 import Messages from '@/pages/Messages';
+import Privacy from '@/pages/Privacy';
+import Cookies from '@/pages/Cookies';
 import ForumRoutes from '@/forum/routes';
+import NotFound404 from '@/components/NotFound404';
 
 // Analytics wrapper component that uses useAnalytics inside Router
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
@@ -111,6 +115,8 @@ function AppContent() {
             <Route path="/profile/:username" element={<PublicProfile />} />
             <Route path="/submission-guide" element={<SubmissionGuide />} />
             <Route path="/fishing-shops" element={<FishingShops />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/cookies" element={<Cookies />} />
             <Route
               path="/profile"
               element={
@@ -139,6 +145,8 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            {/* 404 - Catch all pentru rute invalide din site-ul principal */}
+            <Route path="*" element={<NotFound404 />} />
           </Routes>
         </Layout>
       } />
@@ -190,6 +198,7 @@ function App() {
               className: 'toast-message'
             }}
           />
+          <CookieConsent />
         </AuthProvider>
       </QueryProvider>
     </HelmetProvider>

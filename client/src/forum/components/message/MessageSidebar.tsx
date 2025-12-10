@@ -2,6 +2,7 @@
  * Sidebar cu informații despre utilizatorul care a postat
  */
 
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { MessagePost } from './types';
 
@@ -96,23 +97,35 @@ export default function MessageSidebar({ post, isOriginalPost, isMobile, onGearC
         {!post.authorAvatar && post.author.charAt(0).toUpperCase()}
       </div>
 
-      {/* Nume utilizator - Truncat pe mobil */}
-      <div style={{
-        fontWeight: '600',
-        color: theme.text,
-        fontSize: isMobile ? '0.6875rem' : '0.875rem',
-        marginBottom: isMobile ? '0.25rem' : '0.5rem',
-        wordBreak: 'break-word',
-        lineHeight: '1.2',
-        width: '100%',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        display: '-webkit-box',
-        WebkitLineClamp: isMobile ? 2 : 3,
-        WebkitBoxOrient: 'vertical'
-      }}>
+      {/* Nume utilizator - Truncat pe mobil, clickable către profil */}
+      <Link
+        to={`/forum/user/${encodeURIComponent(post.author)}`}
+        style={{
+          fontWeight: '600',
+          color: theme.primary,
+          fontSize: isMobile ? '0.6875rem' : '0.875rem',
+          marginBottom: isMobile ? '0.25rem' : '0.5rem',
+          wordBreak: 'break-word',
+          lineHeight: '1.2',
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: isMobile ? 2 : 3,
+          WebkitBoxOrient: 'vertical',
+          textDecoration: 'none',
+          transition: 'color 0.2s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.textDecoration = 'underline';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.textDecoration = 'none';
+        }}
+      >
         {post.author}
-      </div>
+      </Link>
 
       {/* Rang vechime - Mai compact pe mobil */}
       <div style={{

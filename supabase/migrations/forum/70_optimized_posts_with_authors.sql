@@ -66,19 +66,20 @@ BEGIN
             p.delete_reason,
             p.post_number,
             p.created_at,
-            COALESCE(pr.display_name, pr.username, SPLIT_PART(pr.email, '@', 1), 'Unknown') AS author_username,
+            COALESCE(fu.username, pr.username, SPLIT_PART(pr.email, '@', 1), 'Unknown') AS author_username,
             pr.photo_url AS author_avatar,
             COALESCE(fu.reputation_points, 0) AS author_respect,
             COALESCE(fu.rank, 'pescar') AS author_rank,
             CASE 
-              WHEN p.edited_by IS NOT NULL AND p.edited_by != p.user_id THEN
-                COALESCE(pr_editor.display_name, pr_editor.username, SPLIT_PART(pr_editor.email, '@', 1), 'Unknown')
+              WHEN p.edited_by IS NOT NULL THEN
+                COALESCE(fu_editor.username, pr_editor.username, SPLIT_PART(pr_editor.email, '@', 1), 'Unknown')
               ELSE NULL
             END AS edited_by_username
           FROM forum_posts p
           LEFT JOIN profiles pr ON p.user_id = pr.id
           LEFT JOIN forum_users fu ON p.user_id = fu.user_id
           LEFT JOIN profiles pr_editor ON p.edited_by = pr_editor.id
+          LEFT JOIN forum_users fu_editor ON p.edited_by = fu_editor.user_id
           WHERE p.topic_id = p_topic_id AND p.is_deleted = false
           ORDER BY p.created_at ASC
           LIMIT p_page_size

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
+import ShareButton from '@/components/ShareButton';
 
 interface FishRecord {
   id: string;
@@ -170,12 +171,22 @@ const RecordDetailsModal = ({
           <CardContent className="p-0 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 text-white rounded-t-lg">
-              <button
-                onClick={onClose}
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/20 rounded-full transition-colors touch-manipulation"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2">
+                <ShareButton
+                  url={`https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`}
+                  title={`Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`}
+                  description={`Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`}
+                  image={getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
+                  size="sm"
+                  variant="ghost"
+                />
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors touch-manipulation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               <div className="flex items-center space-x-3 sm:space-x-4">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
 import { useTopic } from '../hooks/useTopics';
 import { usePosts, useCreatePost } from '../hooks/usePosts';
@@ -14,26 +14,24 @@ import { useMarkTopicAsRead } from '../hooks/useTopicReadStatus';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
+import SEOHead from '../../components/SEOHead';
+import { useStructuredData } from '../../hooks/useStructuredData';
+import ShareButton from '../../components/ShareButton';
 
 export default function TopicPage() {
   // Acceptă:
-  // - /:categorySlug/:subforumSlug/:topicSlug (clean - subforum tratat ca subcategorie în URL)
-  // - /:categorySlug/:subcategorySlug/:topicSlug (clean - subcategorie)
-  // - /:subcategorySlug/:topicSlug (legacy - pentru compatibilitate)
+  // - /:potentialSlug/:topicSlug (clean - potentialSlug poate fi subcategorie SAU subforum)
   // - /topic/:id (legacy)
-  // IMPORTANT: subforumSlug este acum în subcategorySlug - detectăm automat dacă e subforum sau subcategorie
-  // IMPORTANT: Unificăm parametrii - potentialSlug poate fi subcategorie SAU subforum
-  const { topicId, topicSlug, subcategorySlug, subforumSlug, potentialSlug, categorySlug } = useParams<{ 
+  // IMPORTANT: Nu mai includem categorySlug în URL-uri - slug-urile subcategoriilor/subforum-urilor sunt unice global
+  // IMPORTANT: potentialSlug poate fi subcategorie SAU subforum - detectăm automat
+  const { topicId, topicSlug, potentialSlug } = useParams<{ 
     topicId?: string; 
     topicSlug?: string; 
-    subcategorySlug?: string;
-    subforumSlug?: string;
     potentialSlug?: string; // Unificat pentru subcategorie/subforum
-    categorySlug?: string;
   }>();
   
   // Determinăm slug-ul real (subcategorie sau subforum)
-  const actualSubcategoryOrSubforumSlug = potentialSlug || subforumSlug || subcategorySlug;
+  const actualSubcategoryOrSubforumSlug = potentialSlug;
   const navigate = useNavigate();
   const { forumUser } = useAuth();
   const { showToast } = useToast();
@@ -60,8 +58,9 @@ export default function TopicPage() {
   
   // IMPORTANT: Folosim hook-ul pentru a detecta automat dacă e subcategorie sau subforum
   // Asta ne permite să folosim datele din cache și să găsim topicul corect
+  // Nu mai trecem categorySlug - nu este necesar
   const { data: subcategoryOrSubforumData } = useSubcategoryOrSubforum(
-    categorySlug,
+    undefined, // categorySlug nu mai este necesar
     actualSubcategoryOrSubforumSlug
   );
   
@@ -82,10 +81,10 @@ export default function TopicPage() {
     subforumIdFromCache || undefined
   );
   
-  // IMPORTANT: Folosim topic.id (UUID) în loc de slug pentru usePosts
-  // Astfel evităm duplicatele și erorile de "Topic not found"
-  const actualTopicId = topic?.id || topicIdentifier;
-  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts, total, hasMore } = usePosts(actualTopicId, page, pageSize);
+  // IMPORTANT: Folosim DOAR topic.id (UUID) pentru usePosts
+  // NU folosim topicIdentifier ca fallback - asta cauza double query și flickering
+  // Posturile se încarcă DOAR când avem UUID-ul topicului
+  const { posts, loading: postsLoading, error: postsError, refetch: refetchPosts, total, hasMore } = usePosts(topic?.id || null, page, pageSize);
   const { create: createPost } = useCreatePost();
   
   // Hook pentru marcarea topicului ca citit
@@ -94,14 +93,14 @@ export default function TopicPage() {
   // IMPORTANT: TOȚI hooks-ii trebuie declarați ÎNAINTE de orice early return
   // Topic not found state
   const [showNotFound, setShowNotFound] = useState(false);
-  
-  // Slug-urile pentru link-uri
-  const [resolvedSubcategorySlug, setResolvedSubcategorySlug] = useState<string | null>(subcategorySlug || null);
-  const [resolvedCategorySlug, setResolvedCategorySlug] = useState<string | null>(categorySlug || null);
-  const [subcategoryName, setSubcategoryName] = useState<string>('');
-  const [categoryName, setCategoryName] = useState<string>('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // SIMPLIFICAT: Breadcrumbs - folosim DIRECT datele din hook, fără state-uri intermediare
+  // Asta elimină flickering-ul cauzat de useEffect-uri care actualizează state-uri
+  const categoryName = subcategoryOrSubforumData?.parentCategory?.name || '';
+  const categoryId = subcategoryOrSubforumData?.parentCategory?.id || null;
+  const subcategoryName = subcategoryOrSubforumData?.subcategory?.name || subcategoryOrSubforumData?.subforum?.name || '';
+  const subcategorySlug = actualSubcategoryOrSubforumSlug || subcategoryOrSubforumData?.subcategory?.slug || subcategoryOrSubforumData?.subforum?.slug || '';
   
   // Detect mobil
   useEffect(() => {
@@ -111,57 +110,19 @@ export default function TopicPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Scroll automat la hash când se încarcă pagina (ex: #post1, #post2)
-  // IMPORTANT: Scroll instant fără delay când posturile sunt încărcate
-  const lastHashRef = useRef<string | null>(null);
-  const lastPageRef = useRef<number>(page);
-  const scrollAttemptsRef = useRef<number>(0);
-  
+  // Scroll automat la hash când se încarcă pagina (ex: #post1, #post2, #post5)
+  // SIMPLIFICAT: Un singur useEffect simplu
   useEffect(() => {
     const hash = window.location.hash;
-    const currentPage = page;
+    if (!hash || !hash.startsWith('#post') || posts.length === 0) return;
     
-    if (posts.length > 0 && hash) {
-      const hashChanged = hash !== lastHashRef.current;
-      const pageChanged = currentPage !== lastPageRef.current;
-      
-      if (hashChanged || pageChanged) {
-        // Încearcă să găsească elementul și să facă scroll
-        // Reîncearcă de câteva ori dacă elementul nu este găsit imediat (poate se încarcă încă)
-        const attemptScroll = () => {
-          const element = document.getElementById(hash.substring(1)); // Remove #
-          if (element) {
-            // Scroll instant folosind scrollTo pentru a evita orice delay
-            const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
-            window.scrollTo({ top: elementTop - 100, behavior: 'auto' }); // -100 pentru offset
-            lastHashRef.current = hash;
-            lastPageRef.current = currentPage;
-            scrollAttemptsRef.current = 0;
-            return true;
-          }
-          return false;
-        };
-        
-        // Încearcă imediat
-        if (!attemptScroll()) {
-          // Dacă nu găsește, reîncearcă rapid (pentru cazul în care DOM-ul se încarcă)
-          scrollAttemptsRef.current = 0;
-          const retryInterval = setInterval(() => {
-            scrollAttemptsRef.current += 1;
-            if (attemptScroll() || scrollAttemptsRef.current > 10) {
-              clearInterval(retryInterval);
-            }
-          }, 50); // Reîncearcă la fiecare 50ms, maxim 10 ori (500ms)
-          
-          return () => clearInterval(retryInterval);
-        }
-      }
-    } else if (!hash) {
-      lastHashRef.current = null;
+    const postId = hash.substring(1);
+    const element = document.getElementById(postId);
+    if (element) {
+      const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({ top: elementTop - 100, behavior: 'auto' });
     }
-    
-    lastPageRef.current = currentPage;
-  }, [posts.length, page, posts]); // Adăugăm posts în dependencies pentru a reîncerca când se schimbă
+  }, [posts.length]);
 
   // Nu mai folosim loading state - afișăm conținutul instant
 
@@ -172,84 +133,35 @@ export default function TopicPage() {
   }, [topicError, postsError]);
   
   // Topic not found effect - doar dacă există eroare EXPLICITĂ (nu mai folosim timeout)
+  // IMPORTANT: Nu setăm showNotFound la true dacă datele se încarcă încă
   useEffect(() => {
-    if (topicError && topicError.message?.includes('not found')) {
-      setShowNotFound(true);
-    } else {
-      setShowNotFound(false);
-    }
-  }, [topicError]);
-  
-  // Obține informații despre subcategorie și categorie pentru breadcrumbs
-  useEffect(() => {
-    const getHierarchy = async () => {
-      if (!topic?.subcategory_id && !subcategorySlug) return;
-      
-      try {
-        let subcategoryData;
-        
-        if (subcategorySlug) {
-          // Obține subcategoria după slug
-          const { data } = await supabase
-            .from('forum_subcategories')
-            .select('id, slug, name, category_id')
-            .eq('slug', subcategorySlug)
-            .maybeSingle();
-          subcategoryData = data;
-          setResolvedSubcategorySlug(subcategorySlug);
-        } else if (topic?.subcategory_id) {
-          // Obține subcategoria după ID
-          const { data } = await supabase
-            .from('forum_subcategories')
-            .select('id, slug, name, category_id')
-            .eq('id', topic.subcategory_id)
-            .maybeSingle();
-          subcategoryData = data;
-          if (data?.slug) {
-            setResolvedSubcategorySlug(data.slug);
-          }
-        }
-        
-        if (subcategoryData) {
-          setSubcategoryName(subcategoryData.name);
-          
-          // Obține categoria părinte
-          if (subcategoryData.category_id) {
-            setCategoryId(subcategoryData.category_id);
-            const { data: category } = await supabase
-              .from('forum_categories')
-              .select('name, slug')
-              .eq('id', subcategoryData.category_id)
-              .maybeSingle();
-            
-            if (category) {
-              setCategoryName(category.name);
-              setResolvedCategorySlug(category.slug || null);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading hierarchy:', error);
+    // Așteaptă puțin pentru a evita false positives la hard refresh
+    const timeoutId = setTimeout(() => {
+      if (topicError && topicError.message?.includes('not found') && !topic && !topicLoading) {
+        setShowNotFound(true);
+      } else {
+        setShowNotFound(false);
       }
-    };
+    }, 500);
     
-    getHierarchy();
-  }, [topic, subcategorySlug]);
-
+    return () => clearTimeout(timeoutId);
+  }, [topicError, topic, topicLoading]);
+  
   // Marchează topicul ca citit când user-ul intră pe pagină
   useEffect(() => {
-    if (actualTopicId && forumUser && posts.length > 0) {
+    // topic?.id este deja UUID valid
+    if (topic?.id && forumUser && posts.length > 0) {
       // Marchează topicul ca citit cu ultimul post
       const lastPost = posts[posts.length - 1];
       markAsRead({ 
-        topicId: actualTopicId, 
+        topicId: topic.id, 
         postId: lastPost?.id 
       }).catch(error => {
         // Silent fail - nu afișăm eroare dacă marcarea nu reușește
         console.error('Error marking topic as read:', error);
       });
     }
-  }, [actualTopicId, forumUser, posts.length, markAsRead]);
+  }, [topic?.id, forumUser, posts.length, markAsRead]);
 
 
   // Format smart: dacă e azi → doar ora, dacă > 24h → data + ora (FĂRĂ secunde)
@@ -329,9 +241,66 @@ export default function TopicPage() {
   };
   
   const displayPosts = posts.length > 0 ? posts : [];
+  
+  // Creează un map de postId -> postNumber pentru permalink-uri în quote-uri
+  const postNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    displayPosts.forEach((post) => {
+      const postNum = (post as any).post_number;
+      if (postNum) {
+        map.set(post.id, postNum);
+      }
+    });
+    return map;
+  }, [displayPosts]);
+
+  // SEO Data - OG tags dinamice pentru topic
+  const { websiteData, organizationData, createArticleData } = useStructuredData();
+  const topicUrl = topic ? `https://fishtrophy.ro/forum/${actualSubcategoryOrSubforumSlug}/${topic.slug}` : '';
+  const topicTitle = displayTopic.title || 'Topic Forum';
+  const topicDescription = displayPosts.length > 0 
+    ? `${displayPosts[0].content?.substring(0, 150).replace(/\[.*?\]/g, '') || 'Discuție despre pescuit'}...`
+    : `Discuție despre pescuit în ${subcategoryName || 'forum'}. ${displayTopic.reply_count || 0} răspunsuri.`;
+  const topicAuthor = (displayPosts[0] as any)?.author_username || 'Pescar';
+  const topicImage = 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+  const topicTags = [
+    subcategoryName || 'pescuit',
+    categoryName || 'forum',
+    'discuții',
+    'sfaturi'
+  ].filter(Boolean);
+  const parentCategory = subcategoryOrSubforumData?.parentCategory;
+
+  // Structured data pentru Article
+  const articleStructuredData = topic && displayTopic.created_at ? createArticleData({
+    headline: topicTitle,
+    description: topicDescription,
+    image: topicImage,
+    datePublished: displayTopic.created_at,
+    dateModified: displayTopic.updated_at || displayTopic.created_at,
+    author: topicAuthor,
+    url: topicUrl
+  }) : null;
 
   return (
-    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+    <>
+      {topic && (
+        <SEOHead
+          title={`${topicTitle} - Forum Pescuit - Fish Trophy`}
+          description={topicDescription}
+          keywords={`${topicTitle}, ${subcategoryName}, ${categoryName}, forum pescuit, discuții pescuit, ${topicTags.join(', ')}`}
+          image={topicImage}
+          url={topicUrl}
+          type="article"
+          author={topicAuthor}
+          publishedTime={displayTopic.created_at}
+          modifiedTime={displayTopic.updated_at || displayTopic.created_at}
+          section={subcategoryName || 'Forum'}
+          tags={topicTags}
+          structuredData={articleStructuredData ? [websiteData, organizationData, articleStructuredData] as unknown as Record<string, unknown>[] : [websiteData, organizationData] as unknown as Record<string, unknown>[]}
+        />
+      )}
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
       <div style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
@@ -350,132 +319,115 @@ export default function TopicPage() {
           paddingBottom: '0.25rem'
         }}>
           <Link to="/forum" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>FishTrophy</Link>
-          {(categoryName || subcategoryName || displayTopic.title || categorySlug) && (
+          {(categoryName || subcategoryName || displayTopic.title) && (
             <>
-              <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
-              {/* Folosim categorySlug direct din URL dacă este disponibil, altfel așteptăm datele */}
-              {(categorySlug || (categoryName && (resolvedCategorySlug || categoryId))) && (
-                <Link 
-                  to={categorySlug ? `/forum/${categorySlug}` : (resolvedCategorySlug ? `/forum/${resolvedCategorySlug}` : `/forum#category-${categoryId}`)}
-                  style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
-                  onClick={(e) => {
-                    if (!categorySlug && !resolvedCategorySlug && categoryId) {
-                      // Legacy: scroll la categorie pe homepage
-                      e.preventDefault();
-                      navigate('/forum');
-                      setTimeout(() => {
-                        const element = document.getElementById(`category-${categoryId}`);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 100);
-                    }
-                  }}
-                >
-                  {categoryName || categorySlug}
-                </Link>
+              {/* Categoria */}
+              {categoryName && (
+                <>
+                  <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+                  <Link
+                    to="/forum"
+                    style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                  >
+                    {categoryName}
+                  </Link>
+                </>
               )}
-              {(categorySlug || categoryName) && (subcategorySlug || subcategoryName) && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
-              {/* Folosim subcategorySlug direct din URL dacă este disponibil */}
-              {(subcategorySlug || (subcategoryName && resolvedSubcategorySlug)) && (
-                <Link 
-                  to={subcategorySlug && categorySlug ? `/forum/${categorySlug}/${subcategorySlug}` : (resolvedCategorySlug ? `/forum/${resolvedCategorySlug}/${resolvedSubcategorySlug}` : `/forum/${resolvedSubcategorySlug}`)}
-                  style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
-                >
-                  {subcategoryName || subcategorySlug}
-                </Link>
+              {/* Subcategoria */}
+              {subcategorySlug && (
+                <>
+                  <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+                  <Link 
+                    to={`/forum/${subcategorySlug}`}
+                    style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
+                  >
+                    {subcategoryName || subcategorySlug}
+                  </Link>
+                </>
               )}
-              {subcategoryName && displayTopic.title && <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>}
+              {/* Topic-ul */}
               {displayTopic.title && (
-                <span style={{ color: '#6b7280', fontWeight: '500' }}>{displayTopic.title}</span>
+                <>
+                  <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
+                  <span style={{ color: '#6b7280', fontWeight: '500' }}>{displayTopic.title}</span>
+                </>
               )}
             </>
           )}
         </nav>
 
-        {/* Topic Header - Compact pentru mobil */}
+        {/* Topic Header - COMPACT */}
         <div
           style={{
-            backgroundColor: 'white',
-            borderRadius: isMobile ? '0.5rem' : '1rem',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-            marginBottom: isMobile ? '0.75rem' : '1.5rem',
-            overflow: 'hidden'
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            borderRadius: '0.5rem',
+            padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+            marginBottom: isMobile ? '0.5rem' : '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
           }}
         >
-          <div
+          <Link
+            to={subcategorySlug ? `/forum/${subcategorySlug}` : '/forum'}
             style={{
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: 'white',
-              padding: isMobile ? '0.75rem' : '1rem',
               display: 'flex',
               alignItems: 'center',
-              gap: isMobile ? '0.5rem' : '0.75rem'
+              justifyContent: 'center',
+              width: '1.75rem',
+              height: '1.75rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              borderRadius: '0.25rem',
+              color: 'white',
+              textDecoration: 'none',
+              flexShrink: 0
             }}
           >
-            {resolvedSubcategorySlug ? (
-              <Link
-                to={`/forum/${resolvedSubcategorySlug}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: isMobile ? '2rem' : '2.5rem',
-                  height: isMobile ? '2rem' : '2.5rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.375rem',
-                  color: 'white',
-                  textDecoration: 'none',
-                  transition: 'background-color 0.2s',
-                  flexShrink: 0
-                }}
-              >
-                <ArrowLeft style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }} />
-              </Link>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: isMobile ? '2rem' : '2.5rem',
-                  height: isMobile ? '2rem' : '2.5rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: '0.375rem',
-                  color: 'white',
-                  textDecoration: 'none',
-                  transition: 'background-color 0.2s',
-                  flexShrink: 0
-                }}
-              >
-                <ArrowLeft style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }} />
+            <ArrowLeft style={{ width: '1rem', height: '1rem' }} />
+          </Link>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ 
+              fontSize: isMobile ? '0.875rem' : '1rem', 
+              fontWeight: '600', 
+              color: 'white',
+              margin: 0,
+              lineHeight: '1.3',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical' as const
+            }}>
+              {displayTopic.title || '\u00A0'}
+            </h1>
+            {displayTopic.title && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.375rem', 
+                fontSize: '0.7rem', 
+                color: 'rgba(255, 255, 255, 0.7)',
+                marginTop: '0.125rem'
+              }}>
+                <span>{displayPosts[0]?.author_username || '...'}</span>
+                <span>•</span>
+                <span>{displayTopic.view_count} viz</span>
+                <span>•</span>
+                <span>{displayTopic.reply_count} răsp</span>
               </div>
             )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 style={{ fontSize: isMobile ? '1rem' : '1.5rem', fontWeight: '600', marginBottom: '0.25rem', lineHeight: '1.2', wordBreak: 'break-word' }}>
-                {displayTopic.title || '\u00A0'}
-              </h1>
-              {displayTopic.title && (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: isMobile ? '0.5rem' : '1rem', 
-                  fontSize: isMobile ? '0.75rem' : '0.875rem', 
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  flexWrap: isMobile ? 'wrap' : 'nowrap'
-                }}>
-                  <span>de <strong>{displayPosts[0]?.author_username || 'Se încarcă...'}</strong></span>
-                  <span>•</span>
-                  <span>{formatSmartDateTime(displayTopic.created_at)}</span>
-                  <span>•</span>
-                  <span>{displayTopic.view_count} viz</span>
-                  <span>•</span>
-                  <span>{displayTopic.reply_count} răsp</span>
-                </div>
-              )}
-            </div>
           </div>
+          {topic && (
+            <div style={{ flexShrink: 0 }}>
+              <ShareButton
+                url={topicUrl}
+                title={topicTitle}
+                description={topicDescription}
+                size="sm"
+                variant="ghost"
+              />
+            </div>
+          )}
         </div>
 
         {/* Posts List - Fără loading, afișăm direct datele */}
@@ -501,9 +453,10 @@ export default function TopicPage() {
             isOriginalPost={index === 0 && page === 1}
             postNumber={(post as any).post_number || null} // Post number REAL din database
             topicId={topic?.id || topicIdentifier}
-            categorySlug={categorySlug}
-            subcategorySlug={subcategorySlug}
+            categorySlug={undefined} // Nu mai folosim categorySlug
+            subcategorySlug={actualSubcategoryOrSubforumSlug || subcategorySlug}
             topicSlug={topicSlug || (topic as any)?.slug}
+            postNumberMap={postNumberMap} // Map pentru permalink-uri în quote-uri
             onRespectChange={(postId, delta, comment) => {
               console.log(`Respect ${delta > 0 ? 'oferit' : 'retras'} pentru ${post.author_username}: "${comment}"`);
               alert(`Ai ${delta > 0 ? 'oferit' : 'retras'} respect pentru ${post.author_username}!`);
@@ -532,8 +485,10 @@ export default function TopicPage() {
                 const selectedPost = posts.find(p => p.id === postId);
                 if (selectedPost && insertQuotesRef.current) {
                   // Inserează quote-ul direct în editor
+                  // Folosim postNumber în loc de UUID pentru siguranță și claritate
+                  const postNum = (selectedPost as any).post_number;
                   insertQuotesRef.current([{
-                    postId: selectedPost.id,
+                    postId: postNum ? postNum.toString() : selectedPost.id, // Folosim postNumber dacă există, altfel UUID
                     author: selectedPost.author_username || 'Unknown',
                     content: selectedPost.content
                   }]);
@@ -576,9 +531,9 @@ export default function TopicPage() {
         ))}
 
         {/* Quick Reply Box - Înainte de ActiveViewers, sub ultimul post */}
-        {actualTopicId && (
+        {topic?.id && (
           <QuickReplyBox
-            topicId={actualTopicId}
+            topicId={topic.id}
             pageSize={pageSize}
             onPageSizeChange={(newSize) => {
               localStorage.setItem('forum_posts_page_size', newSize.toString());
@@ -777,5 +732,6 @@ export default function TopicPage() {
         )}
       </div>
     </ForumLayout>
+    </>
   );
 }

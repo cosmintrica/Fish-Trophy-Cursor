@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,6 +14,7 @@ import { queryKeys } from '../../lib/query-client';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { getUserReputationLogs } from '../../services/forum/reputation';
 import { getAllUserRestrictions } from '../../services/forum/moderation';
+import { parseBBCode } from '../../services/forum/bbcode';
 import {
   User,
   Award,
@@ -171,10 +173,39 @@ export default function ForumUserProfile() {
     return formatDate(dateString);
   };
 
+  // Redirect to 404 if user not found - must be in useEffect, not render
+  // Only redirect if we're sure the user doesn't exist (not loading and no profile)
+  useEffect(() => {
+    // Wait for loading to complete before redirecting
+    if (!isLoading && !userProfile && username && error?.message === 'User not found') {
+      navigate('/forum/404', { replace: true });
+    }
+  }, [error, isLoading, userProfile, username, navigate]);
+
   // Fără loading - afișăm direct conținutul (datele se încarcă în background)
 
-  if (error || !userProfile) {
+  if (error || (!isLoading && !userProfile)) {
+    // Don't navigate here - it's handled in useEffect above
+    // Just show loading or error message
+    if (isLoading) {
+      return (
+        <ForumLayout
+          user={forumUserToLayoutUser(currentUser)}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        >
+          <div style={{
+            textAlign: 'center',
+            padding: '4rem',
+            color: theme.textSecondary
+          }}>
+            <div>Se încarcă profilul...</div>
+          </div>
+        </ForumLayout>
+      );
+    }
 
+    // If error or user not found, show message (redirect happens in useEffect)
     return (
       <ForumLayout
         user={forumUserToLayoutUser(currentUser)}
@@ -208,12 +239,38 @@ export default function ForumUserProfile() {
 
   const isOwnProfile = currentUser?.id === userProfile.user_id;
 
+  // SEO Data - OG tags dinamice pentru user profile
+  const { websiteData, organizationData } = useStructuredData();
+  const profileUrl = `https://fishtrophy.ro/forum/user/${encodeURIComponent(userProfile.username)}`;
+  const profileTitle = `${userProfile.username} - Profil Forum - Fish Trophy`;
+  const profileDescription = `Profilul utilizatorului ${userProfile.username} pe Fish Trophy. ${userProfile.post_count} postări, ${userProfile.topic_count} topicuri, ${userProfile.reputation_points} puncte reputație. Rank: ${userProfile.rank.replace(/_/g, ' ')}.`;
+  const profileImage = userProfile.avatar_url || 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+  const profileKeywords = [
+    userProfile.username,
+    'profil pescar',
+    'forum pescuit',
+    'comunitate pescari',
+    'reputație pescuit',
+    userProfile.rank
+  ].filter(Boolean).join(', ');
+
   return (
-    <ForumLayout
-      user={forumUserToLayoutUser(currentUser)}
-      onLogin={handleLogin}
-      onLogout={handleLogout}
-    >
+    <>
+      <SEOHead
+        title={profileTitle}
+        description={profileDescription}
+        keywords={profileKeywords}
+        image={profileImage}
+        url={profileUrl}
+        type="profile"
+        author={userProfile.username}
+        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+      />
+      <ForumLayout
+        user={forumUserToLayoutUser(currentUser)}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      >
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
@@ -323,6 +380,15 @@ export default function ForumUserProfile() {
                   {userProfile.signature}
                 </div>
               )}
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <ShareButton
+                url={profileUrl}
+                title={profileTitle}
+                description={profileDescription}
+                size="sm"
+                variant="ghost"
+              />
             </div>
           </div>
 
@@ -669,6 +735,7 @@ export default function ForumUserProfile() {
           {activeTab === 'posts' && (
             <PostsHistoryTab 
               userId={userProfile.user_id}
+              username={userProfile.username}
               theme={theme}
               isMobile={isMobile}
             />
@@ -697,6 +764,7 @@ export default function ForumUserProfile() {
         </div>
       </div>
     </ForumLayout>
+    </>
   );
 }
 
@@ -961,13 +1029,17 @@ function GeneralInfoTab({
 // Posts History Tab Component
 function PostsHistoryTab({ 
   userId, 
+  username,
   theme, 
   isMobile 
 }: { 
   userId: string; 
+  username: string;
   theme: any; 
   isMobile: boolean;
 }) {
+  const navigate = useNavigate();
+  const postsContainerRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<'topics' | 'replies' | 'mentions' | 'quotes'>('topics');
   const [isMobileState, setIsMobileState] = useState(isMobile);
 
@@ -978,8 +1050,8 @@ function PostsHistoryTab({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch user posts
-  const { data: posts = [], isLoading } = useQuery({
+  // Fetch user posts (topics + replies)
+  const { data: posts = [], isLoading: isLoadingPosts } = useQuery({
     queryKey: ['user-posts', userId],
     queryFn: async () => {
       const { data: postsData, error } = await supabase
@@ -1008,7 +1080,10 @@ function PostsHistoryTab({
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mentions:', error);
+        throw error;
+      }
 
       // Get subcategory and category slugs for all posts
       const subcategoryIds = [...new Set((postsData || []).map(p => {
@@ -1056,12 +1131,170 @@ function PostsHistoryTab({
     gcTime: 5 * 60 * 1000
   });
 
+  // Fetch mentions - postări care conțin @username
+  const { data: mentions = [], isLoading: isLoadingMentions } = useQuery({
+    queryKey: ['user-mentions', username],
+    queryFn: async () => {
+      // Caută postări care conțin @username în conținut
+      const { data: mentionsData, error } = await supabase
+        .from('forum_posts')
+        .select(`
+          id,
+          content,
+          created_at,
+          topic_id,
+          post_number,
+          user_id,
+          topic:forum_topics!topic_id(
+            id,
+            title,
+            slug,
+            user_id,
+            subcategory_id,
+            subcategory:forum_subcategories!subcategory_id(
+              slug,
+              category_id,
+              category:forum_categories!category_id(slug)
+            )
+          )
+        `)
+        .neq('user_id', userId) // Nu includem postările proprii
+        .eq('is_deleted', false)
+        .ilike('content', `%[mention]${username}[/mention]%`) // Caută [mention]username[/mention] în conținut (case-insensitive)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching mentions:', error);
+        throw error;
+      }
+
+      // Get subcategory and category slugs
+      const subcategoryIds = [...new Set((mentionsData || []).map(p => {
+        const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
+        return topic?.subcategory_id;
+      }).filter(Boolean))];
+
+      const { data: subcategoriesData } = await supabase
+        .from('forum_subcategories')
+        .select('id, slug, category_id')
+        .in('id', subcategoryIds);
+
+      const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+      
+      const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
+      const { data: categoriesData } = await supabase
+        .from('forum_categories')
+        .select('id, slug')
+        .in('id', categoryIds);
+      
+      const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
+
+      return (mentionsData || []).map(post => {
+        const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
+        const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
+        const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
+        
+        return {
+          ...post,
+          topic: topic,
+          categorySlug: category?.slug || null,
+          subcategorySlug: subcategory?.slug || null,
+          isTopicCreator: false,
+          isMention: true
+        };
+      });
+    },
+    enabled: !!username,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  // Fetch quotes - postări care conțin [quote user="username"
+  const { data: quotes = [], isLoading: isLoadingQuotes } = useQuery({
+    queryKey: ['user-quotes', username],
+    queryFn: async () => {
+      // Caută postări care conțin [quote user="username" în conținut
+      const { data: quotesData, error } = await supabase
+        .from('forum_posts')
+        .select(`
+          id,
+          content,
+          created_at,
+          topic_id,
+          post_number,
+          user_id,
+          topic:forum_topics!topic_id(
+            id,
+            title,
+            slug,
+            user_id,
+            subcategory_id,
+            subcategory:forum_subcategories!subcategory_id(
+              slug,
+              category_id,
+              category:forum_categories!category_id(slug)
+            )
+          )
+        `)
+        .neq('user_id', userId) // Nu includem postările proprii
+        .eq('is_deleted', false)
+        .ilike('content', `%[quote user="${username}"%`) // Caută [quote user="username" în conținut (case-insensitive)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching mentions:', error);
+        throw error;
+      }
+
+      // Get subcategory and category slugs
+      const subcategoryIds = [...new Set((mentionsData || []).map(p => {
+        const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
+        return topic?.subcategory_id;
+      }).filter(Boolean))];
+
+      const { data: subcategoriesData } = await supabase
+        .from('forum_subcategories')
+        .select('id, slug, category_id')
+        .in('id', subcategoryIds);
+
+      const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+      
+      const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
+      const { data: categoriesData } = await supabase
+        .from('forum_categories')
+        .select('id, slug')
+        .in('id', categoryIds);
+      
+      const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
+
+      return (quotesData || []).map(post => {
+        const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
+        const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
+        const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
+        
+        return {
+          ...post,
+          topic: topic,
+          categorySlug: category?.slug || null,
+          subcategorySlug: subcategory?.slug || null,
+          isTopicCreator: false,
+          isQuote: true
+        };
+      });
+    },
+    enabled: !!username,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
   // Calculate counts for each filter type
   const filterCounts = useMemo(() => {
     const topicsCount = posts.filter(post => post.isTopicCreator).length;
     const repliesCount = posts.filter(post => !post.isTopicCreator).length;
-    const mentionsCount = 0; // TODO: Implement when @username feature is ready
-    const quotesCount = 0; // TODO: Implement when quote feature is ready
+    const mentionsCount = mentions.length;
+    const quotesCount = quotes.length;
     
     return {
       topics: topicsCount,
@@ -1069,24 +1302,52 @@ function PostsHistoryTab({
       mentions: mentionsCount,
       quotes: quotesCount
     };
-  }, [posts]);
+  }, [posts, mentions, quotes]);
 
   // Filter posts based on selected filter
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
-      if (filter === 'topics') return post.isTopicCreator;
-      if (filter === 'replies') return !post.isTopicCreator;
-      if (filter === 'mentions') {
-        // TODO: Implement mentions filter when @username feature is ready
-        return false;
+    if (filter === 'topics') {
+      return posts.filter(post => post.isTopicCreator);
+    }
+    if (filter === 'replies') {
+      return posts.filter(post => !post.isTopicCreator);
+    }
+    if (filter === 'mentions') {
+      return mentions;
+    }
+    if (filter === 'quotes') {
+      return quotes;
+    }
+    return posts;
+  }, [posts, mentions, quotes, filter]);
+
+  const isLoading = isLoadingPosts || (filter === 'mentions' && isLoadingMentions) || (filter === 'quotes' && isLoadingQuotes);
+
+  // Intercept clicks on mention links to use React Router navigation
+  useEffect(() => {
+    if (!postsContainerRef.current) return;
+
+    const mentionLinks = postsContainerRef.current.querySelectorAll('.bbcode-mention');
+    const handleMentionClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const link = e.currentTarget as HTMLAnchorElement;
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('/forum/user/')) {
+        navigate(href);
       }
-      if (filter === 'quotes') {
-        // TODO: Implement quotes filter when quote feature is ready
-        return false;
-      }
-      return true; // 'all'
+    };
+
+    mentionLinks.forEach(link => {
+      link.addEventListener('click', handleMentionClick);
     });
-  }, [posts, filter]);
+
+    return () => {
+      mentionLinks.forEach(link => {
+        link.removeEventListener('click', handleMentionClick);
+      });
+    };
+  }, [filteredPosts, navigate]);
 
   // Format date helper
   const formatDate = (dateString: string) => {
@@ -1116,10 +1377,11 @@ function PostsHistoryTab({
 
   // Build topic URL
   const buildTopicUrl = (post: any) => {
-    if (!post.topic || !post.subcategorySlug || !post.categorySlug) return '#';
+    if (!post.topic || !post.subcategorySlug) return '#';
     const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
     if (!topic?.slug) return '#';
-    return `/forum/${post.categorySlug}/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post_${post.post_number}` : ''}`;
+    // URL simplificat: doar subcategorySlug/topicSlug (FĂRĂ categorySlug)
+    return `/forum/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
   };
 
   return (
@@ -1197,15 +1459,18 @@ function PostsHistoryTab({
         }}>
           {filter === 'topics' ? 'Nu există topicuri create' : 
            filter === 'replies' ? 'Nu există răspunsuri' :
-           filter === 'mentions' ? 'Nu există mențiuni (funcție în dezvoltare)' :
-           'Nu există citări (funcție în dezvoltare)'}
+           filter === 'mentions' ? 'Nu există mențiuni' :
+           'Nu există citări'}
         </div>
       ) : (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isMobileState ? '0.75rem' : '1rem'
-        }}>
+        <div 
+          ref={postsContainerRef}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: isMobileState ? '0.75rem' : '1rem'
+          }}
+        >
           {filteredPosts.map((post) => {
             const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
             const topicUrl = buildTopicUrl(post);
@@ -1267,16 +1532,19 @@ function PostsHistoryTab({
                 </div>
 
                 {/* Post Content Preview */}
-                <div style={{
-                  fontSize: isMobileState ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  lineHeight: '1.5',
-                  wordBreak: 'break-word',
-                  overflowWrap: 'break-word'
-                }}>
-                  {truncateContent(post.content || '')}
-                </div>
+                <div 
+                  style={{
+                    fontSize: isMobileState ? '0.75rem' : '0.875rem',
+                    color: theme.textSecondary,
+                    marginBottom: '0.5rem',
+                    lineHeight: '1.5',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word'
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: parseBBCode(truncateContent(post.content || '')).html
+                  }}
+                />
 
                 {/* Post Meta */}
                 <div style={{
@@ -1375,14 +1643,6 @@ function ReputationHistoryTab({
     });
   };
 
-  // Get max/min for chart scaling
-  const maxCumulative = chartData.length > 0 
-    ? Math.max(...chartData.map(d => d.cumulative), 0) 
-    : 0;
-  const minCumulative = chartData.length > 0 
-    ? Math.min(...chartData.map(d => d.cumulative), 0) 
-    : 0;
-  const chartRange = maxCumulative - minCumulative || 1;
 
   // Fără loading - afișăm direct conținutul (datele se încarcă în background)
 
@@ -1417,7 +1677,7 @@ function ReputationHistoryTab({
         Istoric Reputație (Ultimele 10)
       </h2>
 
-      {/* Chart - Simple Bar Chart */}
+      {/* Chart - Recharts Line Chart */}
       {chartData.length > 0 && (
         <div style={{
           padding: isMobile ? '0.75rem' : '1rem',
@@ -1433,87 +1693,107 @@ function ReputationHistoryTab({
           }}>
             Evoluție Reputație
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: '0.25rem',
-            minHeight: '120px',
-            paddingTop: '0.5rem',
-            paddingBottom: '3rem',
-            position: 'relative',
-            marginBottom: '1rem'
-          }}>
-            {chartData.map((data, index) => {
-              // Calculate bar height in pixels (not percentage)
-              // Use the full height (120px - padding) for scaling
-              const availableHeight = 110; // 120px - 10px padding
-              const barHeightPx = chartRange > 0 
-                ? Math.max(((data.cumulative - minCumulative) / chartRange) * availableHeight, 4)
-                : 4;
-              return (
-                <div
-                  key={index}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    minHeight: '100%',
-                    justifyContent: 'flex-end',
-                    position: 'relative'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '100%',
-                      height: `${barHeightPx}px`,
-                      backgroundColor: data.cumulative >= 0 ? '#10b981' : '#ef4444',
-                      borderRadius: '0.25rem 0.25rem 0 0',
-                      minHeight: '4px',
-                      transition: 'all 0.3s',
-                      flexShrink: 0
-                    }}
-                    title={`${data.cumulative >= 0 ? '+' : ''}${data.cumulative}`}
-                  />
-                  <div style={{
-                    fontSize: '0.625rem',
-                    color: theme.textSecondary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'visible',
-                    textAlign: 'center',
-                    width: '100%',
-                    paddingTop: '0.25rem',
-                    minHeight: '2.5rem',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'center',
-                    lineHeight: '1.2',
-                    position: 'absolute',
-                    bottom: '-2.5rem',
-                    left: 0,
-                    right: 0
-                  }}>
-                    <div style={{
-                      transform: isMobile ? 'none' : 'rotate(-45deg)',
-                      transformOrigin: 'center',
-                      whiteSpace: 'nowrap'
+          <ResponsiveContainer width="100%" height={isMobile ? 200 : 250} minHeight={isMobile ? 200 : 250}>
+            <LineChart data={chartData.map(d => ({
+              date: d.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }),
+              time: d.date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+              cumulative: d.cumulative,
+              points: d.points
+            }))} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+              <XAxis 
+                dataKey="date" 
+                stroke={theme.textSecondary}
+                fontSize={isMobile ? 10 : 12}
+                tick={{ fill: theme.textSecondary }}
+              />
+              <YAxis 
+                stroke={theme.textSecondary}
+                fontSize={isMobile ? 10 : 12}
+                tick={{ fill: theme.textSecondary }}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: theme.mode === 'dark' ? 'rgba(30, 30, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem',
+                  color: theme.text,
+                  padding: '0.75rem',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  backdropFilter: 'blur(8px)'
+                }}
+                labelStyle={{ 
+                  color: theme.text, 
+                  marginBottom: '0.5rem', 
+                  fontWeight: '600',
+                  fontSize: '0.875rem'
+                }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || payload.length === 0) return null;
+                  const data = payload[0].payload;
+                  return (
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.5rem',
+                      minWidth: '150px'
                     }}>
-                      {data.date.toLocaleDateString('ro-RO', { 
-                        day: '2-digit', 
-                        month: '2-digit'
-                      })}
-                      <br />
-                      {data.date.toLocaleTimeString('ro-RO', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      <div style={{ 
+                        fontWeight: '600', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.25rem',
+                        color: theme.text,
+                        borderBottom: `1px solid ${theme.border}`,
+                        paddingBottom: '0.5rem'
+                      }}>
+                        {data.date} {data.time}
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.8125rem',
+                        color: theme.text,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Reputație:</span>
+                        <span style={{ 
+                          fontWeight: '700', 
+                          color: data.cumulative >= 0 ? '#10b981' : '#ef4444',
+                          fontSize: '0.875rem'
+                        }}>
+                          {data.cumulative >= 0 ? '+' : ''}{data.cumulative.toLocaleString('ro-RO')}
+                        </span>
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.8125rem',
+                        color: theme.text,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Modificare:</span>
+                        <span style={{ 
+                          fontWeight: '700', 
+                          color: data.points >= 0 ? '#10b981' : '#ef4444',
+                          fontSize: '0.875rem'
+                        }}>
+                          {data.points >= 0 ? '+' : ''}{data.points.toLocaleString('ro-RO')}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="cumulative" 
+                stroke={theme.primary}
+                strokeWidth={2}
+                dot={{ fill: theme.primary, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
 

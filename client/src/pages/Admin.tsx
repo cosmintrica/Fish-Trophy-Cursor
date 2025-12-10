@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 import { MapEditor } from '@/components/admin/MapEditor';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Admin: React.FC = () => {
   const [trafficData, setTrafficData] = useState({
@@ -70,12 +71,6 @@ const Admin: React.FC = () => {
   const [showPageViews, setShowPageViews] = useState(true);
   const [showUniqueVisitors, setShowUniqueVisitors] = useState(true);
   const [showSessions, setShowSessions] = useState(true);
-  const [hoveredPoint, setHoveredPoint] = useState<{
-    x: number;
-    y: number;
-    data: any;
-    metric: string;
-  } | null>(null);
 
   // Load traffic graph data based on selected period
   const loadTrafficGraphData = async () => {
@@ -278,121 +273,109 @@ const Admin: React.FC = () => {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Load detailed analytics data
+  // Load detailed analytics data using optimized RPC function
   const loadDetailedAnalytics = async () => {
     try {
-      // console.log('Loading detailed analytics (direct query)...');
+      // Map selectedPeriod to get_complete_analytics time period format
+      const mapPeriodToRPC = (period: string): string => {
+        switch (period) {
+          case '1h':
+          case '24h':
+            return 'today';
+          case '7d':
+            return 'last_7_days';
+          case '30d':
+            return 'last_30_days';
+          case '1y':
+            return 'last_month'; // Approximate for year
+          default:
+            return 'today';
+        }
+      };
 
-      // Get all analytics events for page views
-      const { data: analyticsEvents, error: analyticsError } = await supabase
-        .from('analytics_events')
-        .select('device_type, browser, os, country, city, referrer, page_path')
-        .eq('event_type', 'page_view');
+      const rpcPeriod = mapPeriodToRPC(trafficData.selectedPeriod);
+      
+      // Call optimized RPC function - single call instead of 8+ queries
+      const { data: completeAnalytics, error: analyticsError } = await supabase
+        .rpc('get_complete_analytics', { p_time_period: rpcPeriod });
 
       if (analyticsError) {
-        // console.error('Error loading analytics events:', analyticsError);
+        console.error('Error loading complete analytics:', analyticsError);
         return;
       }
 
-      // Get Romanian cities from database
-      const { data: romanianCities, error: citiesError } = await supabase
-        .from('cities')
-        .select('name');
-
-      if (citiesError) {
-        // console.error('Error loading Romanian cities:', citiesError);
+      if (!completeAnalytics) {
         return;
       }
 
-      // Create a set of normalized Romanian city names for fast lookup
-      const romanianCityNames = new Set(
-        romanianCities?.map(city => normalizeText(city.name)) || []
-      );
+      // Transform RPC response to match existing state structure
+      const stats = completeAnalytics.stats || {};
+      const devices = Array.isArray(completeAnalytics.devices) ? completeAnalytics.devices : [];
+      const browsers = Array.isArray(completeAnalytics.browsers) ? completeAnalytics.browsers : [];
+      const os = Array.isArray(completeAnalytics.os) ? completeAnalytics.os : [];
+      const countries = Array.isArray(completeAnalytics.countries) ? completeAnalytics.countries : [];
+      const cities = Array.isArray(completeAnalytics.cities) ? completeAnalytics.cities : [];
+      const referrers = Array.isArray(completeAnalytics.referrers) ? completeAnalytics.referrers : [];
+      const topPages = Array.isArray(completeAnalytics.top_pages) ? completeAnalytics.top_pages : [];
 
-      // console.log('Analytics Events Count:', analyticsEvents?.length || 0);
-      // console.log('Romanian Cities Count:', romanianCities?.length || 0);
-      // console.log('Romanian Cities from DB:', romanianCities?.map(c => c.name).slice(0, 10)); // First 10 cities
-      // console.log('Normalized Romanian Cities:', Array.from(romanianCityNames).slice(0, 10)); // First 10 normalized
-
-      // Calculate device stats
+      // Convert arrays to objects for compatibility with existing code
       const deviceStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const device = event.device_type || 'Unknown';
-        deviceStatsObj[device] = (deviceStatsObj[device] || 0) + 1;
-      });
-
-      // Calculate browser stats
-      const browserStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const browser = event.browser || 'Unknown';
-        browserStatsObj[browser] = (browserStatsObj[browser] || 0) + 1;
-      });
-
-      // Calculate OS stats
-      const osStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const os = event.os || 'Unknown';
-        osStatsObj[os] = (osStatsObj[os] || 0) + 1;
-      });
-
-      // Calculate country stats
-      const countryStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const country = event.country || 'Unknown';
-        countryStatsObj[country] = (countryStatsObj[country] || 0) + 1;
-      });
-
-      // Calculate city stats - Romanian cities (from DB + common Romanian city names)
-      const cityStatsObj: Record<string, number> = {};
-      const allCitiesFromAnalytics = new Set<string>();
-
-      // Common Romanian city names that might not be in DB
-      const commonRomanianCities = new Set([
-        'slatina', 'bucuresti', 'bucharest', 'cluj', 'timisoara', 'iasi', 'constanta',
-        'craiova', 'galati', 'ploiesti', 'brasov', 'braila', 'pitesti', 'arad',
-        'sibiu', 'bacau', 'targu mures', 'baia mare', 'buzau', 'satu mare',
-        'botosani', 'piatra neamt', 'ramnicu valcea', 'suceava', 'drobeta turnu severin',
-        'tulcea', 'targoviste', 'focsani', 'bistrita', 'resita', 'calarasi',
-        'giurgiu', 'deva', 'slobozia', 'alba iulia', 'hunedoara', 'zalau',
-        'sfantu gheorghe', 'targu jiu', 'vaslui', 'ramnicu sarat', 'barlad',
-        'turnu magurele', 'caracal', 'fagaras', 'sighetu marmatiei', 'mangalia',
-        'campina', 'petrosani', 'lugoj', 'medgidia', 'tecuci', 'onesti',
-        'oradea', 'sighisoara', 'curtea de arges', 'dorohoi', 'campulung',
-        'caransebes', 'targu secuiesc'
-      ]);
-
-      analyticsEvents?.forEach(event => {
-        const city = event.city || 'Unknown';
-        allCitiesFromAnalytics.add(city);
-        const normalizedCity = normalizeText(city);
-
-        // Include if it's in Romanian cities DB OR in common Romanian cities
-        if (romanianCityNames.has(normalizedCity) || commonRomanianCities.has(normalizedCity)) {
-          // Translate city name to Romanian for display
-          const translatedCity = translateCityName(city);
-          cityStatsObj[translatedCity] = (cityStatsObj[translatedCity] || 0) + 1;
+      devices.forEach((item: any) => {
+        if (item && item.type && typeof item.count === 'number') {
+          deviceStatsObj[item.type] = item.count;
         }
       });
 
-
-
-      // Calculate referrer stats
-      const referrerStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const referrer = event.referrer || 'Direct';
-        referrerStatsObj[referrer] = (referrerStatsObj[referrer] || 0) + 1;
+      const browserStatsObj: Record<string, number> = {};
+      browsers.forEach((item: any) => {
+        if (item && item.name && typeof item.count === 'number') {
+          browserStatsObj[item.name] = item.count;
+        }
       });
 
-      // Calculate page views stats
+      const osStatsObj: Record<string, number> = {};
+      os.forEach((item: any) => {
+        if (item && item.name && typeof item.count === 'number') {
+          osStatsObj[item.name] = item.count;
+        }
+      });
+
+      const countryStatsObj: Record<string, number> = {};
+      countries.forEach((item: any) => {
+        if (item && item.name && typeof item.count === 'number') {
+          countryStatsObj[item.name] = item.count;
+        }
+      });
+
+      const cityStatsObj: Record<string, number> = {};
+      cities.forEach((item: any) => {
+        if (item && item.name && typeof item.count === 'number') {
+          cityStatsObj[item.name] = item.count;
+        }
+      });
+
+      const referrerStatsObj: Record<string, number> = {};
+      referrers.forEach((item: any) => {
+        if (item && item.source && typeof item.count === 'number') {
+          referrerStatsObj[item.source] = item.count;
+        }
+      });
+
       const pageViewsStatsObj: Record<string, number> = {};
-      analyticsEvents?.forEach(event => {
-        const page = event.page_path || '/';
-        pageViewsStatsObj[page] = (pageViewsStatsObj[page] || 0) + 1;
+      topPages.forEach((item: any) => {
+        if (item && item.path && typeof item.count === 'number') {
+          pageViewsStatsObj[item.path] = item.count;
+        }
       });
 
       // Update traffic data with calculated statistics
       setTrafficData(prev => ({
         ...prev,
+        pageViews: stats.page_views || 0,
+        uniqueVisitors: stats.unique_visitors || 0,
+        sessions: stats.unique_sessions || 0,
+        bounceRate: stats.bounce_rate || 0,
+        avgSessionTime: stats.avg_session_duration || 0,
         deviceStats: deviceStatsObj,
         browserStats: browserStatsObj,
         osStats: osStatsObj,
@@ -403,7 +386,7 @@ const Admin: React.FC = () => {
       }));
 
     } catch (error) {
-      // console.error('Error loading detailed analytics:', error);
+      console.error('Error loading detailed analytics:', error);
     }
   };
 
@@ -716,6 +699,7 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (trafficData.selectedPeriod) {
       loadTrafficGraphData();
+      loadDetailedAnalytics(); // Reload detailed analytics when period changes
     }
   }, [trafficData.selectedPeriod, trafficData.customStartDate, trafficData.customEndDate]);
 
@@ -835,7 +819,9 @@ const Admin: React.FC = () => {
         toast.error('Eroare la actualizarea statisticilor', { id: 'update-stats' });
       } else {
         toast.success('Statisticile au fost actualizate cu succes!', { id: 'update-stats' });
-        loadRealData(); // Reload data
+        // Reload data directly using loadDetailedAnalytics to get fresh data
+        await loadDetailedAnalytics();
+        await loadRealData(); // Also reload main stats
       }
     } catch (error) {
       // console.error('Error updating analytics stats:', error);
@@ -1018,11 +1004,11 @@ const Admin: React.FC = () => {
               </TabsList>
 
               {/* Analytics & Status Tab */}
-              <TabsContent value="analytics" className="space-y-6">
-                <div className="grid gap-4 sm:gap-6">
+              <TabsContent value="analytics" className="space-y-4 sm:space-y-5 md:space-y-6">
+                <div className="grid gap-3 sm:gap-4 md:gap-6">
                   {/* Traffic Analytics */}
                   <Card>
-                    <CardHeader>
+                    <CardHeader className="pb-2 sm:pb-4">
                       <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                         <div className="flex items-center gap-2">
                           <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1032,40 +1018,40 @@ const Admin: React.FC = () => {
                           size="sm"
                           variant="outline"
                           onClick={updateAnalyticsStats}
-                          className="text-xs w-full sm:w-auto"
+                          className="text-xs w-full sm:w-auto mt-2 sm:mt-0"
                         >
                           Actualizează
                         </Button>
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         Statistici reale din baza de date
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-blue-600">{trafficData.pageViews}</div>
-                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Page Views</div>
+                        <div className="text-center p-2 sm:p-2.5 md:p-3 lg:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-blue-600">{trafficData.pageViews.toLocaleString('ro-RO')}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-1">Page Views</div>
                           <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Total vizualizări</div>
                         </div>
-                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-green-600">{trafficData.uniqueVisitors}</div>
-                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Vizitatori Unici</div>
+                        <div className="text-center p-2 sm:p-2.5 md:p-3 lg:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-green-600">{trafficData.uniqueVisitors.toLocaleString('ro-RO')}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-1">Vizitatori Unici</div>
                           <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Utilizatori diferiți</div>
                         </div>
-                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-orange-600">{trafficData.sessions || 0}</div>
-                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Sesiuni</div>
+                        <div className="text-center p-2 sm:p-2.5 md:p-3 lg:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-orange-600">{(trafficData.sessions || 0).toLocaleString('ro-RO')}</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-1">Sesiuni</div>
                           <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Sesiuni active</div>
                         </div>
-                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
-                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Bounce Rate</div>
+                        <div className="text-center p-2 sm:p-2.5 md:p-3 lg:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-red-600">{trafficData.bounceRate.toFixed(1)}%</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-1">Bounce Rate</div>
                           <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">% care pleacă rapid</div>
                         </div>
-                        <div className="text-center p-2.5 sm:p-3 md:p-4 bg-muted/50 rounded-lg">
-                          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
-                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Timp Mediu</div>
+                        <div className="text-center p-2 sm:p-2.5 md:p-3 lg:p-4 bg-muted/50 rounded-lg">
+                          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-purple-600">{Math.floor(trafficData.avgSessionTime / 60)}m</div>
+                          <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-1">Timp Mediu</div>
                           <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">Timp pe sesiune</div>
                         </div>
                       </div>
@@ -1078,33 +1064,33 @@ const Admin: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
                   {/* Device Statistics */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="w-5 h-5" />
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                         Dispozitive
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         Distribuția pe tipuri de dispozitive
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="pt-2 sm:pt-4">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.deviceStats)
                           .sort(([, a], [, b]) => b - a)
                           .map(([device, count]) => {
                             const total = Object.values(trafficData.deviceStats).reduce((a, b) => a + b, 0);
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
-                              <div key={device} className="flex items-center justify-between">
-                                <span className="text-sm capitalize">{device}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 bg-muted rounded-full h-2">
+                              <div key={device} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm capitalize truncate">{device}</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
-                                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                      className="bg-blue-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
                                 </div>
                               </div>
                             );
@@ -1115,33 +1101,33 @@ const Admin: React.FC = () => {
 
                   {/* Browser Statistics */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Activity className="w-5 h-5" />
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
                         Browsere
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         Distribuția pe browsere
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="pt-2 sm:pt-4">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.browserStats)
                           .sort(([, a], [, b]) => b - a)
                           .map(([browser, count]) => {
                             const total = Object.values(trafficData.browserStats).reduce((a, b) => a + b, 0);
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
-                              <div key={browser} className="flex items-center justify-between">
-                                <span className="text-sm">{browser}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 bg-muted rounded-full h-2">
+                              <div key={browser} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm truncate">{browser}</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
-                                      className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                      className="bg-green-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
                                 </div>
                               </div>
                             );
@@ -1152,33 +1138,33 @@ const Admin: React.FC = () => {
 
                   {/* Operating Systems */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Database className="w-5 h-5" />
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Database className="w-4 h-4 sm:w-5 sm:h-5" />
                         Sisteme de Operare
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         Distribuția pe OS
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="pt-2 sm:pt-4">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.osStats)
                           .sort(([, a], [, b]) => b - a)
                           .map(([os, count]) => {
                             const total = Object.values(trafficData.osStats).reduce((a, b) => a + b, 0);
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
-                              <div key={os} className="flex items-center justify-between">
-                                <span className="text-sm">{os}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 bg-muted rounded-full h-2">
+                              <div key={os} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm truncate">{os}</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
-                                      className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                                      className="bg-purple-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
                                 </div>
                               </div>
                             );
@@ -1189,17 +1175,17 @@ const Admin: React.FC = () => {
 
                   {/* Romanian Cities */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5" />
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
                         Orașe din România
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         Distribuția pe orașe românești
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="pt-2 sm:pt-4">
+                      <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.cityStats)
                           .sort(([, a], [, b]) => b - a)
                           .map(([city, count]) => {
@@ -1207,16 +1193,16 @@ const Admin: React.FC = () => {
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             const cityColor = generateRandomColor(city);
                             return (
-                              <div key={city} className="flex items-center justify-between">
-                                <span className="text-sm">{city}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 bg-muted rounded-full h-2">
+                              <div key={city} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-xs sm:text-sm truncate">{city}</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
-                                      className={`${cityColor} h-2 rounded-full transition-all duration-300`}
+                                      className={`${cityColor} h-1.5 sm:h-2 rounded-full transition-all duration-300`}
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="text-sm font-medium w-12 text-right">{percentage}%</span>
+                                  <span className="text-xs sm:text-sm font-medium w-8 sm:w-12 text-right">{percentage}%</span>
                                 </div>
                               </div>
                             );
@@ -1227,16 +1213,16 @@ const Admin: React.FC = () => {
 
                   {/* Referrers - Mobile Optimized */}
                   <Card>
-                    <CardHeader className="pb-3 sm:pb-6">
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-base sm:text-lg">Surse de Trafic</span>
+                        Surse de Trafic
                       </CardTitle>
                       <CardDescription className="text-xs sm:text-sm">
                         De unde vin vizitatorii
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-2 sm:pt-4">
                       <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.referrerStats)
                           .sort(([, a], [, b]) => b - a)
@@ -1246,8 +1232,8 @@ const Admin: React.FC = () => {
                             return (
                               <div key={referrer} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
                                 <span className="text-xs sm:text-sm truncate">{referrer}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
                                       className="bg-red-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                       style={{ width: `${percentage}%` }}
@@ -1264,27 +1250,28 @@ const Admin: React.FC = () => {
 
                   {/* Most Visited Pages - Mobile Optimized */}
                   <Card>
-                    <CardHeader className="pb-3 sm:pb-6">
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-2 sm:pb-4">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-base sm:text-lg">Cele mai vizitate pagini</span>
+                        Cele mai vizitate pagini
                       </CardTitle>
                       <CardDescription className="text-xs sm:text-sm">
                         Top 10 pagini cu cele mai multe vizite
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-2 sm:pt-4">
                       <div className="space-y-2 sm:space-y-3">
                         {Object.entries(trafficData.pageViewsStats || {})
                           .sort(([, a], [, b]) => b - a)
+                          .slice(0, 10)
                           .map(([page, count]) => {
                             const total = Object.values(trafficData.pageViewsStats || {}).reduce((a, b) => a + b, 0);
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
                               <div key={page} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                                <span className="text-xs sm:text-sm font-mono truncate">{page}</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-16 sm:w-20 bg-muted rounded-full h-1.5 sm:h-2">
+                                <span className="text-xs sm:text-sm font-mono truncate break-all">{page}</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                  <div className="flex-1 sm:w-16 lg:w-20 bg-muted rounded-full h-1.5 sm:h-2">
                                     <div
                                       className="bg-indigo-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                       style={{ width: `${percentage}%` }}
@@ -1307,7 +1294,7 @@ const Admin: React.FC = () => {
 
                   {/* Timeline Chart - Mobile Optimized */}
                   <Card className="md:col-span-2 lg:col-span-3">
-                    <CardHeader className="pb-3 sm:pb-6">
+                    <CardHeader className="pb-2 sm:pb-3 md:pb-4 lg:pb-6">
                       <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                         <div className="flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1349,14 +1336,14 @@ const Admin: React.FC = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="h-64 sm:h-80 md:h-96">
+                      <div className="h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px] w-full">
                         {memoizedTrafficData.length > 0 ? (
-                          <div className="h-full flex flex-col">
+                          <div className="h-full w-full flex flex-col">
                             {/* Metric Filters - Mobile Optimized */}
-                            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-4 text-xs sm:text-sm">
+                            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm">
                               <button
                                 onClick={() => setShowPageViews(!showPageViews)}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showPageViews
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showPageViews
                                     ? 'bg-blue-100 text-blue-700 border border-blue-300'
                                     : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
@@ -1367,7 +1354,7 @@ const Admin: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => setShowUniqueVisitors(!showUniqueVisitors)}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showUniqueVisitors
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showUniqueVisitors
                                     ? 'bg-green-100 text-green-700 border border-green-300'
                                     : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
@@ -1378,7 +1365,7 @@ const Admin: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => setShowSessions(!showSessions)}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-1 rounded-md transition-colors ${showSessions
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showSessions
                                     ? 'bg-orange-100 text-orange-700 border border-orange-300'
                                     : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
@@ -1389,174 +1376,77 @@ const Admin: React.FC = () => {
                               </button>
                             </div>
 
-                            {/* Line Chart - Mobile Optimized */}
-                            <div className="flex-1 relative px-1 sm:px-2 md:px-4 lg:px-6 py-2 sm:py-4">
-                              <div className="w-full overflow-x-auto">
-                                <svg className="w-full h-[200px] sm:h-[250px] md:h-[300px] min-w-[800px] sm:min-w-0" viewBox="0 0 900 200" preserveAspectRatio="xMidYMid meet">
-                                  {/* Y-axis grid lines */}
-                                  {[0, 20, 40, 60, 80, 100].map((percent, i) => (
-                                    <line
-                                      key={i}
-                                      x1="60"
-                                      y1={160 - (percent * 1.2)}
-                                      x2="840"
-                                      y2={160 - (percent * 1.2)}
-                                      stroke="#f3f4f6"
-                                      strokeWidth="1"
+                            {/* Line Chart - Recharts */}
+                            <div className="flex-1 relative w-full" style={{ minHeight: '250px', height: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
+                                <LineChart data={memoizedTrafficData.map(point => ({
+                                  time: convertToRomaniaTime(point.time_period),
+                                  page_views: showPageViews ? (point.page_views || 0) : null,
+                                  unique_visitors: showUniqueVisitors ? (point.unique_visitors || 0) : null,
+                                  sessions: showSessions ? (point.sessions || 0) : null,
+                                }))} margin={{ top: 5, right: 10, left: -10, bottom: 70 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                                  <XAxis 
+                                    dataKey="time" 
+                                    stroke="#6b7280"
+                                    fontSize={10}
+                                    tick={{ fill: '#6b7280' }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={70}
+                                    interval="preserveStartEnd"
+                                  />
+                                  <YAxis 
+                                    stroke="#6b7280"
+                                    fontSize={10}
+                                    tick={{ fill: '#6b7280' }}
+                                    width={40}
+                                  />
+                                  <Tooltip 
+                                    contentStyle={{
+                                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                                      borderRadius: '0.5rem',
+                                      color: 'white'
+                                    }}
+                                    labelStyle={{ color: '#e5e7eb' }}
+                                  />
+                                  {showPageViews && (
+                                    <Line 
+                                      type="monotone" 
+                                      dataKey="page_views" 
+                                      stroke="#3b82f6" 
+                                      strokeWidth={2}
+                                      dot={{ fill: '#3b82f6', r: 4 }}
+                                      activeDot={{ r: 6 }}
+                                      name="Vizualizări"
                                     />
-                                  ))}
-
-                                  {/* Y-axis labels */}
-                                  {[0, 20, 40, 60, 80, 100].map((percent, i) => {
-                                    const maxValue = Math.max(
-                                      ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
-                                      1
-                                    );
-                                    const value = Math.round((maxValue * percent) / 100);
-                                    return (
-                                      <text
-                                        key={i}
-                                        x="55"
-                                        y={160 - (percent * 1.2) + 3}
-                                        textAnchor="end"
-                                        fontSize="10"
-                                        fill="#6b7280"
-                                      >
-                                        {value}
-                                      </text>
-                                    );
-                                  })}
-
-                                  {/* X-axis */}
-                                  <line x1="60" y1="160" x2="840" y2="160" stroke="#374151" strokeWidth="2" />
-
-                                  {/* Data points and lines */}
-                                  {[
-                                    { metric: 'page_views', color: '#3b82f6', show: showPageViews },
-                                    { metric: 'unique_visitors', color: '#10b981', show: showUniqueVisitors },
-                                    { metric: 'sessions', color: '#f59e0b', show: showSessions }
-                                  ].filter(item => item.show).map((item) => {
-                                    const { metric, color } = item;
-                                    const maxValue = Math.max(
-                                      ...memoizedTrafficData.map(p => Math.max(p.page_views || 0, p.unique_visitors || 0, p.sessions || 0)),
-                                      1
-                                    );
-
-                                    const points = memoizedTrafficData.map((point, index) => {
-                                      const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
-                                      const x = 60 + (index * spacing);
-                                      const value = point[metric] || 0;
-                                      const y = 160 - ((value / maxValue) * 120);
-                                      return { x, y, value };
-                                    });
-
-                                    return (
-                                      <g key={metric}>
-                                        {/* Line */}
-                                        <polyline
-                                          points={points.map(p => `${p.x},${p.y}`).join(' ')}
-                                          fill="none"
-                                          stroke={color}
-                                          strokeWidth="2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                        {/* Data points */}
-                                        {points.map((point, index) => (
-                                          <circle
-                                            key={index}
-                                            cx={point.x}
-                                            cy={point.y}
-                                            r="4"
-                                            fill={color}
-                                            stroke="white"
-                                            strokeWidth="2"
-                                            style={{ cursor: 'pointer' }}
-                                            onMouseEnter={() => setHoveredPoint({
-                                              x: point.x,
-                                              y: point.y,
-                                              data: memoizedTrafficData[index],
-                                              metric: metric
-                                            })}
-                                            onMouseLeave={() => setHoveredPoint(null)}
-                                          />
-                                        ))}
-                                      </g>
-                                    );
-                                  })}
-
-                                  {/* X-axis labels - show every 2nd or 3rd label to avoid overlap */}
-                                  {memoizedTrafficData.map((point, index) => {
-                                    const spacing = memoizedTrafficData.length > 1 ? 780 / (memoizedTrafficData.length - 1) : 0;
-                                    const x = 60 + (index * spacing);
-                                    // Show every 2nd label if more than 10 points, every 3rd if more than 20
-                                    const showLabel = memoizedTrafficData.length <= 10 ||
-                                      (memoizedTrafficData.length <= 20 && index % 2 === 0) ||
-                                      (memoizedTrafficData.length > 20 && index % 3 === 0);
-
-                                    if (!showLabel) return null;
-
-                                    return (
-                                      <text
-                                        key={index}
-                                        x={x}
-                                        y="180"
-                                        textAnchor="middle"
-                                        fontSize="9"
-                                        fill="#6b7280"
-                                      >
-                                        {convertToRomaniaTime(point.time_period)}
-                                      </text>
-                                    );
-                                  })}
-
-                                  {/* Tooltip */}
-                                  {hoveredPoint && (
-                                    <g>
-                                      {/* Tooltip background with shadow */}
-                                      <rect
-                                        x={hoveredPoint.x - 25}
-                                        y={hoveredPoint.y - 35}
-                                        width="50"
-                                        height="30"
-                                        fill="rgba(0, 0, 0, 0.9)"
-                                        rx="6"
-                                        ry="6"
-                                        stroke="rgba(255, 255, 255, 0.2)"
-                                        strokeWidth="1"
-                                      />
-                                      {/* Tooltip value */}
-                                      <text
-                                        x={hoveredPoint.x}
-                                        y={hoveredPoint.y - 20}
-                                        textAnchor="middle"
-                                        fontSize="11"
-                                        fill="white"
-                                        fontWeight="bold"
-                                      >
-                                        {hoveredPoint.data[hoveredPoint.metric] || 0}
-                                      </text>
-                                      {/* Tooltip label */}
-                                      <text
-                                        x={hoveredPoint.x}
-                                        y={hoveredPoint.y - 8}
-                                        textAnchor="middle"
-                                        fontSize="8"
-                                        fill="#e5e7eb"
-                                      >
-                                        {hoveredPoint.metric === 'page_views' && 'Vizualizări'}
-                                        {hoveredPoint.metric === 'unique_visitors' && 'Vizitatori'}
-                                        {hoveredPoint.metric === 'sessions' && 'Sesiuni'}
-                                      </text>
-                                      {/* Tooltip arrow */}
-                                      <polygon
-                                        points={`${hoveredPoint.x - 4},${hoveredPoint.y - 5} ${hoveredPoint.x + 4},${hoveredPoint.y - 5} ${hoveredPoint.x},${hoveredPoint.y - 1}`}
-                                        fill="rgba(0, 0, 0, 0.9)"
-                                      />
-                                    </g>
                                   )}
-                                </svg>
-                              </div>
+                                  {showUniqueVisitors && (
+                                    <Line 
+                                      type="monotone" 
+                                      dataKey="unique_visitors" 
+                                      stroke="#10b981" 
+                                      strokeWidth={2}
+                                      dot={{ fill: '#10b981', r: 4 }}
+                                      activeDot={{ r: 6 }}
+                                      name="Vizitatori Unici"
+                                    />
+                                  )}
+                                  {showSessions && (
+                                    <Line 
+                                      type="monotone" 
+                                      dataKey="sessions" 
+                                      stroke="#f59e0b" 
+                                      strokeWidth={2}
+                                      dot={{ fill: '#f59e0b', r: 4 }}
+                                      activeDot={{ r: 6 }}
+                                      name="Sesiuni"
+                                    />
+                                  )}
+                                  <Legend />
+                                </LineChart>
+                              </ResponsiveContainer>
                             </div>
                           </div>
                         ) : (
@@ -1564,9 +1454,6 @@ const Admin: React.FC = () => {
                             <div className="text-center">
                               <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
                               <p className="text-muted-foreground">Nu există date de trafic pentru această perioadă</p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Datele vor apărea când utilizatorii vor naviga pe site
-                              </p>
                             </div>
                           </div>
                         )}
@@ -1577,29 +1464,67 @@ const Admin: React.FC = () => {
 
                 {/* System Info */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="w-5 h-5" />
+                  <CardHeader className="pb-2 sm:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Database className="w-4 h-4 sm:w-5 sm:h-5" />
                       Informații Sistem
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Frontend:</span>
-                        <p className="font-medium">React + Vite + TypeScript</p>
+                  <CardContent className="pt-2 sm:pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Frontend:</span>
+                        <p className="font-medium text-xs sm:text-sm break-words">React 18 + Vite 7 + TypeScript</p>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">Backend:</span>
-                        <p className="font-medium">Supabase + Netlify</p>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Backend:</span>
+                        <p className="font-medium text-xs sm:text-sm break-words">Supabase + Netlify Functions</p>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">Hărți:</span>
-                        <p className="font-medium">MapLibre GL + OSM</p>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Hărți:</span>
+                        <p className="font-medium text-xs sm:text-sm break-words">MapLibre GL 5.7 + OSM</p>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">UI:</span>
-                        <p className="font-medium">Tailwind + shadcn/ui</p>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">UI:</span>
+                        <p className="font-medium text-xs sm:text-sm break-words">Tailwind CSS + shadcn/ui + Radix UI</p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Grafice:</span>
+                        <p className="font-medium text-xs sm:text-sm">Recharts 3.5</p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">State Management:</span>
+                        <p className="font-medium text-xs sm:text-sm break-words">React Query 5.9 (TanStack)</p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Routing:</span>
+                        <p className="font-medium text-xs sm:text-sm">React Router DOM 6.20</p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Notificări:</span>
+                        <p className="font-medium text-xs sm:text-sm">Sonner (Toast)</p>
+                      </div>
+                    </div>
+                    {/* Netlify Deployment Status */}
+                    <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                        <div className="space-y-0.5">
+                          <span className="text-muted-foreground text-xs sm:text-sm">Status Deploy:</span>
+                          <p className="font-medium text-xs sm:text-sm">Netlify</p>
+                        </div>
+                        <a
+                          href="https://app.netlify.com/projects/fishtrophy/deploys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block transition-opacity hover:opacity-80"
+                          title="Vezi status deploy Netlify"
+                        >
+                          <img
+                            src="https://api.netlify.com/api/v1/badges/f3766656-9e69-4a97-acff-952a4caecde3/deploy-status"
+                            alt="Netlify Deploy Status"
+                            className="h-5 sm:h-6"
+                          />
+                        </a>
                       </div>
                     </div>
                   </CardContent>

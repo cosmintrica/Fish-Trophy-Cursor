@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Save, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Save, X, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -44,6 +45,7 @@ interface MessageContainerProps {
   categorySlug?: string;
   subcategorySlug?: string;
   topicSlug?: string;
+  postNumberMap?: Map<string, number>; // Map postId -> postNumber pentru permalink-uri
   onRespectChange?: (postId: string, delta: number, comment: string) => void;
   onReply?: (postId: string) => void;
   onQuote?: (postId: string) => void;
@@ -64,6 +66,7 @@ export default function MessageContainer({
   categorySlug,
   subcategorySlug,
   topicSlug,
+  postNumberMap,
   onRespectChange,
   onReply,
   onQuote,
@@ -77,12 +80,14 @@ export default function MessageContainer({
 }: MessageContainerProps) {
   const { theme } = useTheme();
   const { forumUser } = useAuth();
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
   const [showGearModal, setShowGearModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [editReason, setEditReason] = useState('');
+  const [showEditPreview, setShowEditPreview] = useState(false);
   const [userGear, setUserGear] = useState<any[]>([]);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -94,11 +99,16 @@ export default function MessageContainer({
   const parsedContent = useMemo(() => {
     // Funcție helper pentru generarea permalink-urilor în quote-uri
     const getPostPermalink = (postId: string): string => {
-      // Dacă avem toate slug-urile, construim permalink-ul corect
-      if (categorySlug && subcategorySlug && topicSlug) {
-        // Format: /forum/{categorySlug}/{subcategorySlug}/{topicSlug}#post{postNumber}
-        // Dar nu avem postNumber pentru quote-uri, deci folosim postId ca fallback
-        return `/forum/${categorySlug}/${subcategorySlug}/${topicSlug}#post-${postId}`;
+      // Dacă avem slug-urile necesare, construim permalink-ul corect (FĂRĂ categorySlug)
+      if (subcategorySlug && topicSlug) {
+        // Format: /forum/{subcategorySlug}/{topicSlug}#post{postNumber}
+        // Folosim postNumberMap pentru a găsi postNumber-ul pentru postId-ul din quote
+        const quotePostNumber = postNumberMap?.get(postId);
+        if (quotePostNumber) {
+          return `/forum/${subcategorySlug}/${topicSlug}#post${quotePostNumber}`;
+        }
+        // Fallback la postId dacă nu avem postNumber
+        return `/forum/${subcategorySlug}/${topicSlug}#post-${postId}`;
       }
       // Fallback la UUID
       return `/forum/post/${postId}`;
@@ -108,10 +118,11 @@ export default function MessageContainer({
       categorySlug,
       subcategorySlug,
       topicSlug,
-      getPostPermalink
+      getPostPermalink,
+      postNumberMap
     });
     return parsed.html;
-  }, [post.content, categorySlug, subcategorySlug, topicSlug]);
+  }, [post.content, postNumber, categorySlug, subcategorySlug, topicSlug, postNumberMap]);
 
   // Add click handlers for images to enable zoom
   useEffect(() => {
@@ -137,6 +148,33 @@ export default function MessageContainer({
       });
     };
   }, [parsedContent]);
+
+  // Intercept clicks on mention links to use React Router navigation
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    const mentionLinks = contentRef.current.querySelectorAll('.bbcode-mention');
+    const handleMentionClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const link = e.currentTarget as HTMLAnchorElement;
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('/forum/user/')) {
+        navigate(href);
+      }
+    };
+
+    mentionLinks.forEach(link => {
+      link.addEventListener('click', handleMentionClick);
+    });
+
+    return () => {
+      mentionLinks.forEach(link => {
+        link.removeEventListener('click', handleMentionClick);
+      });
+    };
+  }, [parsedContent, navigate]);
+
   const [isLoadingGear, setIsLoadingGear] = useState(false);
 
   useEffect(() => {
@@ -340,6 +378,10 @@ export default function MessageContainer({
               style={{
                 flex: 1,
                 padding: isMobile ? '0.75rem' : '1.5rem',
+                paddingTop: isMobile ? '0.75rem' : '1.5rem',
+                paddingRight: postNumber && topicId && !isEditing ? (isMobile ? '3.5rem' : '4rem') : (isMobile ? '0.75rem' : '1.5rem'), // Safe space pentru permalink-uri (#4, etc.)
+                paddingBottom: isMobile ? '2rem' : '2.5rem',
+                paddingLeft: isMobile ? '0.75rem' : '1.5rem',
                 fontSize: isMobile ? '0.8125rem' : '0.875rem',
                 color: theme.text,
                 lineHeight: '1.6',
@@ -439,9 +481,59 @@ export default function MessageContainer({
                     </div>
                   )}
                   
+                  {/* Preview pentru editare */}
+                  {showEditPreview && (
+                    <div
+                      style={{
+                        padding: '1rem',
+                        backgroundColor: theme.background,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '0.5rem',
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      <div
+                        style={{
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          maxWidth: '100%'
+                        }}
+                        dangerouslySetInnerHTML={{
+                          __html: parseBBCode(editContent, {
+                            subcategorySlug,
+                            topicSlug,
+                            postNumberMap
+                          }).html
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   {/* Butoane Salvează/Anulează */}
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                     <button
+                      type="button"
+                      onClick={() => setShowEditPreview(!showEditPreview)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 1rem',
+                        backgroundColor: showEditPreview ? theme.primary : 'transparent',
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '0.375rem',
+                        color: showEditPreview ? 'white' : theme.textSecondary,
+                        cursor: 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: '500',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Eye size={16} />
+                      Preview
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleCancelEdit}
                       disabled={updating}
                       style={{

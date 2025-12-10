@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, MessageSquare, Send } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, MessageSquare, Send, Eye } from 'lucide-react';
 import { useCreateTopic } from '../hooks/useTopics';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
+import EditorToolbar from './EditorToolbar';
+import { parseBBCode } from '../../services/forum/bbcode';
 
 interface CreateTopicModalProps {
   isOpen: boolean;
@@ -28,9 +31,12 @@ export default function CreateTopicModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [resolvedSubcategoryId, setResolvedSubcategoryId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const { create, creating, error: createError } = useCreateTopic();
   const { forumUser } = useAuth();
   const { showToast } = useToast();
+  const { theme } = useTheme();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Rezolvă slug-ul în UUID
   useEffect(() => {
@@ -224,41 +230,90 @@ export default function CreateTopicModal({
 
             {/* Conținut */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <label
-                htmlFor="topic-content"
-                style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}
-              >
-                Conținutul postării
-              </label>
-              <textarea
-                id="topic-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Scrie aici conținutul topicului tău. Poți descrie experiența, pune întrebări sau împărtăși sfaturi..."
-                style={{
-                  width: '100%',
-                  flex: 1,
-                  minHeight: '200px',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  lineHeight: '1.5',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                required
-              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <label
+                  htmlFor="topic-content"
+                  style={{
+                    display: 'block',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#374151'
+                  }}
+                >
+                  Conținutul postării
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(!showPreview)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.75rem',
+                    color: showPreview ? '#2563eb' : '#6b7280',
+                    backgroundColor: 'transparent',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Eye size={14} />
+                  {showPreview ? 'Editează' : 'Preview'}
+                </button>
+              </div>
+
+              {showPreview ? (
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: '200px',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    backgroundColor: '#f9fafb',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.5',
+                    overflow: 'auto'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: parseBBCode(content).html }}
+                />
+              ) : (
+                <>
+                  {/* EditorToolbar pentru BBCode */}
+                  <EditorToolbar
+                    textareaRef={textareaRef}
+                    onContentChange={setContent}
+                    currentContent={content}
+                  />
+                  <textarea
+                    id="topic-content"
+                    ref={textareaRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Scrie aici conținutul topicului tău. Poți descrie experiența, pune întrebări sau împărtăși sfaturi... Folosește toolbar-ul de mai sus pentru formatare BBCode."
+                    style={{
+                      width: '100%',
+                      flex: 1,
+                      minHeight: '200px',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.5',
+                      transition: 'border-color 0.2s',
+                      marginTop: '0.5rem'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    required
+                  />
+                </>
+              )}
               <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
                 {content.length} caractere - Minimum 50 caractere recomandate
               </div>

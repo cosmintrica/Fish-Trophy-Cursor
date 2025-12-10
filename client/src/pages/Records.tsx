@@ -8,6 +8,9 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAllRecords, useSpecies, useLocations } from '@/hooks/useRecordsPage';
 import { usePrefetch } from '@/hooks/usePrefetch';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
+import SEOHead from '@/components/SEOHead';
+import { useStructuredData } from '@/hooks/useStructuredData';
+import ShareButton from '@/components/ShareButton';
 
 interface FishRecord {
   id: string;
@@ -383,8 +386,23 @@ const Records = () => {
     );
   };
 
+  const { websiteData, organizationData } = useStructuredData();
+  const filteredRecords = getFilteredRecords();
+  const recordCount = filteredRecords.length;
+  const verifiedCount = filteredRecords.filter(r => r.status === 'verified').length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <>
+      <SEOHead
+        title="Recorduri de Pescuit din România - Fish Trophy"
+        description={`Descoperă ${recordCount}+ recorduri de pescuit din România. ${verifiedCount} recorduri verificate pentru ${species.length} specii de pești. Caută după specie, locație sau pescar. Trofee, capturi și statistici complete.`}
+        keywords="recorduri pescuit, capturi pescuit, trofee pescuit, recorduri romania, specii pesti romania, pescuit romania, recorduri verificate, statistici pescuit, cea mai mare peste, recorduri pe specii, recorduri pe locatii, pescari romania, competiții pescuit"
+        image="https://fishtrophy.ro/social-media-banner-v2.jpg"
+        url="https://fishtrophy.ro/records"
+        type="website"
+        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header - Mobile Optimized */}
         <div className="text-center mb-4 sm:mb-6">
@@ -865,7 +883,15 @@ const Records = () => {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-1 sm:gap-2">
+                        <div className="flex gap-1 sm:gap-2 items-center">
+                          <ShareButton
+                            url={`https://fishtrophy.ro/records${(record as any).global_id ? `#record-${(record as any).global_id}` : `?record=${record.id}`}`}
+                            title={`Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`}
+                            description={`Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`}
+                            image={record.photo_url || record.image_url ? `https://fishtrophy.ro${record.photo_url || record.image_url}` : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
+                            size="sm"
+                            variant="ghost"
+                          />
                           <button
                             onClick={() => openRecordModal(record)}
                             className="px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
@@ -911,6 +937,7 @@ const Records = () => {
         />
       </div>
     </div>
+    </>
   );
 };
 

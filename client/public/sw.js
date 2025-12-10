@@ -226,42 +226,36 @@ self.addEventListener('fetch', (event) => {
 
 // Message Event - Comunicare cu clients
 self.addEventListener('message', (event) => {
+  // Handle SKIP_WAITING synchronously
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return; // Return early, no response needed
   }
   
+  // Handle GET_VERSION with proper port checking
   if (event.data && event.data.type === 'GET_VERSION') {
-    // Fix: Verifică dacă portul există înainte de a trimite mesaj
-    if (event.ports && event.ports[0]) {
+    if (event.ports && event.ports.length > 0 && event.ports[0]) {
       try {
+        // Check if port is still open
         event.ports[0].postMessage({ version: CACHE_VERSION });
       } catch (error) {
-        // Ignore errors if port is closed
+        // Port is closed, ignore silently
       }
     }
+    return; // Return early after handling
   }
   
-  // Respond to all messages to prevent "message channel closed" errors
-  // Only respond if we have a valid port and it's not already closed
+  // For all other messages, only respond if we have a valid port
+  // and respond synchronously to prevent "message channel closed" errors
   if (event.ports && event.ports.length > 0 && event.ports[0]) {
     try {
-      // Check if port is still open before posting
-      if (event.ports[0] && typeof event.ports[0].postMessage === 'function') {
-        event.ports[0].postMessage({ success: true });
-      }
+      // Respond synchronously if port is available
+      event.ports[0].postMessage({ success: true });
     } catch (error) {
-      // Silently ignore errors if port is closed - this is expected behavior
-    }
-  } else {
-    // If no port, respond directly to the client
-    if (event.source && typeof event.source.postMessage === 'function') {
-      try {
-        event.source.postMessage({ success: true });
-      } catch (error) {
-        // Ignore errors
-      }
+      // Port is closed, ignore silently - this is expected
     }
   }
+  // If no port, don't try to respond - this prevents the error
 });
 
 // Error handling global

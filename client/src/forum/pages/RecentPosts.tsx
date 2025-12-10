@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
 import { MessageSquare, Clock, TrendingUp, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePrefetch } from '../hooks/usePrefetch';
+import { parseBBCode } from '../../services/forum/bbcode';
 
 export default function RecentPosts() {
   const { forumUser } = useAuth();
   const { theme } = useTheme();
   const { prefetchTopic } = usePrefetch();
+  const navigate = useNavigate();
+  const postsContainerRef = useRef<HTMLDivElement>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,6 +34,32 @@ export default function RecentPosts() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Intercept clicks on mention links to use React Router navigation
+  useEffect(() => {
+    if (!postsContainerRef.current) return;
+
+    const mentionLinks = postsContainerRef.current.querySelectorAll('.bbcode-mention');
+    const handleMentionClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const link = e.currentTarget as HTMLAnchorElement;
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('/forum/user/')) {
+        navigate(href);
+      }
+    };
+
+    mentionLinks.forEach(link => {
+      link.addEventListener('click', handleMentionClick);
+    });
+
+    return () => {
+      mentionLinks.forEach(link => {
+        link.removeEventListener('click', handleMentionClick);
+      });
+    };
+  }, [posts, navigate]);
 
   useEffect(() => {
     const loadRecentPosts = async () => {
@@ -236,20 +265,20 @@ export default function RecentPosts() {
             <div style={{ color: theme.textSecondary }}>Nu există postări recente</div>
           </div>
         ) : (
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: isMobile ? '0.5rem' : '0.75rem'
-          }}>
+          <div 
+            ref={postsContainerRef}
+            style={{ 
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: isMobile ? '0.5rem' : '0.75rem'
+            }}
+          >
             {posts.map((post) => {
               const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
-              // Construiește permalink complet: /forum/categorySlug/subcategorySlug/topicSlug#postN
+              // Construiește permalink complet: /forum/subcategorySlug/topicSlug#postN (FĂRĂ categorySlug)
               let topicLink = '';
-              if (post.categorySlug && post.subcategorySlug && topic?.slug) {
-                // URL complet cu categorie, subcategorie și topic
-                topicLink = `/forum/${post.categorySlug}/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
-              } else if (post.subcategorySlug && topic?.slug) {
-                // Fallback: doar subcategorie și topic (legacy)
+              if (post.subcategorySlug && topic?.slug) {
+                // URL simplificat: doar subcategorie și topic
                 topicLink = `/forum/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
               } else if (topic?.slug) {
                 // Fallback: doar topic slug
@@ -421,10 +450,10 @@ export default function RecentPosts() {
                         gap: '0.125rem',
                         marginBottom: isMobile ? '0.25rem' : '0.375rem'
                       }}>
-                        {/* Category link */}
-                        {post.categoryName && post.categorySlug && (
+                        {/* Category link - redirecționează la homepage (categoriile nu mai au URL-uri separate) */}
+                        {post.categoryName && (
                           <Link
-                            to={`/forum/${post.categorySlug}`}
+                            to="/forum"
                             onClick={(e) => e.stopPropagation()}
                             style={{
                               fontSize: isMobile ? '0.625rem' : '0.6875rem',
@@ -484,14 +513,7 @@ export default function RecentPosts() {
                   </div>
 
                   {/* Post content - Compact, max 2 lines */}
-                  <Link
-                    to={topicLink}
-                    onMouseEnter={() => {
-                      // Prefetch topic-ul când utilizatorul trece cu mouse-ul
-                      if (topic?.slug) {
-                        prefetchTopic(topic.slug, post.subcategorySlug || undefined);
-                      }
-                    }}
+                  <div
                     style={{
                       color: theme.text,
                       fontSize: isMobile ? '0.75rem' : '0.8125rem',
@@ -504,12 +526,28 @@ export default function RecentPosts() {
                       WebkitBoxOrient: 'vertical',
                       wordBreak: 'break-word',
                       overflowWrap: 'break-word',
-                      textDecoration: 'none',
                       flex: 1
                     }}
-                  >
-                    {post.content}
-                  </Link>
+                    onClick={(e) => {
+                      // Navigate to topic when clicking content
+                      e.preventDefault();
+                      window.location.href = topicLink;
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: parseBBCode(post.content || '', {
+                        subcategorySlug: post.subcategorySlug,
+                        topicSlug: topic?.slug,
+                        getPostPermalink: (postId: string) => {
+                          // Find post number from posts array
+                          const foundPost = posts.find(p => p.id === postId);
+                          if (foundPost && post.subcategorySlug && topic?.slug) {
+                            return `/forum/${post.subcategorySlug}/${topic.slug}${foundPost.post_number ? `#post${foundPost.post_number}` : ''}`;
+                          }
+                          return `/forum/post/${postId}`;
+                        }
+                      }).html
+                    }}
+                  />
                 </div>
               );
             })}

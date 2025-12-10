@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
+import { useStructuredData } from '../../hooks/useStructuredData';
+import SEOHead from '../../components/SEOHead';
 
 import { useCategories } from '../hooks/useCategories';
 import { useForumStats } from '../hooks/useForumStats';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { useOnlineUsersRecord } from '../hooks/useOnlineUsersRecord';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import MobileOptimizedCategories from '../components/MobileOptimizedCategories';
 import ForumSeeder from '../components/ForumSeeder';
@@ -35,41 +38,295 @@ export default function ForumHome() {
   // Real stats from database
   const { stats: forumStatsData, loading: statsLoading } = useForumStats();
   const { users: onlineUsers, loading: onlineUsersLoading } = useOnlineUsers();
+  const { record: onlineUsersRecord, loading: recordLoading, refetch: refetchRecord } = useOnlineUsersRecord();
   
-  // Get anonymous visitors count from forum_active_viewers
+  // Tracking activ pentru utilizatori online și vizitatori anonimi (folosind același principiu ca ActiveViewers)
+  // Folosim prima categorie activă ca "homepage category" pentru tracking (constraint-ul necesită category_id/subcategory_id/topic_id)
   const [anonymousVisitors, setAnonymousVisitors] = useState(0);
+  const [totalActiveViewers, setTotalActiveViewers] = useState(0);
+  const [homepageCategoryId, setHomepageCategoryId] = useState<string | null>(null);
+  const viewerEntryIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Obține prima categorie activă pentru tracking homepage
   useEffect(() => {
-    const getAnonymousVisitors = async () => {
+    if (categories && categories.length > 0) {
+      const firstActiveCategory = categories.find(cat => cat.is_active);
+      if (firstActiveCategory) {
+        setHomepageCategoryId(firstActiveCategory.id);
+      }
+    }
+  }, [categories]);
+  
+  // Generează sau obține session ID pentru utilizatori anonimi (pentru homepage)
+  useEffect(() => {
+    if (!forumUser && !sessionIdRef.current) {
+      const sessionKey = 'forum-viewer-session-homepage';
+      let sessionId = sessionStorage.getItem(sessionKey);
+      
+      if (!sessionId) {
+        sessionId = `anon-homepage-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem(sessionKey, sessionId);
+      }
+      
+      sessionIdRef.current = sessionId;
+    }
+  }, [forumUser]);
+  
+  // Tracking activ pentru homepage (similar cu ActiveViewers)
+  useEffect(() => {
+    if (!homepageCategoryId) return; // Așteaptă să avem categoria
+    
+    let mounted = true;
+    let isExecuting = false;
+    let debounceTimer: NodeJS.Timeout | null = null;
+    
+    // Adaugă sau actualizează viewer entry pentru homepage
+    const addOrUpdateViewer = async () => {
+      if (isExecuting || !mounted) return;
+      
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      
+      return new Promise<void>((resolve) => {
+        debounceTimer = setTimeout(async () => {
+          if (isExecuting || !mounted) {
+            resolve();
+            return;
+          }
+          
+          isExecuting = true;
+          
+          try {
+            if (forumUser && forumUser.id) {
+              // Utilizator autentificat
+              const { data: existing } = await supabase
+                .from('forum_active_viewers')
+                .select('id')
+                .eq('category_id', homepageCategoryId)
+                .eq('user_id', forumUser.id)
+                .maybeSingle();
+              
+              if (existing) {
+                viewerEntryIdRef.current = existing.id;
+                await supabase
+                  .from('forum_active_viewers')
+                  .update({ last_seen_at: new Date().toISOString() })
+                  .eq('id', existing.id);
+              } else {
+                const { data: newEntry } = await supabase
+                  .from('forum_active_viewers')
+                  .insert({
+                    category_id: homepageCategoryId,
+                    user_id: forumUser.id,
+                    is_anonymous: false
+                  })
+                  .select('id')
+                  .maybeSingle();
+                
+                if (newEntry) {
+                  viewerEntryIdRef.current = newEntry.id;
+                }
+              }
+            } else if (sessionIdRef.current) {
+              // Utilizator anonim
+              const { data: existing } = await supabase
+                .from('forum_active_viewers')
+                .select('id')
+                .eq('category_id', homepageCategoryId)
+                .eq('session_id', sessionIdRef.current)
+                .eq('is_anonymous', true)
+                .maybeSingle();
+              
+              if (existing) {
+                viewerEntryIdRef.current = existing.id;
+                await supabase
+                  .from('forum_active_viewers')
+                  .update({ last_seen_at: new Date().toISOString() })
+                  .eq('id', existing.id);
+              } else {
+                const { data: newEntry } = await supabase
+                  .from('forum_active_viewers')
+                  .insert({
+                    category_id: homepageCategoryId,
+                    session_id: sessionIdRef.current,
+                    is_anonymous: true
+                  })
+                  .select('id')
+                  .maybeSingle();
+                
+                if (newEntry) {
+                  viewerEntryIdRef.current = newEntry.id;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error adding/updating homepage viewer:', error);
+          } finally {
+            isExecuting = false;
+            resolve();
+          }
+        }, 1000);
+      });
+    };
+    
+    // Funcție pentru a număra toți viewer-ii activi (autentificați + anonimi)
+    const loadActiveViewers = async () => {
       try {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { count, error } = await supabase
+        // Cleanup automat (șterge intrările expirate > 2 minute)
+        await supabase.rpc('cleanup_expired_viewers');
+        
+        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        
+        // Numără toți viewer-ii activi (autentificați + anonimi)
+        const { count: totalCount, error: totalError } = await supabase
+          .from('forum_active_viewers')
+          .select('*', { count: 'exact', head: true })
+          .gte('last_seen_at', twoMinutesAgo);
+        
+        // Numără doar vizitatorii anonimi
+        const { count: anonymousCount, error: anonymousError } = await supabase
           .from('forum_active_viewers')
           .select('*', { count: 'exact', head: true })
           .eq('is_anonymous', true)
-          .gte('last_seen_at', fiveMinutesAgo);
+          .gte('last_seen_at', twoMinutesAgo);
         
-        if (!error && count !== null) {
-          setAnonymousVisitors(count);
+        if (!totalError && totalCount !== null && mounted) {
+          setTotalActiveViewers(totalCount);
+        }
+        
+        if (!anonymousError && anonymousCount !== null && mounted) {
+          setAnonymousVisitors(anonymousCount);
         }
       } catch (error) {
-        console.error('Error fetching anonymous visitors:', error);
+        console.error('Error loading active viewers:', error);
       }
     };
     
-    getAnonymousVisitors();
-    const interval = setInterval(getAnonymousVisitors, 15000); // Update every 15 seconds
-    return () => clearInterval(interval);
-  }, []);
+    // Adaugă viewer-ul imediat
+    addOrUpdateViewer();
+    
+    // Încarcă viewer-ii imediat
+    loadActiveViewers();
+    
+    // Actualizare periodică a last_seen_at (la fiecare 10 secunde, ca ActiveViewers)
+    updateIntervalRef.current = setInterval(async () => {
+      if (viewerEntryIdRef.current && mounted) {
+        await supabase
+          .from('forum_active_viewers')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('id', viewerEntryIdRef.current);
+      }
+      loadActiveViewers(); // Reîncarcă lista
+    }, 10000);
+    
+    // Supabase Realtime subscription pentru actualizări instantanee
+    const channel = supabase
+      .channel('forum-homepage-active-viewers')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'forum_active_viewers',
+          filter: `category_id=eq.${homepageCategoryId}`
+        },
+        (payload) => {
+          // Reîncarcă când se schimbă ceva în forum_active_viewers pentru homepage
+          if (mounted) {
+            loadActiveViewers();
+          }
+        }
+      )
+      .subscribe();
+    
+    // Cleanup
+    return () => {
+      mounted = false;
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+      }
+      
+      // Șterge entry-ul din baza de date
+      if (viewerEntryIdRef.current) {
+        (async () => {
+          try {
+            await supabase
+              .from('forum_active_viewers')
+              .delete()
+              .eq('id', viewerEntryIdRef.current!);
+          } catch (error) {
+            console.error('Error removing homepage viewer entry:', error);
+          }
+        })();
+      }
+      
+      supabase.removeChannel(channel);
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [homepageCategoryId, forumUser]);
+  
+  // Actualizare record când numărul de utilizatori online depășește recordul
+  // OPTIMIZAT: Folosim hook-ul existent useOnlineUsers (se actualizează la fiecare 15 secunde)
+  // Comparăm cu recordul și actualizăm DOAR când e necesar (nu la fiecare verificare)
+  useEffect(() => {
+    const updateRecordIfNeeded = async () => {
+      // Așteaptă să avem date complete
+      if (onlineUsersLoading || recordLoading || !onlineUsersRecord) {
+        return;
+      }
+      
+      // Folosim totalActiveViewers (include și utilizatorii autentificați din forum_active_viewers)
+      // + onlineUsers (utilizatorii din forum_users cu last_seen_at recent)
+      // Pentru a evita dublarea, folosim max dintre ele sau le combinăm inteligent
+      const currentOnlineCount = Math.max(onlineUsers.length, totalActiveViewers);
+      const currentRecord = onlineUsersRecord.max_users_count || 0;
+      
+      // Actualizează recordul DOAR dacă numărul curent depășește recordul
+      if (currentOnlineCount > currentRecord) {
+        try {
+          // Apelează funcția RPC cu numărul de utilizatori online (deja calculat)
+          // Asta evită COUNT-uri duplicate în backend
+          const { error } = await supabase.rpc('update_online_users_record', {
+            p_online_count: currentOnlineCount
+          });
+          
+          if (error) {
+            console.error('Error updating online users record:', error);
+          } else {
+            // Refetch recordul după actualizare pentru a actualiza UI-ul
+            // Realtime subscription va actualiza automat, dar refetch-ul asigură sincronizare
+            await refetchRecord();
+          }
+        } catch (error) {
+          console.error('Error updating online users record:', error);
+        }
+      }
+    };
+    
+    // Verifică și actualizează când se schimbă numărul de utilizatori online
+    updateRecordIfNeeded();
+  }, [onlineUsers.length, totalActiveViewers, onlineUsersRecord?.max_users_count, onlineUsersLoading, recordLoading, refetchRecord]);
 
   // Categories loaded
 
+  // Calculează utilizatorii autentificați online
+  // Folosim onlineUsers.length (din forum_users cu last_seen_at recent)
+  // Aceasta include toți utilizatorii autentificați, inclusiv cei care sunt doar pe homepage
+  // totalActiveViewers include doar cei care vizualizează topicuri/categorii, nu și homepage
+  const authenticatedUsersCount = onlineUsers.length;
+  
   // Real stats from database
   const forumStats = {
     totalTopics: forumStatsData?.total_topics || 0,
     totalPosts: forumStatsData?.total_posts || 0,
     totalMembers: forumStatsData?.total_users || 0,
-    // Nu mai folosim online_users din stats - folosim hook-ul direct
-    onlineUsers: onlineUsers.length
+    // Folosim authenticatedUsersCount pentru a afișa numărul corect
+    onlineUsers: authenticatedUsersCount
   };
 
   const handleLogin = () => {
@@ -81,9 +338,9 @@ export default function ForumHome() {
   };
 
   const handleSubcategoryClick = (subcategoryId: string, categorySlug?: string, subcategorySlug?: string) => {
-    // Construiește URL-ul corect din start, cu categorySlug dacă este disponibil
-    if (categorySlug && subcategorySlug) {
-      navigate(`/forum/${categorySlug}/${subcategorySlug}`);
+    // Construiește URL-ul corect: doar subcategorySlug (FĂRĂ categorySlug)
+    if (subcategorySlug) {
+      navigate(`/forum/${subcategorySlug}`);
     } else {
       // Fallback la formatul vechi dacă categorySlug nu este disponibil
       navigate(`/forum/${subcategoryId}`);
@@ -104,8 +361,23 @@ export default function ForumHome() {
     return rankIcons[rank] || '🎣';
   };
 
+  const { websiteData, organizationData } = useStructuredData();
+  // forumStatsData is already declared at line 37, reuse it
+  const totalTopics = forumStatsData?.total_topics || 0;
+  const totalPosts = forumStatsData?.total_posts || 0;
+
   return (
-    <ForumLayout 
+    <>
+      <SEOHead
+        title="Forum Pescuit România - Discuții, Sfaturi, DIY - Fish Trophy"
+        description={`Comunitate activă de pescari din România. ${totalTopics}+ topicuri, ${totalPosts}+ postări. Discuții despre tehnici pescuit, DIY, echipament, locații, sfaturi și experiențe. Alătură-te comunității!`}
+        keywords="forum pescuit, discuții pescuit, comunitate pescari, forum pescari romania, sfaturi pescuit, tehnici pescuit, DIY pescuit, echipament pescuit, locatii pescuit, intrebari pescuit, raspunsuri pescuit, comunitate pescuit romania"
+        image="https://fishtrophy.ro/social-media-banner-v2.jpg"
+        url="https://fishtrophy.ro/forum"
+        type="website"
+        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+      />
+      <ForumLayout 
       user={forumUserToLayoutUser(forumUser)} 
       onLogin={handleLogin} 
       onLogout={handleLogout} 
@@ -216,11 +488,52 @@ export default function ForumHome() {
                   border: `1px solid ${theme.border}`
                 }}>
                   <strong style={{ color: theme.text }}>Utilizatori online în acest moment:</strong>{' '}
-                  {onlineUsers.length + anonymousVisitors} ({onlineUsers.length} {onlineUsers.length === 1 ? 'membru' : 'membri'} 
+                  {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'} 
                   {anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
                 </div>
+                
+                {/* Record utilizatori conectați simultan */}
+                {onlineUsersRecord && (
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    color: theme.textSecondary, 
+                    marginBottom: '0.75rem',
+                    padding: '0.75rem',
+                    backgroundColor: theme.surface,
+                    borderRadius: '0.5rem',
+                    border: `1px solid ${theme.border}`,
+                    background: `linear-gradient(135deg, ${theme.surface} 0%, ${theme.background} 100%)`
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      marginBottom: '0.25rem'
+                    }}>
+                      <strong style={{ color: theme.text }}>Cei mai mulți utilizatori conectați:</strong>
+                      <span style={{ 
+                        fontSize: '1rem', 
+                        fontWeight: '700', 
+                        color: '#ef4444',
+                        fontFamily: 'monospace'
+                      }}>
+                        {onlineUsersRecord.max_users_count.toLocaleString('ro-RO')}
+                      </span>
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.7rem', 
+                      color: theme.textSecondary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}>
+                      <span>pe {onlineUsersRecord.formatted_date}</span>
+                      <span style={{ color: '#ef4444', fontWeight: '600' }}>la {onlineUsersRecord.formatted_time}</span>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {onlineUsers.length === 0 && anonymousVisitors === 0 ? (
+                  {authenticatedUsersCount === 0 && anonymousVisitors === 0 ? (
                     <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
                   ) : (
                     onlineUsers.map((user) => (
@@ -322,7 +635,7 @@ export default function ForumHome() {
                     <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
                   </div>
                   <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Utilizatori online:</strong> {onlineUsers.length + anonymousVisitors} ({onlineUsers.length} {onlineUsers.length === 1 ? 'membru' : 'membri'}{anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
+                    <strong>Utilizatori online:</strong> {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'}{anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
                   </div>
                   <div>
                     <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}
@@ -334,5 +647,6 @@ export default function ForumHome() {
         </div>
       </div>
     </ForumLayout>
+    </>
   );
 }

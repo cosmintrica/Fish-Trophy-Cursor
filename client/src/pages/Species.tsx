@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Trophy, Loader2, Fish, Waves, Shield, Star, Zap, Target, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import SEOHead from '../components/SEOHead';
+import { useStructuredData } from '../hooks/useStructuredData';
 
 interface FishSpecies {
   id: string;
@@ -284,8 +286,43 @@ const Species = () => {
     setShowAllSpecies(true);
   };
 
+  // SEO Data
+  const { websiteData, organizationData, createSpeciesData } = useStructuredData();
+  const speciesUrl = 'https://fishtrophy.ro/species';
+  const speciesTitle = 'Catalog de Specii de Pești din România - Fish Trophy';
+  const speciesDescription = `Descoperă toate speciile de pești din România cu informații detaliate despre habitat, tehnici de pescuit și recorduri. ${species.length} specii documentate.`;
+  const speciesImage = 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+  const speciesKeywords = [
+    'specii pesti romania',
+    'catalog pesti',
+    'pescuit romania',
+    'specii pesti dulci',
+    'specii pesti sarati',
+    'habitat pesti',
+    'tehnici pescuit',
+    'recorduri pescuit'
+  ].join(', ');
+
+  const speciesStructuredData = createSpeciesData({
+    name: 'Catalog de Specii de Pești',
+    description: speciesDescription,
+    image: speciesImage,
+    url: speciesUrl,
+    speciesCount: species.length
+  });
+
   return (
-    <div className="min-h-screen py-4 sm:py-6 md:py-12">
+    <>
+      <SEOHead
+        title={speciesTitle}
+        description={speciesDescription}
+        keywords={speciesKeywords}
+        image={speciesImage}
+        url={speciesUrl}
+        type="website"
+        structuredData={[websiteData, organizationData, speciesStructuredData] as unknown as Record<string, unknown>[]}
+      />
+      <div className="min-h-screen py-4 sm:py-6 md:py-12">
       <div className="container mx-auto px-3 sm:px-4">
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
@@ -660,6 +697,7 @@ const Species = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

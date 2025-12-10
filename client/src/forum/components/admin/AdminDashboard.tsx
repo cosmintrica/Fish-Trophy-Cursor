@@ -10,6 +10,7 @@ import { useOnlineUsers } from '../../hooks/useOnlineUsers';
 import { supabase } from '../../../lib/supabase';
 import { queryKeys } from '../../../lib/query-client';
 import { Users, MessageSquare, TrendingUp, Award, Clock, Activity, TrendingDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 
 interface DashboardStats {
   today_topics: number;
@@ -20,7 +21,9 @@ interface DashboardStats {
   total_reputation_removed: number; // Total reputație retrasă (all time)
   new_users_today: number;
   posts_per_day: Array<{ date: string; count: number }>;
+  topics_per_day: Array<{ date: string; count: number }>;
   new_members_per_week: Array<{ week: string; count: number }>;
+  reputation_per_day: Array<{ date: string; awarded: number; removed: number }>;
 }
 
 export default function AdminDashboard() {
@@ -107,8 +110,46 @@ export default function AdminDashboard() {
         postsPerDay[date] = (postsPerDay[date] || 0) + 1;
       });
 
+      // Get topics per day for last 7 days
+      const { data: topicsData } = await supabase
+        .from('forum_topics')
+        .select('created_at')
+        .eq('is_deleted', false)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+
+      // Group topics by date
+      const topicsPerDay: { [key: string]: number } = {};
+      topicsData?.forEach(topic => {
+        const date = new Date(topic.created_at).toISOString().split('T')[0];
+        topicsPerDay[date] = (topicsPerDay[date] || 0) + 1;
+      });
+
+      // Get reputation logs per day for last 7 days
+      const { data: reputationLogsData } = await supabase
+        .from('forum_reputation_logs')
+        .select('created_at, points')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+
+      // Group reputation by date
+      const reputationPerDay: { [key: string]: { awarded: number; removed: number } } = {};
+      reputationLogsData?.forEach(log => {
+        const date = new Date(log.created_at).toISOString().split('T')[0];
+        if (!reputationPerDay[date]) {
+          reputationPerDay[date] = { awarded: 0, removed: 0 };
+        }
+        if (log.points > 0) {
+          reputationPerDay[date].awarded += log.points;
+        } else {
+          reputationPerDay[date].removed += Math.abs(log.points);
+        }
+      });
+
       // Ensure we have data for all 7 days (fill missing days with 0)
       const postsPerDayArray: Array<{ date: string; count: number }> = [];
+      const topicsPerDayArray: Array<{ date: string; count: number }> = [];
+      const reputationPerDayArray: Array<{ date: string; awarded: number; removed: number }> = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
@@ -117,6 +158,15 @@ export default function AdminDashboard() {
         postsPerDayArray.push({
           date: dateKey,
           count: postsPerDay[dateKey] || 0
+        });
+        topicsPerDayArray.push({
+          date: dateKey,
+          count: topicsPerDay[dateKey] || 0
+        });
+        reputationPerDayArray.push({
+          date: dateKey,
+          awarded: reputationPerDay[dateKey]?.awarded || 0,
+          removed: reputationPerDay[dateKey]?.removed || 0
         });
       }
 
@@ -163,7 +213,9 @@ export default function AdminDashboard() {
         total_reputation_removed: totalReputationRemoved,
         new_users_today: newUsersToday || 0,
         posts_per_day: postsPerDayArray,
-        new_members_per_week: usersPerWeekArray
+        topics_per_day: topicsPerDayArray,
+        new_members_per_week: usersPerWeekArray,
+        reputation_per_day: reputationPerDayArray
       };
     },
     staleTime: 1 * 60 * 1000, // 1 minut - se actualizează des
@@ -388,74 +440,53 @@ export default function AdminDashboard() {
             }}>
               Postări pe zi (ultimele 7 zile)
             </h3>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.25rem', height: 'clamp(120px, 20vw, 150px)', paddingBottom: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
-              {todayStats.posts_per_day && todayStats.posts_per_day.length > 0 ? todayStats.posts_per_day.map((item, index) => {
-                const maxCount = Math.max(...todayStats.posts_per_day.map(d => d.count), 1);
-                const date = new Date(item.date);
-                const dayLabel = date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric' });
-                
-                // Calculăm înălțimea în pixeli - max ~80% din înălțimea container-ului (120-150px)
-                // Lăsăm spațiu pentru label-uri (count + date label)
-                const maxBarHeight = 110; // Pixeli maxim pentru bara cea mai mare
-                const heightPercentage = maxCount > 0 ? (item.count / maxCount) : 0;
-                const barHeightPx = Math.max(4, heightPercentage * maxBarHeight); // Min 4px pentru vizibilitate
-                
-                return (
-                  <div key={index} style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    justifyContent: 'flex-end',
-                    height: '100%',
-                    minWidth: 0
-                  }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${barHeightPx}px`,
-                      minHeight: item.count > 0 ? '8px' : '4px',
-                      backgroundColor: theme.primary,
-                      borderRadius: '0.25rem 0.25rem 0 0',
-                      transition: 'height 0.3s ease',
-                      flexShrink: 0
-                    }} />
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: theme.textSecondary,
-                      textAlign: 'center',
-                      lineHeight: '1',
-                      flexShrink: 0
-                    }}>
-                      {item.count}
-                    </div>
-                    <div style={{
-                      fontSize: '0.625rem',
-                      color: theme.textSecondary,
-                      textAlign: 'center',
-                      transform: 'rotate(-45deg)',
-                      transformOrigin: 'center',
-                      whiteSpace: 'nowrap',
-                      lineHeight: '1',
-                      flexShrink: 0,
-                      height: '2rem'
-                    }}>
-                      {dayLabel}
-                    </div>
-                  </div>
-                );
-              }) : (
-                <div style={{ 
-                  width: '100%', 
-                  textAlign: 'center', 
-                  color: theme.textSecondary, 
-                  fontSize: '0.875rem',
-                  padding: '2rem 1rem'
-                }}>
-                  Nu există date pentru ultimele 7 zile
-                </div>
-              )}
-            </div>
+            {todayStats.posts_per_day && todayStats.posts_per_day.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={200}>
+                <BarChart data={todayStats.posts_per_day.map(item => {
+                  const date = new Date(item.date);
+                  return {
+                    date: date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric' }),
+                    count: item.count
+                  };
+                })} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      color: theme.text
+                    }}
+                    labelStyle={{ color: theme.textSecondary }}
+                  />
+                  <Bar dataKey="count" fill={theme.primary} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                width: '100%', 
+                textAlign: 'center', 
+                color: theme.textSecondary, 
+                fontSize: '0.875rem',
+                padding: '2rem 1rem'
+              }}>
+                Nu există date pentru ultimele 7 zile
+              </div>
+            )}
           </div>
 
           {/* Grafic Membri Noi/săptămână (ultimele 4 săptămâni) */}
@@ -475,74 +506,202 @@ export default function AdminDashboard() {
             }}>
               Membri noi pe săptămână (ultimele 4 săptămâni)
             </h3>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.25rem', height: 'clamp(120px, 20vw, 150px)', paddingBottom: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
-              {todayStats.new_members_per_week && todayStats.new_members_per_week.length > 0 ? todayStats.new_members_per_week.map((item, index) => {
-                const maxCount = Math.max(...todayStats.new_members_per_week.map(w => w.count), 1);
-                const date = new Date(item.week);
-                const weekLabel = `Săpt. ${date.getDate()}/${date.getMonth() + 1}`;
-                
-                // Calculăm înălțimea în pixeli - max ~80% din înălțimea container-ului (120-150px)
-                // Lăsăm spațiu pentru label-uri (count + date label)
-                const maxBarHeight = 110; // Pixeli maxim pentru bara cea mai mare
-                const heightPercentage = maxCount > 0 ? (item.count / maxCount) : 0;
-                const barHeightPx = Math.max(4, heightPercentage * maxBarHeight); // Min 4px pentru vizibilitate
-                
-                return (
-                  <div key={index} style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    justifyContent: 'flex-end',
-                    height: '100%',
-                    minWidth: 0
-                  }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${barHeightPx}px`,
-                      minHeight: item.count > 0 ? '8px' : '4px',
-                      backgroundColor: theme.secondary,
-                      borderRadius: '0.25rem 0.25rem 0 0',
-                      transition: 'height 0.3s ease',
-                      flexShrink: 0
-                    }} />
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: theme.textSecondary,
-                      textAlign: 'center',
-                      lineHeight: '1',
-                      flexShrink: 0
-                    }}>
-                      {item.count}
-                    </div>
-                    <div style={{
-                      fontSize: '0.625rem',
-                      color: theme.textSecondary,
-                      textAlign: 'center',
-                      transform: 'rotate(-45deg)',
-                      transformOrigin: 'center',
-                      whiteSpace: 'nowrap',
-                      lineHeight: '1',
-                      flexShrink: 0,
-                      height: '2rem'
-                    }}>
-                      {weekLabel}
-                    </div>
-                  </div>
-                );
-              }) : (
-                <div style={{ 
-                  width: '100%', 
-                  textAlign: 'center', 
-                  color: theme.textSecondary, 
-                  fontSize: '0.875rem',
-                  padding: '2rem 1rem'
-                }}>
-                  Nu există date pentru ultimele 4 săptămâni
-                </div>
-              )}
-            </div>
+            {todayStats.new_members_per_week && todayStats.new_members_per_week.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={200}>
+                <BarChart data={todayStats.new_members_per_week.map(item => {
+                  const date = new Date(item.week);
+                  return {
+                    week: `Săpt. ${date.getDate()}/${date.getMonth() + 1}`,
+                    count: item.count
+                  };
+                })} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                  <XAxis 
+                    dataKey="week" 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      color: theme.text
+                    }}
+                    labelStyle={{ color: theme.textSecondary }}
+                  />
+                  <Bar dataKey="count" fill={theme.secondary} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                width: '100%', 
+                textAlign: 'center', 
+                color: theme.textSecondary, 
+                fontSize: '0.875rem',
+                padding: '2rem 1rem'
+              }}>
+                Nu există date pentru ultimele 4 săptămâni
+              </div>
+            )}
+          </div>
+
+          {/* Grafic Topicuri/zi (ultimele 7 zile) */}
+          <div style={{
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            minWidth: 0,
+            overflow: 'hidden'
+          }}>
+            <h3 style={{ 
+              fontSize: 'clamp(0.875rem, 2vw, 1rem)', 
+              fontWeight: '600', 
+              color: theme.text, 
+              marginBottom: '1rem' 
+            }}>
+              Topicuri pe zi (ultimele 7 zile)
+            </h3>
+            {todayStats.topics_per_day && todayStats.topics_per_day.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={200}>
+                <BarChart data={todayStats.topics_per_day.map(item => {
+                  const date = new Date(item.date);
+                  return {
+                    date: date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric' }),
+                    count: item.count
+                  };
+                })} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      color: theme.text
+                    }}
+                    labelStyle={{ color: theme.textSecondary }}
+                  />
+                  <Bar dataKey="count" fill={theme.secondary} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                width: '100%', 
+                textAlign: 'center', 
+                color: theme.textSecondary, 
+                fontSize: '0.875rem',
+                padding: '2rem 1rem'
+              }}>
+                Nu există date pentru ultimele 7 zile
+              </div>
+            )}
+          </div>
+
+          {/* Grafic Reputație Acordată vs Retrasă (ultimele 7 zile) */}
+          <div style={{
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            minWidth: 0,
+            overflow: 'hidden'
+          }}>
+            <h3 style={{ 
+              fontSize: 'clamp(0.875rem, 2vw, 1rem)', 
+              fontWeight: '600', 
+              color: theme.text, 
+              marginBottom: '1rem' 
+            }}>
+              Reputație Acordată vs Retrasă (ultimele 7 zile)
+            </h3>
+            {todayStats.reputation_per_day && todayStats.reputation_per_day.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={200}>
+                <LineChart data={todayStats.reputation_per_day.map(item => {
+                  const date = new Date(item.date);
+                  return {
+                    date: date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric' }),
+                    Acordată: item.awarded,
+                    Retrasă: item.removed
+                  };
+                })} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke={theme.textSecondary}
+                    fontSize={11}
+                    tick={{ fill: theme.textSecondary }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '0.5rem',
+                      color: theme.text
+                    }}
+                    labelStyle={{ color: theme.textSecondary }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="Acordată" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    dot={{ fill: '#10b981', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="Retrasă" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    dot={{ fill: '#ef4444', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ 
+                width: '100%', 
+                textAlign: 'center', 
+                color: theme.textSecondary, 
+                fontSize: '0.875rem',
+                padding: '2rem 1rem'
+              }}>
+                Nu există date pentru ultimele 7 zile
+              </div>
+            )}
           </div>
         </div>
       )}

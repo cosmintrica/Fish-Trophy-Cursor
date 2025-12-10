@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCreatePost } from '../hooks/usePosts';
 import { useToast } from '../contexts/ToastContext';
 import EditorToolbar from './EditorToolbar';
+import EmojiPicker from './EmojiPicker';
 import { parseBBCode } from '../../services/forum/bbcode';
 
 interface QuickReplyBoxProps {
@@ -54,6 +55,8 @@ export default function QuickReplyBox({
   const [isMobile, setIsMobile] = useState(false);
   const [isPageSizeOpen, setIsPageSizeOpen] = useState(false);
   const pageSizeDropdownRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   
   // Undo/Redo history (simplificat - pentru moment doar pentru shortcuts)
   const [history, setHistory] = useState<string[]>(['']);
@@ -292,6 +295,8 @@ export default function QuickReplyBox({
         .replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '') // Remove nested quotes
         .trim();
       
+      // postId poate fi fie postNumber (string) fie UUID
+      // Formatul rămâne același: [quote user="..." post_id="..."]
       return `[quote user="${quote.author}" post_id="${quote.postId}"]\n${quoteContent}\n[/quote]`;
     }).join('\n\n');
     
@@ -580,10 +585,33 @@ export default function QuickReplyBox({
     }
   }, [content, isAdvancedMode]); // Track doar content changes manuale
 
-  // Insert emoji (placeholder - va fi implementat cu emoji picker)
-  const handleEmojiClick = () => {
-    // TODO: Open emoji picker modal
-    showToast('Emoji picker - în dezvoltare', 'info');
+  // Insert emoji
+  const handleEmojiClick = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowEmojiPicker(true);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = content;
+    
+    const newText = text.substring(0, start) + emoji + text.substring(end);
+    setContent(newText);
+    
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newCursorPos = start + emoji.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus({ preventScroll: true });
+      }
+    }, 0);
   };
 
   // Close pageSize dropdown when clicking outside
@@ -622,7 +650,10 @@ export default function QuickReplyBox({
         transition: 'all 0.2s'
       }}
       >
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(e);
+        }} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {/* Editor Toolbar - doar în mod avansat */}
         {isAdvancedMode && (
           <EditorToolbar
@@ -776,17 +807,19 @@ export default function QuickReplyBox({
                   flexShrink: 0,
                   overflow: 'hidden'
                 }}>
-                  {/* Avatar Placeholder */}
+                  {/* Avatar Real */}
                   <div
                     style={{
                       width: isMobile ? '2.5rem' : '4rem',
                       height: isMobile ? '2.5rem' : '4rem',
                       borderRadius: '50%',
-                      background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                      background: (forumUser?.photo_url || forumUser?.avatar_url)
+                        ? `url(${forumUser.photo_url || forumUser.avatar_url}) center/cover`
+                        : `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'white',
+                      color: (forumUser?.photo_url || forumUser?.avatar_url) ? 'transparent' : 'white',
                       fontSize: isMobile ? '1rem' : '1.5rem',
                       fontWeight: '600',
                       marginBottom: isMobile ? '0.375rem' : '0.75rem',
@@ -796,7 +829,7 @@ export default function QuickReplyBox({
                       opacity: 0.7
                     }}
                   >
-                    ?
+                    {!(forumUser?.photo_url || forumUser?.avatar_url) && (forumUser?.username?.charAt(0).toUpperCase() || '?')}
                   </div>
 
                   {/* Nume Placeholder */}
@@ -907,19 +940,65 @@ export default function QuickReplyBox({
                     />
                   </div>
 
-                  {/* Actions - Butoane reale placeholder */}
+                  {/* Actions - Structură ca MessageActions */}
                   <div style={{
                     backgroundColor: theme.background,
                     borderTop: `1px solid ${theme.border}`,
                     padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1.5rem',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-end',
                     gap: '0.5rem',
                     flexWrap: 'wrap'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                      {/* Reply Button */}
+                    {/* Reputation Buttons - În stânga, dar tot în dreapta paginii */}
+                    <div style={{ flexShrink: 0, marginRight: 'auto', opacity: 0.7 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          disabled
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
+                            backgroundColor: 'transparent',
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: '0.375rem',
+                            color: theme.textSecondary,
+                            cursor: 'not-allowed',
+                            fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <ThumbsUp style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
+                          <span>0</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
+                            backgroundColor: 'transparent',
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: '0.375rem',
+                            color: theme.textSecondary,
+                            cursor: 'not-allowed',
+                            fontSize: isMobile ? '0.625rem' : '0.6875rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <ThumbsDown style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
+                          <span>0</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons - În dreapta, mai mici */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'nowrap', flexShrink: 0 }}>
                       <button
                         type="button"
                         disabled
@@ -927,24 +1006,23 @@ export default function QuickReplyBox({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.25rem',
-                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
                           backgroundColor: 'transparent',
                           border: `1px solid ${theme.border}`,
                           borderRadius: '0.375rem',
                           color: theme.textSecondary,
                           cursor: 'not-allowed',
-                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
                           transition: 'all 0.2s',
                           flexShrink: 0,
                           whiteSpace: 'nowrap',
                           opacity: 0.7
                         }}
                       >
-                        <MessageSquare style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+                        <MessageSquare style={{ width: isMobile ? '0.6875rem' : '0.75rem', height: isMobile ? '0.6875rem' : '0.75rem' }} />
                         <span>Răspunde</span>
                       </button>
 
-                      {/* Quote Button */}
                       <button
                         type="button"
                         disabled
@@ -952,67 +1030,21 @@ export default function QuickReplyBox({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.25rem',
-                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
+                          padding: isMobile ? '0.3125rem 0.4375rem' : '0.375rem 0.5rem',
                           backgroundColor: 'transparent',
                           border: `1px solid ${theme.border}`,
                           borderRadius: '0.375rem',
                           color: theme.textSecondary,
                           cursor: 'not-allowed',
-                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
                           transition: 'all 0.2s',
                           flexShrink: 0,
                           whiteSpace: 'nowrap',
                           opacity: 0.7
                         }}
                       >
-                        <Quote style={{ width: isMobile ? '0.75rem' : '0.8125rem', height: isMobile ? '0.75rem' : '0.8125rem' }} />
+                        <Quote style={{ width: isMobile ? '0.6875rem' : '0.75rem', height: isMobile ? '0.6875rem' : '0.75rem' }} />
                         <span>Citează</span>
-                      </button>
-                    </div>
-
-                    {/* Reputation Buttons - Placeholder */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        disabled
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
-                          backgroundColor: 'transparent',
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: '0.375rem',
-                          color: theme.textSecondary,
-                          cursor: 'not-allowed',
-                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                          transition: 'all 0.2s',
-                          opacity: 0.7
-                        }}
-                      >
-                        <ThumbsUp style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
-                        <span>0</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: isMobile ? '0.375rem 0.5rem' : '0.4375rem 0.625rem',
-                          backgroundColor: 'transparent',
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: '0.375rem',
-                          color: theme.textSecondary,
-                          cursor: 'not-allowed',
-                          fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                          transition: 'all 0.2s',
-                          opacity: 0.7
-                        }}
-                      >
-                        <ThumbsDown style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem' }} />
-                        <span>0</span>
                       </button>
                     </div>
                   </div>
@@ -1063,44 +1095,52 @@ export default function QuickReplyBox({
 
           {/* Emoji button - doar în mod simplu */}
           {!isAdvancedMode && (
-            <button
-              type="button"
-              onClick={handleEmojiClick}
-              disabled={creating}
-              style={{
-                position: 'absolute',
-                bottom: isMobile ? '0.5rem' : '0.625rem',
-                right: isMobile ? '2.5rem' : '3rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: isMobile ? '1.75rem' : '2rem',
-                height: isMobile ? '1.75rem' : '2rem',
-                padding: 0,
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: theme.textSecondary,
-                cursor: creating ? 'not-allowed' : 'pointer',
-                borderRadius: '0.375rem',
-                transition: 'all 0.2s',
-                opacity: creating ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!creating) {
-                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                  e.currentTarget.style.color = theme.primary;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!creating) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = theme.textSecondary;
-                }
-              }}
-              title="Adaugă emoji"
-            >
-              <Smile size={isMobile ? 16 : 18} />
-            </button>
+            <div style={{ position: 'relative', zIndex: 1000 }}>
+              <button
+                ref={emojiButtonRef}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleEmojiClick();
+                }}
+                disabled={creating}
+                style={{
+                  position: 'absolute',
+                  bottom: isMobile ? '0.5rem' : '0.625rem',
+                  right: isMobile ? '0.5rem' : '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: isMobile ? '1.75rem' : '2rem',
+                  height: isMobile ? '1.75rem' : '2rem',
+                  padding: 0,
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: theme.textSecondary,
+                  cursor: creating ? 'not-allowed' : 'pointer',
+                  borderRadius: '0.375rem',
+                  transition: 'all 0.2s',
+                  opacity: creating ? 0.5 : 1,
+                  zIndex: 10
+                }}
+                onMouseEnter={(e) => {
+                  if (!creating) {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.color = theme.primary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!creating) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = theme.textSecondary;
+                  }
+                }}
+                title="Adaugă emoji"
+              >
+                <Smile size={isMobile ? 16 : 18} />
+              </button>
+            </div>
           )}
           
           {/* Character Counter - doar în mod avansat */}
@@ -1469,6 +1509,30 @@ export default function QuickReplyBox({
           </div>
         </div>
       </form>
+
+      {/* EmojiPicker - MUTAT ÎNAFARA FORM-ULUI pentru a preveni submit-ul automat */}
+      {/* PROBLEMA IDENTIFICATĂ: EmojiPicker era renderat ÎN FORM, ceea ce făcea ca click-urile pe emoji
+          să declanșeze submit-ul form-ului (chiar dacă butonul avea type="button").
+          SOLUȚIE: Mutăm EmojiPicker în afara form-ului, astfel click-urile nu mai declanșează submit-ul. */}
+      {!isAdvancedMode && showEmojiPicker && (
+        <EmojiPicker
+          isOpen={showEmojiPicker}
+          onClose={() => {
+            setShowEmojiPicker(false);
+          }}
+          onSelect={(emoji) => {
+            handleEmojiSelect(emoji);
+            setShowEmojiPicker(false);
+            // Focus pe textarea după selectare
+            setTimeout(() => {
+              if (textareaRef.current) {
+                textareaRef.current.focus();
+              }
+            }, 0);
+          }}
+          anchorRef={emojiButtonRef}
+        />
+      )}
 
       {/* CSS Animation for spinner */}
       <style>{`

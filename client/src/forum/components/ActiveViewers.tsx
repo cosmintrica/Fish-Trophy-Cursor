@@ -8,6 +8,7 @@ interface ActiveViewersProps {
   topicId?: string;
   categoryId?: string;
   subcategoryId?: string;
+  subforumId?: string;
 }
 
 interface Viewer {
@@ -26,7 +27,7 @@ interface Viewer {
   last_seen_at: string;
 }
 
-export default function ActiveViewers({ topicId, categoryId, subcategoryId }: ActiveViewersProps) {
+export default function ActiveViewers({ topicId, categoryId, subcategoryId, subforumId }: ActiveViewersProps) {
   const { theme } = useTheme();
   const { forumUser, user } = useAuth();
   const [viewers, setViewers] = useState<Viewer[]>([]);
@@ -38,6 +39,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
   const [resolvedTopicId, setResolvedTopicId] = useState<string | null>(topicId || null);
   const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(categoryId || null);
   const [resolvedSubcategoryId, setResolvedSubcategoryId] = useState<string | null>(null);
+  const [resolvedSubforumId, setResolvedSubforumId] = useState<string | null>(subforumId || null);
 
   // Rezolvă slug-urile în UUID-uri
   useEffect(() => {
@@ -77,14 +79,26 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
       } else {
         setResolvedSubcategoryId(subcategoryId || null);
       }
+      
+      // Subforum ID - verifică dacă e UUID sau slug
+      if (subforumId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subforumId)) {
+        const { data } = await supabase
+          .from('forum_subforums')
+          .select('id')
+          .eq('slug', subforumId)
+          .single();
+        setResolvedSubforumId(data?.id || null);
+      } else {
+        setResolvedSubforumId(subforumId || null);
+      }
     };
     
     resolveIds();
-  }, [topicId, categoryId, subcategoryId]);
+  }, [topicId, categoryId, subcategoryId, subforumId]);
 
-  // Determină tipul de target (topic, category, subcategory) - folosește ID-urile rezolvate
-  const targetId = resolvedTopicId || resolvedCategoryId || resolvedSubcategoryId || '';
-  const targetType = resolvedTopicId ? 'topic' : (resolvedSubcategoryId ? 'subcategory' : 'category');
+  // Determină tipul de target (topic, category, subcategory, subforum) - folosește ID-urile rezolvate
+  const targetId = resolvedTopicId || resolvedSubforumId || resolvedSubcategoryId || resolvedCategoryId || '';
+  const targetType = resolvedTopicId ? 'topic' : (resolvedSubforumId ? 'subforum' : (resolvedSubcategoryId ? 'subcategory' : 'category'));
   
   // Generează sau obține session ID pentru utilizatori anonimi
   useEffect(() => {
@@ -129,7 +143,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
           
           try {
             // Așteaptă până când avem toate datele necesare
-            if (!resolvedTopicId && !resolvedSubcategoryId && !resolvedCategoryId) {
+            if (!resolvedTopicId && !resolvedSubforumId && !resolvedSubcategoryId && !resolvedCategoryId) {
               resolve();
               return; // Nu avem target-ul încă
             }
@@ -141,6 +155,11 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
             
             if (resolvedTopicId) {
               existingQuery = existingQuery.eq('topic_id', resolvedTopicId);
+            } else if (resolvedSubforumId) {
+              // Pentru subforum-uri, folosim subcategory_id (subforum-urile sunt sub subcategorii)
+              // Dar trebuie să verificăm structura bazei de date
+              // Dacă forum_active_viewers nu are subforum_id, folosim subcategory_id
+              existingQuery = existingQuery.eq('subcategory_id', resolvedSubforumId);
             } else if (resolvedSubcategoryId) {
               existingQuery = existingQuery.eq('subcategory_id', resolvedSubcategoryId);
             } else if (resolvedCategoryId) {
@@ -176,6 +195,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
                 };
                 
                 if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
+                if (resolvedSubforumId) insertData.subcategory_id = resolvedSubforumId; // Subforum-urile folosesc subcategory_id
                 if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
                 if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
 
@@ -227,6 +247,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
                 };
                 
                 if (resolvedTopicId) insertData.topic_id = resolvedTopicId;
+                if (resolvedSubforumId) insertData.subcategory_id = resolvedSubforumId; // Subforum-urile folosesc subcategory_id
                 if (resolvedSubcategoryId) insertData.subcategory_id = resolvedSubcategoryId;
                 if (resolvedCategoryId) insertData.category_id = resolvedCategoryId;
 
@@ -284,6 +305,8 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
         
         if (resolvedTopicId) {
           viewersQuery = viewersQuery.eq('topic_id', resolvedTopicId);
+        } else if (resolvedSubforumId) {
+          viewersQuery = viewersQuery.eq('subcategory_id', resolvedSubforumId); // Subforum-urile folosesc subcategory_id
         } else if (resolvedSubcategoryId) {
           viewersQuery = viewersQuery.eq('subcategory_id', resolvedSubcategoryId);
         } else if (resolvedCategoryId) {
@@ -399,6 +422,8 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
     let filter = '';
     if (resolvedTopicId) {
       filter = `topic_id=eq.${resolvedTopicId}`;
+    } else if (resolvedSubforumId) {
+      filter = `subcategory_id=eq.${resolvedSubforumId}`; // Subforum-urile folosesc subcategory_id
     } else if (resolvedSubcategoryId) {
       filter = `subcategory_id=eq.${resolvedSubcategoryId}`;
     } else if (resolvedCategoryId) {
@@ -453,7 +478,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
         clearTimeout(debounceTimer);
       }
     };
-  }, [resolvedTopicId, resolvedCategoryId, resolvedSubcategoryId, forumUser]);
+  }, [resolvedTopicId, resolvedSubforumId, resolvedCategoryId, resolvedSubcategoryId, forumUser]);
 
   // Ranguri de vechime (bazate pe post_count)
   const getSeniorityRank = (rank: string) => {
@@ -542,7 +567,7 @@ export default function ActiveViewers({ topicId, categoryId, subcategoryId }: Ac
       }}>
         <Eye style={{ width: '1rem', height: '1rem', color: theme.primary }} />
         <span>
-          {resolvedTopicId ? 'Vizualizează acest topic:' : resolvedSubcategoryId ? 'Vizualizează această subcategorie:' : 'Vizualizează această categorie:'}
+          {resolvedTopicId ? 'Vizualizează acest topic:' : resolvedSubforumId ? 'Vizualizează acest subforum:' : resolvedSubcategoryId ? 'Vizualizează această subcategorie:' : 'Vizualizează această categorie:'}
         </span>
         <span style={{
           backgroundColor: theme.background,

@@ -84,6 +84,7 @@ export const queryKeys = {
   // Forum hooks
   forumStats: () => ['forumStats'] as const,
   onlineUsers: () => ['onlineUsers'] as const,
+  onlineUsersRecord: () => ['onlineUsersRecord'] as const,
   adminDashboardStats: () => ['adminDashboardStats'] as const,
   
   // Records page

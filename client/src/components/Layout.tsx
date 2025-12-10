@@ -23,6 +23,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
+  
+  // Hide footer on privacy and cookies pages to avoid duplication
+  const hideFooter = location.pathname === '/privacy' || location.pathname === '/cookies';
 
   // Check if user is admin using the admin hook
   const { isAdmin: userIsAdmin } = useAdmin();
@@ -555,6 +558,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       />
 
       {/* Footer - Modern Design */}
+      {!hideFooter && (
       <footer className="bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
@@ -695,6 +699,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </footer>
+      )}
 
       {/* Auth Modal */}
       <AuthModal
