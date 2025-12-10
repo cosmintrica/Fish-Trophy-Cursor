@@ -58,8 +58,8 @@
   force = true
 
 # Catch-all redirect for SPA - must come LAST
-# Note: In development (netlify dev), Vite dev server handles /src/*, /assets/*, etc.
-# This redirect only applies in production
+# IMPORTANT: In development, Netlify Dev proxies /src/*, /assets/*, /node_modules/* to Vite
+# This redirect only applies to routes that don't match static assets
 [[redirects]]
   from = "/*"
   to = "/index.html"
