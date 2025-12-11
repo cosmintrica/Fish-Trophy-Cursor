@@ -250,9 +250,45 @@ export function useStructuredData() {
     ]
   });
 
+  const navigationData = useMemo(() => ({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'itemListElement': [
+      {
+        '@type': 'SiteNavigationElement',
+        'position': 1,
+        'name': 'Forum Pescuit',
+        'description': 'Comunitatea pescarilor din România',
+        'url': 'https://fishtrophy.ro/forum'
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        'position': 2,
+        'name': 'Recorduri',
+        'description': 'Cele mai mari capturi din România',
+        'url': 'https://fishtrophy.ro/records'
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        'position': 3,
+        'name': 'Specii Pești',
+        'description': 'Informații complete despre speciile de pești',
+        'url': 'https://fishtrophy.ro/species'
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        'position': 4,
+        'name': 'Ghid Submisie',
+        'description': 'Regulament și ghid pentru adăugarea capturilor',
+        'url': 'https://fishtrophy.ro/submission-guide'
+      }
+    ]
+  }), []);
+
   return {
     websiteData,
     organizationData,
+    navigationData,
     createArticleData,
     createRecordData,
     createSpeciesData

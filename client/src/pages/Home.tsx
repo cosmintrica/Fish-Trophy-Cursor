@@ -39,14 +39,13 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
           <span className="flex-1">{question}</span>
         </h3>
         <div
-          className={`ml-2 flex-shrink-0 transition-transform duration-500 ease-in-out ${
-            isOpen ? 'rotate-180' : 'rotate-0'
-          }`}
+          className={`ml-2 flex-shrink-0 transition-transform duration-500 ease-in-out ${isOpen ? 'rotate-180' : 'rotate-0'
+            }`}
         >
-          <svg 
-            className="w-5 h-5 text-gray-500 transition-colors duration-300" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-5 h-5 text-gray-500 transition-colors duration-300"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -61,7 +60,7 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
           opacity: isOpen ? 1 : 0,
         }}
       >
-        <div 
+        <div
           className="px-4 pb-3 transition-all duration-500 ease-out"
           style={{
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -138,13 +137,13 @@ if (typeof document !== 'undefined') {
 export default function Home() {
   const { user } = useAuth();
   const { trackMapInteraction } = useAnalytics();
-  const { websiteData, organizationData } = useStructuredData();
+  const { websiteData, organizationData, navigationData } = useStructuredData();
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const userRef = useRef(user); // Ref pentru a accesa valoarea curentă a user în event listeners
-  
+
   const [activeFilter, setActiveFilter] = useState('all');
   const [showShopPopup, setShowShopPopup] = useState(false);
   const [showLocationRequest, setShowLocationRequest] = useState(false);
@@ -160,9 +159,9 @@ export default function Home() {
   const { markers: shopMarkersData, loading: shopMarkersLoading } = useShopMarkers();
   const { markers: ajvpsMarkersData, loading: ajvpsMarkersLoading } = useAJVPSMarkers();
   const { markers: accommodationMarkersData, loading: accommodationMarkersLoading } = useAccommodationMarkers();
-  
+
   const isLoadingLocations = fishingMarkersLoading || locationsLoading || shopMarkersLoading || ajvpsMarkersLoading || accommodationMarkersLoading;
-  
+
   // Local state for refs (updated from React Query)
   const [fishingMarkers, setFishingMarkers] = useState<FishingMarker[]>([]);
   const [shopMarkers, setShopMarkers] = useState<any[]>([]);
@@ -196,7 +195,7 @@ export default function Home() {
     }
 
     setIsAddingMarkers(true);
-    
+
     // Timeout de siguranță pentru a reseta isAddingMarkers dacă ceva merge greșit
     const safetyTimeout = setTimeout(() => {
       console.warn('⚠️ addLocationsToMap timeout - resetting isAddingMarkers');
@@ -206,7 +205,7 @@ export default function Home() {
     try {
       // Use fishingMarkers (minimal data) if available, fallback to full data
       const sourceData = fishingMarkers.length > 0 ? fishingMarkers : databaseLocations;
-      
+
       // Filter by type
       let filtered = sourceData;
       if (filterType === 'all') {
@@ -286,7 +285,7 @@ export default function Home() {
           // Layer exists, ensure it's visible (FIX from MapEditor)
           _map.setLayoutProperty(layerId, 'visibility', 'visible');
         }
-        
+
         // Actualizează datele source-ului (markerele vor apărea dacă layer-ul există)
         (_map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
         clearTimeout(safetyTimeout);
@@ -349,77 +348,77 @@ export default function Home() {
       // Adaugă listeners doar dacă nu au fost deja adăugate (evită duplicate)
       if (!layerListenersAddedRef.current) {
         _map.on('click', 'location-circles', async (e) => {
-        if (!e.features || !e.features[0]) return;
-        const coordinates = (e.features[0].geometry as any).coordinates.slice();
-        const properties = e.features[0].properties;
+          if (!e.features || !e.features[0]) return;
+          const coordinates = (e.features[0].geometry as any).coordinates.slice();
+          const properties = e.features[0].properties;
 
-        // Adjust for world wrap
-        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-          coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-        }
+          // Adjust for world wrap
+          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+          }
 
-        // Remove existing popups
-        document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+          // Remove existing popups
+          document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
-        // Calculate offset for one-shot animation (estimate at target zoom 14)
-        const containerHeight = _map.getContainer().clientHeight;
-        const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
-        
-        // Estimate pixel-to-degree conversion at zoom 14
-        // At zoom 14: 1 pixel ≈ 0.0001 degrees latitude
-        const mapZoomForOffset = _map.getZoom();
-        const targetZoom = 14;
-        const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
-        const degreesPerPixel = 360 / pixelsAtTargetZoom;
-        const offsetLat = offsetY * degreesPerPixel;
-        
-        // Calculate adjusted center for one-shot animation
-        // Add to latitude to move marker down in viewport (center moves up)
-        const adjustedCenter: [number, number] = [
-          coordinates[0],
-          coordinates[1] + offsetLat
-        ];
+          // Calculate offset for one-shot animation (estimate at target zoom 14)
+          const containerHeight = _map.getContainer().clientHeight;
+          const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
 
-        // One-shot flyTo with smooth easing (more pronounced ease-out)
-        _map.flyTo({
-          center: adjustedCenter,
-          zoom: targetZoom,
-          duration: 1400, // Slightly slower
-          easing: (t: number) => {
-            // More pronounced ease-out: starts fast, slows down significantly at end
-            return 1 - Math.pow(1 - t, 4);
-          },
-          essential: true
-        });
+          // Estimate pixel-to-degree conversion at zoom 14
+          // At zoom 14: 1 pixel ≈ 0.0001 degrees latitude
+          const mapZoomForOffset = _map.getZoom();
+          const targetZoom = 14;
+          const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
+          const degreesPerPixel = 360 / pixelsAtTargetZoom;
+          const offsetLat = offsetY * degreesPerPixel;
 
-        // Calculate marker radius at current zoom for proper popup positioning
-        const currentZoom = _map.getZoom();
-        const markerRadius = currentZoom <= 5 ? 10 : currentZoom <= 10 ? 14 : 18;
-        const popupOffset = -(markerRadius + 5); // Position tip at marker edge + small gap
-        
-        // Show loading popup
-        const loadingPopup = new maplibregl.Popup({
-          maxWidth: isMobile ? '240px' : '400px',
-          closeButton: false,
-          className: 'custom-popup',
-          closeOnClick: false,
-          anchor: 'bottom', // Anchor at bottom so tip points to marker
-          offset: [0, popupOffset] // Offset to position tip at marker edge
-        })
-          .setLngLat(coordinates)
-          .setHTML(`
+          // Calculate adjusted center for one-shot animation
+          // Add to latitude to move marker down in viewport (center moves up)
+          const adjustedCenter: [number, number] = [
+            coordinates[0],
+            coordinates[1] + offsetLat
+          ];
+
+          // One-shot flyTo with smooth easing (more pronounced ease-out)
+          _map.flyTo({
+            center: adjustedCenter,
+            zoom: targetZoom,
+            duration: 1400, // Slightly slower
+            easing: (t: number) => {
+              // More pronounced ease-out: starts fast, slows down significantly at end
+              return 1 - Math.pow(1 - t, 4);
+            },
+            essential: true
+          });
+
+          // Calculate marker radius at current zoom for proper popup positioning
+          const currentZoom = _map.getZoom();
+          const markerRadius = currentZoom <= 5 ? 10 : currentZoom <= 10 ? 14 : 18;
+          const popupOffset = -(markerRadius + 5); // Position tip at marker edge + small gap
+
+          // Show loading popup
+          const loadingPopup = new maplibregl.Popup({
+            maxWidth: isMobile ? '240px' : '400px',
+            closeButton: false,
+            className: 'custom-popup',
+            closeOnClick: false,
+            anchor: 'bottom', // Anchor at bottom so tip points to marker
+            offset: [0, popupOffset] // Offset to position tip at marker edge
+          })
+            .setLngLat(coordinates)
+            .setHTML(`
             <div class="p-4 bg-white rounded-xl shadow-md border border-gray-200 flex items-center justify-center min-h-[100px]">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           `)
-          .addTo(_map);
+            .addTo(_map);
 
-        // Load full details
-        getLocationDetails(properties.id).then(fullDetails => {
-          if (fullDetails) {
-            // Update popup with calculated offset
-            loadingPopup.setOffset([0, popupOffset]);
-              
+          // Load full details
+          getLocationDetails(properties.id).then(fullDetails => {
+            if (fullDetails) {
+              // Update popup with calculated offset
+              loadingPopup.setOffset([0, popupOffset]);
+
               const popupHTML = isMobile ? `
             <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
               <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
@@ -582,38 +581,38 @@ export default function Home() {
               </div>
             </div>
           `;
-            loadingPopup.setHTML(popupHTML);
-            
-            setTimeout(() => {
-              const popup = loadingPopup.getElement();
-              if (!popup) return;
-              popup.querySelectorAll('[data-action]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                  const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
-                  const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
-                  
-                  if (action === 'view-records') {
-                    window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
-                  } else if (action === 'add-record') {
-                    // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
-                    if (!userRef.current) {
-                      setShowAuthRequiredModal(true);
-                    } else {
-                      setSelectedLocationForRecord({ id: locationId || '', name: fullDetails.name });
-                      setShowRecordModal(true);
+              loadingPopup.setHTML(popupHTML);
+
+              setTimeout(() => {
+                const popup = loadingPopup.getElement();
+                if (!popup) return;
+                popup.querySelectorAll('[data-action]').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                    const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
+                    const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
+
+                    if (action === 'view-records') {
+                      window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
+                    } else if (action === 'add-record') {
+                      // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
+                      if (!userRef.current) {
+                        setShowAuthRequiredModal(true);
+                      } else {
+                        setSelectedLocationForRecord({ id: locationId || '', name: fullDetails.name });
+                        setShowRecordModal(true);
+                      }
                     }
-                  }
+                  });
                 });
-              });
-            }, 100);
-          } else {
-            loadingPopup.setHTML('<div class="p-4 text-red-500">Eroare la încărcare</div>');
-          }
-          
-          // Track interaction
-          trackMapInteraction({ action: 'marker_click', location_id: properties.id });
+              }, 100);
+            } else {
+              loadingPopup.setHTML('<div class="p-4 text-red-500">Eroare la încărcare</div>');
+            }
+
+            // Track interaction
+            trackMapInteraction({ action: 'marker_click', location_id: properties.id });
+          });
         });
-      });
 
         // Hover effect
         _map.on('mouseenter', 'location-circles', () => {
@@ -622,7 +621,7 @@ export default function Home() {
         _map.on('mouseleave', 'location-circles', () => {
           _map.getCanvas().style.cursor = '';
         });
-        
+
         layerListenersAddedRef.current = true; // Marchează că listeners-urile au fost adăugate
       }
 
@@ -642,7 +641,7 @@ export default function Home() {
       //     features: currentFeatures
       //   });
       // }, intervalTime);
-      
+
       // TEST MODE: All markers loaded instantly
       clearTimeout(safetyTimeout);
       setIsAddingMarkers(false);
@@ -906,7 +905,7 @@ export default function Home() {
   // Actualizează userRef când user se schimbă (pentru event listeners)
   useEffect(() => {
     userRef.current = user;
-    
+
     // Dacă utilizatorul s-a logat și avem o locație selectată pentru record, deschide modalul
     if (user && selectedLocationForRecord && !showRecordModal && !isAuthModalOpen) {
       // Mic delay pentru a permite UI-ului să se actualizeze
@@ -1070,7 +1069,7 @@ export default function Home() {
   const selectLocation = (location: FishingLocation & { score: number }) => {
     // Remove all existing popups first - CRITICAL: Do this immediately
     document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
-    
+
     // Also remove any popups that might be in the process of being created
     setTimeout(() => {
       document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
@@ -1086,14 +1085,14 @@ export default function Home() {
 
     if (mapInstanceRef.current && mapInstanceRef.current.getContainer()) {
       const map = mapInstanceRef.current;
-      
+
       // Remove popups one more time right before animation
       document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
       // Calculate offset for one-shot animation (estimate at target zoom 14)
       const containerHeight = map.getContainer().clientHeight;
       const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
-      
+
       // Estimate pixel-to-degree conversion at zoom 14
       // At zoom 14: 1 pixel ≈ 0.0001 degrees latitude
       const currentZoom = map.getZoom();
@@ -1101,7 +1100,7 @@ export default function Home() {
       const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
       const degreesPerPixel = 360 / pixelsAtTargetZoom;
       const offsetLat = offsetY * degreesPerPixel;
-      
+
       // Calculate adjusted center for one-shot animation
       // Add to latitude to move marker down in viewport (center moves up)
       const adjustedCenter: [number, number] = [
@@ -1127,7 +1126,7 @@ export default function Home() {
       map.once('moveend', () => {
         // Remove all popups immediately when animation ends
         document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
-        
+
         // Small delay to ensure map is fully settled
         setTimeout(() => {
           // Remove all popups again before creating new one (double-check)
@@ -1137,20 +1136,20 @@ export default function Home() {
           const fullLocation = databaseLocations.find(loc => loc.id === location.id);
           if (fullLocation) {
             const isMobile = window.innerWidth <= 768;
-            
+
             // Calculate marker radius at current zoom for proper popup positioning
             const mapZoomForPopup = map.getZoom();
             const markerRadius = mapZoomForPopup <= 5 ? 10 : mapZoomForPopup <= 10 ? 14 : 18;
-            
+
             // Detect if marker is in top part of viewport (would cut off popup above)
             const containerHeight = map.getContainer().clientHeight;
             const point = map.project([lng, lat]);
             const isInTopViewport = point.y < containerHeight * 0.35; // Top 35% of viewport
-            
+
             // Adjust popup position: above marker (default) or below marker (if in top viewport)
             const popupAnchor = isInTopViewport ? 'top' : 'bottom';
             const popupOffset = isInTopViewport ? (markerRadius + 5) : -(markerRadius + 5);
-            
+
             const popup = new maplibregl.Popup({
               maxWidth: isMobile ? '300px' : '400px',
               closeButton: false,
@@ -1309,33 +1308,33 @@ export default function Home() {
             </div>
           `);
 
-          popup.setLngLat([lng, lat]).addTo(map);
+            popup.setLngLat([lng, lat]).addTo(map);
 
-          // Attach button event listeners
-          setTimeout(() => {
-            const popupEl = popup.getElement();
-            if (!popupEl) return;
-            popupEl.querySelectorAll('[data-action]').forEach(btn => {
-              btn.addEventListener('click', (e) => {
-                const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
-                const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
-                const locationName = (e.currentTarget as HTMLElement).getAttribute('data-location-name');
-                
-                if (action === 'view-records') {
-                  window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
-                } else if (action === 'add-record') {
-                  // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
-                  if (!userRef.current) {
-                    setShowAuthRequiredModal(true);
-                  } else {
-                    setSelectedLocationForRecord({ id: locationId || '', name: locationName || fullLocation.name });
-                    setShowRecordModal(true);
+            // Attach button event listeners
+            setTimeout(() => {
+              const popupEl = popup.getElement();
+              if (!popupEl) return;
+              popupEl.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                  const action = (e.currentTarget as HTMLElement).getAttribute('data-action');
+                  const locationId = (e.currentTarget as HTMLElement).getAttribute('data-location-id');
+                  const locationName = (e.currentTarget as HTMLElement).getAttribute('data-location-name');
+
+                  if (action === 'view-records') {
+                    window.location.href = `/records?location_id=${encodeURIComponent(locationId || '')}`;
+                  } else if (action === 'add-record') {
+                    // Folosește userRef.current pentru a accesa valoarea curentă (nu closure-ul vechi)
+                    if (!userRef.current) {
+                      setShowAuthRequiredModal(true);
+                    } else {
+                      setSelectedLocationForRecord({ id: locationId || '', name: locationName || fullLocation.name });
+                      setShowRecordModal(true);
+                    }
                   }
-                }
+                });
               });
-            });
-          }, 100);
-        }
+            }, 100);
+          }
         }, 150); // Small delay for smooth animation
       });
     } else {
@@ -1473,13 +1472,13 @@ export default function Home() {
   // SIMPLIFICAT: O singură sursă de adevăr, fără redundanțe
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    
+
     const map = mapInstanceRef.current;
     // Verifică din refs pentru valori curente (evită closure issues)
     const hasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
-    
+
     if (!hasData) return;
-    
+
     // Funcție simplificată pentru a adăuga markerele
     const tryAddMarkers = () => {
       // Verifică dacă harta există, are stil setat și e încărcată
@@ -1492,12 +1491,12 @@ export default function Home() {
       }
       return false;
     };
-    
+
     // Verifică imediat dacă harta e gata
     if (tryAddMarkers()) {
       return; // Markerele au fost adăugate
     }
-    
+
     // Harta nu e gata - retry rapid cu requestAnimationFrame (max 60 încercări = ~1 secundă)
     let attempts = 0;
     const maxAttempts = 60;
@@ -1509,7 +1508,7 @@ export default function Home() {
       requestAnimationFrame(retry);
     };
     requestAnimationFrame(retry);
-    
+
     // Fallback: așteaptă evenimentele de la hartă dacă retry-ul nu a reușit
     const onMapReady = () => {
       const stillHasData = fishingMarkersRef.current.length > 0 || databaseLocationsRef.current.length > 0;
@@ -1517,7 +1516,7 @@ export default function Home() {
         tryAddMarkers();
       }
     };
-    
+
     if (!map.loaded()) {
       map.once('load', onMapReady);
     }
@@ -1678,9 +1677,9 @@ export default function Home() {
 
     userLocationMarkerRef.current = userMarker;
 
-    const userName = user?.user_metadata?.display_name || 
-                     user?.user_metadata?.full_name || 
-                     'Utilizator';
+    const userName = user?.user_metadata?.display_name ||
+      user?.user_metadata?.full_name ||
+      'Utilizator';
     const userPhoto = user?.user_metadata?.avatar_url || '';
 
     let address = 'Adresa nu a putut fi determinată';
@@ -1693,7 +1692,7 @@ export default function Home() {
     // Calculate marker radius for user location marker (50px / 2 = 25px radius)
     const userMarkerRadius = 25;
     const userPopupOffset = -(userMarkerRadius + 5); // Position tip at marker edge + small gap
-    
+
     const popup = new maplibregl.Popup({
       maxWidth: '250px',
       closeButton: false,
@@ -1742,17 +1741,17 @@ export default function Home() {
         userMarker.togglePopup();
         if (mapInstanceRef.current) {
           const map = mapInstanceRef.current;
-          
+
           // Calculate offset for one-shot animation (same logic as other markers)
           const containerHeight = map.getContainer().clientHeight;
           const offsetY = containerHeight * 0.10; // Position marker lower so card appears above
-          
+
           // Estimate pixel-to-degree conversion at zoom 14
           const targetZoom = 14;
           const pixelsAtTargetZoom = 256 * Math.pow(2, targetZoom);
           const degreesPerPixel = 360 / pixelsAtTargetZoom;
           const offsetLat = offsetY * degreesPerPixel;
-          
+
           // Calculate adjusted center for one-shot animation
           // Add to latitude to move marker down in viewport (center moves up)
           const adjustedCenter: [number, number] = [
@@ -1872,7 +1871,7 @@ export default function Home() {
         image="https://fishtrophy.ro/social-media-banner-v2.jpg"
         url="https://fishtrophy.ro"
         type="website"
-        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+        structuredData={[websiteData, organizationData, navigationData] as unknown as Record<string, unknown>[]}
       />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         {/* Mobile Menu Overlay */}
@@ -2314,7 +2313,7 @@ export default function Home() {
           locationId={selectedLocationForRecord?.id}
           locationName={selectedLocationForRecord?.name}
         />
-        
+
 
         {/* Auth Required Modal */}
         <AuthRequiredModal

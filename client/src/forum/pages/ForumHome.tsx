@@ -31,15 +31,15 @@ export default function ForumHome() {
 
   // Use Supabase categories
   const { categories, loading, error } = useCategories();
-  
+
   // Preloading DISABLED - cauzează probleme cu cache-ul
   // useAggressivePreload(categories, loading);
-  
+
   // Real stats from database
   const { stats: forumStatsData, loading: statsLoading } = useForumStats();
   const { users: onlineUsers, loading: onlineUsersLoading } = useOnlineUsers();
   const { record: onlineUsersRecord, loading: recordLoading, refetch: refetchRecord } = useOnlineUsersRecord();
-  
+
   // Tracking activ pentru utilizatori online și vizitatori anonimi (folosind același principiu ca ActiveViewers)
   // Folosim prima categorie activă ca "homepage category" pentru tracking (constraint-ul necesită category_id/subcategory_id/topic_id)
   const [anonymousVisitors, setAnonymousVisitors] = useState(0);
@@ -48,7 +48,7 @@ export default function ForumHome() {
   const viewerEntryIdRef = useRef<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Obține prima categorie activă pentru tracking homepage
   useEffect(() => {
     if (categories && categories.length > 0) {
@@ -58,47 +58,47 @@ export default function ForumHome() {
       }
     }
   }, [categories]);
-  
+
   // Generează sau obține session ID pentru utilizatori anonimi (pentru homepage)
   useEffect(() => {
     if (!forumUser && !sessionIdRef.current) {
       const sessionKey = 'forum-viewer-session-homepage';
       let sessionId = sessionStorage.getItem(sessionKey);
-      
+
       if (!sessionId) {
         sessionId = `anon-homepage-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         sessionStorage.setItem(sessionKey, sessionId);
       }
-      
+
       sessionIdRef.current = sessionId;
     }
   }, [forumUser]);
-  
+
   // Tracking activ pentru homepage (similar cu ActiveViewers)
   useEffect(() => {
     if (!homepageCategoryId) return; // Așteaptă să avem categoria
-    
+
     let mounted = true;
     let isExecuting = false;
     let debounceTimer: NodeJS.Timeout | null = null;
-    
+
     // Adaugă sau actualizează viewer entry pentru homepage
     const addOrUpdateViewer = async () => {
       if (isExecuting || !mounted) return;
-      
+
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
-      
+
       return new Promise<void>((resolve) => {
         debounceTimer = setTimeout(async () => {
           if (isExecuting || !mounted) {
             resolve();
             return;
           }
-          
+
           isExecuting = true;
-          
+
           try {
             if (forumUser && forumUser.id) {
               // Utilizator autentificat
@@ -108,7 +108,7 @@ export default function ForumHome() {
                 .eq('category_id', homepageCategoryId)
                 .eq('user_id', forumUser.id)
                 .maybeSingle();
-              
+
               if (existing) {
                 viewerEntryIdRef.current = existing.id;
                 await supabase
@@ -125,7 +125,7 @@ export default function ForumHome() {
                   })
                   .select('id')
                   .maybeSingle();
-                
+
                 if (newEntry) {
                   viewerEntryIdRef.current = newEntry.id;
                 }
@@ -139,7 +139,7 @@ export default function ForumHome() {
                 .eq('session_id', sessionIdRef.current)
                 .eq('is_anonymous', true)
                 .maybeSingle();
-              
+
               if (existing) {
                 viewerEntryIdRef.current = existing.id;
                 await supabase
@@ -156,7 +156,7 @@ export default function ForumHome() {
                   })
                   .select('id')
                   .maybeSingle();
-                
+
                 if (newEntry) {
                   viewerEntryIdRef.current = newEntry.id;
                 }
@@ -171,32 +171,32 @@ export default function ForumHome() {
         }, 1000);
       });
     };
-    
+
     // Funcție pentru a număra toți viewer-ii activi (autentificați + anonimi)
     const loadActiveViewers = async () => {
       try {
         // Cleanup automat (șterge intrările expirate > 2 minute)
         await supabase.rpc('cleanup_expired_viewers');
-        
+
         const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-        
+
         // Numără toți viewer-ii activi (autentificați + anonimi)
         const { count: totalCount, error: totalError } = await supabase
           .from('forum_active_viewers')
           .select('*', { count: 'exact', head: true })
           .gte('last_seen_at', twoMinutesAgo);
-        
+
         // Numără doar vizitatorii anonimi
         const { count: anonymousCount, error: anonymousError } = await supabase
           .from('forum_active_viewers')
           .select('*', { count: 'exact', head: true })
           .eq('is_anonymous', true)
           .gte('last_seen_at', twoMinutesAgo);
-        
+
         if (!totalError && totalCount !== null && mounted) {
           setTotalActiveViewers(totalCount);
         }
-        
+
         if (!anonymousError && anonymousCount !== null && mounted) {
           setAnonymousVisitors(anonymousCount);
         }
@@ -204,13 +204,13 @@ export default function ForumHome() {
         console.error('Error loading active viewers:', error);
       }
     };
-    
+
     // Adaugă viewer-ul imediat
     addOrUpdateViewer();
-    
+
     // Încarcă viewer-ii imediat
     loadActiveViewers();
-    
+
     // Actualizare periodică a last_seen_at (la fiecare 10 secunde, ca ActiveViewers)
     updateIntervalRef.current = setInterval(async () => {
       if (viewerEntryIdRef.current && mounted) {
@@ -221,7 +221,7 @@ export default function ForumHome() {
       }
       loadActiveViewers(); // Reîncarcă lista
     }, 10000);
-    
+
     // Supabase Realtime subscription pentru actualizări instantanee
     const channel = supabase
       .channel('forum-homepage-active-viewers')
@@ -241,14 +241,14 @@ export default function ForumHome() {
         }
       )
       .subscribe();
-    
+
     // Cleanup
     return () => {
       mounted = false;
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
       }
-      
+
       // Șterge entry-ul din baza de date
       if (viewerEntryIdRef.current) {
         (async () => {
@@ -262,14 +262,14 @@ export default function ForumHome() {
           }
         })();
       }
-      
+
       supabase.removeChannel(channel);
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
     };
   }, [homepageCategoryId, forumUser]);
-  
+
   // Actualizare record când numărul de utilizatori online depășește recordul
   // OPTIMIZAT: Folosim hook-ul existent useOnlineUsers (se actualizează la fiecare 15 secunde)
   // Comparăm cu recordul și actualizăm DOAR când e necesar (nu la fiecare verificare)
@@ -279,13 +279,13 @@ export default function ForumHome() {
       if (onlineUsersLoading || recordLoading || !onlineUsersRecord) {
         return;
       }
-      
+
       // Folosim totalActiveViewers (include și utilizatorii autentificați din forum_active_viewers)
       // + onlineUsers (utilizatorii din forum_users cu last_seen_at recent)
       // Pentru a evita dublarea, folosim max dintre ele sau le combinăm inteligent
       const currentOnlineCount = Math.max(onlineUsers.length, totalActiveViewers);
       const currentRecord = onlineUsersRecord.max_users_count || 0;
-      
+
       // Actualizează recordul DOAR dacă numărul curent depășește recordul
       if (currentOnlineCount > currentRecord) {
         try {
@@ -294,7 +294,7 @@ export default function ForumHome() {
           const { error } = await supabase.rpc('update_online_users_record', {
             p_online_count: currentOnlineCount
           });
-          
+
           if (error) {
             console.error('Error updating online users record:', error);
           } else {
@@ -307,7 +307,7 @@ export default function ForumHome() {
         }
       }
     };
-    
+
     // Verifică și actualizează când se schimbă numărul de utilizatori online
     updateRecordIfNeeded();
   }, [onlineUsers.length, totalActiveViewers, onlineUsersRecord?.max_users_count, onlineUsersLoading, recordLoading, refetchRecord]);
@@ -319,7 +319,7 @@ export default function ForumHome() {
   // Aceasta include toți utilizatorii autentificați, inclusiv cei care sunt doar pe homepage
   // totalActiveViewers include doar cei care vizualizează topicuri/categorii, nu și homepage
   const authenticatedUsersCount = onlineUsers.length;
-  
+
   // Real stats from database
   const forumStats = {
     totalTopics: forumStatsData?.total_topics || 0,
@@ -369,7 +369,7 @@ export default function ForumHome() {
   return (
     <>
       <SEOHead
-        title="Forum Pescuit România - Discuții, Sfaturi, DIY - Fish Trophy"
+        title="Forum Pescuit - Discuții și Comunitate | Fish Trophy"
         description={`Comunitate activă de pescari din România. ${totalTopics}+ topicuri, ${totalPosts}+ postări. Discuții despre tehnici pescuit, DIY, echipament, locații, sfaturi și experiențe. Alătură-te comunității!`}
         keywords="forum pescuit, discuții pescuit, comunitate pescari, forum pescari romania, sfaturi pescuit, tehnici pescuit, DIY pescuit, echipament pescuit, locatii pescuit, intrebari pescuit, raspunsuri pescuit, comunitate pescuit romania"
         image="https://fishtrophy.ro/social-media-banner-v2.jpg"
@@ -377,276 +377,276 @@ export default function ForumHome() {
         type="website"
         structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
       />
-      <ForumLayout 
-      user={forumUserToLayoutUser(forumUser)} 
-      onLogin={handleLogin} 
-      onLogout={handleLogout} 
-      showWelcomeBanner={true}
-    >
-      {/* Main Content - Optimizat pentru mobil - Aliniat cu header */}
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: isMobile ? '1rem 0.75rem' : '1rem 1rem', 
-        width: '100%', 
-        overflowX: 'hidden' 
-      }}>
-
-
-        {/* Mobile Optimized Forum Categories */}
-        <MobileOptimizedCategories onSubcategoryClick={handleSubcategoryClick} />
-
-        {/* Auto-Seeder for empty database */}
-        <ForumSeeder />
-
-        {/* Activitate și Statistici Forum */}
+      <ForumLayout
+        user={forumUserToLayoutUser(forumUser)}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        showWelcomeBanner={true}
+      >
+        {/* Main Content - Optimizat pentru mobil - Aliniat cu header */}
         <div style={{
-          backgroundColor: theme.surface,
-          borderRadius: '0.5rem',
-          border: `1px solid ${theme.border}`,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          marginTop: '2rem',
-          overflow: 'hidden',
-          transition: 'all 0.3s ease'
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: isMobile ? '1rem 0.75rem' : '1rem 1rem',
+          width: '100%',
+          overflowX: 'hidden'
         }}>
-          {/* Header */}
-          <div style={{
-            backgroundColor: theme.background,
-            borderBottom: `1px solid ${theme.border}`,
-            padding: '1rem 1.5rem'
-          }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: theme.text, margin: 0 }}>
-              Activitate Forum
-            </h3>
-          </div>
 
-          <div style={{ padding: '1.5rem' }}>
-            {/* Statistici generale într-o singură linie */}
+
+          {/* Mobile Optimized Forum Categories */}
+          <MobileOptimizedCategories onSubcategoryClick={handleSubcategoryClick} />
+
+          {/* Auto-Seeder for empty database */}
+          <ForumSeeder />
+
+          {/* Activitate și Statistici Forum */}
+          <div style={{
+            backgroundColor: theme.surface,
+            borderRadius: '0.5rem',
+            border: `1px solid ${theme.border}`,
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            marginTop: '2rem',
+            overflow: 'hidden',
+            transition: 'all 0.3s ease'
+          }}>
+            {/* Header */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-              gap: '1rem',
-              marginBottom: '1.5rem',
-              padding: '1rem',
               backgroundColor: theme.background,
-              borderRadius: '0.5rem'
+              borderBottom: `1px solid ${theme.border}`,
+              padding: '1rem 1.5rem'
             }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.primary, marginBottom: '0.25rem' }}>
-                  {forumStats.totalMembers.toLocaleString('ro-RO')}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Membri Total</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
-                  {forumStats.totalTopics}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Topicuri</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.accent, marginBottom: '0.25rem' }}>
-                  {forumStats.totalPosts}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Postări</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
-                  {onlineUsers.length + anonymousVisitors}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
-              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', color: theme.text, margin: 0 }}>
+                Activitate Forum
+              </h3>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-              {/* Utilizatori Online */}
-              <div>
-                <h4 style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: theme.text,
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <div style={{
-                    width: '0.5rem',
-                    height: '0.5rem',
-                    backgroundColor: theme.secondary,
-                    borderRadius: '50%'
-                  }} />
-                  Utilizatori Online
-                </h4>
-                {/* Afișare format: "Utilizatori online în acest moment: 229 (53 membri și 176 vizitatori)" */}
-                <div style={{ 
-                  fontSize: '0.75rem', 
-                  color: theme.textSecondary, 
-                  marginBottom: '0.75rem',
-                  padding: '0.5rem',
-                  backgroundColor: theme.background,
-                  borderRadius: '0.5rem',
-                  border: `1px solid ${theme.border}`
-                }}>
-                  <strong style={{ color: theme.text }}>Utilizatori online în acest moment:</strong>{' '}
-                  {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'} 
-                  {anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
-                </div>
-                
-                {/* Record utilizatori conectați simultan */}
-                {onlineUsersRecord && (
-                  <div style={{ 
-                    fontSize: '0.75rem', 
-                    color: theme.textSecondary, 
-                    marginBottom: '0.75rem',
-                    padding: '0.75rem',
-                    backgroundColor: theme.surface,
-                    borderRadius: '0.5rem',
-                    border: `1px solid ${theme.border}`,
-                    background: `linear-gradient(135deg, ${theme.surface} 0%, ${theme.background} 100%)`
-                  }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      marginBottom: '0.25rem'
-                    }}>
-                      <strong style={{ color: theme.text }}>Cei mai mulți utilizatori conectați:</strong>
-                      <span style={{ 
-                        fontSize: '1rem', 
-                        fontWeight: '700', 
-                        color: '#ef4444',
-                        fontFamily: 'monospace'
-                      }}>
-                        {onlineUsersRecord.max_users_count.toLocaleString('ro-RO')}
-                      </span>
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.7rem', 
-                      color: theme.textSecondary,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
-                    }}>
-                      <span>pe {onlineUsersRecord.formatted_date}</span>
-                      <span style={{ color: '#ef4444', fontWeight: '600' }}>la {onlineUsersRecord.formatted_time}</span>
-                    </div>
+            <div style={{ padding: '1.5rem' }}>
+              {/* Statistici generale într-o singură linie */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                backgroundColor: theme.background,
+                borderRadius: '0.5rem'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.primary, marginBottom: '0.25rem' }}>
+                    {forumStats.totalMembers.toLocaleString('ro-RO')}
                   </div>
-                )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {authenticatedUsersCount === 0 && anonymousVisitors === 0 ? (
-                    <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
-                  ) : (
-                    onlineUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.375rem',
-                          fontSize: '0.75rem',
-                          padding: '0.375rem 0.5rem',
-                          backgroundColor: '#f0f9ff',
-                          border: '1px solid #bfdbfe',
-                          borderRadius: '0.375rem',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (e.currentTarget) {
-                            e.currentTarget.style.backgroundColor = '#dbeafe';
-                            e.currentTarget.style.borderColor = '#3b82f6';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (e.currentTarget) {
-                            e.currentTarget.style.backgroundColor = '#f0f9ff';
-                            e.currentTarget.style.borderColor = '#bfdbfe';
-                          }
-                        }}
-                      >
-                        <span style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>
-                          {getRankIcon(user.rank)}
-                        </span>
-                        <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>
-                      </div>
-                    ))
-                  )}
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Membri Total</div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                  {forumStatsData?.newest_user && (
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
-                    </div>
-                  )}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
+                    {forumStats.totalTopics}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Topicuri</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.accent, marginBottom: '0.25rem' }}>
+                    {forumStats.totalPosts}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Postări</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: theme.secondary, marginBottom: '0.25rem' }}>
+                    {onlineUsers.length + anonymousVisitors}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, fontWeight: '500' }}>Online Acum</div>
                 </div>
               </div>
 
-              {/* Legendă Ranguri și Informații */}
-              <div>
-                <h4 style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: theme.text,
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+                {/* Utilizatori Online */}
+                <div>
+                  <h4 style={{
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: theme.text,
+                    marginBottom: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{
+                      width: '0.5rem',
+                      height: '0.5rem',
+                      backgroundColor: theme.secondary,
+                      borderRadius: '50%'
+                    }} />
+                    Utilizatori Online
+                  </h4>
+                  {/* Afișare format: "Utilizatori online în acest moment: 229 (53 membri și 176 vizitatori)" */}
                   <div style={{
-                    width: '0.5rem',
-                    height: '0.5rem',
-                    backgroundColor: theme.accent,
-                    borderRadius: '50%'
-                  }} />
-                  Ranguri pe Vechime Fish Trophy
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {[
-                    { rank: 'ou_de_peste', label: '🥚 Ou de Pește', desc: '0-10 postări', color: '#9ca3af' },
-                    { rank: 'puiet', label: '🐟 Puiet', desc: '11-50 postări', color: '#60a5fa' },
-                    { rank: 'pui_de_crap', label: '🐠 Pui de Crap', desc: '51-100 postări', color: '#34d399' },
-                    { rank: 'crap_junior', label: '🎣 Crap Junior', desc: '101-500 postări', color: '#fbbf24' },
-                    { rank: 'crap_senior', label: '🏆 Crap Senior', desc: '501-1000 postări', color: '#fb923c' },
-                    { rank: 'maestru_pescar', label: '💎 Maestru Pescar', desc: '1001-5000 postări', color: '#f472b6' },
-                    { rank: 'legenda_apelor', label: '👑 Legenda Apelor', desc: '5001+ postări', color: '#a78bfa' }
-                  ].map((item) => (
-                    <div key={item.rank} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        minWidth: '8rem',
-                        color: item.color,
-                        fontWeight: '600'
-                      }}>
-                        {item.label}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                        {item.desc}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    fontSize: '0.75rem',
+                    color: theme.textSecondary,
+                    marginBottom: '0.75rem',
+                    padding: '0.5rem',
+                    backgroundColor: theme.background,
+                    borderRadius: '0.5rem',
+                    border: `1px solid ${theme.border}`
+                  }}>
+                    <strong style={{ color: theme.text }}>Utilizatori online în acest moment:</strong>{' '}
+                    {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'}
+                    {anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
+                  </div>
 
-                <div style={{ fontSize: '0.75rem', color: theme.textSecondary, lineHeight: '1.4' }}>
-                  {forumStatsData?.newest_user && (
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
+                  {/* Record utilizatori conectați simultan */}
+                  {onlineUsersRecord && (
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: theme.textSecondary,
+                      marginBottom: '0.75rem',
+                      padding: '0.75rem',
+                      backgroundColor: theme.surface,
+                      borderRadius: '0.5rem',
+                      border: `1px solid ${theme.border}`,
+                      background: `linear-gradient(135deg, ${theme.surface} 0%, ${theme.background} 100%)`
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '0.25rem'
+                      }}>
+                        <strong style={{ color: theme.text }}>Cei mai mulți utilizatori conectați:</strong>
+                        <span style={{
+                          fontSize: '1rem',
+                          fontWeight: '700',
+                          color: '#ef4444',
+                          fontFamily: 'monospace'
+                        }}>
+                          {onlineUsersRecord.max_users_count.toLocaleString('ro-RO')}
+                        </span>
+                      </div>
+                      <div style={{
+                        fontSize: '0.7rem',
+                        color: theme.textSecondary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <span>pe {onlineUsersRecord.formatted_date}</span>
+                        <span style={{ color: '#ef4444', fontWeight: '600' }}>la {onlineUsersRecord.formatted_time}</span>
+                      </div>
                     </div>
                   )}
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {authenticatedUsersCount === 0 && anonymousVisitors === 0 ? (
+                      <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>Niciun utilizator online momentan</div>
+                    ) : (
+                      onlineUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            fontSize: '0.75rem',
+                            padding: '0.375rem 0.5rem',
+                            backgroundColor: '#f0f9ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '0.375rem',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (e.currentTarget) {
+                              e.currentTarget.style.backgroundColor = '#dbeafe';
+                              e.currentTarget.style.borderColor = '#3b82f6';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (e.currentTarget) {
+                              e.currentTarget.style.backgroundColor = '#f0f9ff';
+                              e.currentTarget.style.borderColor = '#bfdbfe';
+                            }
+                          }}
+                        >
+                          <span style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>
+                            {getRankIcon(user.rank)}
+                          </span>
+                          <span style={{ fontWeight: '500', color: '#1e40af' }}>{user.username}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>Utilizatori online:</strong> {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'}{anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
+                    {forumStatsData?.newest_user && (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}
+                </div>
+
+                {/* Legendă Ranguri și Informații */}
+                <div>
+                  <h4 style={{
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: theme.text,
+                    marginBottom: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{
+                      width: '0.5rem',
+                      height: '0.5rem',
+                      backgroundColor: theme.accent,
+                      borderRadius: '50%'
+                    }} />
+                    Ranguri pe Vechime Fish Trophy
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {[
+                      { rank: 'ou_de_peste', label: '🥚 Ou de Pește', desc: '0-10 postări', color: '#9ca3af' },
+                      { rank: 'puiet', label: '🐟 Puiet', desc: '11-50 postări', color: '#60a5fa' },
+                      { rank: 'pui_de_crap', label: '🐠 Pui de Crap', desc: '51-100 postări', color: '#34d399' },
+                      { rank: 'crap_junior', label: '🎣 Crap Junior', desc: '101-500 postări', color: '#fbbf24' },
+                      { rank: 'crap_senior', label: '🏆 Crap Senior', desc: '501-1000 postări', color: '#fb923c' },
+                      { rank: 'maestru_pescar', label: '💎 Maestru Pescar', desc: '1001-5000 postări', color: '#f472b6' },
+                      { rank: 'legenda_apelor', label: '👑 Legenda Apelor', desc: '5001+ postări', color: '#a78bfa' }
+                    ].map((item) => (
+                      <div key={item.rank} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          minWidth: '8rem',
+                          color: item.color,
+                          fontWeight: '600'
+                        }}>
+                          {item.label}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
+                          {item.desc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ fontSize: '0.75rem', color: theme.textSecondary, lineHeight: '1.4' }}>
+                    {forumStatsData?.newest_user && (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>Cel mai nou membru:</strong> {forumStatsData.newest_user.username}
+                      </div>
+                    )}
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Total membri înregistrați:</strong> {forumStats.totalMembers.toLocaleString('ro-RO')}
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Utilizatori online:</strong> {authenticatedUsersCount + anonymousVisitors} ({authenticatedUsersCount} {authenticatedUsersCount === 1 ? 'membru' : 'membri'}{anonymousVisitors > 0 && ` și ${anonymousVisitors} ${anonymousVisitors === 1 ? 'vizitator' : 'vizitatori'}`})
+                    </div>
+                    <div>
+                      <strong>Total postări:</strong> {forumStats.totalPosts.toLocaleString('ro-RO')}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </ForumLayout>
+      </ForumLayout>
     </>
   );
 }
