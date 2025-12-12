@@ -49,7 +49,12 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col aspect-square sm:aspect-auto sm:h-full dark:bg-slate-800 dark:border-slate-700"
-      onClick={onCatchClick}
+      onClick={(e) => {
+        // Only open modal if click is not on image
+        if (e.target === e.currentTarget || !(e.target as HTMLElement).closest('img')) {
+          onCatchClick();
+        }
+      }}
     >
       {/* Mobile: Full screen image with overlay */}
       <div className="relative w-full h-full sm:aspect-video sm:h-auto">

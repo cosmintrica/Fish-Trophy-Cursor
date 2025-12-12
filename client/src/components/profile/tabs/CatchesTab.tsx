@@ -222,9 +222,12 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
             <Card 
               key={catchItem.id} 
               className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col aspect-square sm:aspect-auto sm:h-full bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
-              onClick={() => {
-                setSelectedCatch(catchItem);
-                setShowDetailModal(true);
+              onClick={(e) => {
+                // Only open modal if click is not on image
+                if (e.target === e.currentTarget || !(e.target as HTMLElement).closest('img')) {
+                  setSelectedCatch(catchItem);
+                  setShowDetailModal(true);
+                }
               }}
             >
               {/* Mobile: Full screen image with overlay */}
