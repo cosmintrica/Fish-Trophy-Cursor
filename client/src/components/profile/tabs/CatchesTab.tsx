@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CatchDetailModal } from '@/components/CatchDetailModal';
 import FishingEntryModal from '@/components/FishingEntryModal';
 import { CatchCard } from '@/components/profile/CatchCard';
+import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 interface Catch {
   id: string;
@@ -54,6 +55,12 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingCatch, setEditingCatch] = useState<Catch | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Zoom states
+  const [zoomMediaSrc, setZoomMediaSrc] = useState<string>('');
+  const [zoomMediaType, setZoomMediaType] = useState<'image' | 'video'>('image');
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+  
   const isOwner = user?.id === userId;
 
   useEffect(() => {
@@ -226,7 +233,13 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                   <img
                     src={getR2ImageUrlProxy(catchItem.photo_url)}
                     alt={catchItem.fish_species?.name || 'Captură'}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover cursor-zoom-in"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomMediaSrc(getR2ImageUrlProxy(catchItem.photo_url));
+                      setZoomMediaType('image');
+                      setIsZoomOpen(true);
+                    }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -487,6 +500,15 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
           }}
         />
       )}
+
+      {/* Media Zoom Viewer */}
+      <MediaZoomViewer
+        isOpen={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        src={zoomMediaSrc}
+        alt="Captură"
+        type={zoomMediaType}
+      />
     </>
   );
 };
