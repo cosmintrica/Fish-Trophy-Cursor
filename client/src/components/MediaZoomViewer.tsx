@@ -28,43 +28,68 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLImageElement | HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const scaleRef = useRef(1);
+  const positionRef = useRef({ x: 0, y: 0 });
+
+  // Sync refs with state for performance
+  useEffect(() => {
+    scaleRef.current = scale;
+    positionRef.current = position;
+  }, [scale, position]);
 
   // Reset zoom when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
+      scaleRef.current = 1;
+      positionRef.current = { x: 0, y: 0 };
     }
   }, [isOpen]);
 
-  // Handle wheel zoom (desktop)
+  // GPU-optimized update function
+  const updateTransform = useCallback(() => {
+    if (mediaRef.current) {
+      const transform = `translate3d(${positionRef.current.x}px, ${positionRef.current.y}px, 0) scale3d(${scaleRef.current}, ${scaleRef.current}, 1)`;
+      mediaRef.current.style.transform = transform;
+    }
+  }, []);
+
+  // Handle wheel zoom (desktop) - GPU optimized
   const handleWheel = useCallback((e: WheelEvent) => {
     if (!isOpen) return;
     e.preventDefault();
     
-    const delta = e.deltaY * -0.001;
-    const newScale = Math.min(Math.max(scale + delta, 0.5), 5);
+    const zoomSpeed = 0.003;
+    const delta = e.deltaY * -zoomSpeed;
+    const currentScale = scaleRef.current;
+    const newScale = Math.min(Math.max(currentScale + delta, 0.5), 8);
+    
+    scaleRef.current = newScale;
+    setScale(newScale);
     
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
     
-    animationFrameRef.current = requestAnimationFrame(() => {
-      setScale(newScale);
-    });
-  }, [isOpen, scale]);
+    animationFrameRef.current = requestAnimationFrame(updateTransform);
+  }, [isOpen, updateTransform]);
 
   // Handle click zoom (double tap on mobile, single click on desktop)
   const handleMediaClick = useCallback((e: React.MouseEvent) => {
-    if (e.detail === 2 || scale === 1) {
-      // Double click or single click when zoomed out
-      const newScale = scale === 1 ? 2 : 1;
+    e.stopPropagation();
+    if (e.detail === 2) {
+      const currentScale = scaleRef.current;
+      const newScale = currentScale === 1 ? 3 : 1;
+      scaleRef.current = newScale;
       setScale(newScale);
       if (newScale === 1) {
+        positionRef.current = { x: 0, y: 0 };
         setPosition({ x: 0, y: 0 });
       }
+      requestAnimationFrame(updateTransform);
     }
-  }, [scale]);
+  }, [updateTransform]);
 
   // Handle touch start for pinch zoom
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -77,22 +102,20 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
         touch2.clientY - touch1.clientY
       );
       setLastTouchDistance(distance);
-    } else if (e.touches.length === 1 && scale > 1) {
-      // Single touch drag when zoomed
+    } else if (e.touches.length === 1 && scaleRef.current > 1) {
       setIsDragging(true);
       setDragStart({
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y
+        x: e.touches[0].clientX - positionRef.current.x,
+        y: e.touches[0].clientY - positionRef.current.y
       });
     }
-  }, [scale, position]);
+  }, []);
 
-  // Handle touch move for pinch zoom and pan
+  // Handle touch move for pinch zoom and pan - GPU optimized
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
     
     if (e.touches.length === 2 && isPinching) {
-      // Pinch zoom
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       const distance = Math.hypot(
@@ -102,29 +125,32 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
       
       if (lastTouchDistance > 0) {
         const scaleChange = distance / lastTouchDistance;
-        const newScale = Math.min(Math.max(scale * scaleChange, 0.5), 5);
+        const currentScale = scaleRef.current;
+        const newScale = Math.min(Math.max(currentScale * scaleChange, 0.5), 8);
+        scaleRef.current = newScale;
         setScale(newScale);
+        requestAnimationFrame(updateTransform);
       }
       setLastTouchDistance(distance);
-    } else if (e.touches.length === 1 && isDragging && scale > 1) {
-      // Pan when zoomed
+    } else if (e.touches.length === 1 && isDragging && scaleRef.current > 1) {
       const newX = e.touches[0].clientX - dragStart.x;
       const newY = e.touches[0].clientY - dragStart.y;
       
-      // Constrain to bounds
       if (mediaRef.current && containerRef.current) {
         const mediaRect = mediaRef.current.getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
-        const maxX = (mediaRect.width * scale - containerRect.width) / 2;
-        const maxY = (mediaRect.height * scale - containerRect.height) / 2;
+        const maxX = (mediaRect.width * scaleRef.current - containerRect.width) / 2;
+        const maxY = (mediaRect.height * scaleRef.current - containerRect.height) / 2;
         
-        setPosition({
-          x: Math.max(-maxX, Math.min(maxX, newX)),
-          y: Math.max(-maxY, Math.min(maxY, newY))
-        });
+        const constrainedX = Math.max(-maxX, Math.min(maxX, newX));
+        const constrainedY = Math.max(-maxY, Math.min(maxY, newY));
+        
+        positionRef.current = { x: constrainedX, y: constrainedY };
+        setPosition({ x: constrainedX, y: constrainedY });
+        requestAnimationFrame(updateTransform);
       }
     }
-  }, [isPinching, isDragging, lastTouchDistance, scale, dragStart]);
+  }, [isPinching, isDragging, lastTouchDistance, dragStart, updateTransform]);
 
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
@@ -133,35 +159,37 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
     setLastTouchDistance(0);
   }, []);
 
-  // Handle mouse drag (desktop)
+  // Handle mouse drag (desktop) - GPU optimized
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (scale > 1 && e.button === 0) {
+    if (scaleRef.current > 1 && e.button === 0) {
       setIsDragging(true);
       setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y
+        x: e.clientX - positionRef.current.x,
+        y: e.clientY - positionRef.current.y
       });
     }
-  }, [scale, position]);
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging && scale > 1) {
+    if (isDragging && scaleRef.current > 1) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
       
       if (mediaRef.current && containerRef.current) {
         const mediaRect = mediaRef.current.getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
-        const maxX = (mediaRect.width * scale - containerRect.width) / 2;
-        const maxY = (mediaRect.height * scale - containerRect.height) / 2;
+        const maxX = (mediaRect.width * scaleRef.current - containerRect.width) / 2;
+        const maxY = (mediaRect.height * scaleRef.current - containerRect.height) / 2;
         
-        setPosition({
-          x: Math.max(-maxX, Math.min(maxX, newX)),
-          y: Math.max(-maxY, Math.min(maxY, newY))
-        });
+        const constrainedX = Math.max(-maxX, Math.min(maxX, newX));
+        const constrainedY = Math.max(-maxY, Math.min(maxY, newY));
+        
+        positionRef.current = { x: constrainedX, y: constrainedY };
+        setPosition({ x: constrainedX, y: constrainedY });
+        requestAnimationFrame(updateTransform);
       }
     }
-  }, [isDragging, scale, dragStart]);
+  }, [isDragging, dragStart, updateTransform]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -179,6 +207,11 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
     }
   }, [isOpen, handleWheel]);
 
+  // Update transform on scale/position change
+  useEffect(() => {
+    updateTransform();
+  }, [scale, position, updateTransform]);
+
   // Cleanup animation frame
   useEffect(() => {
     return () => {
@@ -190,45 +223,60 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
 
   if (!isOpen) return null;
 
-  const transform = `translate(${position.x}px, ${position.y}px) scale(${scale})`;
   const cursor = scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in';
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+      className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center"
       onClick={(e) => {
-        // Close on backdrop click
-        if (e.target === containerRef.current) {
+        // Close on backdrop click - only if click is directly on container, not on media
+        const target = e.target as HTMLElement;
+        if (target === containerRef.current || (target.classList.contains('zoom-backdrop') && !target.closest('img, video'))) {
           onClose();
         }
       }}
       onTouchEnd={handleTouchEnd}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      style={{ 
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'none',
+        willChange: 'contents'
+      }}
     >
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full transition-colors touch-manipulation"
+        className="absolute top-4 right-4 z-10 bg-black/80 hover:bg-black text-white p-3 rounded-full transition-opacity duration-200 touch-manipulation"
         aria-label="Închide zoom"
+        style={{ willChange: 'opacity' }}
       >
-        <X className="w-6 h-6" />
+        <X className="w-5 h-5" />
       </button>
 
       {/* Zoom indicator */}
       {scale !== 1 && (
-        <div className="absolute top-4 left-4 z-10 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm font-medium">
+        <div className="absolute top-4 left-4 z-10 bg-black/80 text-white px-4 py-2 rounded-full text-sm font-semibold">
           {Math.round(scale * 100)}%
         </div>
       )}
 
-      {/* Media container */}
+      {/* Media container - GPU optimized */}
       <div
-        className="relative w-full h-full flex items-center justify-center overflow-hidden"
-        style={{ touchAction: 'none' }}
+        className="relative w-full h-full flex items-center justify-center overflow-hidden zoom-backdrop"
+        style={{ 
+          touchAction: 'none',
+          willChange: 'transform'
+        }}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
+        onClick={(e) => {
+          // If click is on the container itself (not on media), close
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
       >
         {type === 'image' ? (
           <img
@@ -237,13 +285,21 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
             alt={alt}
             className={`max-w-full max-h-full object-contain select-none ${className}`}
             style={{
-              transform,
+              transform: `translate3d(${position.x}px, ${position.y}px, 0) scale3d(${scale}, ${scale}, 1)`,
               transformOrigin: 'center center',
               willChange: 'transform',
-              transition: isDragging || isPinching ? 'none' : 'transform 0.1s ease-out',
-              cursor
+              backfaceVisibility: 'hidden',
+              perspective: 1000,
+              WebkitBackfaceVisibility: 'hidden',
+              imageRendering: scale > 2 ? 'crisp-edges' : 'auto',
+              cursor,
+              transition: 'none', // No CSS transitions for maximum performance
+              pointerEvents: 'auto' // Re-enable pointer events on media
             }}
-            onClick={handleMediaClick}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent backdrop click
+              handleMediaClick(e);
+            }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             draggable={false}
@@ -254,13 +310,20 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
             src={src}
             className={`max-w-full max-h-full object-contain select-none ${className}`}
             style={{
-              transform,
+              transform: `translate3d(${position.x}px, ${position.y}px, 0) scale3d(${scale}, ${scale}, 1)`,
               transformOrigin: 'center center',
               willChange: 'transform',
-              transition: isDragging || isPinching ? 'none' : 'transform 0.1s ease-out',
-              cursor
+              backfaceVisibility: 'hidden',
+              perspective: 1000,
+              WebkitBackfaceVisibility: 'hidden',
+              cursor,
+              transition: 'none', // No CSS transitions for maximum performance
+              pointerEvents: 'auto' // Re-enable pointer events on media
             }}
-            onClick={handleMediaClick}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent backdrop click
+              handleMediaClick(e);
+            }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             controls
@@ -273,12 +336,11 @@ export const MediaZoomViewer: React.FC<MediaZoomViewerProps> = ({
 
       {/* Instructions (only show on first zoom) */}
       {scale === 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm text-center">
-          <span className="hidden sm:inline">Scroll sau dublu-click pentru zoom • Click în afara pentru închidere</span>
-          <span className="sm:hidden">Atinge pentru zoom • Atinge în afara pentru închidere</span>
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 text-white px-5 py-3 rounded-xl text-sm text-center">
+          <span className="hidden sm:inline">🖱️ Scroll sau dublu-click pentru zoom • Click în afara pentru închidere</span>
+          <span className="sm:hidden">👆 Pinch sau dublu-tap pentru zoom • Tap în afara pentru închidere</span>
         </div>
       )}
     </div>
   );
 };
-
