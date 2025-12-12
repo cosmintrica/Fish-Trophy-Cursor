@@ -19,71 +19,31 @@
   <meta name="theme-color" content="#f8fafc" />
 
   <!-- Prevent dark mode flash - set theme IMMEDIATELY before render -->
+  <!-- Prevent dark mode flash - simplified -->
   <script>
     (function () {
       try {
-        const theme = localStorage.getItem('fish-trophy-theme') || 'light';
-        const isDark = theme === 'dark';
+        // Check localStorage first, then system preference
+        const localTheme = localStorage.getItem('fish-trophy-theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        // Set attribute immediately
-        document.documentElement.setAttribute('data-theme', theme);
+        const isDark = localTheme === 'dark' || (!localTheme && systemDark);
 
-        // Apply background color IMMEDIATELY to prevent white flash
-        // UPDATE: Always use neutral background for initial load to prevent "blue flash"
-        const bgColor = isDark ? '#0f172a' : '#f8fafc';
-        document.documentElement.style.backgroundColor = bgColor;
-        document.documentElement.style.color = isDark ? '#f1f5f9' : '#1f2937';
-
-        // Also apply to body if it exists (will be applied later if not)
-        if (document.body) {
-          document.body.style.backgroundColor = bgColor;
-          document.body.style.color = isDark ? '#f1f5f9' : '#1f2937';
-        }
-
-        // Set meta theme-color for mobile browsers
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        if (metaThemeColor) {
-          // Check if we are on homepage (simple check based on pathname, though this script runs early)
-          // On initial load, pathname is available.
-          const isHomepage = window.location.pathname === '/' || window.location.pathname === '/index.html';
-
-          // Homepage gets blue brand color, others get bg color
-          // UPDATE: User requested removal of "blue bars" on mobile. Setting strictly to background color.
-          if (isDark) {
-            metaThemeColor.setAttribute('content', '#0f172a'); // Dark slate
-          } else {
-            metaThemeColor.setAttribute('content', '#f8fafc'); // Neutral slate-50/white
-          }
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#0f172a'; // slate-900
+          document.documentElement.style.color = '#f8fafc'; // slate-50
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.backgroundColor = '#f8fafc'; // slate-50
+          document.documentElement.style.color = '#0f172a'; // slate-900
         }
       } catch (e) {
         console.error('Error setting theme:', e);
       }
     })();
   </script>
-  <style>
-    /* Prevent white flash - apply background immediately */
-    html {
-      background-color: #f8fafc;
-      color: #1f2937;
-    }
 
-    html[data-theme="dark"] {
-      background-color: #0f172a !important;
-      color: #f1f5f9 !important;
-    }
-
-    body {
-      background-color: inherit;
-      color: inherit;
-      margin: 0;
-      padding: 0;
-    }
-
-    #root {
-      background-color: inherit;
-      color: inherit;
-    }
-  </style>
 
   <!-- Google Fonts - Montserrat (optimizat) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -167,15 +167,15 @@ const LEGACY_SMILEY_MAP: Record<string, string> = {
  */
 function transformLegacySmileys(text: string): string {
     let result = text;
-    
+
     // Sortăm codurile după lungime (descrescător) pentru a evita transformări parțiale
     // (ex: :)) trebuie să fie transformat înainte de :))
     const sortedCodes = Object.keys(LEGACY_SMILEY_MAP).sort((a, b) => b.length - a.length);
-    
+
     // Protejăm tag-urile BBCode și codurile din interiorul lor
     const bbcodePlaceholders: string[] = [];
     let placeholderIndex = 0;
-    
+
     // Înlocuim tag-urile BBCode cu placeholders temporari
     result = result.replace(/\[[^\]]+\]/g, (match) => {
         const placeholder = `__BBCODE_TAG_${placeholderIndex}__`;
@@ -183,7 +183,7 @@ function transformLegacySmileys(text: string): string {
         placeholderIndex++;
         return placeholder;
     });
-    
+
     // Transformăm codurile text în emoji
     for (const code of sortedCodes) {
         // Escapăm caracterele speciale pentru regex
@@ -192,12 +192,12 @@ function transformLegacySmileys(text: string): string {
         const regex = new RegExp(`(^|[^\\w\\[\\]])${escapedCode}(?![\\w\\]])`, 'g');
         result = result.replace(regex, `$1${LEGACY_SMILEY_MAP[code]}`);
     }
-    
+
     // Restaurăm tag-urile BBCode
     bbcodePlaceholders.forEach((tag, index) => {
         result = result.replace(`__BBCODE_TAG_${index}__`, tag);
     });
-    
+
     return result;
 }
 
@@ -221,16 +221,16 @@ function escapeHtml(text: string): string {
 function parseQuoteContent(content: string, options?: { categorySlug?: string; subcategorySlug?: string; topicSlug?: string; getPostPermalink?: (postId: string) => string; postNumberMap?: Map<string, number>; skipNestedQuotes?: boolean }): string {
     let html = content
     const replacements: Array<{ original: string; replacement: string }> = []
-    
+
     // ȘTERGEM LOGICA DE QUOTE ÎN QUOTE - conform cererii utilizatorului
     // Când dăm quote, se dă quote strict doar la mesajul scris de user, nu la quote-ul din acel mesaj
     // Eliminăm quote-urile din conținut înainte de procesare
     if (!options?.skipNestedQuotes) {
         html = html.replace(BB_CODE_PATTERNS.quote, '[Quote]');
     }
-    
+
     // Nu mai procesăm quote-uri nested - doar formatările de bază
-    
+
     // Parse images in quotes (smaller)
     html = html.replace(/\[img\](.*?)\[\/img\]/gi, (match, url) => {
         const cleanUrl = url.trim()
@@ -241,7 +241,7 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         replacements.push({ original: match, replacement })
         return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
     })
-    
+
     // Parse videos in quotes (smaller)
     html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
         const replacement = `<div class="bbcode-video youtube bbcode-quote-media">
@@ -255,7 +255,7 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         replacements.push({ original: match, replacement })
         return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
     })
-    
+
     html = html.replace(BB_CODE_PATTERNS.video_vimeo, (match, fullUrl, videoId) => {
         const replacement = `<div class="bbcode-video vimeo bbcode-quote-media">
       <iframe
@@ -268,7 +268,7 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         replacements.push({ original: match, replacement })
         return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
     })
-    
+
     // Parse links
     html = html.replace(/\[url=([^\]]+)\](.*?)\[\/url\]/gi, (match, url, text) => {
         const replacement = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="bbcode-link">${escapeHtml(text)}</a>`
@@ -280,7 +280,7 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         replacements.push({ original: match, replacement })
         return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
     })
-    
+
     // Parse formatting
     html = html.replace(/\[b\](.*?)\[\/b\]/gi, (match, text) => {
         const replacement = `<strong class="bbcode-bold">${escapeHtml(text)}</strong>`
@@ -302,7 +302,16 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         replacements.push({ original: match, replacement })
         return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
     })
-    
+
+    // Parse [mention] tags
+    html = html.replace(BB_CODE_PATTERNS.mention, (match, username) => {
+        const cleanUsername = username.trim();
+        const profileUrl = `/forum/user/${encodeURIComponent(cleanUsername)}`;
+        const replacement = `<a href="${profileUrl}" class="bbcode-mention" style="color: #3b82f6; font-weight: 500; text-decoration: none; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">@${escapeHtml(cleanUsername)}</a>`
+        replacements.push({ original: match, replacement })
+        return `__QUOTE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
     // Protect placeholders
     const placeholderMap = new Map<string, string>()
     replacements.forEach((repl, index) => {
@@ -311,24 +320,24 @@ function parseQuoteContent(content: string, options?: { categorySlug?: string; s
         placeholderMap.set(safePlaceholder, repl.replacement)
         html = html.replace(placeholder, safePlaceholder)
     })
-    
+
     // Convert line breaks
     const brPlaceholder = '__QUOTE_BR_PLACEHOLDER__'
     html = html.replace(/\n/g, brPlaceholder)
-    
+
     // Escape remaining text
     const escapedHtml = escapeHtml(html)
-    
+
     // Restore safe placeholders
     let finalHtml = escapedHtml
     placeholderMap.forEach((replacement, safePlaceholder) => {
         const escapedPlaceholder = escapeHtml(safePlaceholder)
         finalHtml = finalHtml.replace(escapedPlaceholder, replacement)
     })
-    
+
     // Restore <br> tags
     finalHtml = finalHtml.replace(new RegExp(escapeHtml(brPlaceholder), 'g'), '<br>')
-    
+
     return finalHtml
 }
 
@@ -356,10 +365,10 @@ export function parseBBCode(
     // Check if content already contains HTML tags (like <iframe>, <div>, etc.)
     // If it does, it's likely already HTML and shouldn't be processed as BBCode
     const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
-    
+
     // If content has HTML tags but no BBCode tags, return as-is (already processed)
-    const hasBBCodeTags = /\[(video|img|url|b|i|u|s|h[1-3]|list|code|quote|record|gear)/i.test(content);
-    
+    const hasBBCodeTags = /\[(video|img|url|b|i|u|s|h[1-3]|list|code|quote|record|gear|mention|spoiler)/i.test(content);
+
     if (hasHtmlTags && !hasBBCodeTags) {
         // Content is already HTML, return as-is (but still escape for security)
         // Actually, if it's already HTML from our parser, we should trust it
@@ -373,13 +382,10 @@ export function parseBBCode(
             }
         };
     }
-    
+
     let html = content
-    
-    // Debug: log content to see what we're parsing
-    if (content.includes('[video]') || content.includes('youtube') || content.includes('youtu.be')) {
-        console.log('[BBCode Parser] Parsing content:', content.substring(0, 200));
-    }
+
+
     const embeds: BBCodeParseResult['embeds'] = {
         records: [],
         gear: [],
@@ -411,11 +417,15 @@ export function parseBBCode(
 
     // Parse [spoiler] tags - trebuie înainte de quote pentru a nu fi afectate
     html = html.replace(/\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi, (match, text) => {
+        // Parsăm recursiv conținutul din spoiler pentru a suporta toate tag-urile (inclusiv quote-uri)
+        const parsedResult = parseBBCode(text, options);
+        const parsedContent = parsedResult.html;
+
         const replacement = `<div class="bbcode-spoiler">
       <button class="bbcode-spoiler-toggle" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.nextElementSibling.style.display === 'none' ? 'Afișează Spoiler' : 'Ascunde Spoiler';">
         Afișează Spoiler
       </button>
-      <div class="bbcode-spoiler-content" style="display: none;">${escapeHtml(text)}</div>
+      <div class="bbcode-spoiler-content" style="display: none;">${parsedContent}</div>
     </div>`
         replacements.push({ original: match, replacement })
         return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
@@ -425,18 +435,18 @@ export function parseBBCode(
     // Folosim o abordare recursivă pentru a suporta quote-uri nested
     let quoteDepth = 0;
     const maxQuoteDepth = 10; // Previne infinite loops
-    
+
     while (html.match(BB_CODE_PATTERNS.quote) && quoteDepth < maxQuoteDepth) {
         html = html.replace(BB_CODE_PATTERNS.quote, (match, username, postId, text) => {
             embeds.quotes.push({ user: username, post_id: postId, text })
-            
+
             // Eliminăm quote-urile nested din conținut (conform cererii utilizatorului)
             // Când dăm quote, se dă quote strict doar la mesajul scris de user, nu la quote-ul din acel mesaj
             let cleanText = text.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '');
-            
+
             // Parsează formatările de bază (imagini, videouri, text) - dar NU quote-uri
             const parsedQuoteContent = parseQuoteContent(cleanText, { ...options, skipNestedQuotes: true } as any);
-            
+
             // Generează permalink-ul corect
             // postId poate fi fie postNumber (string) fie UUID
             let permalink = `/forum/post/${escapeHtml(postId)}`; // Fallback la UUID
@@ -457,7 +467,7 @@ export function parseBBCode(
                     }
                 }
             }
-            
+
             const replacement = `<blockquote class="bbcode-quote" data-post-id="${escapeHtml(postId)}">
       <div class="quote-header">
         <span class="quote-author">${escapeHtml(username)}</span>
@@ -473,7 +483,7 @@ export function parseBBCode(
 
     // Parse video embeds (YouTube)
     html = html.replace(BB_CODE_PATTERNS.video_youtube, (match, fullUrl, videoId) => {
-        console.log('[BBCode Parser] Found YouTube video:', videoId, 'Match:', match);
+
         const replacement = `<div class="bbcode-video youtube">
       <iframe
         src="https://www.youtube.com/embed/${escapeHtml(videoId)}"
@@ -622,6 +632,7 @@ export function parseBBCode(
         replacements.push({ original: match, replacement })
         return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
     })
+
     html = html.replace(/\[s\](.*?)\[\/s\]/gi, (match, text) => {
         const replacement = `<s class="bbcode-strikethrough">${escapeHtml(text)}</s>`
         replacements.push({ original: match, replacement })
@@ -650,7 +661,7 @@ export function parseBBCode(
     // Now escape the remaining text (but not the safe placeholders)
     // We need to escape HTML but preserve our safe placeholders
     const escapedHtml = escapeHtml(html)
-    
+
     // Restore safe placeholders (they contain valid HTML, don't escape them)
     let finalHtml = escapedHtml
     placeholderMap.forEach((replacement, safePlaceholder) => {
@@ -658,16 +669,13 @@ export function parseBBCode(
         const escapedPlaceholder = escapeHtml(safePlaceholder)
         finalHtml = finalHtml.replace(escapedPlaceholder, replacement)
     })
-    
+
     // Restore <br> tags AFTER escaping (so they're not escaped)
     finalHtml = finalHtml.replace(new RegExp(escapeHtml(brPlaceholder), 'g'), '<br>')
-    
+
     html = finalHtml
 
-    // Debug: log final HTML if it contains video
-    if (html.includes('bbcode-video') || html.includes('youtube.com/embed')) {
-        console.log('[BBCode Parser] Final HTML (first 500 chars):', html.substring(0, 500));
-    }
+
 
     return { html, embeds }
 }
@@ -703,7 +711,7 @@ export function stripBBCode(content: string): string {
     stripped = stripped.replace(/\[record\][\w-]+\[\/record\]/gi, '[Record]')
     stripped = stripped.replace(/\[gear\][\w-]+\[\/gear\]/gi, '[Echipament]')
     stripped = stripped.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '[Quote]')
-    stripped = stripped.replace(/\[mention\].+?\[\/mention\]/gi, '@username')
+    stripped = stripped.replace(/\[mention\](.+?)\[\/mention\]/gi, '@$1')
     stripped = stripped.replace(/\[video\][^\[]+\[\/video\]/gi, '[Video]')
     stripped = stripped.replace(/\[img\][^\[]+\[\/img\]/gi, '[Imagine]')
     stripped = stripped.replace(/\[url[^\]]*\][^\[]+\[\/url\]/gi, '[Link]')

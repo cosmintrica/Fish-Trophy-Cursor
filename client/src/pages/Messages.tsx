@@ -85,7 +85,7 @@ const Messages = () => {
     if (threadMessages.length > 0 && selectedMessage) {
       const currentThreadId = selectedMessage.thread_root_id || selectedMessage.id;
       const isNewThread = lastThreadIdRef.current !== currentThreadId;
-      
+
       // Only scroll if it's a new thread or if we haven't scrolled yet
       if (isNewThread || !hasScrolledToBottomRef.current) {
         lastThreadIdRef.current = currentThreadId;
@@ -123,9 +123,9 @@ const Messages = () => {
         activeTab,
         context
       };
-      
+
       const lastParams = lastLoadParamsRef.current;
-      const paramsChanged = !lastParams || 
+      const paramsChanged = !lastParams ||
         lastParams.user !== currentParams.user ||
         lastParams.activeTab !== currentParams.activeTab ||
         lastParams.context !== currentParams.context;
@@ -189,7 +189,7 @@ const Messages = () => {
       },
       onMessageRead: (messageId: string, readAt: string) => {
         // Update checkmarks instantly when message is read
-        setThreadMessages(prev => prev.map(msg => 
+        setThreadMessages(prev => prev.map(msg =>
           msg.id === messageId
             ? { ...msg, is_read: true, read_at: readAt }
             : msg
@@ -212,7 +212,7 @@ const Messages = () => {
 
     // Get current context at the start of the function to prevent race conditions
     const currentContext = (searchParams.get('context') || 'site') as 'site' | 'forum';
-    
+
     // Increment request ID - any previous pending requests will be ignored
     const currentRequestId = ++loadRequestIdRef.current;
 
@@ -789,7 +789,7 @@ const Messages = () => {
   // Handle ?thread=thread_id parameter - open specific thread
   useEffect(() => {
     if (threadParam && messages.length > 0 && !selectedMessage) {
-      const threadMessage = messages.find(m => 
+      const threadMessage = messages.find(m =>
         (m.thread_root_id || m.id) === threadParam
       );
       if (threadMessage) {
@@ -925,7 +925,7 @@ const Messages = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-200">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Trebuie să fii autentificat</h1>
           <p className="text-gray-600">Conectează-te pentru a-ți vedea mesajele</p>
@@ -1001,13 +1001,13 @@ const Messages = () => {
       : null;
 
   return (
-    <div className="bg-gray-50 flex flex-col h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] lg:h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="bg-gray-50 dark:bg-background flex flex-col h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] lg:h-[calc(100vh-4rem)] overflow-hidden">
       <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-2 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-4 lg:py-6 gap-2 sm:gap-4 min-h-0 overflow-hidden">
         {/* Messages List - Mobile: hidden when thread selected, Desktop: always visible */}
-        <div className={`${selectedMessage ? 'hidden lg:flex' : 'flex'} lg:w-1/3 border-r border-gray-200 bg-white rounded-lg shadow-sm flex-col flex-shrink-0 h-full lg:h-[calc(100vh-8rem)]`}>
-          <div className="p-3 sm:p-4 border-b border-gray-200 shrink-0">
+        <div className={`${selectedMessage ? 'hidden lg:flex' : 'flex'} lg:w-1/3 border-r border-gray-200 dark:border-border bg-white dark:bg-card rounded-lg shadow-sm flex-col flex-shrink-0 h-full lg:h-[calc(100vh-8rem)]`}>
+          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-border shrink-0">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mesaje</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-foreground">Mesaje</h1>
               <div className="flex gap-1 sm:gap-2">
                 <Button
                   variant={context === 'site' ? 'default' : 'outline'}
@@ -1064,8 +1064,8 @@ const Messages = () => {
                       <div
                         key={message.thread_root_id || message.id}
                         onClick={() => handleMessageClick(message)}
-                        className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMessage?.thread_root_id === (message.thread_root_id || message.id)
-                          ? 'bg-blue-50 border-l-4 border-blue-600'
+                        className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${selectedMessage?.thread_root_id === (message.thread_root_id || message.id)
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600'
                           : ''
                           } ${!message.is_read && message.recipient_id === user.id ? 'font-semibold' : ''}`}
                       >
@@ -1078,18 +1078,18 @@ const Messages = () => {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-gray-900 dark:text-foreground truncate">
                                 {otherUserInList.name || 'Utilizator'}
                               </p>
                               {!message.is_read && message.recipient_id === user.id && (
                                 <span className="w-2.5 h-2.5 bg-red-500 rounded-full shrink-0 ml-2"></span>
                               )}
                             </div>
-                            <p className="text-xs sm:text-sm text-gray-600 truncate mt-0.5">
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-muted-foreground truncate mt-0.5">
                               {message.content ? message.content.substring(0, 60).trim() : message.subject || '(Fără mesaj)'}
                               {message.content && message.content.length > 60 ? '...' : ''}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
                               {new Date(message.created_at).toLocaleDateString('ro-RO', {
                                 day: 'numeric',
                                 month: 'short',
@@ -1108,11 +1108,11 @@ const Messages = () => {
         </div>
 
         {/* Thread View - Instagram/WhatsApp Style */}
-        <div className={`${selectedMessage ? 'flex' : 'hidden lg:flex'} flex-1 flex flex-col bg-white rounded-lg shadow-sm h-full min-h-0 lg:h-[calc(100vh-8rem)] ml-0 lg:ml-0 overflow-hidden`}>
+        <div className={`${selectedMessage ? 'flex' : 'hidden lg:flex'} flex-1 flex flex-col bg-white dark:bg-card rounded-lg shadow-sm h-full min-h-0 lg:h-[calc(100vh-8rem)] ml-0 lg:ml-0 overflow-hidden`}>
           {selectedMessage && selectedMessage.id === 'new' ? (
             <>
               {/* Header for new message */}
-              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 dark:border-border bg-white dark:bg-card shrink-0 flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1136,10 +1136,10 @@ const Messages = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 dark:text-foreground truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       {otherUser?.name || 'Utilizator'}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-500 truncate">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground truncate">
                       @{otherUser?.username || 'utilizator'}
                     </p>
                   </div>
@@ -1149,17 +1149,17 @@ const Messages = () => {
               {/* Empty messages container for new message */}
               <div
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0 flex items-center justify-center"
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 dark:bg-background/50 min-h-0 flex items-center justify-center"
                 style={{ scrollBehavior: 'smooth' }}
               >
-                <div className="text-center text-gray-500">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-sm">Scrie un mesaj pentru a începe conversația</p>
+                <div className="text-center text-gray-500 dark:text-slate-400">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+                  <p className="text-sm dark:text-slate-300">Scrie un mesaj pentru a începe conversația</p>
                 </div>
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 bg-white shrink-0 pb-safe">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 dark:border-border bg-white dark:bg-card shrink-0 pb-safe">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
@@ -1186,7 +1186,7 @@ const Messages = () => {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 hidden sm:block">
                   Apasă Enter pentru a trimite, Shift+Enter pentru linie nouă
                 </p>
               </div>
@@ -1194,7 +1194,7 @@ const Messages = () => {
           ) : selectedMessage && selectedMessage.id !== 'new' ? (
             <>
               {/* Header */}
-              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-b border-gray-200 dark:border-border bg-white dark:bg-card shrink-0 flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1218,10 +1218,10 @@ const Messages = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 dark:text-foreground truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       {otherUser?.name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-500 truncate">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground truncate">
                       @{otherUser?.username}
                     </p>
                   </div>
@@ -1280,7 +1280,7 @@ const Messages = () => {
               {/* Messages Container - Scrollable */}
               <div
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 min-h-0"
+                className="flex-1 overflow-y-auto p-2 sm:p-3 pb-2 sm:pb-3 bg-gray-50 dark:bg-background/50 min-h-0"
                 style={{ scrollBehavior: 'smooth' }}
               >
                 <div className="space-y-2 sm:space-y-3 max-w-3xl mx-auto">
@@ -1291,11 +1291,11 @@ const Messages = () => {
                         <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'} animate-pulse`}>
                           <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${i % 2 === 0 ? 'flex-row-reverse' : 'flex-row'}`}>
                             {i % 2 !== 0 && (
-                              <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-700 shrink-0" />
                             )}
                             <div className={`flex flex-col ${i % 2 === 0 ? 'items-end' : 'items-start'}`}>
-                              <div className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${i % 2 === 0 ? 'bg-gray-300' : 'bg-gray-200'} w-32 sm:w-40 h-12`} />
-                              <div className="w-16 h-4 bg-gray-200 rounded mt-1" />
+                              <div className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 ${i % 2 === 0 ? 'bg-gray-300 dark:bg-slate-600' : 'bg-gray-200 dark:bg-slate-700'} w-32 sm:w-40 h-12`} />
+                              <div className="w-16 h-4 bg-gray-200 dark:bg-slate-700 rounded mt-1" />
                             </div>
                           </div>
                         </div>
@@ -1315,74 +1315,74 @@ const Messages = () => {
                             animation: `fadeInUp 0.2s ease-out ${animationDelay}s both`
                           } : {}}
                         >
-                        <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${isMsgFromMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                          {/* Avatar - only show for received messages */}
-                          {!isMsgFromMe && (
-                            <Avatar className="w-8 h-8 shrink-0">
-                              <AvatarImage src={msg.sender_avatar} />
-                              <AvatarFallback>
-                                {msg.sender_name?.charAt(0) || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
+                          <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${isMsgFromMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {/* Avatar - only show for received messages */}
+                            {!isMsgFromMe && (
+                              <Avatar className="w-8 h-8 shrink-0">
+                                <AvatarImage src={msg.sender_avatar} />
+                                <AvatarFallback>
+                                  {msg.sender_name?.charAt(0) || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
 
-                          {/* Message Bubble */}
-                          <div className={`flex flex-col ${isMsgFromMe ? 'items-end' : 'items-start'}`}>
-                            <div
-                              className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${isMsgFromMe
-                                ? 'bg-blue-600 text-white rounded-br-sm'
-                                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-                                }`}
-                            >
-                              <p className={`text-sm sm:text-base whitespace-pre-wrap break-words ${isMsgFromMe ? 'text-white' : 'text-gray-900'}`}>
-                                {msg.content}
-                              </p>
-                            </div>
-                            <div className={`flex items-center gap-1 mt-1 px-1 ${isMsgFromMe ? 'justify-end' : 'justify-start'}`}>
-                              <span className="text-xs text-gray-500">
-                                {new Date(msg.created_at).toLocaleTimeString('ro-RO', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                              {/* WhatsApp-style read indicators (only for sent messages) */}
-                              {isMsgFromMe && (
-                                <div
-                                  className="flex items-center cursor-help"
-                                  title={
-                                    msg.is_read && msg.read_at
-                                      ? `Citit: ${new Date(msg.read_at).toLocaleString('ro-RO', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })}`
-                                      : 'Livrat (necitit)'
-                                  }
-                                >
-                                  {msg.is_read && msg.read_at ? (
-                                    // Two blue checkmarks for read (side by side, second slightly to the right like WhatsApp)
-                                    <div className="flex items-center relative" style={{ width: '18px', height: '16px' }}>
-                                      <svg className="w-4 h-4 text-blue-500 absolute left-0" fill="currentColor" viewBox="0 0 20 20">
+                            {/* Message Bubble */}
+                            <div className={`flex flex-col ${isMsgFromMe ? 'items-end' : 'items-start'}`}>
+                              <div
+                                className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${isMsgFromMe
+                                  ? 'bg-blue-600 text-white rounded-br-sm'
+                                  : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-200 dark:border-slate-700 rounded-bl-sm'
+                                  }`}
+                              >
+                                <p className={`text-sm sm:text-base whitespace-pre-wrap break-words ${isMsgFromMe ? 'text-white' : 'text-gray-900 dark:text-slate-100'}`}>
+                                  {msg.content}
+                                </p>
+                              </div>
+                              <div className={`flex items-center gap-1 mt-1 px-1 ${isMsgFromMe ? 'justify-end' : 'justify-start'}`}>
+                                <span className="text-xs text-gray-500 dark:text-slate-400">
+                                  {new Date(msg.created_at).toLocaleTimeString('ro-RO', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                {/* WhatsApp-style read indicators (only for sent messages) */}
+                                {isMsgFromMe && (
+                                  <div
+                                    className="flex items-center cursor-help"
+                                    title={
+                                      msg.is_read && msg.read_at
+                                        ? `Citit: ${new Date(msg.read_at).toLocaleString('ro-RO', {
+                                          day: 'numeric',
+                                          month: 'short',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}`
+                                        : 'Livrat (necitit)'
+                                    }
+                                  >
+                                    {msg.is_read && msg.read_at ? (
+                                      // Two blue checkmarks for read (side by side, second slightly to the right like WhatsApp)
+                                      <div className="flex items-center relative" style={{ width: '18px', height: '16px' }}>
+                                        <svg className="w-4 h-4 text-blue-500 absolute left-0" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                        <svg className="w-4 h-4 text-blue-500 absolute" style={{ left: '5px' }} fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    ) : (
+                                      // Single gray checkmark for delivered
+                                      <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
-                                      <svg className="w-4 h-4 text-blue-500 absolute" style={{ left: '5px' }} fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                  ) : (
-                                    // Single gray checkmark for delivered
-                                    <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  )}
-                                </div>
-                              )}
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
                     })
                   )}
                   <div ref={messagesEndRef} />
@@ -1402,7 +1402,7 @@ const Messages = () => {
               </div>
 
               {/* Reply Input - Fixed at bottom */}
-              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 bg-white shrink-0 pb-safe">
+              <div className="px-3 py-2.5 sm:px-3 sm:py-3 border-t border-gray-200 dark:border-border bg-white dark:bg-card shrink-0 pb-safe">
                 <div className="flex gap-2 items-end">
                   <Textarea
                     ref={textareaRef}
@@ -1432,11 +1432,11 @@ const Messages = () => {
                   </Button>
                 </div>
                 <div className="flex items-center justify-between mt-1 sm:mt-1.5 pb-2 sm:pb-0">
-                  <p className="text-xs text-gray-500 px-1 hidden sm:block">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 px-1 hidden sm:block">
                     Apasă Enter pentru a trimite, Shift+Enter pentru linie nouă
                   </p>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
-                    <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 ml-auto">
+                    <Lock className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
                     <span className="hidden sm:inline">Mesajele sunt criptate end-to-end</span>
                     <span className="sm:hidden">Criptate</span>
                   </div>
@@ -1445,15 +1445,15 @@ const Messages = () => {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 min-h-0">
-              <div className="text-center text-gray-500">
+              <div className="text-center text-gray-500 dark:text-muted-foreground">
                 {messages.length === 0 ? (
                   <>
-                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">Nu ai mesaje</p>
-                    <p className="text-sm text-gray-600 mb-6">Trimite un mesaj nou de pe profilul unui utilizator pentru a începe o conversație</p>
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md mx-auto">
-                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
-                        <Lock className="w-4 h-4 text-gray-400 shrink-0" />
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-slate-600" />
+                    <p className="text-lg font-medium text-gray-900 dark:text-foreground mb-2">Nu ai mesaje</p>
+                    <p className="text-sm text-gray-600 dark:text-muted-foreground mb-6">Trimite un mesaj nou de pe profilul unui utilizator pentru a începe o conversație</p>
+                    <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-800 max-w-md mx-auto">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600 dark:text-slate-400">
+                        <Lock className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />
                         <div className="text-center flex-1">
                           <div className="font-medium">Mesajele sunt criptate end-to-end.</div>
                           <div className="mt-1">Nimeni le poate citi, nici măcar administratorii.</div>
@@ -1463,12 +1463,12 @@ const Messages = () => {
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">Selectează o conversație</p>
-                    <p className="text-sm text-gray-600 mb-6">Alege o conversație din listă pentru a o citi</p>
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md mx-auto">
-                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
-                        <Lock className="w-4 h-4 text-gray-400 shrink-0" />
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-slate-600" />
+                    <p className="text-lg font-medium text-gray-900 dark:text-foreground mb-2">Selectează o conversație</p>
+                    <p className="text-sm text-gray-600 dark:text-muted-foreground mb-6">Alege o conversație din listă pentru a o citi</p>
+                    <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-800 max-w-md mx-auto">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-600 dark:text-slate-400">
+                        <Lock className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />
                         <div className="text-center flex-1">
                           <div className="font-medium">Mesajele sunt criptate end-to-end.</div>
                           <div className="mt-1">Nimeni le poate citi, nici măcar administratorii.</div>

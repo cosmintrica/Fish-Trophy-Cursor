@@ -154,7 +154,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Setări cont</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-50">Setări cont</h2>
 
             {/* Secțiunea Username */}
             <Card>
@@ -166,11 +166,11 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     <CardDescription>Schimbă username-ul profilului tău public</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
                         <div>
-                            <p className="font-medium">@{currentUsername || 'N/A'}</p>
+                            <p className="font-medium text-gray-900 dark:text-slate-50">@{currentUsername || 'N/A'}</p>
                             {usernameLastChanged && (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-500 dark:text-slate-400">
                                     Ultima schimbare: {new Date(usernameLastChanged).toLocaleDateString('ro-RO')}
                                 </p>
                             )}
@@ -178,12 +178,12 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     </div>
 
                     {!canChangeUsername() && usernameLastChanged && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg p-4">
                             <div className="flex items-center space-x-2 mb-2">
-                                <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                                <p className="text-yellow-800 font-medium">Limitare schimbare</p>
+                                <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                <p className="text-yellow-800 dark:text-yellow-300 font-medium">Limitare schimbare</p>
                             </div>
-                            <p className="text-yellow-700 text-sm">
+                            <p className="text-yellow-700 dark:text-yellow-400 text-sm">
                                 Username-ul poate fi schimbat doar de 2 ori pe an. Ultima schimbare a fost pe{' '}
                                 {new Date(usernameLastChanged).toLocaleDateString('ro-RO')}. 
                                 Poți schimba din nou după 6 luni.
@@ -202,7 +202,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     ) : (
                         <div className="space-y-4 max-w-md">
                             <div>
-                                <Label>Noul username</Label>
+                                <Label className="text-gray-900 dark:text-slate-50">Noul username</Label>
                                 <Input
                                     type="text"
                                     value={usernameData.newUsername}
@@ -212,7 +212,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                 />
                             </div>
                             <div>
-                                <Label>Confirmă username-ul</Label>
+                                <Label className="text-gray-900 dark:text-slate-50">Confirmă username-ul</Label>
                                 <Input
                                     type="text"
                                     value={usernameData.confirmUsername}
@@ -257,16 +257,16 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     <CardDescription>Gestionează adresa de email asociată contului</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
                         <div>
-                            <p className="font-medium">{user?.email}</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="font-medium text-gray-900 dark:text-slate-50">{user?.email}</p>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">
                                 {user?.email_confirmed_at ? (
-                                    <span className="text-green-600 flex items-center gap-1">
+                                    <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                                         ✓ Verificat
                                     </span>
                                 ) : (
-                                    <span className="text-yellow-600 flex items-center gap-1">
+                                    <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                                         ⚠ Neverificat
                                     </span>
                                 )}
@@ -288,7 +288,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                             ) : (
                                 <div className="space-y-4 max-w-md">
                                     <div>
-                                        <Label>Noua adresă de email</Label>
+                                        <Label className="text-gray-900 dark:text-slate-50">Noua adresă de email</Label>
                                         <Input
                                             type="email"
                                             value={emailData.newEmail}
@@ -296,7 +296,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         />
                                     </div>
                                     <div>
-                                        <Label>Confirmă noua adresă</Label>
+                                        <Label className="text-gray-900 dark:text-slate-50">Confirmă noua adresă</Label>
                                         <Input
                                             type="email"
                                             value={emailData.confirmEmail}
@@ -340,24 +340,24 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     {isGoogleUser && needsPassword ? (
                         // Google Auth user needs to set password first
                         <>
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg p-4 mb-4">
                                 <div className="flex items-center space-x-2 mb-2">
-                                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                    <p className="text-yellow-800 font-medium">Cont Google Auth</p>
+                                    <div className="w-2 h-2 bg-yellow-500 dark:bg-yellow-400 rounded-full"></div>
+                                    <p className="text-yellow-800 dark:text-yellow-300 font-medium">Cont Google Auth</p>
                                 </div>
-                                <p className="text-yellow-700 text-sm">
+                                <p className="text-yellow-700 dark:text-yellow-400 text-sm">
                                     Te-ai înregistrat cu Google. Pentru a putea schimba parola în viitor, setează o parolă acum.
                                 </p>
                             </div>
                             <div className="space-y-4 max-w-md">
                                 <div>
-                                    <Label htmlFor="newPassword">Parola nouă</Label>
+                                    <Label htmlFor="newPassword" className="text-gray-900 dark:text-slate-50">Parola nouă</Label>
                                     <Input
                                         id="newPassword"
                                         type="password"
                                         value={passwordData.newPassword}
                                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                        className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                        className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                         placeholder="Parola nouă (min 8 caractere, litere + cifre)"
                                     />
                                     {passwordErrors.newPassword && (
@@ -365,13 +365,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                     )}
                                 </div>
                                 <div>
-                                    <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
+                                    <Label htmlFor="confirmPassword" className="text-gray-900 dark:text-slate-50">Confirmă parola nouă</Label>
                                     <Input
                                         id="confirmPassword"
                                         type="password"
                                         value={passwordData.confirmPassword}
                                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                        className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                        className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                         placeholder="Confirmă parola nouă"
                                     />
                                     {passwordErrors.confirmPassword && (
@@ -387,12 +387,12 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     ) : isGoogleUser ? (
                         // Google Auth user with password already set
                         <>
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-lg p-4 mb-4">
                                 <div className="flex items-center space-x-2 mb-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <p className="text-green-800 font-medium">Cont Google Auth</p>
+                                    <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
+                                    <p className="text-green-800 dark:text-green-300 font-medium">Cont Google Auth</p>
                                 </div>
-                                <p className="text-green-700 text-sm">
+                                <p className="text-green-700 dark:text-green-400 text-sm">
                                     Te-ai înregistrat cu Google și ai o parolă setată. Poți schimba parola folosind formularul de mai jos.
                                 </p>
                             </div>
@@ -404,13 +404,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                             ) : (
                                 <div className="space-y-4 max-w-md">
                                     <div>
-                                        <Label htmlFor="currentPassword">Parola actuală</Label>
+                                        <Label htmlFor="currentPassword" className="text-gray-900 dark:text-slate-50">Parola actuală</Label>
                                         <Input
                                             id="currentPassword"
                                             type="password"
                                             value={passwordData.currentPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Parola actuală"
                                         />
                                         {passwordErrors.currentPassword && (
@@ -418,13 +418,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="newPassword">Parola nouă</Label>
+                                        <Label htmlFor="newPassword" className="text-gray-900 dark:text-slate-50">Parola nouă</Label>
                                         <Input
                                             id="newPassword"
                                             type="password"
                                             value={passwordData.newPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Parola nouă (min 8 caractere, litere + cifre)"
                                         />
                                         {passwordErrors.newPassword && (
@@ -432,13 +432,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
+                                        <Label htmlFor="confirmPassword" className="text-gray-900 dark:text-slate-50">Confirmă parola nouă</Label>
                                         <Input
                                             id="confirmPassword"
                                             type="password"
                                             value={passwordData.confirmPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Confirmă parola nouă"
                                         />
                                         {passwordErrors.confirmPassword && (
@@ -468,13 +468,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                             ) : (
                                 <div className="space-y-4 max-w-md">
                                     <div>
-                                        <Label htmlFor="currentPassword">Parola actuală</Label>
+                                        <Label htmlFor="currentPassword" className="text-gray-900 dark:text-slate-50">Parola actuală</Label>
                                         <Input
                                             id="currentPassword"
                                             type="password"
                                             value={passwordData.currentPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Parola actuală"
                                         />
                                         {passwordErrors.currentPassword && (
@@ -482,13 +482,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="newPassword">Parola nouă</Label>
+                                        <Label htmlFor="newPassword" className="text-gray-900 dark:text-slate-50">Parola nouă</Label>
                                         <Input
                                             id="newPassword"
                                             type="password"
                                             value={passwordData.newPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Parola nouă (min 8 caractere, litere + cifre)"
                                         />
                                         {passwordErrors.newPassword && (
@@ -496,13 +496,13 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         )}
                                     </div>
                                     <div>
-                                        <Label htmlFor="confirmPassword">Confirmă parola nouă</Label>
+                                        <Label htmlFor="confirmPassword" className="text-gray-900 dark:text-slate-50">Confirmă parola nouă</Label>
                                         <Input
                                             id="confirmPassword"
                                             type="password"
                                             value={passwordData.confirmPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                            className={`transition-all duration-300 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}`}
+                                            className={`transition-all duration-300 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700 ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'}`}
                                             placeholder="Confirmă parola nouă"
                                         />
                                         {passwordErrors.confirmPassword && (
@@ -540,7 +540,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     <CardDescription>Gestionează-ți conturile conectate pentru autentificare</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                                 <svg className="w-6 h-6" viewBox="0 0 24 24">
@@ -550,19 +550,19 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                                 </svg>
                                 <div>
-                                    <p className="font-medium text-gray-900">Google</p>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="font-medium text-gray-900 dark:text-slate-50">Google</p>
+                                    <p className="text-sm text-gray-600 dark:text-slate-400">
                                         {isGoogleUser ? 'Cont conectat' : 'Nu este conectat'}
                                     </p>
                                 </div>
                             </div>
                             <div>
                                 {isGoogleUser ? (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                         ✓ Conectat
                                     </span>
                                 ) : (
-                                    <span className="text-gray-500 text-sm">
+                                    <span className="text-gray-500 dark:text-slate-400 text-sm">
                                         Nu este conectat
                                     </span>
                                 )}
@@ -585,21 +585,21 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <div>
-                                <Label className="font-medium">Notificări recorduri</Label>
-                                <p className="text-sm text-gray-600">Primești email când recordul tău este verificat</p>
+                                <Label className="font-medium text-gray-900 dark:text-slate-50">Notificări recorduri</Label>
+                                <p className="text-sm text-gray-600 dark:text-slate-400">Primești email când recordul tău este verificat</p>
                             </div>
                             <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="flex items-center justify-between">
                             <div>
-                                <Label className="font-medium">Newsletter</Label>
+                                <Label className="font-medium text-gray-900 dark:text-slate-50">Newsletter</Label>
                                 <p className="text-sm text-gray-600">Primești noutăți despre competiții și evenimente</p>
                             </div>
                             <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="flex items-center justify-between">
                             <div>
-                                <Label className="font-medium">Notificări comunitate</Label>
+                                <Label className="font-medium text-gray-900 dark:text-slate-50">Notificări comunitate</Label>
                                 <p className="text-sm text-gray-600">Primești actualizări despre activitatea comunității</p>
                             </div>
                             <input type="checkbox" className="w-4 h-4 text-blue-600" />
@@ -609,30 +609,30 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
             </Card>
 
             {/* Secțiunea Ștergere Cont */}
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20">
                 <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-red-700">
+                    <CardTitle className="flex items-center space-x-2 text-red-700 dark:text-red-300">
                         <Trash2 className="w-5 h-5" />
                         <span>Ștergere cont</span>
                     </CardTitle>
-                    <CardDescription className="text-red-600">
+                    <CardDescription className="text-red-600 dark:text-red-400">
                         Această acțiune este permanentă și nu poate fi anulată
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="bg-red-100 border border-red-200 rounded-lg p-4">
+                    <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
                         <div className="flex items-start space-x-3">
                             <div className="flex-shrink-0">
-                                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                <div className="w-6 h-6 bg-red-500 dark:bg-red-600 rounded-full flex items-center justify-center">
                                     <span className="text-white text-sm font-bold">!</span>
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-red-800 font-medium mb-2">Atenție!</h4>
-                                <p className="text-red-700 text-sm mb-3">
+                                <h4 className="text-red-800 dark:text-red-300 font-medium mb-2">Atenție!</h4>
+                                <p className="text-red-700 dark:text-red-400 text-sm mb-3">
                                     Ștergerea contului va elimina permanent:
                                 </p>
-                                <ul className="text-red-700 text-sm space-y-1 ml-4">
+                                <ul className="text-red-700 dark:text-red-400 text-sm space-y-1 ml-4">
                                     <li>• Toate datele personale și profilul</li>
                                     <li>• Toate recordurile și realizările</li>
                                     <li>• Echipamentele salvate</li>
@@ -664,7 +664,7 @@ export const SettingsTab = ({ user, isGoogleUser, needsPassword, username }: Set
                                         value={deletePassword}
                                         onChange={(e) => setDeletePassword(e.target.value)}
                                         placeholder="Introdu parola contului"
-                                        className="mt-2 border-red-300 focus:border-red-500"
+                                        className="mt-2 border-red-300 dark:border-red-700 focus:border-red-500 dark:focus:border-red-500 dark:bg-slate-800 dark:text-slate-50"
                                     />
                                 </div>
                             )}

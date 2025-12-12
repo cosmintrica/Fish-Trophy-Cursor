@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
 import { User, MessageSquare, Award, TrendingUp, Clock, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useForumStats } from '../hooks/useForumStats';
+import SEOHead from '../../components/SEOHead';
 import { MemberListSkeleton } from '../../components/skeletons/MemberSkeleton';
 
 export default function ActiveMembers() {
@@ -22,7 +22,7 @@ export default function ActiveMembers() {
     mostActiveMember: null as { username: string; postCount: number } | null,
     totalReputation: 0
   });
-  const { stats: forumStats } = useForumStats();
+
 
   const MEMBERS_PER_PAGE = 20;
 
@@ -189,16 +189,48 @@ export default function ActiveMembers() {
         margin: '0 auto',
         padding: isMobile ? '0.75rem 0.75rem' : '1rem 1rem',
         width: '100%',
-        overflowX: 'hidden'
+        overflowX: 'hidden',
+        paddingTop: '1.5rem'
       }}>
-        <h1 style={{
-          fontSize: isMobile ? '1.25rem' : '1.75rem',
-          fontWeight: '700',
-          color: theme.text,
-          marginBottom: isMobile ? '1rem' : '1.5rem'
-        }}>
-          👥 Membri Activi
-        </h1>
+        <SEOHead
+          title="Membri Activi | Fish Trophy"
+          description="Vezi cei mai activi membri ai comunității Fish Trophy. Top utilizatori, reputație și statistici."
+          canonical="https://fishtrophy.ro/forum/members"
+        />
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 px-0 gap-4">
+          <div>
+            <h1 style={{
+              fontSize: isMobile ? '1.5rem' : '1.75rem',
+              fontWeight: '700',
+              color: theme.text,
+              marginBottom: '0.25rem'
+            }}>
+              👥 Membri Activi
+            </h1>
+            <p className="text-sm text-gray-500">
+              Top contributori și membri apreciați din comunitate
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 w-full md:w-auto md:flex md:gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <span className="font-bold text-blue-600 text-lg">{stats.membersToday}</span>
+              <span className="text-xs text-center leading-tight">Membri azi</span>
+            </div>
+            <div className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <span className="font-bold text-green-600 text-lg">{stats.membersThisWeek}</span>
+              <span className="text-xs text-center leading-tight">Săptămâna asta</span>
+            </div>
+            <div className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <span className="font-bold text-purple-600 text-lg">{stats.totalReputation}</span>
+              <span className="text-xs flex items-center gap-1 text-center leading-tight">
+                <span>Reputație Totală</span>
+                <Award size={12} className="text-yellow-500" />
+              </span>
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <MemberListSkeleton count={MEMBERS_PER_PAGE} />
@@ -215,86 +247,99 @@ export default function ActiveMembers() {
           </div>
         ) : (
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: isMobile ? '0.5rem' : '0.75rem'
+            backgroundColor: theme.surface,
+            borderRadius: isMobile ? '0.375rem' : '0.5rem',
+            border: `1px solid ${theme.border}`,
+            overflow: 'hidden'
           }}>
-            {members.map((member) => {
+            {/* Header Row (Desktop only) */}
+            {!isMobile && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(250px, 2fr) 1fr 1fr 1fr 200px', // Username | Posts | Topics | Rep | Last Seen
+                padding: '0.75rem 1rem',
+                backgroundColor: theme.background,
+                borderBottom: `1px solid ${theme.border}`,
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: theme.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                alignItems: 'center'
+              }}>
+                <div>Membru / Rang</div>
+                <div style={{ textAlign: 'center' }}>Postări</div>
+                <div style={{ textAlign: 'center' }}>Topicuri</div>
+                <div style={{ textAlign: 'center' }}>Reputație</div>
+                <div style={{ textAlign: 'right' }}>Ultima vizită</div>
+              </div>
+            )}
+
+            {/* Members List */}
+            {members.map((member, index) => {
               const rankInfo = getRankDisplay(member.rank || 'ou_de_peste');
 
               return (
                 <div
                   key={member.user_id || member.id}
                   style={{
-                    backgroundColor: theme.surface,
-                    borderRadius: isMobile ? '0.375rem' : '0.5rem',
-                    border: `1px solid ${theme.border}`,
-                    padding: isMobile ? '0.75rem' : '1rem',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    display: isMobile ? 'flex' : 'grid',
+                    flexDirection: isMobile ? 'column' : 'unset',
+                    gridTemplateColumns: isMobile ? '1fr' : 'minmax(250px, 2fr) 1fr 1fr 1fr 200px',
+                    padding: isMobile ? '0.75rem' : '0.75rem 1rem',
+                    borderBottom: index !== members.length - 1 ? `1px solid ${theme.border}` : 'none',
+                    alignItems: 'center',
+                    gap: isMobile ? '0.5rem' : '0',
+                    transition: 'background-color 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = theme.primary;
-                    e.currentTarget.style.boxShadow = `0 2px 4px rgba(0, 0, 0, 0.1)`;
-                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = theme.border;
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  {/* Online Status Indicator - Top Right */}
-                  {member.is_online && (
-                    <div style={{
-                      position: 'absolute',
-                      top: isMobile ? '0.5rem' : '0.75rem',
-                      right: isMobile ? '0.5rem' : '0.75rem',
-                      width: isMobile ? '0.5rem' : '0.625rem',
-                      height: isMobile ? '0.5rem' : '0.625rem',
-                      backgroundColor: '#10b981',
-                      borderRadius: '50%',
-                      border: `2px solid ${theme.surface}`,
-                      zIndex: 10,
-                      boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)'
-                    }} />
-                  )}
-
-                  {/* Header: Avatar + Username + Rank */}
-                  <div style={{
-                    display: 'flex',
-                    gap: isMobile ? '0.5rem' : '0.75rem',
-                    marginBottom: isMobile ? '0.5rem' : '0.75rem',
-                    alignItems: 'center'
-                  }}>
-                    {/* Avatar - Real profile picture */}
-                    <div style={{
-                      width: isMobile ? '2.5rem' : '3rem',
-                      height: isMobile ? '2.5rem' : '3rem',
-                      borderRadius: '50%',
-                      background: member.photo_url
-                        ? `url(${member.photo_url}) center/cover`
-                        : member.avatar_url
-                          ? `url(${member.avatar_url}) center/cover`
-                          : generateUserColor(member.username || 'User'),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      fontWeight: '600',
-                      flexShrink: 0,
-                      border: `2px solid ${theme.border}`,
-                      position: 'relative'
-                    }}>
-                      {!member.photo_url && !member.avatar_url &&
-                        (member.username?.charAt(0).toUpperCase() || '?')}
+                  {/* Column 1: Avatar + Name + Rank */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                    {/* Avatar */}
+                    <div style={{ position: 'relative' }}>
+                      <div style={{
+                        width: isMobile ? '2rem' : '2.5rem',
+                        height: isMobile ? '2rem' : '2.5rem',
+                        borderRadius: '50%',
+                        background: member.photo_url
+                          ? `url(${member.photo_url}) center/cover`
+                          : member.avatar_url
+                            ? `url(${member.avatar_url}) center/cover`
+                            : generateUserColor(member.username || 'User'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: isMobile ? '0.75rem' : '1rem',
+                        fontWeight: '600',
+                        flexShrink: 0,
+                        border: `1px solid ${theme.border}`
+                      }}>
+                        {!member.photo_url && !member.avatar_url &&
+                          (member.username?.charAt(0).toUpperCase() || '?')}
+                      </div>
+                      {/* Online Status */}
+                      {member.is_online && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: '0.625rem',
+                          height: '0.625rem',
+                          backgroundColor: '#10b981',
+                          borderRadius: '50%',
+                          border: `1.5px solid ${theme.surface}`,
+                        }} />
+                      )}
                     </div>
 
-                    {/* Username + Rank */}
+                    {/* Name + Rank */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Link
                         to={`/forum/user/${member.username}`}
@@ -302,27 +347,20 @@ export default function ActiveMembers() {
                         style={{
                           fontWeight: '600',
                           color: theme.text,
-                          fontSize: isMobile ? '0.875rem' : '1rem',
-                          marginBottom: '0.125rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          fontSize: isMobile ? '0.9rem' : '0.95rem',
                           textDecoration: 'none',
-                          display: 'block'
+                          display: 'block',
+                          lineHeight: '1.2',
+                          marginBottom: '0.125rem'
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = theme.primary;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = theme.text;
-                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = theme.primary}
+                        onMouseLeave={(e) => e.currentTarget.style.color = theme.text}
                       >
                         {member.username}
                       </Link>
                       <div style={{
-                        fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                        fontSize: '0.75rem',
                         color: rankInfo.color,
-                        fontWeight: '500',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.25rem'
@@ -333,107 +371,64 @@ export default function ActiveMembers() {
                     </div>
                   </div>
 
-                  {/* Stats Grid - Compact */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: isMobile ? '0.5rem' : '0.75rem',
-                    padding: isMobile ? '0.5rem' : '0.75rem',
-                    backgroundColor: theme.background,
-                    borderRadius: '0.375rem',
-                    marginBottom: isMobile ? '0.5rem' : '0.75rem'
-                  }}>
-                    {/* Postări */}
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: isMobile ? '0.75rem' : '0.875rem',
-                        color: theme.textSecondary,
-                        marginBottom: '0.125rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        <MessageSquare size={isMobile ? 12 : 14} />
-                        <span>Postări</span>
-                      </div>
-                      <div style={{
-                        fontSize: isMobile ? '1rem' : '1.125rem',
-                        fontWeight: '700',
-                        color: theme.text
-                      }}>
-                        {member.post_count || 0}
-                      </div>
-                    </div>
-
-                    {/* Topicuri */}
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: isMobile ? '0.75rem' : '0.875rem',
-                        color: theme.textSecondary,
-                        marginBottom: '0.125rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        <User size={isMobile ? 12 : 14} />
-                        <span>Topicuri</span>
-                      </div>
-                      <div style={{
-                        fontSize: isMobile ? '1rem' : '1.125rem',
-                        fontWeight: '700',
-                        color: theme.text
-                      }}>
-                        {member.topic_count || 0}
-                      </div>
-                    </div>
-
-                    {/* Reputație */}
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: isMobile ? '0.75rem' : '0.875rem',
-                        color: theme.textSecondary,
-                        marginBottom: '0.125rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        <Award size={isMobile ? 12 : 14} />
-                        <span>Rep.</span>
-                      </div>
-                      <div style={{
-                        fontSize: isMobile ? '1rem' : '1.125rem',
-                        fontWeight: '700',
-                        color: member.reputation_points >= 0 ? theme.primary : '#ef4444'
-                      }}>
-                        {member.reputation_points >= 0 ? '+' : ''}{member.reputation_points || 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Last Seen - Compact */}
-                  {member.last_seen_at && (
+                  {/* Mobile Layout: Stats Row */}
+                  {isMobile && (
                     <div style={{
-                      fontSize: isMobile ? '0.625rem' : '0.6875rem',
-                      color: theme.textSecondary,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      paddingTop: isMobile ? '0.25rem' : '0.375rem',
-                      borderTop: `1px solid ${theme.border}`
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr 1fr',
+                      gap: '0.5rem',
+                      marginTop: '0.25rem',
+                      borderTop: `1px solid ${theme.border}`,
+                      paddingTop: '0.5rem'
                     }}>
-                      <Clock size={isMobile ? 9 : 10} />
-                      <span>
-                        {member.is_online ? (
-                          <span style={{ color: '#10b981', fontWeight: '600' }}>Online acum</span>
-                        ) : (
-                          formatSmartDateTime(member.last_seen_at)
-                        )}
-                      </span>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.65rem', color: theme.textSecondary }}>Postări</div>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{member.post_count || 0}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.65rem', color: theme.textSecondary }}>Topicuri</div>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{member.topic_count || 0}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.65rem', color: theme.textSecondary }}>Reputație</div>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem', color: member.reputation_points >= 0 ? theme.primary : '#ef4444' }}>
+                          {member.reputation_points >= 0 ? '+' : ''}{member.reputation_points || 0}
+                        </div>
+                      </div>
                     </div>
                   )}
+
+                  {/* Columns 2-4: Stats (Desktop Only) */}
+                  {!isMobile && (
+                    <>
+                      <div style={{ textAlign: 'center', fontWeight: '500', color: theme.text }}>
+                        {member.post_count || 0}
+                      </div>
+                      <div style={{ textAlign: 'center', fontWeight: '500', color: theme.text }}>
+                        {member.topic_count || 0}
+                      </div>
+                      <div style={{ textAlign: 'center', fontWeight: '600', color: member.reputation_points >= 0 ? theme.primary : '#ef4444' }}>
+                        {member.reputation_points >= 0 ? '+' : ''}{member.reputation_points || 0}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Column 5 / Mobile Footer: Last Seen */}
+                  <div style={{
+                    textAlign: isMobile ? 'left' : 'right',
+                    fontSize: '0.75rem',
+                    color: theme.textSecondary,
+                    marginTop: isMobile ? '0.5rem' : '0'
+                  }}>
+                    {member.is_online ? (
+                      <span style={{ color: '#10b981', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                        Online
+                      </span>
+                    ) : (
+                      member.last_seen_at ? formatSmartDateTime(member.last_seen_at) : 'N/A'
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -592,241 +587,9 @@ export default function ActiveMembers() {
           </div>
         )}
 
-        {/* Statistics Section - Bottom */}
-        {!loading && members.length > 0 && (
-          <div style={{
-            marginTop: isMobile ? '1.5rem' : '2rem',
-            padding: isMobile ? '1rem' : '1.5rem',
-            backgroundColor: theme.surface,
-            borderRadius: isMobile ? '0.5rem' : '0.75rem',
-            border: `1px solid ${theme.border}`
-          }}>
-            <h2 style={{
-              fontSize: isMobile ? '1rem' : '1.25rem',
-              fontWeight: '600',
-              color: theme.text,
-              marginBottom: isMobile ? '1rem' : '1.5rem'
-            }}>
-              📊 Statistici Membri Activi
-            </h2>
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-              gap: isMobile ? '0.75rem' : '1rem'
-            }}>
-              {/* Total Membri Afișați */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <Users size={isMobile ? 14 : 16} />
-                  <span>Total Afișați</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.text
-                }}>
-                  {members.length}
-                </div>
-              </div>
-
-              {/* Membri Noi Astăzi */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <Clock size={isMobile ? 14 : 16} />
-                  <span>Noi Astăzi</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.primary
-                }}>
-                  {stats.membersToday}
-                </div>
-              </div>
-
-              {/* Membri Noi Săptămâna Aceasta */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <TrendingUp size={isMobile ? 14 : 16} />
-                  <span>Noi Săptămâna</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.secondary
-                }}>
-                  {stats.membersThisWeek}
-                </div>
-              </div>
-
-              {/* Cel Mai Activ Membru */}
-              {stats.mostActiveMember && (
-                <div style={{
-                  textAlign: 'center',
-                  padding: isMobile ? '0.75rem' : '1rem',
-                  backgroundColor: theme.background,
-                  borderRadius: '0.5rem'
-                }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.25rem'
-                  }}>
-                    <Award size={isMobile ? 14 : 16} />
-                    <span>Cel Mai Activ</span>
-                  </div>
-                  <Link
-                    to={`/forum/user/${stats.mostActiveMember.username}`}
-                    style={{
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      fontWeight: '600',
-                      color: theme.primary,
-                      textDecoration: 'none',
-                      display: 'block'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.textDecoration = 'underline';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.textDecoration = 'none';
-                    }}
-                  >
-                    {stats.mostActiveMember.username}
-                  </Link>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginTop: '0.25rem'
-                  }}>
-                    {stats.mostActiveMember.postCount} postări
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Forum-wide Stats */}
-            {forumStats && (
-              <div style={{
-                marginTop: isMobile ? '1rem' : '1.5rem',
-                paddingTop: isMobile ? '1rem' : '1.5rem',
-                borderTop: `1px solid ${theme.border}`,
-                display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                gap: isMobile ? '0.75rem' : '1rem'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.25rem'
-                  }}>
-                    Total Membri
-                  </div>
-                  <div style={{
-                    fontSize: isMobile ? '1rem' : '1.25rem',
-                    fontWeight: '700',
-                    color: theme.text
-                  }}>
-                    {forumStats.total_users.toLocaleString('ro-RO')}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.25rem'
-                  }}>
-                    Total Topicuri
-                  </div>
-                  <div style={{
-                    fontSize: isMobile ? '1rem' : '1.25rem',
-                    fontWeight: '700',
-                    color: theme.text
-                  }}>
-                    {forumStats.total_topics.toLocaleString('ro-RO')}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.25rem'
-                  }}>
-                    Total Postări
-                  </div>
-                  <div style={{
-                    fontSize: isMobile ? '1rem' : '1.25rem',
-                    fontWeight: '700',
-                    color: theme.text
-                  }}>
-                    {forumStats.total_posts.toLocaleString('ro-RO')}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.25rem'
-                  }}>
-                    Online Acum
-                  </div>
-                  <div style={{
-                    fontSize: isMobile ? '1rem' : '1.25rem',
-                    fontWeight: '700',
-                    color: '#10b981'
-                  }}>
-                    {forumStats.online_users}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </ForumLayout>
+      </div >
+    </ForumLayout >
   );
 }
+

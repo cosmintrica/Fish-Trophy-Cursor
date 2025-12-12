@@ -179,6 +179,7 @@ export const getR2ImageUrl = (category: string, filename: string): string => {
 export const getNetlifyFunctionsBaseUrl = (): string => {
   if (import.meta.env.DEV) {
     // In development, use window.location.hostname to work on mobile
+    // This allows accessing Netlify Functions on port 8889 from any device on the network
     const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     return `http://${hostname}:8889`;
   }

@@ -35,13 +35,13 @@ export default function Cookies() {
   const content = (
     <div className={cn(
       "mx-auto transition-colors duration-200",
-      isForum ? "max-w-[1200px] p-4 text-slate-900 dark:text-slate-100" : "max-w-[1100px] py-8 px-4 text-gray-800"
+      isForum ? "max-w-[1200px] p-4 text-slate-900 dark:text-slate-100" : "max-w-[1100px] py-8 px-4 text-gray-800 dark:text-gray-200"
     )}>
       <div className={cn(
         "rounded-2xl transition-all duration-200",
         isForum
           ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8"
-          : "bg-white p-12 shadow-xl rounded-2xl"
+          : "bg-white dark:bg-slate-800 p-12 shadow-xl rounded-2xl border border-gray-100 dark:border-slate-700"
       )}>
         {/* Header */}
         <div className="mb-8 text-center">
@@ -55,13 +55,13 @@ export default function Cookies() {
           </div>
           <h1 className={cn(
             "font-bold mb-2",
-            isForum ? "text-3xl text-slate-900 dark:text-white" : "text-4xl text-gray-900"
+            isForum ? "text-3xl text-slate-900 dark:text-white" : "text-4xl text-gray-900 dark:text-white"
           )}>
             Politica de Cookie-uri
           </h1>
           <p className={cn(
             "text-base",
-            isForum ? "text-slate-500 dark:text-slate-400" : "text-gray-500"
+            isForum ? "text-slate-500 dark:text-slate-400" : "text-gray-500 dark:text-gray-400"
           )}>
             Ultima actualizare: 10 decembrie 2025
           </p>
@@ -71,7 +71,7 @@ export default function Cookies() {
         <section className="mb-8">
           <p className={cn(
             "text-lg leading-relaxed mb-4",
-            isForum ? "text-slate-800 dark:text-slate-200" : "text-gray-700"
+            isForum ? "text-slate-800 dark:text-slate-200" : "text-gray-700 dark:text-gray-300"
           )}>
             Această Politică de Cookie-uri explică ce sunt cookie-urile, cum le folosim pe site-ul <strong>Fish Trophy</strong>,
             și cum poți gestiona preferințele tale. Respectăm legislația GDPR și oferim control complet asupra cookie-urilor.
@@ -82,7 +82,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <Info size={24} />
             1. Ce sunt cookie-urile?
@@ -91,18 +91,18 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Cookie-urile sunt fișiere text mici stocate pe dispozitivul tău când vizitezi un site web.
               Ele permit site-ului să-ți amintească preferințele, să îmbunătățească experiența și să ofere funcții personalizate.
             </p>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Cookie-urile nu conțin informații personale identificabile direct și nu pot dăuna dispozitivului tău.
             </p>
@@ -113,7 +113,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <Settings size={24} />
             2. Tipuri de cookie-uri pe care le folosim
@@ -124,26 +124,26 @@ export default function Cookies() {
             "p-6 rounded-lg border mb-4",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <div className="flex items-center gap-2 mb-3">
-              <Shield size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <Shield size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"} />
               <h3 className={cn(
                 "text-xl font-semibold",
-                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900 dark:text-white"
               )}>
                 2.1. Cookie-uri Necesare (Întotdeauna Active)
               </h3>
             </div>
             <p className={cn(
               "leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Aceste cookie-uri sunt esențiale pentru funcționarea site-ului și nu pot fi dezactivate:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Autentificare:</strong> mențin sesiunea ta de utilizator</li>
               <li><strong>Securitate:</strong> protejează împotriva atacurilor și fraudelor</li>
@@ -160,26 +160,26 @@ export default function Cookies() {
             "p-6 rounded-lg border mb-4",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <div className="flex items-center gap-2 mb-3">
-              <BarChart3 size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <BarChart3 size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"} />
               <h3 className={cn(
                 "text-xl font-semibold",
-                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900 dark:text-white"
               )}>
                 2.2. Cookie-uri de Analiză (Cu Consimțământ)
               </h3>
             </div>
             <p className={cn(
               "leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Ne ajută să înțelegem cum folosești site-ul pentru a-l îmbunătăți:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Google Analytics:</strong> analizează traficul, paginile populare, comportamentul utilizatorilor</li>
               <li><strong>Performanță:</strong> identifică probleme tehnice și zone de îmbunătățire</li>
@@ -195,26 +195,26 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <div className="flex items-center gap-2 mb-3">
-              <Target size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"} />
+              <Target size={20} className={isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"} />
               <h3 className={cn(
                 "text-xl font-semibold",
-                isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+                isForum ? "text-slate-900 dark:text-white" : "text-gray-900 dark:text-white"
               )}>
                 2.3. Cookie-uri de Marketing (Cu Consimțământ)
               </h3>
             </div>
             <p className={cn(
               "leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Folosite pentru publicitate personalizată și măsurarea campaniilor (în viitor):
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed mb-3",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Publicitate:</strong> afișează anunțuri relevante pentru tine</li>
               <li><strong>Retargeting:</strong> reafișează anunțuri pentru utilizatori care au vizitat site-ul</li>
@@ -230,7 +230,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             3. Cum poți gestiona cookie-urile
           </h2>
@@ -238,17 +238,17 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Ai control complet asupra cookie-urilor:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Banner de consimțământ:</strong> la prima vizită, poți alege ce cookie-uri să accepti</li>
               <li><strong>Setări browser:</strong> poți șterge sau bloca cookie-uri din setările browser-ului</li>
@@ -258,11 +258,11 @@ export default function Cookies() {
               "p-4 rounded-lg border",
               isForum
                 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                : "bg-blue-50 border-blue-200"
+                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
             )}>
               <p className={cn(
                 "font-medium m-0 flex items-center gap-2",
-                isForum ? "text-blue-800 dark:text-blue-300" : "text-blue-900"
+                isForum ? "text-blue-800 dark:text-blue-300" : "text-blue-900 dark:text-blue-300"
               )}>
                 <span>⚠️</span>
                 <strong>Notă:</strong> Dezactivarea cookie-urilor necesare poate afecta funcționalitatea site-ului.
@@ -275,7 +275,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             4. Cookie-uri de la terți
           </h2>
@@ -283,17 +283,17 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Folosim servicii terțe care pot seta cookie-uri:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Google Analytics:</strong> pentru analiză (vezi <a href="https://policies.google.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>)</li>
               <li><strong>Supabase:</strong> pentru autentificare și bază de date (vezi <a href="https://supabase.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Supabase Privacy Policy</a>)</li>
@@ -308,7 +308,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             5. Actualizări ale acestei politici
           </h2>
@@ -316,11 +316,11 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Putem actualiza această politică periodic pentru a reflecta schimbări în practicile noastre sau în legislație.
               Vom notifica utilizatorii despre modificări semnificative prin banner sau email.
@@ -332,7 +332,7 @@ export default function Cookies() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             6. Contact
           </h2>
@@ -340,17 +340,17 @@ export default function Cookies() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-2",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Pentru întrebări despre cookie-uri:
             </p>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <strong>Email:</strong>{' '}
               <a href="mailto:privacy@fishtrophy.ro" className="text-blue-600 dark:text-blue-400 hover:underline">
@@ -365,7 +365,7 @@ export default function Cookies() {
           "mt-12 pt-8 border-t text-center text-sm",
           isForum
             ? "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
-            : "border-gray-200 text-gray-500"
+            : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400"
         )}>
           <p>
             Pentru mai multe informații despre confidențialitate, consultă{' '}

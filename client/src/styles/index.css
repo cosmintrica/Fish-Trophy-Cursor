@@ -187,6 +187,10 @@ button,
   background: #f8fafc !important;
 }
 
+.dark .maplibregl-container {
+  background: #0f172a !important;
+}
+
 .maplibregl-canvas {
   background: #f8fafc !important;
 }
@@ -242,8 +246,14 @@ button,
     -webkit-text-size-adjust: 100%;
     /* Optimizează font loading */
     font-display: swap;
-    /* Basic background to prevent white flashes */
+    /* Basic background to prevent white flashes - Slate 50 */
     background-color: #f8fafc;
+    /* Smooth transition pentru dark mode */
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  html.dark {
+    background-color: #0f172a;
   }
 
   body {
@@ -254,28 +264,34 @@ button,
     /* Previne layout shift */
     margin: 0;
     padding: 0;
-    /* Setează background pe body, nu pe html pentru a evita dublarea */
-    background-color: #f8fafc;
+    /* Background scos pentru a lăsa gradientul din Layout să se vadă */
+    background-color: transparent;
     min-height: 100vh;
     /* Fix for 100vh on mobile */
     min-height: -webkit-fill-available;
+    /* Smooth transition pentru dark mode - optimizat */
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Dark mode overrides */
-  .dark body {
+  /* Force dark background on body when dark mode is active, as a fallback/base */
+  html.dark body {
     background-color: #0f172a;
+    /* slate-900 */
+    color: #f1f5f9;
+    /* slate-100 */
   }
+  
+  /* Tranziții specifice doar pentru html și body - nu interferă cu forumul */
 
+  /* Dark mode overrides moved to html.dark or handled by Tailwind */
+
+
+  /* Root container handles the gradient/main content background if needed */
   /* Root container handles the gradient/main content background if needed */
   #root {
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    /* Gradient subtil doar pe root */
-    background: linear-gradient(to bottom right, #eff6ff, #ffffff, #f0f9ff);
-  }
-
-  .dark #root {
-    background: linear-gradient(to bottom right, #0f172a, #1e293b);
+    /* Background scos pentru a lasa Layout-ul sa controleze tema prin Tailwind */
   }
 
   /* Fonturile sunt încărcate în index.html (Montserrat) */
@@ -414,4 +430,16 @@ button,
     background-size: cover;
     background-attachment: scroll;
   }
+}
+
+/* Dark mode popup tips */
+.dark .custom-popup .maplibregl-popup-tip {
+  border-top-color: #1e293b !important;
+  /* slate-800 */
+  border-bottom-color: #1e293b !important;
+}
+
+.dark .maplibregl-popup-tip {
+  border-top-color: #1e293b !important;
+  border-bottom-color: #1e293b !important;
 }

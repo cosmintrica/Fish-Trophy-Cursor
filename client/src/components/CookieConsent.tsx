@@ -23,6 +23,8 @@ interface CookieConsentState {
 export default function CookieConsent() {
   const location = useLocation();
   const isForum = location.pathname.startsWith('/forum');
+  // Dark mode is now globally synchronized via ThemeContext.tsx
+  // No need for separate detection - just use Tailwind dark: classes
 
   const [showBanner, setShowBanner] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -32,31 +34,6 @@ export default function CookieConsent() {
     analytics: false,
     marketing: false,
   });
-
-  useEffect(() => {
-    // Sync dark mode
-    const syncDarkMode = () => {
-      const isDataThemeDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      const shouldBeDark = isForum && isDataThemeDark;
-      document.documentElement.classList.toggle('dark', shouldBeDark);
-    };
-
-    syncDarkMode();
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-          syncDarkMode();
-        }
-      });
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-
-    return () => observer.disconnect();
-  }, [isForum]);
 
   useEffect(() => {
     const savedConsent = localStorage.getItem(COOKIE_CONSENT_KEY);
@@ -180,7 +157,7 @@ export default function CookieConsent() {
         </div>
 
         {/* Label on hover (Desktop only) */}
-        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md border border-gray-100 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0 pointer-events-none whitespace-nowrap hidden md:block">
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md border border-gray-100 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0 pointer-events-none whitespace-nowrap hidden md:block">
           Preferințe
           <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-transparent border-r-white dark:border-r-slate-800" />
         </div>
@@ -233,15 +210,15 @@ export default function CookieConsent() {
           animation-duration: 8s; /* Slower animation in dark mode/forum */
         }
       `}</style>
-      <div className={cn(
-        "fixed bottom-4 left-4 right-4 md:left-4 md:right-auto z-[9999] md:w-full max-w-md mx-auto md:mx-0 transition-all duration-500 ease-out transform translate-y-0 opacity-100",
-        "animate-in slide-in-from-bottom-8 fade-in leading-relaxed print:hidden"
-      )}>
         <div className={cn(
-          "rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] backdrop-blur-xl border border-white/20 overflow-hidden",
-          "bg-white/80 dark:bg-slate-900/80 dark:border-slate-700/50",
-          "relative group transition-all hover:bg-white/90 dark:hover:bg-slate-900/90"
+          "fixed bottom-4 left-4 right-4 md:left-4 md:right-auto z-[9999] md:w-full max-w-md mx-auto md:mx-0 transition-opacity duration-300 ease-out transform translate-y-0 opacity-100",
+          "animate-in slide-in-from-bottom-8 fade-in leading-relaxed print:hidden"
         )}>
+          <div className={cn(
+            "rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] backdrop-blur-xl border border-white/20 overflow-hidden",
+            "bg-white/80 dark:bg-slate-900/80 dark:border-slate-700/50",
+            "relative group transition-colors duration-300 hover:bg-white/90 dark:hover:bg-slate-900/90"
+          )}>
           {/* Animated Shimmer Overlay */}
           <div className="absolute inset-0 pointer-events-none bg-shimmer opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
@@ -258,7 +235,7 @@ export default function CookieConsent() {
                 </div>
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight tracking-tight">
+                <h3 className="font-bold text-gray-900 dark:text-slate-100 text-base leading-tight tracking-tight">
                   {showSettings ? 'Setări Năluci' : 'Prindem Cookie-uri?'}
                 </h3>
                 <p className="text-[10px] uppercase tracking-wider font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mt-0.5">
@@ -269,7 +246,7 @@ export default function CookieConsent() {
             {/* Close/Minimize button */}
             <button
               onClick={handleMinimize}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
               title="Minimizează"
             >
               <X className="w-4 h-4" />
@@ -280,7 +257,7 @@ export default function CookieConsent() {
           <div className="px-4 pb-4 relative z-10">
             {!showSettings ? (
               <>
-                <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed mb-4 font-medium">
+                <p className="text-gray-600 dark:text-slate-300 text-xs leading-relaxed mb-4 font-medium">
                   Folosim cookie-uri pentru a-ți asigura <span className="text-blue-600 dark:text-blue-400 font-bold">"captura cea mare"</span> (experiență optimă).
                   Analizăm curenții (traficul) și personalizăm echipamentul.
                 </p>
@@ -288,6 +265,12 @@ export default function CookieConsent() {
                   <Button
                     onClick={handleAcceptAll}
                     className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg shadow-blue-500/25 rounded-xl py-4 h-auto font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ 
+                      textRendering: 'optimizeLegibility',
+                      WebkitFontSmoothing: 'antialiased',
+                      MozOsxFontSmoothing: 'grayscale',
+                      backfaceVisibility: 'hidden'
+                    }}
                   >
                     Acceptă Toată Captura 🎣
                   </Button>
@@ -295,7 +278,7 @@ export default function CookieConsent() {
                     <Button
                       onClick={handleRejectAll}
                       variant="ghost"
-                      className="flex-1 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400 rounded-xl h-9 text-xs transition-colors"
+                      className="flex-1 text-gray-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400 rounded-xl h-9 text-xs transition-colors"
                     >
                       Respinge
                     </Button>
@@ -319,9 +302,9 @@ export default function CookieConsent() {
                         <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         <span className="font-bold text-xs text-gray-900 dark:text-white">Strict Necesare</span>
                       </div>
-                      <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">OBLIGATORIU</span>
+                      <span className="text-[9px] font-bold text-gray-500 dark:text-slate-400 bg-gray-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">OBLIGATORIU</span>
                     </div>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                    <p className="text-[10px] text-gray-500 dark:text-slate-400 leading-normal">
                       Esențiale pentru funcționarea apelor. Fără ele, barca nu plutește.
                     </p>
                   </div>
@@ -343,7 +326,7 @@ export default function CookieConsent() {
                         <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
                       </label>
                     </div>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                    <p className="text-[10px] text-gray-500 dark:text-slate-400 leading-normal">
                       Măsurăm dimensiunea capturilor pentru statistici.
                     </p>
                   </div>
@@ -365,7 +348,7 @@ export default function CookieConsent() {
                         <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                       </label>
                     </div>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">
+                    <p className="text-[10px] text-gray-500 dark:text-slate-400 leading-normal">
                       Reclame relevante pentru tine.
                     </p>
                   </div>
@@ -381,7 +364,7 @@ export default function CookieConsent() {
                   <Button
                     onClick={() => setShowSettings(false)}
                     variant="ghost"
-                    className="w-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 h-8 text-xs"
+                    className="w-full text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-300 h-8 text-xs"
                   >
                     Înapoi
                   </Button>

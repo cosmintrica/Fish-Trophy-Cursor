@@ -1,0 +1,10 @@
+# Exclude problematic folders from Netlify file watcher
+C:\Users\cosmi\Application Data
+Application Data
+AppData
+*.log
+node_modules
+.git
+.env*
+
+

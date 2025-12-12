@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, User, Trophy, FileText, Mail } from 'lucide-react';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -10,9 +10,11 @@ import { usePrefetch } from '@/hooks/usePrefetch';
 import AuthModal from './AuthModal';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import BackToTop from './BackToTop';
+import { useTheme } from '@/contexts/ThemeContext';
 
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const { theme, toggleDarkMode, isDarkMode } = useTheme();
   const { user, logout, loading } = useAuth();
   const { trackUserAction } = useAnalytics();
   const { prefetchProfile, prefetchRecords, prefetchSpecies, prefetchLeaderboards } = usePrefetch();
@@ -23,7 +25,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
-  
+
   // Hide footer on privacy and cookies pages to avoid duplication
   const hideFooter = location.pathname === '/privacy' || location.pathname === '/cookies';
 
@@ -169,9 +171,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   // React Query cache-ul asigură datele instant, iar loading-ul se face în background
 
   return (
-    <div className="min-h-screen min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 bg-fixed">
+    <div className="min-h-screen min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 bg-fixed transition-colors duration-200">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-b border-blue-200/50 shadow-lg" role="banner">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-b border-blue-200/50 dark:border-slate-700/50 shadow-lg transition-colors duration-200" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
@@ -209,8 +211,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                   }
                 }}
                 className={`text-sm font-medium transition-colors ${location.pathname === '/'
-                    ? 'text-blue-600'
-                    : 'text-gray-700 hover:text-blue-600'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400'
                   }`}
                 aria-current={location.pathname === '/' ? 'page' : undefined}
               >
@@ -218,34 +220,34 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 to="/species"
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 onMouseEnter={() => prefetchSpecies()}
               >
                 Specii
               </Link>
               <Link
                 to="/records"
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 onMouseEnter={() => prefetchRecords()}
               >
                 Recorduri
               </Link>
               <Link
                 to="/submission-guide"
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 Ghid Submisie
               </Link>
               <Link
                 to="/forum"
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 🎣 Forum
               </Link>
               {isAdmin && (
                 <Link
                   to="/admin"
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                  className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
                   Admin
                 </Link>
@@ -254,6 +256,20 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             {/* User Section */}
             <div className="flex items-center space-x-4">
+              {/* Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleDarkMode();
+                }}
+                className="p-2 transition-transform hover:scale-110 active:scale-95"
+                aria-label={isDarkMode ? "Activează modul lumină" : "Activează modul întunecat"}
+              >
+                {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-slate-600 dark:text-slate-300" />}
+              </button>
+
               {user ? (
                 <>
                   <div className="hidden sm:flex items-center space-x-3">
@@ -302,7 +318,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               {/* Mobile Menu Button */}
               <button
                 onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
-                className={`lg:hidden inline-flex items-center justify-center p-3 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300 active:scale-95 ${isMobileMenuOpen ? 'rotate-90' : 'rotate-0'
+                className={`lg:hidden inline-flex items-center justify-center p-3 rounded-xl text-gray-700 dark:text-slate-200 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all duration-300 active:scale-95 ${isMobileMenuOpen ? 'rotate-90' : 'rotate-0'
                   }`}
                 aria-label={isMobileMenuOpen ? 'Închide meniul' : 'Deschide meniul'}
               >
@@ -322,14 +338,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         }`}>
         {/* Backdrop */}
         <div
-          className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ease-out ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
+          className={`absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-300 ease-out ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
             }`}
           onClick={closeMobileMenu}
         />
 
         {/* Menu Card */}
         <div
-          className={`mobile-menu-card absolute right-0 top-0 h-full bg-white rounded-l-2xl shadow-2xl flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          className={`mobile-menu-card absolute right-0 top-0 h-full bg-white dark:bg-slate-900 rounded-l-2xl shadow-2xl flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           style={{
             width: '300px',
@@ -337,18 +353,18 @@ export default function Layout({ children }: { children: ReactNode }) {
           }}
         >
           {/* Menu Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-slate-800">
             <div className="flex items-center space-x-3">
               <img
                 src="/icon_free.png"
                 alt="Fish Trophy"
                 className="w-8 h-8 rounded-lg"
               />
-              <span className="text-lg font-semibold text-gray-900">Meniu</span>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">Meniu</span>
             </div>
             <button
               onClick={closeMobileMenu}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               aria-label="Închide meniul"
             >
               <X className="w-5 h-5" />
@@ -359,7 +375,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             <Link
               to="/"
-              className={`flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors ${location.pathname === '/' ? 'text-blue-600' : ''
+              className={`flex items-center space-x-3 px-4 py-3 transition-colors ${location.pathname === '/' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400'
                 }`}
               onClick={closeMobileMenu}
             >
@@ -369,7 +385,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/species"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
               <Fish className="w-5 h-5" />
@@ -378,7 +394,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/records"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
               <Trophy className="w-5 h-5" />
@@ -387,7 +403,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/submission-guide"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
               <FileText className="w-5 h-5" />
@@ -396,7 +412,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             <Link
               to="/forum"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
               <Fish className="w-5 h-5" />
@@ -407,21 +423,35 @@ export default function Layout({ children }: { children: ReactNode }) {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 onClick={closeMobileMenu}
               >
                 <User className="w-5 h-5" />
                 <span className="font-medium text-base">Admin</span>
               </Link>
             )}
+
+            {/* Theme Toggle in Mobile Menu */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleDarkMode();
+                // Don't close menu, user might want to see changes
+              }}
+              className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full text-left bg-transparent"
+            >
+              {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5" />}
+              <span className="font-medium text-base">{isDarkMode ? 'Mod Lumină' : 'Mod Întunecat'}</span>
+            </button>
           </nav>
 
           {/* User Section in Mobile Menu */}
           {user ? (
-            <div className="p-4 border-t border-gray-100 space-y-1">
+            <div className="p-4 border-t border-gray-100 dark:border-slate-800 space-y-1">
               <Link
                 to={userUsername ? `/profile/${userUsername}` : '/profile'}
-                className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors"
+                className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 onClick={closeMobileMenu}
               >
                 <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
@@ -432,11 +462,23 @@ export default function Layout({ children }: { children: ReactNode }) {
                       className="w-full h-full object-cover rounded-full"
                       onError={(e) => {
                         // Fallback to default icon if image fails to load
+                        // Prevent infinite loop by removing the src
                         const target = e.target as HTMLImageElement;
+                        target.onerror = null; // Prevent infinite loop
                         target.style.display = 'none';
+                        // Show fallback avatar by un-hiding a sibling or just letting the parent background show
+                        // Since we have a complex structure, safer to just hide the image and let the container style handle it
+                        // or show a default SVG if possible.
+                        // Here we just hide the image, assuming the parent has a fallback color/content? 
+                        // Actually the parent is just a wrapper.
+                        // Let's replace the parent content safer:
                         const parent = target.parentElement;
                         if (parent) {
-                          parent.innerHTML = '<div class="w-full h-full bg-blue-600 rounded-full flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg></div>';
+                          // Create a fallback element
+                          const fallback = document.createElement('div');
+                          fallback.className = "w-full h-full bg-blue-600 rounded-full flex items-center justify-center";
+                          fallback.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
+                          parent.appendChild(fallback);
                         }
                       }}
                     />
@@ -449,7 +491,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {getUserDisplayName()}
                   </p>
                 </div>
@@ -457,7 +499,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
               <Link
                 to="/profile"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 onClick={closeMobileMenu}
               >
                 <User className="w-5 h-5" />
@@ -475,20 +517,20 @@ export default function Layout({ children }: { children: ReactNode }) {
                   // Use replace instead of href to avoid showing blank page
                   window.location.replace('/');
                 }}
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-red-600 transition-colors w-full text-left"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-red-600 transition-colors w-full text-left"
               >
                 <X className="w-5 h-5" />
                 <span className="font-medium text-base">Ieșire</span>
               </button>
             </div>
           ) : (
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-gray-100 dark:border-slate-800">
               <button
                 onClick={() => {
                   setIsAuthModalOpen(true);
                   closeMobileMenu();
                 }}
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 transition-colors w-full text-left"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full text-left"
               >
                 <User className="w-5 h-5" />
                 <span className="font-medium text-base">Autentificare</span>
@@ -559,146 +601,146 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Footer - Modern Design */}
       {!hideFooter && (
-      <footer className="bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-            {/* Logo & Mission */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center space-x-3 mb-4">
-                <img src="/icon_free.png" alt="Fish Trophy" className="w-12 h-12 rounded-xl shadow-lg" />
-                <div>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Fish Trophy</span>
-                  <p className="text-sm text-gray-600 mt-0.5">Platforma pescarilor din România</p>
+        <footer className="bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-950 border-t border-gray-200 dark:border-slate-800 transition-colors duration-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+              {/* Logo & Mission */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center space-x-3 mb-4">
+                  <img src="/icon_free.png" alt="Fish Trophy" className="w-12 h-12 rounded-xl shadow-lg" />
+                  <div>
+                    <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Fish Trophy</span>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mt-0.5">Platforma pescarilor din România</p>
+                  </div>
+                </div>
+                <p className="text-gray-600 dark:text-slate-400 max-w-lg leading-relaxed mb-6 text-sm">
+                  Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
+                </p>
+                <div className="flex gap-3">
+                  <a
+                    href="mailto:contact@fishtrophy.ro"
+                    className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-all duration-200 text-sm font-medium shadow-sm"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Contact
+                  </a>
                 </div>
               </div>
-              <p className="text-gray-600 max-w-lg leading-relaxed mb-6 text-sm">
-                Urmărește recordurile, concurează cu alții pescari pasionați și contribuie la protejarea naturii prin pescuit responsabil.
-              </p>
-              <div className="flex gap-3">
-                <a
-                  href="mailto:contact@fishtrophy.ro"
-                  className="inline-flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm font-medium shadow-sm"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Contact
-                </a>
-              </div>
-            </div>
 
-            {/* Navigation */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Navigare</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link to="/" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Acasă
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/species" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Specii
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    to="/records" 
-                    className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group"
-                    onMouseEnter={() => prefetchRecords()}
-                  >
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Recorduri
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/submission-guide" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Ghid Submisie
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Community & Social */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Comunitate</h3>
-              <ul className="space-y-3 mb-6">
-                <li>
-                  <Link to="/profile" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Profilul meu
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/leaderboards" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Clasamente
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/fishing-shops" className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center group">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    Magazine
-                  </Link>
-                </li>
-              </ul>
-
+              {/* Navigation */}
               <div>
-                <h4 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Urmărește-ne</h4>
-                <div className="flex space-x-3">
-                  <a
-                    href="https://www.facebook.com/fishtrophy.ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-[#1877F2] rounded-lg flex items-center justify-center text-white hover:bg-[#166FE5] hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                  </a>
-                  <a
-                    href="https://www.instagram.com/fishtrophy.ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-gradient-to-r from-[#E4405F] to-[#C13584] rounded-lg flex items-center justify-center text-white hover:from-[#D7356A] hover:to-[#B02A73] hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                    </svg>
-                  </a>
-                  <a
-                    href="https://x.com/fishtrophy_ro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-black rounded-lg flex items-center justify-center text-white hover:bg-gray-800 hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                  </a>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">Navigare</h3>
+                <ul className="space-y-3">
+                  <li>
+                    <Link to="/" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Acasă
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/species" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Specii
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/records"
+                      className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group"
+                      onMouseEnter={() => prefetchRecords()}
+                    >
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Recorduri
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/submission-guide" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Ghid Submisie
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Community & Social */}
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">Comunitate</h3>
+                <ul className="space-y-3 mb-6">
+                  <li>
+                    <Link to="/profile" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Profilul meu
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/leaderboards" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Clasamente
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/fishing-shops" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                      Magazine
+                    </Link>
+                  </li>
+                </ul>
+
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 uppercase tracking-wide">Urmărește-ne</h4>
+                  <div className="flex space-x-3">
+                    <a
+                      href="https://www.facebook.com/fishtrophy.ro"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 bg-[#1877F2] rounded-lg flex items-center justify-center text-white hover:bg-[#166FE5] hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                    </a>
+                    <a
+                      href="https://www.instagram.com/fishtrophy.ro"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 bg-gradient-to-r from-[#E4405F] to-[#C13584] rounded-lg flex items-center justify-center text-white hover:from-[#D7356A] hover:to-[#B02A73] hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                      </svg>
+                    </a>
+                    <a
+                      href="https://x.com/fishtrophy_ro"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 bg-black rounded-lg flex items-center justify-center text-white hover:bg-gray-800 hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Section */}
+            <div className="border-t border-gray-200 dark:border-slate-800 mt-10 pt-6">
+              <div className="flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0">
+                <div className="flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-gray-500 dark:text-slate-400">
+                  <span className="font-medium">© 2025 Fish Trophy</span>
+                  <span className="hidden sm:inline text-gray-300 dark:text-slate-600">•</span>
+                  <span>Toate drepturile rezervate</span>
+                </div>
+                <div className="flex items-center space-x-1.5 text-sm text-gray-600 dark:text-slate-400">
+                  <span>Făcut cu</span>
+                  <span className="text-red-500 text-lg animate-pulse">❤️</span>
+                  <span>în România</span>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Bottom Section */}
-          <div className="border-t border-gray-200 mt-10 pt-6">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0">
-              <div className="flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-gray-500">
-                <span className="font-medium">© 2025 Fish Trophy</span>
-                <span className="hidden sm:inline text-gray-300">•</span>
-                <span>Toate drepturile rezervate</span>
-              </div>
-              <div className="flex items-center space-x-1.5 text-sm text-gray-600">
-                <span>Făcut cu</span>
-                <span className="text-red-500 text-lg animate-pulse">❤️</span>
-                <span>în România</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+        </footer>
       )}
 
       {/* Auth Modal */}

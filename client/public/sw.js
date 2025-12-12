@@ -45,6 +45,23 @@ const isStaticAsset = (url) => {
          /\.(js|css|woff|woff2|ttf|eot|png|jpg|jpeg|gif|svg|webp|ico)$/i.test(url);
 };
 
+// Helper: Verifică dacă request-ul este pentru module Vite (development)
+// Acestea trebuie să fie servite direct de Vite, nu de service worker
+const isViteModule = (url) => {
+  // In development, Vite serves source files directly
+  // These should never be cached by service worker
+  return url.includes('/src/') && 
+         (url.endsWith('.tsx') || url.endsWith('.ts') || url.includes('?v='));
+};
+
+// Helper: Verifică dacă request-ul este pentru module Vite (development)
+const isViteModule = (url) => {
+  // In development, Vite serves source files directly
+  // These should never be cached by service worker
+  return url.includes('/src/') && 
+         (url.endsWith('.tsx') || url.endsWith('.ts') || url.includes('?v='));
+};
+
 // Helper: Network First Strategy
 const networkFirst = async (request) => {
   try {
@@ -209,6 +226,11 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests - mereu network (pentru date fresh)
   if (isAPIRequest(url.href)) {
     return;
+  }
+  
+  // Skip Vite modules in development - must be served directly by Vite
+  if (isViteModule(url.href)) {
+    return; // Let Vite handle it directly
   }
   
   // Aplică strategii diferite bazate pe tipul de resursă

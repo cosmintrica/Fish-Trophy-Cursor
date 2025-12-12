@@ -172,35 +172,39 @@ function QueryProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { ThemeProvider } from '@/contexts/ThemeContext';
+
 function App() {
   return (
     <HelmetProvider>
       <QueryProvider>
-        <AuthProvider>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <RealtimeMessagesWrapper>
-              <AnalyticsWrapper>
-                <ProfileCompletionWrapper>
-                  <AppContent />
-                </ProfileCompletionWrapper>
-              </AnalyticsWrapper>
-            </RealtimeMessagesWrapper>
-            <MessageNotificationManager />
-            <CookieConsent />
-          </Router>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-              },
-              className: 'toast-message'
-            }}
-          />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <RealtimeMessagesWrapper>
+                <AnalyticsWrapper>
+                  <ProfileCompletionWrapper>
+                    <AppContent />
+                  </ProfileCompletionWrapper>
+                </AnalyticsWrapper>
+              </RealtimeMessagesWrapper>
+              <MessageNotificationManager />
+              <CookieConsent />
+            </Router>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                },
+                className: 'toast-message'
+              }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
       </QueryProvider>
     </HelmetProvider>
   );

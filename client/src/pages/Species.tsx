@@ -147,7 +147,7 @@ const Species = () => {
       case 'Medie': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
       case 'Avansată': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
       case 'Protejat': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-slate-900/30 dark:text-slate-200';
     }
   };
 
@@ -322,13 +322,13 @@ const Species = () => {
         type="website"
         structuredData={[websiteData, organizationData, speciesStructuredData] as unknown as Record<string, unknown>[]}
       />
-      <div className="min-h-screen py-4 sm:py-6 md:py-12">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-4 sm:py-6 md:py-12 transition-colors duration-200">
         <div className="container mx-auto px-3 sm:px-4">
           <div className="text-center mb-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
               Catalog de Specii
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-4xl mx-auto px-2 mb-3">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-slate-200 max-w-4xl mx-auto px-2 mb-3">
               Descoperă toate speciile de pești din România cu informații detaliate despre habitat și tehnici de pescuit.
             </p>
 
@@ -336,7 +336,7 @@ const Species = () => {
             {!loading && !error && (
               <div className="flex flex-col items-center justify-center gap-2 mb-3">
                 {/* Species Count */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
                   <Fish className="w-4 h-4" />
                   <span>
                     {filteredSpecies.length === species.length
@@ -348,18 +348,18 @@ const Species = () => {
 
                 {/* Search Input */}
                 <div className="relative w-full max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Caută specii..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+                    className="w-full pl-10 pr-10 py-2.5 sm:py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                   />
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -381,8 +381,8 @@ const Species = () => {
                     setSelectedCategory(category);
                   }}
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition-colors cursor-pointer pointer-events-auto select-none ${selectedCategory === category
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-500'
                     }`}
                   style={{ willChange: 'background-color, color', zIndex: 10, position: 'relative' }}
                 >
@@ -395,15 +395,15 @@ const Species = () => {
           {/* Loading State */}
           {loading && (
             <div className="flex justify-center items-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">Se încarcă speciile...</span>
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+              <span className="ml-2 text-gray-600 dark:text-slate-200">Se încarcă speciile...</span>
             </div>
           )}
 
           {/* Error State */}
           {error && (
             <div className="text-center py-12">
-              <div className="bg-destructive/10 text-destructive p-4 rounded-lg max-w-md mx-auto">
+              <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-4 rounded-lg max-w-md mx-auto">
                 {error}
               </div>
             </div>
@@ -425,7 +425,7 @@ const Species = () => {
                   const difficultyColor = getDifficultyColor(difficulty);
 
                   return (
-                    <div key={speciesItem.id} className="group relative bg-gradient-to-br from-card via-card to-card/95 border border-border/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-2 hover:border-primary/30 hover:scale-[1.02]" style={{ willChange: 'transform, box-shadow' }}>
+                    <div key={speciesItem.id} className="group relative bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-2 hover:border-blue-500/30 dark:hover:border-blue-500/50 hover:scale-[1.02]">
                       {/* Image Header with Gradient Overlay */}
                       <div className="relative h-32 overflow-hidden">
                         <img
@@ -433,7 +433,6 @@ const Species = () => {
                           alt={speciesItem.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           loading="lazy"
-                          style={{ willChange: 'transform' }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -456,7 +455,7 @@ const Species = () => {
 
                         {/* Title Overlay */}
                         <div className="absolute bottom-3 left-3 right-3">
-                          <h3 className="text-lg font-bold text-white mb-1 line-clamp-1 group-hover:text-primary-foreground transition-colors">
+                          <h3 className="text-lg font-bold text-white mb-1 line-clamp-1 group-hover:text-white dark:group-hover:text-white transition-colors">
                             {speciesItem.name}
                           </h3>
                           <p className="text-sm text-white/90 italic line-clamp-1">
@@ -470,18 +469,18 @@ const Species = () => {
                         <div className="space-y-4 flex-1 flex flex-col justify-center">
                           {/* Key Stats with Icons */}
                           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-                            <div className="flex items-start gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                              <Waves className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                            <div className="flex items-start gap-2 p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                              <Waves className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                               <div className="min-w-0 flex-1">
-                                <div className="text-xs text-muted-foreground mb-1">Tip apă</div>
-                                <div className="text-sm font-semibold capitalize leading-tight">{speciesItem.water_type}</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Tip apă</div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white capitalize leading-tight">{speciesItem.water_type}</div>
                               </div>
                             </div>
-                            <div className="flex items-start gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                              <Calendar className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                            <div className="flex items-start gap-2 p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                               <div className="min-w-0 flex-1">
-                                <div className="text-xs text-muted-foreground mb-1">Reproducere</div>
-                                <div className="text-sm font-semibold leading-tight">{formatSpawningSeason(speciesItem.spawning_season)}</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Reproducere</div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{formatSpawningSeason(speciesItem.spawning_season)}</div>
                               </div>
                             </div>
                           </div>
@@ -526,7 +525,7 @@ const Species = () => {
                             <div className="mb-4">
                               <div className="flex items-center gap-2 mb-2">
                                 <Trophy className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                <div className="text-sm font-semibold text-foreground">Momeli recomandate</div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">Momeli recomandate</div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {(() => {
@@ -548,7 +547,7 @@ const Species = () => {
                                             case 'special':
                                               return 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800 dark:from-red-900/30 dark:to-pink-900/30 dark:text-red-300 border border-red-200 dark:border-red-700';
                                             default:
-                                              return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 dark:from-gray-900/30 dark:to-slate-900/30 dark:text-gray-300 border border-gray-200 dark:border-gray-700';
+                                              return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 dark:from-gray-900/30 dark:to-slate-900/30 dark:text-slate-200 border border-gray-200 dark:border-slate-700';
                                           }
                                         };
 
@@ -567,7 +566,7 @@ const Species = () => {
                                       {hasMore && (
                                         <button
                                           onClick={() => toggleBaitExpansion(speciesItem.id)}
-                                          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                                          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors cursor-pointer"
                                           style={{ willChange: 'background-color' }}
                                         >
                                           {isExpanded ? 'Mai puține' : `+${speciesItem.fish_bait.length - 3} mai multe`}
@@ -585,7 +584,7 @@ const Species = () => {
                             <div className="mb-4">
                               <div className="flex items-center gap-2 mb-2">
                                 <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                <div className="text-sm font-semibold text-foreground">Metode de pescuit</div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">Metode de pescuit</div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {(() => {
@@ -606,7 +605,7 @@ const Species = () => {
                                       {hasMore && (
                                         <button
                                           onClick={() => toggleMethodExpansion(speciesItem.id)}
-                                          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                                          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors cursor-pointer"
                                           style={{ willChange: 'background-color' }}
                                         >
                                           {isExpanded ? 'Mai puține' : `+${speciesItem.fish_method.length - 3} mai multe`}
@@ -649,8 +648,7 @@ const Species = () => {
               {hasMoreSpecies ? (
                 <button
                   onClick={loadAllSpecies}
-                  className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
-                  style={{ willChange: 'transform, box-shadow, background-color' }}
+                  className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
                 >
                   <Fish className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">Vezi toate speciile ({species.length})</span>
@@ -659,8 +657,7 @@ const Species = () => {
               ) : showAllSpecies && sortedSpecies.length > 20 ? (
                 <button
                   onClick={() => setShowAllSpecies(false)}
-                  className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-muted text-muted-foreground rounded-full font-semibold hover:bg-muted/80 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
-                  style={{ willChange: 'transform, box-shadow, background-color' }}
+                  className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-full font-semibold hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
                 >
                   <Fish className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">Arată primele 20</span>
@@ -673,9 +670,9 @@ const Species = () => {
           {/* No Results */}
           {!loading && !error && filteredSpecies.length === 0 && (
             <div className="text-center py-12">
-              <div className="bg-muted/50 p-6 rounded-2xl max-w-md mx-auto">
-                <h3 className="text-lg font-bold mb-2">Nu s-au găsit specii</h3>
-                <p className="text-muted-foreground text-sm">
+              <div className="bg-gray-100 dark:bg-slate-800 p-6 rounded-2xl max-w-md mx-auto">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Nu s-au găsit specii</h3>
+                <p className="text-gray-600 dark:text-slate-200 text-sm">
                   Încearcă să modifici termenii de căutare sau filtrele.
                 </p>
               </div>
@@ -684,9 +681,9 @@ const Species = () => {
 
           {/* Development Note - Mobile Optimized */}
           <div className="mt-12 sm:mt-16 text-center">
-            <div className="bg-muted/50 p-4 sm:p-6 rounded-2xl max-w-2xl mx-auto">
-              <h3 className="text-base sm:text-lg font-bold mb-2">🚧 Schiță de Dezvoltare</h3>
-              <p className="text-muted-foreground text-xs sm:text-sm">
+            <div className="bg-gray-100 dark:bg-slate-800 p-4 sm:p-6 rounded-2xl max-w-2xl mx-auto">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">🚧 Schiță de Dezvoltare</h3>
+              <p className="text-gray-600 dark:text-slate-200 text-xs sm:text-sm">
                 Această pagină este o schiță funcțională care demonstrează design-ul și structura
                 pentru catalogul de specii și recorduri. Funcționalitatea completă va fi implementată
                 în următoarele faze de dezvoltare.

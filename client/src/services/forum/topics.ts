@@ -93,31 +93,43 @@ async function getTopicsFallback(
     }
 
     // Obține username-urile din forum_users pentru fiecare topic
-    const userIds = [...new Set((data || []).map(t => t.user_id).filter(Boolean))]
+    // Colectăm atât autorul topicului cât și autorul ultimei postări
+    const userIds = new Set<string>();
+    (data || []).forEach(t => {
+        if (t.user_id) userIds.add(t.user_id);
+        if ((t as any).last_post_user_id) userIds.add((t as any).last_post_user_id);
+    });
 
-    // Obține display_name din profiles pentru afișare
+    // Obține username din profiles
     let usersMap = new Map<string, string>();
-    if (userIds.length > 0) {
+    if (userIds.size > 0) {
         const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
-            .select('id, display_name, username, email')
-            .in('id', userIds);
+            .select('id, username, email')
+            .in('id', Array.from(userIds));
 
         if (profilesError) {
             console.error('Error fetching profiles for topics:', profilesError);
         } else if (profilesData) {
             profilesData.forEach(profile => {
-                const displayName = profile.display_name || profile.username || profile.email?.split('@')[0] || 'Unknown';
-                usersMap.set(profile.id, displayName);
+                // STRICT: Folosim username
+                let username = profile.username;
+                if (!username && profile.email) {
+                    username = profile.email.split('@')[0];
+                }
+                usersMap.set(profile.id, username || 'Unknown');
             });
         }
     }
 
     const topicsWithAuthor = (data || []).map(t => {
-        const displayName = usersMap.get(t.user_id) || 'Unknown';
+        const authorUsername = usersMap.get(t.user_id) || 'Unknown';
+        const lastPostAuthor = (t as any).last_post_user_id ? (usersMap.get((t as any).last_post_user_id) || 'Unknown') : 'Unknown';
+
         return {
             ...t,
-            author_username: displayName
+            author_username: authorUsername,
+            last_post_author_username: lastPostAuthor
         };
     })
 
@@ -140,8 +152,8 @@ async function getTopicsFallback(
  * @param subcategorySlug - Slug-ul subcategoriei (opțional, pentru a evita duplicate)
  */
 export async function getTopicById(
-    topicId: string, 
-    subcategorySlug?: string, 
+    topicId: string,
+    subcategorySlug?: string,
     subforumSlug?: string,
     subcategoryId?: string,
     subforumId?: string
@@ -196,8 +208,8 @@ export async function getTopicById(
  * Fallback method for getTopicById (used when RPC is not available)
  */
 async function getTopicByIdFallback(
-    topicId: string, 
-    subcategorySlug?: string, 
+    topicId: string,
+    subcategorySlug?: string,
     subforumSlug?: string,
     subcategoryIdParam?: string,
     subforumIdParam?: string
@@ -213,7 +225,7 @@ async function getTopicByIdFallback(
         // Detectăm automat dacă slug-ul este subcategorie sau subforum
         if (subcategorySlug || subforumSlug) {
             const slugToCheck = subcategorySlug || subforumSlug;
-            
+
             // Mai întâi verificăm dacă e subforum
             if (slugToCheck) {
                 const { data: subforumData } = await supabase
@@ -222,7 +234,7 @@ async function getTopicByIdFallback(
                     .eq('slug', slugToCheck)
                     .eq('is_active', true)
                     .maybeSingle();
-                
+
                 if (subforumData) {
                     subforumId = subforumData.id;
                     subcategoryId = subforumData.subcategory_id;
@@ -234,7 +246,7 @@ async function getTopicByIdFallback(
                         .eq('slug', slugToCheck)
                         .eq('is_active', true)
                         .maybeSingle();
-                    
+
                     if (subcategoryData) {
                         subcategoryId = subcategoryData.id;
                     }
@@ -250,13 +262,13 @@ async function getTopicByIdFallback(
             .select('*')
             .eq('id', topicId)
             .eq('is_deleted', false);
-        
+
         if (subforumId) {
             query = query.eq('subforum_id', subforumId);
         } else if (subcategoryId) {
             query = query.eq('subcategory_id', subcategoryId).is('subforum_id', null);
         }
-        
+
         const result = await query.maybeSingle();
         data = result.data;
         error = result.error;
@@ -306,13 +318,11 @@ async function getTopicByIdFallback(
     if (data.user_id) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('display_name, username, email')
+            .select('username, email')
             .eq('id', data.user_id)
             .maybeSingle();
 
-        if (profile?.display_name) {
-            result.author_username = profile.display_name;
-        } else if (profile?.username) {
+        if (profile?.username) {
             result.author_username = profile.username;
         } else if (profile?.email) {
             result.author_username = profile.email.split('@')[0];
@@ -395,11 +405,17 @@ export async function createTopic(params: TopicCreateParams): Promise<ApiRespons
             }
         }
 
+        // Validate that we have either subcategory_id or subforum_id
+        if (!params.subcategory_id && !params.subforum_id) {
+            return { error: { message: 'Subcategory or Subforum ID required' } };
+        }
+
         // Create topic
         const { data: topic, error: topicError } = await supabase
             .from('forum_topics')
             .insert({
-                subcategory_id: params.subcategory_id,
+                subcategory_id: params.subcategory_id || null, // Ensure null if undefined
+                subforum_id: params.subforum_id || null,     // Ensure null if undefined
                 user_id: user.id,
                 title: params.title,
                 topic_type: params.topic_type || 'normal'

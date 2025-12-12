@@ -34,6 +34,21 @@
   port = 8889
   targetPort = 5173
   autoLaunch = false
+  # Set environment variable so Vite knows it's running through Netlify Dev
+  # This allows HMR to use the correct port (8889) for WebSocket connections
+  [dev.environment]
+    NETLIFY_DEV = "true"
+  # Exclude problematic folders from file watcher to prevent crashes
+  # This prevents Netlify CLI from trying to watch folders it doesn't have permission to access
+  # Limit watch to essential folders only to reduce load and prevent ECONNRESET errors
+  # Netlify Dev file watcher can cause crashes on Windows with large projects
+  watch = [
+    "client/src/**",
+    "client/public/**",
+    "netlify/functions/**"
+  ]
+  # Note: supabase/migrations excluded to reduce watcher load
+  # Migrations are run manually, not watched automatically
   # Netlify Dev should proxy unmatched routes to targetPort
   # If /src/* doesn't work through proxy, access Vite directly on port 5173
 

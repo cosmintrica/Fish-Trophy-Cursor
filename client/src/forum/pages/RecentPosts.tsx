@@ -4,9 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
 import { supabase } from '../../lib/supabase';
-import { MessageSquare, Clock, TrendingUp, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, Clock, TrendingUp, Users, ChevronLeft, ChevronRight, Award } from 'lucide-react';
 import { usePrefetch } from '../hooks/usePrefetch';
-import { parseBBCode } from '../../services/forum/bbcode';
+import { parseBBCode, stripBBCode } from '../../services/forum/bbcode';
+import SEOHead from '../../components/SEOHead';
 import { RecentPostListSkeleton } from '../../components/skeletons/RecentPostSkeleton';
 
 export default function RecentPosts() {
@@ -26,7 +27,7 @@ export default function RecentPosts() {
     mostActiveUser: null as { username: string; count: number } | null
   });
 
-  const POSTS_PER_PAGE = 30;
+  const POSTS_PER_PAGE = 20;
 
   // Detect mobile
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function RecentPosts() {
             user_id,
             topic_id,
             post_number,
-            topic:forum_topics!topic_id(id, title, subcategory_id, slug)
+            topic:forum_topics!topic_id(id, title, subcategory_id, subforum_id, slug, reply_count, view_count)
           `)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false })
@@ -118,32 +119,80 @@ export default function RecentPosts() {
           return topic?.subcategory_id;
         }).filter(Boolean))];
 
-        const { data: subcategoriesData } = await supabase
-          .from('forum_subcategories')
-          .select('id, slug, category_id')
-          .in('id', subcategoryIds);
+        const subforumIds = [...new Set((postsData || []).map(p => {
+          const topic = Array.isArray(p.topic) ? p.topic[0] : p.topic;
+          return topic?.subforum_id;
+        }).filter(Boolean))];
 
-        const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+        // Fetch Subcategories
+        let subcategoriesMap = new Map();
+        let categoriesMap = new Map();
 
-        const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
-        const { data: categoriesData } = await supabase
-          .from('forum_categories')
-          .select('id, slug')
-          .in('id', categoryIds);
+        if (subcategoryIds.length > 0) {
+          const { data: subcategoriesData } = await supabase
+            .from('forum_subcategories')
+            .select('id, slug, category_id, name')
+            .in('id', subcategoryIds);
 
-        const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
+          subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
+
+          const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
+          if (categoryIds.length > 0) {
+            const { data: categoriesData } = await supabase
+              .from('forum_categories')
+              .select('id, slug, name')
+              .in('id', categoryIds);
+            categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
+          }
+        }
+
+        // Fetch Subforums
+        let subforumsMap = new Map();
+        if (subforumIds.length > 0) {
+          const { data: subforumsData } = await supabase
+            .from('forum_subforums')
+            .select('id, slug, subcategory_id, name')
+            .in('id', subforumIds);
+
+          subforumsMap = new Map((subforumsData || []).map(sf => [sf.id, sf]));
+
+          // Also fetch parent subcategories of these subforums if not already fetched
+          const missingSubcategoryIds = [...new Set((subforumsData || []).map(sf => sf.subcategory_id).filter(id => !subcategoriesMap.has(id)))];
+
+          if (missingSubcategoryIds.length > 0) {
+            const { data: missingSubcategoriesData } = await supabase
+              .from('forum_subcategories')
+              .select('id, slug, category_id, name')
+              .in('id', missingSubcategoryIds);
+
+            (missingSubcategoriesData || []).forEach(sc => subcategoriesMap.set(sc.id, sc));
+
+            const missingCategoryIds = [...new Set((missingSubcategoriesData || []).map(sc => sc.category_id).filter(id => !categoriesMap.has(id)))];
+            if (missingCategoryIds.length > 0) {
+              const { data: missingCategoriesData } = await supabase
+                .from('forum_categories')
+                .select('id, slug, name')
+                .in('id', missingCategoryIds);
+              (missingCategoriesData || []).forEach(c => categoriesMap.set(c.id, c));
+            }
+          }
+        }
 
         // Combine data
         const data = (postsData || []).map(post => {
           const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
-          const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
-          const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
           const forumUser = forumUsersMap.get(post.user_id);
           const profile = profilesMap.get(post.user_id);
 
-          // Use photo_url from profiles (real profile picture) or avatar_url from forum_users as fallback
-          const photoUrl = profile?.photo_url || forumUser?.avatar_url || null;
-          const username = forumUser?.username || 'Anonim';
+          const subforum = topic?.subforum_id ? subforumsMap.get(topic.subforum_id) : null;
+          // If in subforum, get subcategory from subforum's parent. If not, from topic's subcategory_id
+          const subcategoryId = subforum ? subforum.subcategory_id : topic?.subcategory_id;
+          const subcategory = subcategoryId ? subcategoriesMap.get(subcategoryId) : null;
+          const categoryId = subcategory ? subcategory.category_id : null;
+          const category = categoryId ? categoriesMap.get(categoryId) : null;
+
+          const username = forumUser?.username || 'Unknown';
+          const photoUrl = profile?.photo_url;
 
           return {
             ...post,
@@ -153,6 +202,8 @@ export default function RecentPosts() {
               photo_url: photoUrl,
               avatar_url: forumUser?.avatar_url || null
             },
+            subforumSlug: subforum?.slug || null,
+            subforumName: subforum?.name || null,
             subcategorySlug: subcategory?.slug || null,
             subcategoryName: (subcategory as any)?.name || null,
             categorySlug: category?.slug || null,
@@ -225,63 +276,100 @@ export default function RecentPosts() {
 
   const generateUserColor = (name: string) => {
     const colors = [
-      'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-      'linear-gradient(135deg, #10b981, #047857)',
-      'linear-gradient(135deg, #f59e0b, #d97706)',
-      'linear-gradient(135deg, #ef4444, #dc2626)',
-      'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-      'linear-gradient(135deg, #06b6d4, #0891b2)'
+      'linear-gradient(135deg, #6366f1, #8b5cf6)',
+      'linear-gradient(135deg, #ec4899, #d946ef)',
+      'linear-gradient(135deg, #3b82f6, #06b6d4)',
+      'linear-gradient(135deg, #f59e0b, #f97316)',
+      'linear-gradient(135deg, #10b981, #34d399)'
     ];
-    const hash = name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   };
 
   return (
-    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: isMobile ? '0.75rem 0.75rem' : '1rem 1rem',
-        width: '100%',
-        overflowX: 'hidden'
-      }}>
-        <h1 style={{
-          fontSize: isMobile ? '1.25rem' : '1.75rem',
-          fontWeight: '700',
-          color: theme.text,
-          marginBottom: isMobile ? '1rem' : '1.5rem'
-        }}>
-          📝 Postări Recente
-        </h1>
+    <ForumLayout onLogin={() => { }} onLogout={() => { }} user={forumUserToLayoutUser(forumUser)}>
+      <div className="max-w-6xl mx-auto px-0 md:px-0 scroll-mt-20" style={{ paddingTop: '1.5rem' }}>
+        <SEOHead
+          title="Postări Recente | Fish Trophy"
+          description="Cele mai recente discuții și postări din comunitatea Fish Trophy."
+          canonical="https://fishtrophy.ro/forum/recent"
+        />
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 px-4 md:px-0 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-blue-600" />
+              Postări Recente
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Discuțiile active din comunitate
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 w-full md:w-auto md:flex md:gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <span className="font-bold text-blue-600 text-lg">{stats.postsToday}</span>
+              <span className="text-xs text-center leading-tight">Postări azi</span>
+            </div>
+            <div className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <span className="font-bold text-green-600 text-lg">{stats.postsThisWeek}</span>
+              <span className="text-xs text-center leading-tight">Săptămâna asta</span>
+            </div>
+            {stats.mostActiveUser && (
+              <Link to={`/forum/user/${stats.mostActiveUser.username}`} className="flex flex-col items-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:ring-2 ring-blue-500 transition-all">
+                <span className="font-bold text-indigo-600 text-lg">{stats.mostActiveUser.count}</span>
+                <span className="text-xs flex items-center gap-1 text-center leading-tight">
+                  <span className="max-w-[80px] truncate">{stats.mostActiveUser.username}</span>
+                  <Award size={12} className="text-yellow-500 flex-shrink-0" />
+                </span>
+              </Link>
+            )}
+          </div>
+        </div>
 
         {loading ? (
           <RecentPostListSkeleton count={POSTS_PER_PAGE} />
-        ) : posts.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: isMobile ? '2rem 1rem' : '4rem',
-            backgroundColor: theme.surface,
-            borderRadius: '0.5rem',
-            border: `1px solid ${theme.border}`
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</div>
-            <div style={{ color: theme.textSecondary }}>Nu există postări recente</div>
-          </div>
         ) : (
-          <div
-            ref={postsContainerRef}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: isMobile ? '0.5rem' : '0.75rem'
-            }}
-          >
-            {posts.map((post) => {
+          <div style={{
+            backgroundColor: theme.surface,
+            borderRadius: '0.75rem',
+            border: `1px solid ${theme.border}`,
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          }}>
+            {/* Header Row (Desktop only) */}
+            {!isMobile && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(300px, 2fr) 150px 200px',
+                padding: '0.75rem 1rem',
+                backgroundColor: theme.background,
+                borderBottom: `1px solid ${theme.border}`,
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: theme.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                <div>SUBIECT</div>
+                <div style={{ textAlign: 'center' }}>Statistici</div>
+                <div style={{ textAlign: 'right' }}>Ultima Postare</div>
+              </div>
+            )}
+
+            {/* Posts List */}
+            {posts.map((post, index) => {
               const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
-              // Construiește permalink complet: /forum/subcategorySlug/topicSlug#postN (FĂRĂ categorySlug)
+              // Construiește permalink complet
               let topicLink = '';
-              if (post.subcategorySlug && topic?.slug) {
-                // URL simplificat: doar subcategorie și topic
+              if (post.subforumSlug && topic?.slug) {
+                // Format: /forum/subforumSlug/topicSlug
+                topicLink = `/forum/${post.subforumSlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
+              } else if (post.subcategorySlug && topic?.slug) {
+                // Format: /forum/subcategorySlug/topicSlug
                 topicLink = `/forum/${post.subcategorySlug}/${topic.slug}${post.post_number ? `#post${post.post_number}` : ''}`;
               } else if (topic?.slug) {
                 // Fallback: doar topic slug
@@ -291,94 +379,195 @@ export default function RecentPosts() {
                 topicLink = `/forum/topic/${topic?.id || post.topic_id}${post.post_number ? `#post${post.post_number}` : ''}`;
               }
 
+              // Date formatting logic
+              const dateObj = new Date(post.created_at);
+              const dateStr = dateObj.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              const timeStr = dateObj.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+
               return (
                 <div
                   key={post.id}
                   style={{
-                    backgroundColor: theme.surface,
-                    borderRadius: isMobile ? '0.375rem' : '0.5rem',
-                    border: `1px solid ${theme.border}`,
-                    padding: isMobile ? '0.5rem' : '0.75rem',
-                    transition: 'all 0.2s',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    minHeight: isMobile ? '100px' : '120px'
+                    display: isMobile ? 'flex' : 'grid',
+                    flexDirection: isMobile ? 'column' : 'unset',
+                    gridTemplateColumns: isMobile ? '1fr' : 'minmax(300px, 2fr) 150px 200px',
+                    padding: isMobile ? '0.75rem' : '0.75rem 1rem',
+                    borderBottom: index !== posts.length - 1 ? `1px solid ${theme.border}` : 'none',
+                    alignItems: 'center',
+                    gap: isMobile ? '0.5rem' : '0',
+                    transition: 'background-color 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = theme.primary;
-                    e.currentTarget.style.boxShadow = `0 2px 4px rgba(0, 0, 0, 0.1)`;
-                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
                     // Prefetch topic-ul când utilizatorul trece cu mouse-ul
                     if (topic?.slug) {
                       prefetchTopic(topic.slug, post.subcategorySlug || undefined);
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = theme.border;
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  {/* Permanent Link - Top Right Corner */}
-                  {post.post_number && (
-                    <Link
-                      to={topicLink}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const hash = `#post${post.post_number}`;
-                        setTimeout(() => {
-                          const element = document.getElementById(`post${post.post_number}`);
-                          if (element) {
-                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }, 100);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        top: isMobile ? '0.375rem' : '0.5rem',
-                        right: isMobile ? '0.375rem' : '0.5rem',
-                        fontSize: isMobile ? '0.625rem' : '0.75rem',
+                  {/* Column 1: Topic Info */}
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', minWidth: 0 }}>
+                    {/* Icon */}
+                    <div style={{
+                      marginTop: '0.15rem',
+                      color: theme.textSecondary,
+                      flexShrink: 0
+                    }}>
+                      <MessageSquare size={18} />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Topic Title - REVERTED TO TOP */}
+                      <div style={{ marginBottom: '0.125rem' }}>
+                        <Link
+                          to={topicLink}
+                          style={{
+                            fontSize: isMobile ? '0.9rem' : '0.95rem',
+                            fontWeight: '600',
+                            color: theme.text,
+                            textDecoration: 'none',
+                            lineHeight: '1.4',
+                            display: 'block'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = theme.primary}
+                          onMouseLeave={(e) => e.currentTarget.style.color = theme.text}
+                        >
+                          {topic?.title || 'Subiect fără titlu'}
+                        </Link>
+                      </div>
+
+                      {/* Category Path (Hierarchy) - NOW BELOW */}
+                      <div style={{
+                        fontSize: '0.75rem',
                         color: theme.textSecondary,
-                        textDecoration: 'none',
-                        padding: isMobile ? '0.125rem 0.375rem' : '0.25rem 0.5rem',
-                        backgroundColor: theme.background,
-                        borderRadius: '0.25rem',
-                        border: `1px solid ${theme.border}`,
-                        zIndex: 10,
-                        transition: 'all 0.2s',
-                        fontWeight: '500',
-                        lineHeight: '1.2'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = theme.primary;
-                        e.currentTarget.style.borderColor = theme.primary;
-                        e.currentTarget.style.backgroundColor = theme.surface;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = theme.textSecondary;
-                        e.currentTarget.style.borderColor = theme.border;
-                        e.currentTarget.style.backgroundColor = theme.background;
-                      }}
-                      title={`Post #${post.post_number}`}
-                    >
-                      #{post.post_number}
-                    </Link>
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        flexWrap: 'wrap'
+                      }}>
+                        {post.categoryName && (
+                          <>
+                            <span style={{ fontWeight: '500' }}>
+                              {/* Category Link Corrected to /forum/:slug */}
+                              {post.categorySlug ? (
+                                <Link
+                                  to={`/forum/${post.categorySlug}`}
+                                  style={{ color: theme.textSecondary, textDecoration: 'none' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                >
+                                  {post.categoryName}
+                                </Link>
+                              ) : (
+                                post.categoryName
+                              )}
+                            </span>
+                          </>
+                        )}
+
+                        {/* 
+                            Logic: If subforum exists, display Category > Subforum. 
+                            Else display Category > Subcategory.
+                            We skip showing "Subcategory" if "Subforum" is present, as per user request.
+                        */}
+                        {post.subforumName ? (
+                          <>
+                            <span>›</span>
+                            <Link
+                              to={`/forum/${post.subforumSlug || '#'}`}
+                              style={{ color: theme.textSecondary, textDecoration: 'none' }}
+                              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                            >
+                              {post.subforumName}
+                            </Link>
+                          </>
+                        ) : (
+                          post.subcategoryName && (
+                            <>
+                              <span>›</span>
+                              <Link
+                                to={`/forum/${post.subcategorySlug || '#'}`}
+                                style={{ color: theme.textSecondary, textDecoration: 'none' }}
+                                onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                              >
+                                {post.subcategoryName}
+                              </Link>
+                            </>
+                          )
+                        )}
+
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Stats (Hidden on Mobile) */}
+                  {!isMobile && (
+                    <div style={{
+                      textAlign: 'center',
+                      fontSize: '0.75rem',
+                      color: theme.textSecondary,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.125rem'
+                    }}>
+                      <div>Răspunsuri: {topic?.reply_count || 0}</div>
+                      <div>Vizualizări: {topic?.view_count || 0}</div>
+                    </div>
                   )}
 
-                  {/* Compact Header: Avatar + Username + Date */}
+                  {/* Column 3: Last Post Info */}
                   <div style={{
                     display: 'flex',
-                    gap: isMobile ? '0.375rem' : '0.5rem',
-                    marginBottom: isMobile ? '0.375rem' : '0.5rem',
-                    alignItems: 'flex-start',
-                    paddingRight: post.post_number ? (isMobile ? '2.5rem' : '3rem') : '0'
+                    alignItems: 'center',
+                    justifyContent: isMobile ? 'flex-start' : 'flex-end',
+                    gap: '0.75rem',
+                    width: '100%',
+                    paddingTop: isMobile ? '0.5rem' : '0',
+                    borderTop: isMobile ? `1px solid ${theme.border}` : 'none',
+                    marginTop: isMobile ? '0.25rem' : '0'
                   }}>
-                    {/* Avatar - Real profile picture - Smaller */}
                     <div style={{
-                      width: isMobile ? '1.75rem' : '2rem',
-                      height: isMobile ? '1.75rem' : '2rem',
+                      textAlign: isMobile ? 'left' : 'right',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      minWidth: 0,
+                      flex: 1
+                    }}>
+                      {/* Date + Time (No Icon, Time Red) */}
+                      <div style={{
+                        fontSize: '0.75rem',
+                        marginBottom: '0.125rem'
+                      }}>
+                        <span style={{ color: theme.textSecondary, marginRight: '6px' }}>{dateStr}</span>
+                        <span style={{ color: '#ef4444', fontWeight: '500' }}>{timeStr}</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem' }}>
+                        <span style={{ color: theme.textSecondary, marginRight: '3px' }}>de</span>
+                        <Link
+                          to={`/forum/user/${post.author?.username || 'unknown'}`}
+                          style={{
+                            fontWeight: '600',
+                            color: theme.text,
+                            textDecoration: 'none'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = theme.primary}
+                          onMouseLeave={(e) => e.currentTarget.style.color = theme.text}
+                        >
+                          {post.author?.username || 'Anonim'}
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Avatar */}
+                    <div style={{
+                      width: '2rem',
+                      height: '2rem',
                       borderRadius: '50%',
                       background: post.author?.photo_url
                         ? `url(${post.author.photo_url}) center/cover`
@@ -389,485 +578,178 @@ export default function RecentPosts() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'white',
-                      fontSize: isMobile ? '0.6875rem' : '0.75rem',
+                      fontSize: '0.75rem',
                       fontWeight: '600',
                       flexShrink: 0,
-                      border: `1.5px solid ${theme.border}`
+                      border: `1px solid ${theme.border}`
                     }}>
                       {!post.author?.photo_url && !post.author?.avatar_url &&
                         (post.author?.username?.charAt(0).toUpperCase() || '?')}
                     </div>
-
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Username + Date in one line */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: isMobile ? '0.25rem' : '0.375rem',
-                        marginBottom: isMobile ? '0.125rem' : '0.25rem',
-                        flexWrap: 'wrap'
-                      }}>
-                        <Link
-                          to={`/forum/user/${post.author?.username || 'unknown'}`}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            fontWeight: '600',
-                            color: theme.text,
-                            fontSize: isMobile ? '0.75rem' : '0.8125rem',
-                            textDecoration: 'none',
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = theme.primary;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = theme.text;
-                          }}
-                        >
-                          {post.author?.username || 'Anonim'}
-                        </Link>
-                        <span style={{
-                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
-                          color: theme.textSecondary
-                        }}>
-                          •
-                        </span>
-                        <span style={{
-                          fontSize: isMobile ? '0.625rem' : '0.6875rem',
-                          color: theme.textSecondary,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.125rem',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <Clock size={isMobile ? 9 : 10} />
-                          {formatSmartDateTime(post.created_at)}
-                        </span>
-                      </div>
-
-                      {/* Category and Topic link - Compact */}
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.125rem',
-                        marginBottom: isMobile ? '0.25rem' : '0.375rem'
-                      }}>
-                        {/* Category link - redirecționează la homepage (categoriile nu mai au URL-uri separate) */}
-                        {post.categoryName && (
-                          <Link
-                            to="/forum"
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                              fontSize: isMobile ? '0.625rem' : '0.6875rem',
-                              color: theme.textSecondary,
-                              textDecoration: 'none',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.textDecoration = 'underline';
-                              e.currentTarget.style.color = theme.primary;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.textDecoration = 'none';
-                              e.currentTarget.style.color = theme.textSecondary;
-                            }}
-                          >
-                            {post.categoryName}
-                          </Link>
-                        )}
-                        {/* Topic link */}
-                        {topic && (
-                          <Link
-                            to={topicLink}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                              fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                              color: theme.primary,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.125rem',
-                              textDecoration: 'none',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.textDecoration = 'underline';
-                              // Prefetch topic-ul când utilizatorul trece cu mouse-ul
-                              if (topic?.slug) {
-                                prefetchTopic(topic.slug, post.subcategorySlug || undefined);
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.textDecoration = 'none';
-                            }}
-                          >
-                            <MessageSquare size={isMobile ? 9 : 10} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {topic.title}
-                            </span>
-                          </Link>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Post content - Compact, max 2 lines */}
-                  <div
-                    style={{
-                      color: theme.text,
-                      fontSize: isMobile ? '0.75rem' : '0.8125rem',
-                      lineHeight: '1.4',
-                      maxHeight: isMobile ? '2.25rem' : '2.75rem',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      wordBreak: 'break-word',
-                      overflowWrap: 'break-word',
-                      flex: 1
-                    }}
-                    onClick={(e) => {
-                      // Navigate to topic when clicking content
-                      e.preventDefault();
-                      window.location.href = topicLink;
-                    }}
-                    dangerouslySetInnerHTML={{
-                      __html: parseBBCode(post.content || '', {
-                        subcategorySlug: post.subcategorySlug,
-                        topicSlug: topic?.slug,
-                        getPostPermalink: (postId: string) => {
-                          // Find post number from posts array
-                          const foundPost = posts.find(p => p.id === postId);
-                          if (foundPost && post.subcategorySlug && topic?.slug) {
-                            return `/forum/${post.subcategorySlug}/${topic.slug}${foundPost.post_number ? `#post${foundPost.post_number}` : ''}`;
-                          }
-                          return `/forum/post/${postId}`;
-                        }
-                      }).html
-                    }}
-                  />
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Statistics Section - Bottom */}
-        {!loading && posts.length > 0 && (
-          <div style={{
-            marginTop: isMobile ? '1.5rem' : '2rem',
-            padding: isMobile ? '1rem' : '1.5rem',
-            backgroundColor: theme.surface,
-            borderRadius: isMobile ? '0.5rem' : '0.75rem',
-            border: `1px solid ${theme.border}`
-          }}>
-            <h2 style={{
-              fontSize: isMobile ? '1rem' : '1.25rem',
-              fontWeight: '600',
-              color: theme.text,
-              marginBottom: isMobile ? '1rem' : '1.5rem'
-            }}>
-              📊 Statistici Postări Recente
-            </h2>
-
+        {/* Pagination - Only show if not loading and has content */}
+        {
+          !loading && posts.length > 0 && totalPosts > POSTS_PER_PAGE && (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-              gap: isMobile ? '0.75rem' : '1rem'
-            }}>
-              {/* Total Postări Afișate */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <MessageSquare size={isMobile ? 14 : 16} />
-                  <span>Total Afișate</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.text
-                }}>
-                  {posts.length}
-                </div>
-              </div>
-
-              {/* Postări Astăzi */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <Clock size={isMobile ? 14 : 16} />
-                  <span>Astăzi</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.primary
-                }}>
-                  {stats.postsToday}
-                </div>
-              </div>
-
-              {/* Postări Săptămâna Aceasta */}
-              <div style={{
-                textAlign: 'center',
-                padding: isMobile ? '0.75rem' : '1rem',
-                backgroundColor: theme.background,
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  color: theme.textSecondary,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <TrendingUp size={isMobile ? 14 : 16} />
-                  <span>Săptămâna</span>
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '1.25rem' : '1.5rem',
-                  fontWeight: '700',
-                  color: theme.secondary
-                }}>
-                  {stats.postsThisWeek}
-                </div>
-              </div>
-
-              {/* Cel Mai Activ Utilizator */}
-              {stats.mostActiveUser && (
-                <div style={{
-                  textAlign: 'center',
-                  padding: isMobile ? '0.75rem' : '1rem',
-                  backgroundColor: theme.background,
-                  borderRadius: '0.5rem'
-                }}>
-                  <div style={{
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                    color: theme.textSecondary,
-                    marginBottom: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.25rem'
-                  }}>
-                    <Users size={isMobile ? 14 : 16} />
-                    <span>Cel Mai Activ</span>
-                  </div>
-                  <Link
-                    to={`/forum/user/${stats.mostActiveUser.username}`}
-                    style={{
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      fontWeight: '600',
-                      color: theme.primary,
-                      textDecoration: 'none',
-                      display: 'block'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.textDecoration = 'underline';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.textDecoration = 'none';
-                    }}
-                  >
-                    {stats.mostActiveUser.username}
-                  </Link>
-                  <div style={{
-                    fontSize: isMobile ? '0.6875rem' : '0.75rem',
-                    color: theme.textSecondary,
-                    marginTop: '0.25rem'
-                  }}>
-                    {stats.mostActiveUser.count} postări
-                  </div>
-                </div>
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* Pagination */}
-        {!loading && posts.length > 0 && totalPosts > POSTS_PER_PAGE && (
-          <div style={{
-            marginTop: isMobile ? '1.5rem' : '2rem',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: isMobile ? '0.5rem' : '0.75rem',
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              style={{
-                padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
-                backgroundColor: currentPage === 1 ? theme.surfaceHover : theme.surface,
-                color: currentPage === 1 ? theme.textSecondary : theme.text,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.375rem',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                transition: 'all 0.2s',
-                opacity: currentPage === 1 ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (currentPage > 1) {
-                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                  e.currentTarget.style.borderColor = theme.primary;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentPage > 1) {
-                  e.currentTarget.style.backgroundColor = theme.surface;
-                  e.currentTarget.style.borderColor = theme.border;
-                }
-              }}
-            >
-              <ChevronLeft size={isMobile ? 16 : 18} />
-              <span>Anterior</span>
-            </button>
-
-            {/* Page Numbers */}
-            <div style={{
+              marginTop: isMobile ? '1.5rem' : '2rem',
               display: 'flex',
-              gap: '0.25rem',
-              alignItems: 'center'
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: isMobile ? '0.5rem' : '0.75rem',
+              flexWrap: 'wrap'
             }}>
-              {Array.from({ length: Math.min(5, Math.ceil(totalPosts / POSTS_PER_PAGE)) }, (_, i) => {
-                const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
-                let pageNum: number;
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: currentPage === 1 ? theme.surfaceHover : theme.surface,
+                  color: currentPage === 1 ? theme.textSecondary : theme.text,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.375rem',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  transition: 'all 0.2s',
+                  opacity: currentPage === 1 ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage > 1) {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.borderColor = theme.primary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentPage > 1) {
+                    e.currentTarget.style.backgroundColor = theme.surface;
+                    e.currentTarget.style.borderColor = theme.border;
+                  }
+                }}
+              >
+                <ChevronLeft size={isMobile ? 16 : 18} />
+                <span>Anterior</span>
+              </button>
 
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                if (pageNum > totalPages) return null;
-
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    style={{
-                      minWidth: isMobile ? '2rem' : '2.5rem',
-                      height: isMobile ? '2rem' : '2.5rem',
-                      padding: '0.5rem',
-                      backgroundColor: currentPage === pageNum ? theme.primary : theme.surface,
-                      color: currentPage === pageNum ? 'white' : theme.text,
-                      border: `1px solid ${currentPage === pageNum ? theme.primary : theme.border}`,
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      fontSize: isMobile ? '0.75rem' : '0.875rem',
-                      fontWeight: currentPage === pageNum ? '600' : '500',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                        e.currentTarget.style.borderColor = theme.primary;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.currentTarget.style.backgroundColor = theme.surface;
-                        e.currentTarget.style.borderColor = theme.border;
-                      }
-                    }}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalPosts / POSTS_PER_PAGE), p + 1))}
-              disabled={currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE)}
-              style={{
-                padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
-                backgroundColor: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? theme.surfaceHover : theme.surface,
-                color: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? theme.textSecondary : theme.text,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.375rem',
-                cursor: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                fontWeight: '500',
+              {/* Page Numbers */}
+              <div style={{
                 display: 'flex',
-                alignItems: 'center',
                 gap: '0.25rem',
-                transition: 'all 0.2s',
-                opacity: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (currentPage < Math.ceil(totalPosts / POSTS_PER_PAGE)) {
-                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                  e.currentTarget.style.borderColor = theme.primary;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentPage < Math.ceil(totalPosts / POSTS_PER_PAGE)) {
-                  e.currentTarget.style.backgroundColor = theme.surface;
-                  e.currentTarget.style.borderColor = theme.border;
-                }
-              }}
-            >
-              <span>Următor</span>
-              <ChevronRight size={isMobile ? 16 : 18} />
-            </button>
-          </div>
-        )}
+                alignItems: 'center'
+              }}>
+                {Array.from({ length: Math.min(5, Math.ceil(totalPosts / POSTS_PER_PAGE)) }, (_, i) => {
+                  const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
+                  let pageNum: number;
+
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  if (pageNum > totalPages) return null;
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={{
+                        minWidth: isMobile ? '2rem' : '2.5rem',
+                        height: isMobile ? '2rem' : '2.5rem',
+                        padding: '0.5rem',
+                        backgroundColor: currentPage === pageNum ? theme.primary : theme.surface,
+                        color: currentPage === pageNum ? 'white' : theme.text,
+                        border: `1px solid ${currentPage === pageNum ? theme.primary : theme.border}`,
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        fontWeight: currentPage === pageNum ? '600' : '500',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== pageNum) {
+                          e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          e.currentTarget.style.borderColor = theme.primary;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== pageNum) {
+                          e.currentTarget.style.backgroundColor = theme.surface;
+                          e.currentTarget.style.borderColor = theme.border;
+                        }
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalPosts / POSTS_PER_PAGE), p + 1))}
+                disabled={currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE)}
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.625rem 1rem',
+                  backgroundColor: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? theme.surfaceHover : theme.surface,
+                  color: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? theme.textSecondary : theme.text,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.375rem',
+                  cursor: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  transition: 'all 0.2s',
+                  opacity: currentPage >= Math.ceil(totalPosts / POSTS_PER_PAGE) ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage < Math.ceil(totalPosts / POSTS_PER_PAGE)) {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.borderColor = theme.primary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentPage < Math.ceil(totalPosts / POSTS_PER_PAGE)) {
+                    e.currentTarget.style.backgroundColor = theme.surface;
+                    e.currentTarget.style.borderColor = theme.border;
+                  }
+                }}
+              >
+                <span>Următor</span>
+                <ChevronRight size={isMobile ? 16 : 18} />
+              </button>
+            </div>
+          )
+        }
 
         {/* Page Info */}
-        {!loading && posts.length > 0 && (
-          <div style={{
-            marginTop: isMobile ? '0.75rem' : '1rem',
-            textAlign: 'center',
-            fontSize: isMobile ? '0.75rem' : '0.875rem',
-            color: theme.textSecondary
-          }}>
-            Afișând {posts.length} din {totalPosts} postări
-          </div>
-        )}
-      </div>
-    </ForumLayout>
+        {
+          !loading && posts.length > 0 && (
+            <div style={{
+              marginTop: isMobile ? '0.75rem' : '1rem',
+              textAlign: 'center',
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
+              color: theme.textSecondary
+            }}>
+              Afișând {posts.length} din {totalPosts} postări
+            </div>
+          )
+        }
+      </div >
+    </ForumLayout >
   );
 }

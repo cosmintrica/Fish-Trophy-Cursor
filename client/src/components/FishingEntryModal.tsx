@@ -1012,15 +1012,15 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="sticky top-0 bg-white z-10 border-b">
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+        <CardHeader className="sticky top-0 bg-white dark:bg-slate-800 z-10 border-b border-gray-200 dark:border-slate-700">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-bold">{getTitle()}</CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">{getTitle()}</CardTitle>
             <div className="flex items-center gap-2">
               {isEdit && onDelete && (
                 <button
                   onClick={handleDeleteClick}
-                  className="p-2 hover:bg-red-50 rounded-full transition-colors text-red-600"
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-red-600 dark:text-red-400"
                   disabled={isSubmitting || isUploading}
                   title={`Șterge ${isRecord ? 'recordul' : 'captura'}`}
                 >
@@ -1034,7 +1034,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   setVideoToDelete(null);
                   onClose();
                 }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-600 dark:text-slate-200"
                 disabled={isSubmitting || isUploading}
               >
                 <X className="w-5 h-5" />
@@ -1042,15 +1042,15 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-6 bg-white dark:bg-slate-800">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Species and Location on same row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Species Selection */}
               <div className="space-y-2">
-                <Label htmlFor="species" className="text-sm font-medium">
+                <Label htmlFor="species" className="text-sm font-medium text-gray-900 dark:text-white">
                   Specia {speciesRequired && <span className="text-red-500">*</span>}
-                  {!speciesRequired && <span className="text-gray-500">(opțional)</span>}
+                  {!speciesRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                 </Label>
                 <div className="space-y-2 relative">
                   <div className="relative">
@@ -1059,7 +1059,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                       placeholder={formData.species_id ? "Specia selectată" : "Caută specia..."}
                       value={speciesSearchTerm}
                       onChange={(e) => setSpeciesSearchTerm(e.target.value)}
-                      className={`w-full pr-10 ${formData.species_id ? 'bg-green-50 border-green-300' : ''}`}
+                      className={`w-full pr-10 ${formData.species_id ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
                       required={speciesRequired}
                     />
                     {formData.species_id && (
@@ -1077,24 +1077,24 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   </div>
 
                   {speciesSearchTerm.trim() && !formData.species_id && (
-                    <div className="max-h-48 overflow-y-auto border rounded-lg absolute z-50 w-full bg-white shadow-lg">
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
                       {getFilteredSpecies().length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
+                        <div className="p-4 text-center text-gray-500 dark:text-slate-400">
                           <div className="text-sm">Nu s-au găsit specii pentru "{speciesSearchTerm}"</div>
                         </div>
                       ) : (
                         getFilteredSpecies().map((s) => (
                           <div
                             key={s.id}
-                            className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
                             onClick={() => {
                               setFormData(prev => ({ ...prev, species_id: s.id }));
                               setSpeciesSearchTerm(s.name);
                             }}
                           >
-                            <div className="font-medium">{s.name}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{s.name}</div>
                             {s.scientific_name && (
-                              <div className="text-sm text-gray-500 italic">{s.scientific_name}</div>
+                              <div className="text-sm text-gray-500 dark:text-slate-400 italic">{s.scientific_name}</div>
                             )}
                           </div>
                         ))
@@ -1106,9 +1106,9 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
               {/* Location Selection */}
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-900 dark:text-white">
                   Locația de pescuit {locationRequired && <span className="text-red-500">*</span>}
-                  {!locationRequired && <span className="text-gray-500">(opțional)</span>}
+                  {!locationRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                 </Label>
                 <div className="space-y-2 relative">
                   <div className="relative">
@@ -1117,7 +1117,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                       placeholder={selectedLocation ? "Locația selectată" : "Caută locația..."}
                       value={locationSearchTerm}
                       onChange={(e) => setLocationSearchTerm(e.target.value)}
-                      className={`w-full pr-10 ${selectedLocation ? 'bg-green-50 border-green-300' : ''}`}
+                      className={`w-full pr-10 ${selectedLocation ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
                       required={locationRequired}
                     />
                     {selectedLocation && (
@@ -1135,23 +1135,23 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   </div>
 
                   {locationSearchTerm.trim() && !selectedLocation && (
-                    <div className="max-h-48 overflow-y-auto border rounded-lg absolute z-50 w-full bg-white shadow-lg">
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
                       {getFilteredLocations().length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
+                        <div className="p-4 text-center text-gray-500 dark:text-slate-400">
                           <div className="text-sm">Nu s-au găsit locații pentru "{locationSearchTerm}"</div>
                         </div>
                       ) : (
                         getFilteredLocations().map((l) => (
                           <div
                             key={l.id}
-                            className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
                             onClick={() => {
                               setSelectedLocation(l.id);
                               setLocationSearchTerm(l.name);
                             }}
                           >
-                            <div className="font-medium">{l.name.replace(/_/g, ' ')}</div>
-                            <div className="text-sm text-gray-500 capitalize">
+                            <div className="font-medium text-gray-900 dark:text-white">{l.name.replace(/_/g, ' ')}</div>
+                            <div className="text-sm text-gray-500 dark:text-slate-400 capitalize">
                               {l.type.replace(/_/g, ' ')} • {l.county}
                             </div>
                           </div>
@@ -1184,7 +1184,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                 <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
                   <Scale className="w-4 h-4" />
                   Greutatea (kg) {weightRequired && <span className="text-red-500">*</span>}
-                  {!weightRequired && <span className="text-gray-500">(opțional)</span>}
+                  {!weightRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                 </Label>
                 <Input
                   id="weight"
@@ -1203,7 +1203,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                 <Label htmlFor="length_cm" className="text-sm font-medium flex items-center gap-2">
                   <Ruler className="w-4 h-4" />
                   Lungimea (cm) {lengthRequired && <span className="text-red-500">*</span>}
-                  {!lengthRequired && <span className="text-gray-500">(opțional)</span>}
+                  {!lengthRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                 </Label>
                 <Input
                   id="length_cm"
@@ -1224,12 +1224,12 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Photo Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="photos" className="text-sm font-medium flex items-center gap-2 text-gray-700">
-                    <Camera className="w-4 h-4 text-blue-500" />
+                  <Label htmlFor="photos" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
+                    <Camera className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                     Fotografii {photosRequired && <span className="text-red-500">*</span>}
-                    {!photosRequired && <span className="text-gray-500">(opțional)</span>}
+                    {!photosRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                   </Label>
-                  <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 text-center hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-200 group">
+                  <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-4 text-center hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-all duration-200 group">
                     <input
                       type="file"
                       id="photos"
@@ -1242,11 +1242,11 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                       className="hidden"
                     />
                     <label htmlFor="photos" className="cursor-pointer block">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-                        <Camera className="w-6 h-6 text-blue-500" />
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 flex items-center justify-center transition-colors">
+                        <Camera className="w-6 h-6 text-blue-500 dark:text-blue-400" />
                       </div>
-                      <p className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Adaugă fotografii</p>
-                      <p className="text-xs text-gray-500 mt-1">JPG, PNG până la 10MB</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">Adaugă fotografii</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">JPG, PNG până la 10MB</p>
                     </label>
                   </div>
 
@@ -1254,7 +1254,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   {(formData.photo_urls.length > 0 || formData.photo_files.length > 0) && (
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {previewUrls.photos?.map((url, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600">
                           <img
                             src={url}
                             alt={`Preview ${index + 1}`}
@@ -1263,7 +1263,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                           <button
                             type="button"
                             onClick={() => removePhoto(index)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1275,12 +1275,12 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
                 {/* Video Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700">
-                    <Video className="w-4 h-4 text-green-500" />
+                  <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
+                    <Video className="w-4 h-4 text-green-500 dark:text-green-400" />
                     Videoclip {videoRequired && <span className="text-red-500">*</span>}
-                    {!videoRequired && <span className="text-gray-500">(opțional)</span>}
+                    {!videoRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                   </Label>
-                  <div className="border-2 border-dashed border-green-300 rounded-xl p-4 text-center hover:border-green-500 hover:bg-green-50/30 transition-all duration-200 group">
+                  <div className="border-2 border-dashed border-green-300 dark:border-green-700 rounded-xl p-4 text-center hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-all duration-200 group">
                     <input
                       type="file"
                       id="video"
@@ -1292,11 +1292,11 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                       className="hidden"
                     />
                     <label htmlFor="video" className="cursor-pointer block">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition-colors">
-                        <Video className="w-6 h-6 text-green-500" />
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
+                        <Video className="w-6 h-6 text-green-500 dark:text-green-400" />
                       </div>
-                      <p className="text-xs font-medium text-gray-700 group-hover:text-green-600">Selectează videoclip</p>
-                      <p className="text-xs text-gray-500 mt-1">MP4, MOV, AVI până la 100MB</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Selectează videoclip</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">MP4, MOV, AVI până la 100MB</p>
                       {(formData.video_file || formData.video_url) && (
                         <div className="mt-3">
                           {previewUrls.video && (
@@ -1314,7 +1314,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                       <button
                         type="button"
                         onClick={removeVideo}
-                        className="mt-2 text-xs text-red-500 hover:text-red-700"
+                        className="mt-2 text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                       >
                         Șterge videoclip
                       </button>
@@ -1326,7 +1326,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
+              <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-white">
                 <FileText className="w-4 h-4" />
                 Note suplimentare
               </Label>
@@ -1336,7 +1336,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 placeholder="Detalii despre captură, tehnica folosită, vremea, etc."
                 rows={3}
-                className="w-full"
+                className="w-full bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-50 placeholder-gray-500 dark:placeholder-slate-400"
               />
             </div>
 
@@ -1344,17 +1344,17 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
             {!isRecord && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Captură publică (vizibilă pentru toți)</Label>
+                  <Label className="text-sm font-medium text-gray-900 dark:text-white">Captură publică (vizibilă pentru toți)</Label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-gray-600">{formData.is_public ? 'Public' : 'Privat'}</span>
+                    <span className="text-xs text-gray-600 dark:text-slate-200">{formData.is_public ? 'Public' : 'Privat'}</span>
                     <div
                       onClick={() => handleInputChange('is_public', !formData.is_public)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        formData.is_public ? 'bg-blue-600' : 'bg-gray-300'
+                        formData.is_public ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-300 dark:bg-slate-700'
                       }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-200 transition-transform ${
                           formData.is_public ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
@@ -1369,7 +1369,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
               <Button
                 type="submit"
                 disabled={isSubmitting || isUploading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 {(isSubmitting || isUploading) ? (
                   <>
@@ -1394,7 +1394,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   onClose();
                 }}
                 disabled={isSubmitting || isUploading}
-                className="px-6"
+                className="px-6 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
               >
                 Anulează
               </Button>

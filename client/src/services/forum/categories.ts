@@ -130,7 +130,7 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
                                 const topicData = latestPost.forum_topics as any;
                                 const topicTitle = topicData?.title || 'Unknown';
                                 const topicSlug = topicData?.slug || null;
-                                const authorName = profile?.display_name || profile?.username || 'Unknown';
+                                const authorName = profile?.username || 'Unknown';
 
                                 // Format time - smart: dacă e azi → doar ora
                                 const postDate = new Date(latestPost.created_at);

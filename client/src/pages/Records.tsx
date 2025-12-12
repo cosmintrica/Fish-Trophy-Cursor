@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown, Video } from 'lucide-react';
+import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAllRecords, useSpecies, useLocations } from '@/hooks/useRecordsPage';
 import { usePrefetch } from '@/hooks/usePrefetch';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
+import FishingEntryModal from '@/components/FishingEntryModal';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import ShareButton from '@/components/ShareButton';
+import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 interface FishRecord {
   id: string;
@@ -31,9 +33,12 @@ interface FishRecord {
   verified_at?: string;
   rejection_reason?: string;
   fish_species?: {
+    id: string;
     name: string;
+    scientific_name?: string;
   };
   fishing_locations?: {
+    id: string;
     name: string;
     type: string;
     county: string;
@@ -84,6 +89,13 @@ const Records = () => {
   // Modal states
   const [selectedRecord, setSelectedRecord] = useState<FishRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<FishRecord | null>(null);
+  
+  // Zoom states
+  const [zoomMediaSrc, setZoomMediaSrc] = useState<string>('');
+  const [zoomMediaType, setZoomMediaType] = useState<'image' | 'video'>('image');
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -309,10 +321,8 @@ const Records = () => {
   };
 
   const handleEditRecord = (record: FishRecord) => {
-    // For now, just open the record details modal
-    // In the future, this could open an edit modal
-    setSelectedRecord(record);
-    setIsModalOpen(true);
+    setEditingRecord(record);
+    setIsEditModalOpen(true);
   };
 
   const getFilteredSpecies = () => {
@@ -403,20 +413,20 @@ const Records = () => {
         type="website"
         structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
       />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Header - Mobile Optimized */}
           <div className="text-center mb-4 sm:mb-6">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
               Recorduri & Clasamente
             </h1>
-            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-slate-300 max-w-2xl mx-auto px-4">
               Urmărește cele mai mari capturi din România
             </p>
           </div>
 
           {/* Search and Filters - Mobile Friendly */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-3 sm:p-4 mb-4 sm:mb-6 relative z-40">
+          <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 dark:border-slate-700 p-3 sm:p-4 mb-4 sm:mb-6 relative z-40">
             {/* Main Search Bar */}
             <div className="mb-4">
               <div className="relative max-w-xl mx-auto">
@@ -431,7 +441,7 @@ const Records = () => {
                       trackSearch(e.target.value, records.length);
                     }
                   }}
-                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm bg-gray-50/50 hover:bg-white"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm bg-gray-50/50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 dark:text-white dark:placeholder-gray-400"
                 />
                 {searchTerm && (
                   <button
@@ -449,31 +459,31 @@ const Records = () => {
               {/* Species Filter */}
               <div className="relative group">
                 <div
-                  className="flex items-center bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-2 transition-all cursor-pointer min-w-[160px]"
+                  className="flex items-center bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-lg px-3 py-2 transition-all cursor-pointer min-w-[160px]"
                   onClick={() => setShowSpeciesDropdown(!showSpeciesDropdown)}
                 >
-                  <Fish className="w-4 h-4 text-blue-600 mr-2" />
+                  <Fish className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
                   <div className="flex-1">
-                    <div className="text-xs font-medium text-blue-900">Specie</div>
-                    <div className="text-xs text-blue-700 truncate">
+                    <div className="text-xs font-medium text-blue-900 dark:text-blue-100">Specie</div>
+                    <div className="text-xs text-blue-700 dark:text-blue-300 truncate">
                       {selectedSpecies === 'all' ? 'Toate' : species.find(s => s.id === selectedSpecies)?.name?.substring(0, 15) || 'Selectează'}
                     </div>
                   </div>
-                  <ChevronDown className={`w-3 h-3 text-blue-600 transition-transform ${showSpeciesDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 text-blue-600 dark:text-blue-400 transition-transform ${showSpeciesDropdown ? 'rotate-180' : ''}`} />
                 </div>
 
                 {showSpeciesDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] max-h-64 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] max-h-64 overflow-y-auto">
                     <div className="p-2">
                       <input
                         type="text"
                         placeholder="Caută specie..."
                         value={speciesSearchTerm}
                         onChange={(e) => setSpeciesSearchTerm(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
                       />
                       <div
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm rounded-lg font-medium text-blue-700"
+                        className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg font-medium text-blue-700 dark:text-blue-300"
                         onClick={() => {
                           setSelectedSpecies('all');
                           setSpeciesSearchTerm('');
@@ -485,7 +495,7 @@ const Records = () => {
                       {getFilteredSpecies().map(s => (
                         <div
                           key={s.id}
-                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm rounded-lg"
+                          className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg text-gray-700 dark:text-slate-200"
                           onClick={() => selectSpecies(s.id, s.name)}
                         >
                           {s.name}
@@ -499,31 +509,31 @@ const Records = () => {
               {/* Location Filter */}
               <div className="relative group">
                 <div
-                  className="flex items-center bg-green-50 hover:bg-green-100 rounded-lg px-3 py-2 transition-all cursor-pointer min-w-[160px]"
+                  className="flex items-center bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-800/50 rounded-lg px-3 py-2 transition-all cursor-pointer min-w-[160px]"
                   onClick={() => setShowLocationDropdown(!showLocationDropdown)}
                 >
-                  <MapPin className="w-4 h-4 text-green-600 mr-2" />
+                  <MapPin className="w-4 h-4 text-green-600 dark:text-green-400 mr-2" />
                   <div className="flex-1">
-                    <div className="text-xs font-medium text-green-900">Locație</div>
-                    <div className="text-xs text-green-700 truncate">
+                    <div className="text-xs font-medium text-green-900 dark:text-green-100">Locație</div>
+                    <div className="text-xs text-green-700 dark:text-green-300 truncate">
                       {selectedLocation === 'all' ? 'Toate' : locations.find(l => l.id === selectedLocation)?.name?.replace(/_/g, ' ').substring(0, 15) || 'Selectează'}
                     </div>
                   </div>
-                  <ChevronDown className={`w-3 h-3 text-green-600 transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 text-green-600 dark:text-green-400 transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
                 </div>
 
                 {showLocationDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] max-h-64 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] max-h-64 overflow-y-auto">
                     <div className="p-2">
                       <input
                         type="text"
                         placeholder="Caută locație..."
                         value={locationSearchTerm}
                         onChange={(e) => setLocationSearchTerm(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-2"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
                       />
                       <div
-                        className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm rounded-lg font-medium text-green-700"
+                        className="px-3 py-2 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg font-medium text-green-700 dark:text-green-300"
                         onClick={() => {
                           setSelectedLocation('all');
                           setLocationSearchTerm('');
@@ -535,11 +545,11 @@ const Records = () => {
                       {getFilteredLocations().map(l => (
                         <div
                           key={l.id}
-                          className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm rounded-lg"
+                          className="px-3 py-2 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg text-gray-700 dark:text-slate-200"
                           onClick={() => selectLocation(l.id, l.name)}
                         >
                           <div className="font-medium">{l.name.replace(/_/g, ' ')}</div>
-                          <div className="text-xs text-gray-500 capitalize">
+                          <div className="text-xs text-gray-500 dark:text-slate-400 capitalize">
                             {l.type.replace(/_/g, ' ')} • {l.county}
                           </div>
                         </div>
@@ -553,7 +563,7 @@ const Records = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all font-medium text-xs"
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg transition-all font-medium text-xs"
                 >
                   <ChevronDown className={`w-3 h-3 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
                   <span className="hidden sm:inline">Filtre avansate</span>
@@ -562,7 +572,7 @@ const Records = () => {
 
                 <button
                   onClick={resetFilters}
-                  className="flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-all font-medium text-xs"
+                  className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/50 text-red-700 dark:text-red-300 rounded-lg transition-all font-medium text-xs"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span className="hidden sm:inline">Resetează</span>
@@ -585,7 +595,7 @@ const Records = () => {
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === id
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                      : 'bg-white/80 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      : 'bg-white/80 dark:bg-slate-700/80 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                       }`}
                   >
                     <Icon className="w-3 h-3 mr-1 sm:mr-2 flex-shrink-0" />
@@ -597,7 +607,7 @@ const Records = () => {
             </div>
 
             {/* Results Counter */}
-            <div className="flex justify-center items-center gap-2 text-xs text-gray-600">
+            <div className="flex justify-center items-center gap-2 text-xs text-gray-600 dark:text-slate-400">
               <Trophy className="w-3 h-3 text-yellow-500" />
               <span className="font-medium">
                 {getFilteredRecords().length} recorduri găsite
@@ -605,7 +615,7 @@ const Records = () => {
               {(selectedSpecies !== 'all' || selectedLocation !== 'all' || searchTerm) && (
                 <button
                   onClick={resetFilters}
-                  className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                  className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
                 >
                   (Resetează)
                 </button>
@@ -614,43 +624,43 @@ const Records = () => {
 
             {/* Advanced Filters */}
             {showAdvancedFilters && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate min (kg)</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-200 mb-1">Greutate min (kg)</label>
                   <input
                     type="number"
                     value={minWeight}
                     onChange={(e) => setMinWeight(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Greutate max (kg)</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-200 mb-1">Greutate max (kg)</label>
                   <input
                     type="number"
                     value={maxWeight}
                     onChange={(e) => setMaxWeight(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
                     placeholder="100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">De la data</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-200 mb-1">De la data</label>
                   <input
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Până la data</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-200 mb-1">Până la data</label>
                   <input
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -660,7 +670,7 @@ const Records = () => {
 
 
           {/* Leaderboard Content - Mobile Optimized */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-white/10 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4">
               <div className="text-center">
                 <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
@@ -681,21 +691,21 @@ const Records = () => {
             <div className="p-3 sm:p-4 md:p-6">
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Se încarcă recordurile...</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Se încarcă recordurile...</h3>
                 </div>
               ) : activeTab === 'teams' ? (
                 // Team Statistics View - Beautiful Design
                 <div className="space-y-6">
                   {Object.keys(teamStats).length === 0 ? (
                     <div className="text-center py-16">
-                      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full mb-6">
-                        <Users className="w-10 h-10 text-blue-600" />
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-full mb-6">
+                        <Users className="w-10 h-10 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-3">Nu există echipe încă</h3>
-                      <p className="text-gray-600 text-lg max-w-md mx-auto">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Nu există echipe încă</h3>
+                      <p className="text-gray-600 dark:text-slate-300 text-lg max-w-md mx-auto">
                         Echipele se formează automat pe baza locațiilor de pescuit. Adaugă primul record pentru a forma o echipă!
                       </p>
                     </div>
@@ -704,7 +714,7 @@ const Records = () => {
                       {Object.values(teamStats)
                         .sort((a, b) => b.totalWeight - a.totalWeight)
                         .map((team, index: number) => (
-                          <div key={team.locationName} className="group bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
+                          <div key={team.locationName} className="group bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-300 transform hover:-translate-y-1">
                             {/* Header with rank and location info */}
                             <div className="flex items-start justify-between mb-6">
                               <div className="flex items-center space-x-4">
@@ -719,11 +729,11 @@ const Records = () => {
                                   )}
                                 </div>
                                 <div>
-                                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                                     {team.locationName?.replace(/_/g, ' ')}
                                   </h3>
-                                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                    <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium capitalize">
+                                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-slate-400">
+                                    <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium capitalize">
                                       {team.locationType?.replace(/_/g, ' ')}
                                     </span>
                                     <span className="text-gray-400">•</span>
@@ -732,10 +742,10 @@ const Records = () => {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-3xl font-bold text-blue-600 mb-1">
+                                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                                   {team.totalWeight.toFixed(1)} kg
                                 </div>
-                                <div className="text-sm text-gray-500 font-medium">
+                                <div className="text-sm text-gray-500 dark:text-slate-400 font-medium">
                                   {team.totalRecords} recorduri
                                 </div>
                               </div>
@@ -743,42 +753,42 @@ const Records = () => {
 
                             {/* Statistics Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                              <div className="bg-white rounded-xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-gray-900 mb-1">{team.memberCount}</div>
-                                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Membri</div>
+                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{team.memberCount}</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Membri</div>
                               </div>
-                              <div className="bg-white rounded-xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-gray-900 mb-1">{team.speciesCount}</div>
-                                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Specii</div>
+                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{team.speciesCount}</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Specii</div>
                               </div>
-                              <div className="bg-white rounded-xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-green-600 mb-1">
+                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
                                   {(team.totalWeight / team.memberCount).toFixed(1)}
                                 </div>
-                                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">kg/membru</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">kg/membru</div>
                               </div>
-                              <div className="bg-white rounded-xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-purple-600 mb-1">
+                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
                                   {(team.totalRecords / team.memberCount).toFixed(1)}
                                 </div>
-                                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">recorduri/membru</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">recorduri/membru</div>
                               </div>
                             </div>
 
                             {/* Members Section */}
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
                               <div className="flex items-center mb-3">
-                                <Users className="w-4 h-4 text-blue-600 mr-2" />
-                                <span className="text-sm font-semibold text-blue-900">Membrii echipei</span>
+                                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
+                                <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">Membrii echipei</span>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {team.members.slice(0, 6).map((member: string, idx: number) => (
-                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white text-blue-800 text-sm rounded-full border border-blue-200 hover:bg-blue-100 transition-colors">
+                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 text-blue-800 dark:text-blue-200 text-sm rounded-full border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors">
                                     {member}
                                   </span>
                                 ))}
                                 {team.members.length > 6 && (
-                                  <span className="inline-flex items-center px-3 py-1.5 bg-blue-200 text-blue-800 text-sm rounded-full font-medium">
+                                  <span className="inline-flex items-center px-3 py-1.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-sm rounded-full font-medium">
                                     +{team.members.length - 6} alții
                                   </span>
                                 )}
@@ -786,19 +796,19 @@ const Records = () => {
                             </div>
 
                             {/* Species Section */}
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100 mt-3">
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 mt-3">
                               <div className="flex items-center mb-3">
-                                <Fish className="w-4 h-4 text-green-600 mr-2" />
-                                <span className="text-sm font-semibold text-green-900">Specii pescuite</span>
+                                <Fish className="w-4 h-4 text-green-600 dark:text-green-400 mr-2" />
+                                <span className="text-sm font-semibold text-green-900 dark:text-green-200">Specii pescuite</span>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {team.species.slice(0, 6).map((species: string, idx: number) => (
-                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white text-green-800 text-sm rounded-full border border-green-200 hover:bg-green-100 transition-colors">
+                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 text-green-800 dark:text-green-200 text-sm rounded-full border border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-800 transition-colors">
                                     {species}
                                   </span>
                                 ))}
                                 {team.species.length > 6 && (
-                                  <span className="inline-flex items-center px-3 py-1.5 bg-green-200 text-green-800 text-sm rounded-full font-medium">
+                                  <span className="inline-flex items-center px-3 py-1.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 text-sm rounded-full font-medium">
                                     +{team.species.length - 6} altele
                                   </span>
                                 )}
@@ -811,14 +821,14 @@ const Records = () => {
                 </div>
               ) : getFilteredRecords().length === 0 ? (
                 <div className="text-center py-12">
-                  <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  <Trophy className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all'
                       ? 'Nu s-au găsit recorduri'
                       : 'Nu există recorduri încă'
                     }
                   </h3>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 dark:text-slate-400 mb-6">
                     {searchTerm || selectedSpecies !== 'all' || selectedLocation !== 'all'
                       ? 'Încearcă să modifici criteriile de căutare.'
                       : 'Fii primul care adaugă un record!'
@@ -827,93 +837,140 @@ const Records = () => {
                 </div>
               ) : (
                 <div className="space-y-2 sm:space-y-3">
-                  {getFilteredRecords().slice(0, 15).map((record, index) => (
-                    <div key={record.id} className="group bg-white border border-gray-200 rounded-xl p-2 sm:p-3 md:p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                        {/* Left side - Rank and Info */}
-                        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                          {/* Rank */}
-                          <div className="flex-shrink-0">
-                            {getRankIcon(index + 1)}
-                          </div>
-
-                          {/* Record Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
-                              <h3
-                                className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate cursor-pointer hover:text-blue-600 hover:underline transition-colors"
-                                onClick={() => openUserProfile(record)}
-                                onMouseEnter={() => {
-                                  const username = record.profiles?.username;
-                                  if (username) {
-                                    prefetchProfile(username);
-                                  } else if (record.user_id) {
-                                    prefetchProfile(record.user_id);
-                                  }
-                                }}
-                                title="Vezi profilul utilizatorului"
-                              >
-                                {record.profiles?.display_name || 'Utilizator'}
-                              </h3>
-                              {getStatusBadge(record.status)}
-                            </div>
-                            <p className="text-xs sm:text-sm text-gray-700 font-medium truncate">{record.fish_species?.name}</p>
-                            <p className="text-xs text-gray-500 flex items-center truncate">
-                              <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">{record.fishing_locations?.name}</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right side - Weight, Length and Actions */}
-                        <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4">
-                          {/* Weight and Length */}
-                          <div className="flex items-center space-x-2 sm:space-x-4 text-right">
-                            <div className="text-center">
-                              <div className="flex items-center text-sm sm:text-lg md:text-xl font-bold text-blue-600">
-                                <Scale className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
-                                <span className="text-xs sm:text-base">{record.weight || 'N/A'} kg</span>
+                  {getFilteredRecords().slice(0, 15).map((record, index) => {
+                    const imageUrl = record.photo_url || record.image_url;
+                    const videoUrl = record.video_url;
+                    
+                    return (
+                      <div key={record.id} className="group bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-300">
+                        <div className="flex flex-col sm:flex-row">
+                          {/* Image/Video Section */}
+                          {(imageUrl || videoUrl) && (
+                            <div className="sm:w-32 md:w-40 flex-shrink-0 relative aspect-video sm:aspect-square bg-gray-100 dark:bg-slate-900 cursor-pointer group/zoom">
+                              {imageUrl ? (
+                                <img
+                                  src={getR2ImageUrlProxy(imageUrl)}
+                                  alt={record.fish_species?.name || 'Record'}
+                                  className="w-full h-full object-cover transition-transform duration-200 group-hover/zoom:scale-105"
+                                  onClick={() => {
+                                    setZoomMediaSrc(getR2ImageUrlProxy(imageUrl));
+                                    setZoomMediaType('image');
+                                    setIsZoomOpen(true);
+                                  }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              ) : videoUrl ? (
+                                <video
+                                  src={getR2ImageUrlProxy(videoUrl)}
+                                  className="w-full h-full object-cover transition-transform duration-200 group-hover/zoom:scale-105"
+                                  muted
+                                  playsInline
+                                  onClick={() => {
+                                    setZoomMediaSrc(getR2ImageUrlProxy(videoUrl));
+                                    setZoomMediaType('video');
+                                    setIsZoomOpen(true);
+                                  }}
+                                />
+                              ) : null}
+                              {videoUrl && (
+                                <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                  <Video className="w-3 h-3" />
+                                  Video
+                                </div>
+                              )}
+                              {/* Rank Badge */}
+                              <div className="absolute top-2 left-2">
+                                {getRankIcon(index + 1)}
                               </div>
                             </div>
-                            <div className="text-center">
-                              <div className="flex items-center text-xs sm:text-sm md:text-lg font-bold text-gray-600">
-                                <Ruler className="w-3 h-3 mr-0.5 sm:mr-1" />
-                                <span className="text-xs sm:text-base">{record.length_cm || 'N/A'} cm</span>
+                          )}
+                          
+                          {/* Content Section */}
+                          <div className="flex-1 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            {/* Left side - Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {!imageUrl && !videoUrl && (
+                                  <div className="flex-shrink-0">
+                                    {getRankIcon(index + 1)}
+                                  </div>
+                                )}
+                                <h3
+                                  className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                                  onClick={() => openUserProfile(record)}
+                                  onMouseEnter={() => {
+                                    const username = record.profiles?.username;
+                                    if (username) {
+                                      prefetchProfile(username);
+                                    } else if (record.user_id) {
+                                      prefetchProfile(record.user_id);
+                                    }
+                                  }}
+                                  title="Vezi profilul utilizatorului"
+                                >
+                                  {record.profiles?.display_name || 'Utilizator'}
+                                </h3>
+                                {getStatusBadge(record.status)}
+                              </div>
+                              <p className="text-xs sm:text-sm text-gray-700 dark:text-slate-200 font-semibold mb-1">{record.fish_species?.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-slate-400 flex items-center truncate mb-2">
+                                <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">
+                                  {record.fishing_locations?.county && record.fishing_locations?.name 
+                                    ? `${record.fishing_locations.county} - ${record.fishing_locations.name}`
+                                    : record.fishing_locations?.name || 'Locație necunoscută'}
+                                </span>
+                              </p>
+                              {/* Weight and Length */}
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold">
+                                  <Scale className="w-4 h-4 mr-1" />
+                                  <span>{record.weight || 'N/A'} kg</span>
+                                </div>
+                                <div className="flex items-center text-gray-600 dark:text-blue-300 font-bold">
+                                  <Ruler className="w-4 h-4 mr-1" />
+                                  <span>{record.length_cm || 'N/A'} cm</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex gap-1 sm:gap-2 items-center">
-                            <ShareButton
-                              url={`https://fishtrophy.ro/records${(record as any).global_id ? `#record-${(record as any).global_id}` : `?record=${record.id}`}`}
-                              title={`Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`}
-                              description={`Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`}
-                              image={record.photo_url || record.image_url ? `https://fishtrophy.ro${record.photo_url || record.image_url}` : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
-                              size="sm"
-                              variant="ghost"
-                            />
-                            <button
-                              onClick={() => openRecordModal(record)}
-                              className="px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center"
-                            >
-                              <Eye className="w-3 h-3 sm:mr-1" />
-                              <span className="hidden sm:inline">Vezi</span>
-                            </button>
-                            {isAdmin && record.status === 'verified' && (
+                            {/* Right side - Actions */}
+                            <div className="flex gap-2 items-center flex-shrink-0 relative z-10">
+                              <div className="relative z-[10000]">
+                                <ShareButton
+                                  url={`https://fishtrophy.ro/records${(record as any).global_id ? `#record-${(record as any).global_id}` : `?record=${record.id}`}`}
+                                  title={`Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`}
+                                  description={`Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`}
+                                  image={imageUrl ? getR2ImageUrlProxy(imageUrl) : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
+                                  size="sm"
+                                  variant="ghost"
+                                />
+                              </div>
                               <button
-                                onClick={() => handleEditRecord(record)}
-                                className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors flex items-center"
+                                onClick={() => openRecordModal(record)}
+                                className="px-3 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1"
                               >
-                                <Edit className="w-3 h-3 sm:mr-1" />
-                                <span className="hidden sm:inline">Editează</span>
+                                <Eye className="w-4 h-4" />
+                                <span className="hidden sm:inline">Vezi</span>
                               </button>
-                            )}
+                              {isAdmin && record.status === 'verified' && (
+                                <button
+                                  onClick={() => handleEditRecord(record)}
+                                  className="px-3 py-2 bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors flex items-center gap-1"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Editează</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Load More Button */}
                   {getFilteredRecords().length > 15 && (
@@ -933,8 +990,39 @@ const Records = () => {
             record={selectedRecord}
             isOpen={isModalOpen}
             onClose={closeRecordModal}
-            isAdmin={false}
-            canEdit={false}
+            isAdmin={isAdmin}
+            canEdit={isAdmin}
+            onEdit={handleEditRecord}
+          />
+
+          {/* Edit Record Modal */}
+          {editingRecord && (
+            <FishingEntryModal
+              type="record"
+              mode="edit"
+              isOpen={isEditModalOpen}
+              onClose={() => {
+                setIsEditModalOpen(false);
+                setEditingRecord(null);
+              }}
+              entry={editingRecord}
+              onSuccess={() => {
+                setIsEditModalOpen(false);
+                setEditingRecord(null);
+                // Reload records
+                window.location.reload();
+              }}
+              isAdmin={isAdmin}
+            />
+          )}
+
+          {/* Media Zoom Viewer */}
+          <MediaZoomViewer
+            isOpen={isZoomOpen}
+            onClose={() => setIsZoomOpen(false)}
+            src={zoomMediaSrc}
+            alt="Record media"
+            type={zoomMediaType}
           />
         </div>
       </div>

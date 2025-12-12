@@ -67,7 +67,7 @@ export const ProfileSidebar = ({
 
     return (
         <div className="lg:col-span-1">
-            <Card>
+            <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardHeader className="text-center">
                     <div className="relative mx-auto mb-4 avatar-menu-container" ref={menuRef}>
                         {/* Avatar Circle with Border */}
@@ -121,7 +121,7 @@ export const ProfileSidebar = ({
                         {/* Menu - Outside Avatar */}
                         {showMenu && (
                             <div
-                                className="absolute left-1/2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-[100]"
+                                className="absolute left-1/2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 z-[100]"
                                 style={{
                                     top: 'calc(100% + 10px)',
                                     transform: 'translateX(-50%)'
@@ -132,7 +132,7 @@ export const ProfileSidebar = ({
                                         <button
                                             onClick={handleUploadClick}
                                             disabled={isUploadingAvatar}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <Upload className="w-4 h-4" />
                                             Încarcă avatar
@@ -142,7 +142,7 @@ export const ProfileSidebar = ({
                                         <button
                                             onClick={handleDeleteClick}
                                             disabled={isUploadingAvatar}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                             Șterge avatar
@@ -160,25 +160,25 @@ export const ProfileSidebar = ({
                             disabled={isUploadingAvatar}
                         />
                     </div>
-                    <CardTitle className="text-xl">
+                    <CardTitle className="text-xl dark:text-slate-50">
                         {profileData.displayName || 'Utilizator'}
                     </CardTitle>
-                    <CardDescription>{user.email}</CardDescription>
+                    <CardDescription className="dark:text-slate-400">{user.email}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-slate-300">
                             <Calendar className="w-4 h-4" />
                             <span>Membru din {new Date(user.created_at || Date.now()).toLocaleDateString('ro-RO')}</span>
                         </div>
-                        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-slate-300">
                             <Trophy className="w-4 h-4" />
                             <span>{recordsCount} recorduri</span>
                         </div>
                         {profileData.username && (
                             <Link
                                 to={`/profile/${profileData.username}`}
-                                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors w-full border border-blue-200"
+                                className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors w-full border border-blue-200 dark:border-blue-800"
                             >
                                 <Eye className="w-4 h-4" />
                                 Vezi profilul public
@@ -194,7 +194,7 @@ export const ProfileSidebar = ({
                                 window.location.replace('/');
                             }}
                             variant="outline"
-                            className="w-full"
+                            className="w-full dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                             Ieșire din cont
                         </Button>

@@ -13,6 +13,21 @@ export default function NotFound404() {
   const [isPlaying, setIsPlaying] = useState(false);
   const animationFrameRef = useRef<number>();
   const gameStateRef = useRef<any>(null);
+  const backgroundImageRef = useRef<HTMLImageElement | null>(null);
+
+  // Load image once on mount
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/wood.jpg';
+    img.onload = () => {
+      backgroundImageRef.current = img;
+      // Force a redraw if canvas is available and not playing
+      if (canvasRef.current && !isPlaying) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,6 +40,17 @@ export default function NotFound404() {
     const resizeCanvas = () => {
       canvas.width = Math.min(900, window.innerWidth - 80);
       canvas.height = 500;
+      // Redraw background on resize if not playing
+      if (!isPlaying && backgroundImageRef.current) {
+        ctx.drawImage(backgroundImageRef.current, 0, 0, canvas.width, canvas.height);
+      } else if (!isPlaying) {
+        // Fallback gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#8B4513');
+        gradient.addColorStop(1, '#654321');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -48,7 +74,7 @@ export default function NotFound404() {
       const rect = canvas.getBoundingClientRect();
       gameState.mouseX = clientX - rect.left;
       gameState.mouseY = clientY - rect.top;
-      
+
       const dx = gameState.mouseX - gameState.hook.x;
       const dy = Math.max(gameState.mouseY - gameState.hook.y, 30);
       gameState.hook.targetAngle = Math.atan2(dx, dy) * 0.6;
@@ -73,7 +99,7 @@ export default function NotFound404() {
     // Create fish
     const createFish = () => {
       if (!isPlaying) return;
-      
+
       const now = Date.now();
       if (now - gameState.lastFishSpawn > 1000 && gameState.fish.length < 8) {
         gameState.fish.push({
@@ -105,7 +131,7 @@ export default function NotFound404() {
       ctx.save();
       ctx.translate(gameState.hook.x, gameState.hook.y);
       ctx.rotate(gameState.hook.angle);
-      
+
       ctx.strokeStyle = '#374151';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -117,7 +143,7 @@ export default function NotFound404() {
       ctx.beginPath();
       ctx.arc(0, gameState.lineLength, 10, 0, Math.PI * 2);
       ctx.fill();
-      
+
       ctx.beginPath();
       ctx.moveTo(0, gameState.lineLength);
       ctx.lineTo(-6, gameState.lineLength + 10);
@@ -173,7 +199,7 @@ export default function NotFound404() {
     // Check collision
     const checkCollision = () => {
       if (!isPlaying) return;
-      
+
       const hookEndX = gameState.hook.x + Math.sin(gameState.hook.angle) * gameState.lineLength;
       const hookEndY = gameState.hook.y + Math.cos(gameState.hook.angle) * gameState.lineLength;
 
@@ -193,30 +219,31 @@ export default function NotFound404() {
 
     // Animation loop
     const animate = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
       if (!isPlaying) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const img = new Image();
-        img.src = '/wood.jpg';
-        img.onload = () => {
-          if (!isPlaying && canvas) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          }
-        };
-        img.onerror = () => {
-          if (!isPlaying && canvas) {
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#8B4513');
-            gradient.addColorStop(1, '#654321');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          }
-        };
+        // Just draw background if not playing
+        if (backgroundImageRef.current) {
+          ctx.drawImage(backgroundImageRef.current, 0, 0, canvas.width, canvas.height);
+        } else {
+          // Fallback gradient
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient.addColorStop(0, '#8B4513');
+          gradient.addColorStop(1, '#654321');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         animationFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Draw background (water over wood concept, or just water for game)
+      // Game background is water
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, '#3b82f630');
       gradient.addColorStop(1, '#1e40af40');
@@ -248,23 +275,6 @@ export default function NotFound404() {
       checkCollision();
 
       animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    const img = new Image();
-    img.src = '/wood.jpg';
-    img.onload = () => {
-      if (canvas && !isPlaying) {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      }
-    };
-    img.onerror = () => {
-      if (canvas && !isPlaying) {
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#8B4513');
-        gradient.addColorStop(1, '#654321');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
     };
 
     animate();
@@ -313,7 +323,7 @@ export default function NotFound404() {
               }
             }}
           />
-          
+
           {/* Game Controls */}
           <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
             <button
@@ -328,9 +338,8 @@ export default function NotFound404() {
                   }
                 }
               }}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
-                isPlaying ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${isPlaying ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
             >
               <Fish size={14} />
               {isPlaying ? 'Pauză' : 'Joacă'}

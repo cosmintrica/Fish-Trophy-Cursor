@@ -5,13 +5,46 @@ import { useCategories } from '../hooks/useCategories';
 import { useTheme } from '../contexts/ThemeContext';
 import type { ForumCategory } from '../types/forum';
 import ReadStatusMarker from './ReadStatusMarker';
-import { useMultipleSubcategoriesUnreadStatus } from '../hooks/useTopicReadStatus';
+import { useMultipleSubcategoriesUnreadStatus, useMultipleSubforumsUnreadStatus } from '../hooks/useTopicReadStatus';
 import { useAuth } from '../hooks/useAuth';
 import { usePrefetch } from '../hooks/usePrefetch';
 
 interface MobileOptimizedCategoriesProps {
   onSubcategoryClick: (subcategoryId: string, categorySlug?: string, subcategorySlug?: string) => void;
 }
+
+// Helper to compare last posts
+const getLatestPost = (
+  mainPost: any | null,
+  subforums: any[] = []
+) => {
+  let latest = mainPost;
+  let latestDate = mainPost?.date ? new Date((mainPost.date.includes('.') ? mainPost.date.split('.').reverse().join('-') : mainPost.date) + ' ' + mainPost.timeOnly) : null;
+  // Fallback for "Azi HH:MM" which doesn't have date
+  if (mainPost?.time?.includes(':') && !mainPost?.date) {
+    latestDate = new Date(); // Assume today
+    const [h, m] = mainPost.time.split(':');
+    latestDate.setHours(parseInt(h), parseInt(m), 0);
+  }
+
+
+  for (const sf of subforums) {
+    if (sf.lastPost) {
+      let sfDate = sf.lastPost.date ? new Date((sf.lastPost.date.includes('.') ? sf.lastPost.date.split('.').reverse().join('-') : sf.lastPost.date) + ' ' + sf.lastPost.timeOnly) : null;
+      if (sf.lastPost.time?.includes(':') && !sf.lastPost.date) {
+        sfDate = new Date();
+        const [h, m] = sf.lastPost.time.split(':');
+        sfDate.setHours(parseInt(h), parseInt(m), 0);
+      }
+
+      if (!latest || (sfDate && latestDate && sfDate > latestDate)) {
+        latest = sf.lastPost;
+        latestDate = sfDate;
+      }
+    }
+  }
+  return latest;
+};
 
 export default function MobileOptimizedCategories({ onSubcategoryClick }: MobileOptimizedCategoriesProps) {
   const { theme } = useTheme();
@@ -24,17 +57,35 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
 
   const categories = supabaseCategories || [];
   const { forumUser } = useAuth();
-  
+
   // Hook pentru prefetch pe hover
   const { prefetchSubcategory } = usePrefetch();
-  
+
   // Hook pentru status-ul read/unread al subcategoriilor
   const allSubcategoryIds = useMemo(() => {
     return categories.flatMap(cat => cat.subcategories?.map(sub => sub.id) || []);
   }, [categories]);
-  
+
+  // Hook pentru status-ul read/unread al subforumurilor
+  const allSubforumIds = useMemo(() => {
+    return categories.flatMap(cat =>
+      cat.subcategories?.flatMap(sub =>
+        sub.subforums?.map((sf: any) => sf.id) || []
+      ) || []
+    );
+  }, [categories]);
+
   const { hasUnread: hasUnreadSubcategory } = useMultipleSubcategoriesUnreadStatus(allSubcategoryIds);
-  
+
+
+  const { hasUnread: hasUnreadSubforum } = useMultipleSubforumsUnreadStatus(allSubforumIds);
+
+  const getEffectiveUnread = (subcategory: any) => {
+    if (hasUnreadSubcategory(subcategory.id)) return true;
+    if (subcategory.subforums?.some((sf: any) => hasUnreadSubforum(sf.id))) return true;
+    return false;
+  }
+
   // Detectează dacă e mobil
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -47,7 +98,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -157,8 +208,8 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                         {forumUser && (
-                          <ReadStatusMarker 
-                            hasUnread={hasUnreadSubcategory(subcategory.id)} 
+                          <ReadStatusMarker
+                            hasUnread={getEffectiveUnread(subcategory)}
                             style={{ marginRight: '0.25rem', alignSelf: 'center' }}
                           />
                         )}
@@ -307,8 +358,8 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       {forumUser && (
-                        <ReadStatusMarker 
-                          hasUnread={hasUnreadSubcategory(subcategory.id)} 
+                        <ReadStatusMarker
+                          hasUnread={getEffectiveUnread(subcategory)}
                           style={{ marginRight: '0.25rem' }}
                         />
                       )}
@@ -333,54 +384,85 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                       {subcategory.postCount || 0}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: theme.textSecondary, textAlign: 'center' }}>
-                      {subcategory.lastPost ? (
-                        <div>
-                          <div style={{ fontWeight: '500', color: theme.text, marginBottom: '0.125rem', fontSize: '0.75rem' }}>
-                            {subcategory.lastPost.topicTitle && (
-                              subcategory.lastPost.topicTitle.length > 30 
-                                ? subcategory.lastPost.topicTitle.substring(0, 30) + '...' 
-                                : subcategory.lastPost.topicTitle
-                            )}
+                      {(() => {
+                        const effectiveLastPost = getLatestPost(subcategory.lastPost, subcategory.subforums);
+                        return effectiveLastPost ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '100%', gap: '0.25rem' }}>
+
+                            {/* 1. Link Topic Title */}
+                            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px', textAlign: 'right' }}>
+                              {effectiveLastPost.topicTitle && (
+                                <Link
+                                  to={`/forum/${effectiveLastPost.subforumSlug || effectiveLastPost.subcategorySlug || ''}/${effectiveLastPost.topicSlug}${effectiveLastPost.postNumber ? `#post${effectiveLastPost.postNumber}` : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  style={{
+                                    textDecoration: 'none',
+                                    color: theme.text
+                                  }}
+                                  title={effectiveLastPost.topicTitle}
+                                >
+                                  {effectiveLastPost.topicTitle.length > 25
+                                    ? effectiveLastPost.topicTitle.substring(0, 25) + '...'
+                                    : effectiveLastPost.topicTitle}
+                                </Link>
+                              )}
+                            </div>
+
+                            {/* 2. Date and Time */}
+                            <div style={{ color: '#ef4444', fontWeight: '600' }}>
+                              {effectiveLastPost.date && <span>{effectiveLastPost.date} </span>}
+                              <span style={{ color: theme.textSecondary, fontWeight: '400', marginLeft: '4px' }}>
+                                {effectiveLastPost.timeOnly}
+                              </span>
+                            </div>
+
+                            {/* 3. Author and Arrow */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                              <span>
+                                de <span style={{ color: theme.primary, fontWeight: '600' }}>{effectiveLastPost.author}</span>
+                              </span>
+                              {/* Arrow Link */}
+                              {effectiveLastPost.topicSlug && (
+                                <Link
+                                  to={`/forum/${effectiveLastPost.subforumSlug || effectiveLastPost.subcategorySlug || ''}/${effectiveLastPost.topicSlug}${effectiveLastPost.postNumber ? `#post${effectiveLastPost.postNumber}` : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: '2px',
+                                    textDecoration: 'none'
+                                  }}
+                                  title="Mergi la ultima postare"
+                                >
+                                  <div style={{
+                                    minWidth: '14px',
+                                    width: '14px',
+                                    height: '14px',
+                                    backgroundColor: 'white',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}>
+                                    <span style={{ fontSize: '10px', lineHeight: 1, color: '#374151', marginTop: '-1px' }}>▶</span>
+                                  </div>
+                                </Link>
+                              )}
+                            </div>
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: theme.textSecondary, marginBottom: '0.125rem' }}>
-                            de <span style={{ fontWeight: '500' }}>{subcategory.lastPost.author}</span>
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: theme.textSecondary }}>
-                            {subcategory.lastPost.date && (
-                              <span>{subcategory.lastPost.date} </span>
-                            )}
-                            <span>{subcategory.lastPost.timeOnly}</span>
-                            {subcategory.lastPost.topicSlug && (
-                              <Link
-                                to={`/forum/${subcategory.lastPost.subforumSlug || subcategory.lastPost.subcategorySlug || ''}/${subcategory.lastPost.topicSlug}${subcategory.lastPost.postNumber ? `#post${subcategory.lastPost.postNumber}` : ''}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  // Navigate programmatically to ensure it works
-                                  window.location.href = `/forum/${subcategory.lastPost.subforumSlug || subcategory.lastPost.subcategorySlug || ''}/${subcategory.lastPost.topicSlug}${subcategory.lastPost.postNumber ? `#post${subcategory.lastPost.postNumber}` : ''}`;
-                                }}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  color: theme.primary,
-                                  textDecoration: 'none',
-                                  marginLeft: '0.25rem',
-                                  fontSize: '0.75rem',
-                                  cursor: 'pointer'
-                                }}
-                                title="Permalink la ultima postare"
-                              >
-                                &gt;
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: theme.textSecondary }}>Fără postări</span>
-                      )}
+                        ) : (
+                          <span style={{ color: theme.textSecondary }}>-</span>
+                        );
+                      })()}
                     </div>
                   </div>
-                  {/* Subforums are NOT displayed on homepage - they appear in CategoryPage */}
                 </div>
               ))}
             </div>
@@ -388,7 +470,6 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
 
         </div>
       ))}
-
     </div>
   );
 }

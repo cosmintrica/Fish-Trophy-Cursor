@@ -42,7 +42,7 @@ const Profile = () => {
 
   // Photo Upload Hook - Smart reload without page refresh
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  
+
   useEffect(() => {
     if (user?.user_metadata?.avatar_url) {
       setAvatarUrl(user.user_metadata.avatar_url);
@@ -112,11 +112,11 @@ const Profile = () => {
 
     try {
       const hasGoogleProvider = user.app_metadata?.provider === 'google' ||
-                               user.app_metadata?.providers?.includes('google') ||
-                               user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
+        user.app_metadata?.providers?.includes('google') ||
+        user.identities?.some((identity: { provider: string }) => identity.provider === 'google');
 
       setIsGoogleUser(hasGoogleProvider);
-      
+
       // For Google OAuth users, check if password is set by checking profile_completed flag
       if (hasGoogleProvider) {
         // If profile_completed is true, password is already set
@@ -199,22 +199,22 @@ const Profile = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Trebuie să fii autentificat</h1>
-          <p className="text-gray-600">Conectează-te pentru a-ți vedea profilul</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-50 mb-4">Trebuie să fii autentificat</h1>
+          <p className="text-gray-600 dark:text-slate-400">Conectează-te pentru a-ți vedea profilul</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-4 sm:py-8 transition-colors duration-200">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Setări</h1>
-          <p className="text-gray-600">Gestionează-ți contul și recordurile</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-slate-50">Setări</h1>
+          <p className="text-gray-600 dark:text-slate-400">Gestionează-ți contul și recordurile</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -294,7 +294,7 @@ const Profile = () => {
                         .from('profiles')
                         .update({ show_gear_publicly: value, updated_at: new Date().toISOString() })
                         .eq('id', user.id);
-                      
+
                       if (error) {
                         console.error('Error updating show_gear_publicly:', error);
                         toast.error('Eroare la actualizarea setării');

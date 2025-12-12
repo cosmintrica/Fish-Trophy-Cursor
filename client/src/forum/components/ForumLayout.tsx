@@ -32,9 +32,9 @@ export interface ForumUser {
  */
 export function forumUserToLayoutUser(forumUser: any): ForumUser | null {
   if (!forumUser) return null;
-  
+
   const photoUrl = forumUser.photo_url || forumUser.avatar_url || null;
-  
+
   return {
     id: forumUser.id || forumUser.user_id,
     username: forumUser.username || 'Unknown',
@@ -52,6 +52,7 @@ interface ForumLayoutProps {
 }
 
 export default function ForumLayout({ children, user, onLogin, onLogout, showWelcomeBanner = false }: ForumLayoutProps & { showWelcomeBanner?: boolean }) {
+  // useForumRealtime(); // Activează ascultarea evenimentelor realtime - Mutat în ForumRoutes
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -59,16 +60,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
   const location = useLocation();
   const userMenuRef = useRef<HTMLDivElement>(null);
-  
+
   // Get loading state directly from auth context
   const { loading: authLoading, forumUser: authForumUser } = useAuth();
-  
+
   // User is loaded when auth loading is complete
   const userLoaded = !authLoading;
-  
+
   // Unread messages count for forum context
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  
+
   // Load unread messages count
   useEffect(() => {
     if (!authForumUser?.id) {
@@ -124,13 +125,13 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   // Close user menu on outside click
   useEffect(() => {
     if (!showUserMenu) return;
-    
+
     const handleClickOutside = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showUserMenu]);
@@ -153,51 +154,51 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   };
 
   return (
-    <div style={{ 
-      minHeight: 'calc(100vh + env(safe-area-inset-bottom, 0px))', 
+    <div style={{
+      minHeight: 'calc(100vh + env(safe-area-inset-bottom, 0px))',
       height: 'auto',
-      backgroundColor: theme.background, 
-      transition: 'all 0.3s ease', 
-      overflowY: 'auto', 
-      overflowX: 'hidden', 
+      backgroundColor: theme.background,
+      transition: 'all 0.3s ease',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       width: '100%',
       position: 'relative',
       paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       marginBottom: 0
     }}>
       {/* HEADER - Redesign complet, Mobile-first */}
-      <header style={{ 
-        backgroundColor: theme.surface, 
-        borderBottom: `1px solid ${theme.border}`, 
-        position: 'sticky', 
-        top: 0, 
-        zIndex: 50, 
+      <header style={{
+        backgroundColor: theme.surface,
+        borderBottom: `1px solid ${theme.border}`,
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
         width: '100%',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
       }}>
-        <div style={{ 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem', 
-          width: '100%' 
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+          width: '100%'
         }}>
           {/* Main Header Row */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             gap: '0.75rem',
             minHeight: isMobile ? '3rem' : '3.5rem'
           }}>
             {/* Logo + Text - COMPLET VIZIBIL PE MOBIL */}
-            <Link 
-              to="/forum" 
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: isMobile ? '0.5rem' : '0.75rem', 
-                textDecoration: 'none', 
-                minWidth: 0, 
+            <Link
+              to="/forum"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: isMobile ? '0.5rem' : '0.75rem',
+                textDecoration: 'none',
+                minWidth: 0,
                 flex: '0 0 auto',
                 flexShrink: 0
               }}
@@ -222,8 +223,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 }}>
                   Fish Trophy Forum
                 </div>
-                <div style={{ 
-                  fontSize: isMobile ? 'clamp(0.5rem, 1.5vw, 0.625rem)' : '0.625rem', 
+                <div style={{
+                  fontSize: isMobile ? 'clamp(0.5rem, 1.5vw, 0.625rem)' : '0.625rem',
                   color: theme.textSecondary,
                   lineHeight: '1.2'
                 }}>
@@ -233,10 +234,10 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
             </Link>
 
             {/* Right Side - Actions */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: isMobile ? '0.5rem' : '0.75rem', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isMobile ? '0.5rem' : '0.75rem',
               flexShrink: 0,
               marginLeft: 'auto',
               marginRight: isMobile ? '-5px' : '0'
@@ -292,8 +293,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {/* Admin Badge - Desktop only */}
                     {user.isAdmin && !isMobile && (
-                      <Link 
-                        to="/forum/admin" 
+                      <Link
+                        to="/forum/admin"
                         style={{ textDecoration: 'none' }}
                         onClick={() => setShowUserMenu(false)}
                       >
@@ -311,14 +312,14 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                           transition: 'all 0.2s',
                           whiteSpace: 'nowrap'
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}>
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#b91c1c';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#dc2626';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}>
                           🔧 ADMIN
                         </div>
                       </Link>
@@ -384,7 +385,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                         width: isMobile ? '2rem' : '2.25rem',
                         height: isMobile ? '2rem' : '2.25rem',
                         borderRadius: '50%',
-                        background: user.photo_url 
+                        background: user.photo_url
                           ? `url(${user.photo_url}) center/cover`
                           : (user.isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(user.username)),
                         display: 'flex',
@@ -461,7 +462,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                           width: '2.5rem',
                           height: '2.5rem',
                           borderRadius: '50%',
-                          background: user.photo_url 
+                          background: user.photo_url
                             ? `url(${user.photo_url}) center/cover`
                             : (user.isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(user.username)),
                           display: 'flex',
@@ -672,16 +673,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 </div>
 
                 {/* Navigation Links */}
-                <Link 
-                  to="/forum" 
-                  onClick={() => setShowMobileMenu(false)} 
-                  style={{ 
+                <Link
+                  to="/forum"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: theme.text, 
-                    textDecoration: 'none', 
-                    padding: '0.75rem', 
+                    color: theme.text,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
                     fontWeight: '500',
                     borderRadius: '0.375rem',
                     transition: 'all 0.2s'
@@ -697,16 +698,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <span>Acasă Forum</span>
                 </Link>
 
-                <Link 
-                  to="/forum/recent" 
-                  onClick={() => setShowMobileMenu(false)} 
-                  style={{ 
+                <Link
+                  to="/forum/recent"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: theme.text, 
-                    textDecoration: 'none', 
-                    padding: '0.75rem', 
+                    color: theme.text,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
                     fontWeight: '500',
                     borderRadius: '0.375rem',
                     transition: 'all 0.2s'
@@ -722,16 +723,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <span>Postări Recente</span>
                 </Link>
 
-                <Link 
-                  to="/forum/members" 
-                  onClick={() => setShowMobileMenu(false)} 
-                  style={{ 
+                <Link
+                  to="/forum/members"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: theme.text, 
-                    textDecoration: 'none', 
-                    padding: '0.75rem', 
+                    color: theme.text,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
                     fontWeight: '500',
                     borderRadius: '0.375rem',
                     transition: 'all 0.2s'
@@ -747,16 +748,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <span>Membri Activi</span>
                 </Link>
 
-                <Link 
-                  to="/forum/rules" 
-                  onClick={() => setShowMobileMenu(false)} 
-                  style={{ 
+                <Link
+                  to="/forum/rules"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: theme.text, 
-                    textDecoration: 'none', 
-                    padding: '0.75rem', 
+                    color: theme.text,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
                     fontWeight: '500',
                     borderRadius: '0.375rem',
                     transition: 'all 0.2s'
@@ -772,16 +773,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   <span>Regulament</span>
                 </Link>
 
-                <Link 
-                  to="/" 
+                <Link
+                  to="/"
                   onClick={() => setShowMobileMenu(false)}
-                  style={{ 
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: theme.secondary, 
-                    textDecoration: 'none', 
-                    padding: '0.75rem', 
+                    color: theme.secondary,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
                     fontWeight: '500',
                     borderRadius: '0.375rem',
                     transition: 'all 0.2s'
@@ -798,16 +799,16 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 </Link>
 
                 {user?.isAdmin && (
-                  <Link 
-                    to="/forum/admin" 
-                    onClick={() => setShowMobileMenu(false)} 
-                    style={{ 
+                  <Link
+                    to="/forum/admin"
+                    onClick={() => setShowMobileMenu(false)}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.75rem',
-                      color: '#dc2626', 
-                      textDecoration: 'none', 
-                      padding: '0.75rem', 
+                      color: '#dc2626',
+                      textDecoration: 'none',
+                      padding: '0.75rem',
                       fontWeight: '600',
                       borderRadius: '0.375rem',
                       transition: 'all 0.2s'
@@ -920,9 +921,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
             borderTop: `1px solid ${theme.border}`,
             padding: 0 // Remove padding from outer container
           }}>
-            <div style={{ 
-              maxWidth: '1200px', 
-              margin: '0 auto', 
+            <div style={{
+              maxWidth: '1200px',
+              margin: '0 auto',
               textAlign: 'left',
               padding: isMobile ? '1.5rem 0.75rem' : '2rem 1rem' // Same horizontal padding as header
             }}>
@@ -947,7 +948,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
       </header>
 
       {/* Main Content */}
-      <main style={{ 
+      <main style={{
         minHeight: 'calc(100vh - 200px)',
         backgroundColor: theme.background
       }}>
@@ -969,9 +970,9 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
         marginBottom: 0
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
             gap: '0.75rem',
             alignItems: 'center',
             textAlign: 'center',

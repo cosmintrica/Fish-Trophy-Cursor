@@ -2,6 +2,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Fish, Heart, MessageCircle, MapPin, Scale, Ruler } from 'lucide-react';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useState } from 'react';
+import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 interface CatchItem {
   id: string;
@@ -42,9 +44,11 @@ interface CatchCardProps {
 }
 
 export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = false }: CatchCardProps) => {
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+
   return (
     <Card
-      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col aspect-square sm:aspect-auto sm:h-full"
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col aspect-square sm:aspect-auto sm:h-full dark:bg-slate-800 dark:border-slate-700"
       onClick={onCatchClick}
     >
       {/* Mobile: Full screen image with overlay */}
@@ -53,8 +57,12 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
           <img
             src={getR2ImageUrlProxy(catchItem.photo_url)}
             alt={catchItem.fish_species?.name || 'Captură'}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover cursor-zoom-in"
             loading="lazy"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsZoomOpen(true);
+            }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -173,7 +181,7 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
       {/* Desktop: CardContent normal */}
       <CardContent className="hidden sm:block p-4 flex-shrink-0">
         <div className="flex items-start justify-between mb-2 gap-2">
-          <h3 className="font-bold text-lg text-gray-900 truncate">
+          <h3 className="font-bold text-lg text-gray-900 dark:text-slate-50 truncate">
             {catchItem.fish_species?.name || 'Specie necunoscută'}
           </h3>
           {catchItem.global_id && (
@@ -187,7 +195,7 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
                   toast.error('Eroare la copierea ID-ului');
                 }
               }}
-              className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-gray-50 hover:bg-gray-100 transition-colors font-mono shrink-0"
+              className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
               title="Click pentru a copia ID-ul"
             >
               #{catchItem.global_id}
@@ -196,7 +204,7 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
         </div>
 
         {catchItem.fishing_locations && (
-          <div className="text-sm text-gray-600 flex items-center gap-1 mb-2">
+          <div className="text-sm text-gray-600 dark:text-slate-300 flex items-center gap-1 mb-2">
             <MapPin className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">{catchItem.fishing_locations.name}</span>
           </div>
@@ -206,23 +214,23 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             {catchItem.weight && (
               <div className="flex items-center gap-1 text-sm">
-                <Scale className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="font-semibold text-gray-900">{catchItem.weight} kg</span>
+                <Scale className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="font-semibold text-gray-900 dark:text-slate-50">{catchItem.weight} kg</span>
               </div>
             )}
             {catchItem.length_cm && (
               <div className="flex items-center gap-1 text-sm">
-                <Ruler className="w-4 h-4 text-green-600 shrink-0" />
-                <span className="font-semibold text-gray-900">{catchItem.length_cm} cm</span>
+                <Ruler className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                <span className="font-semibold text-gray-900 dark:text-slate-50">{catchItem.length_cm} cm</span>
               </div>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
-          <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-slate-700 gap-2">
+          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400">
             <div className="flex items-center gap-1">
-              <Heart className={`w-3.5 h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-current text-red-600' : 'text-gray-500'}`} />
+              <Heart className={`w-3.5 h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-current text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'}`} />
               <span>{catchItem.like_count || 0}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -230,11 +238,22 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
               <span>{catchItem.comment_count || 0}</span>
             </div>
           </div>
-          <span className="text-xs text-gray-500 shrink-0">
+          <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">
             {new Date(catchItem.captured_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         </div>
       </CardContent>
+
+      {/* Media Zoom Viewer */}
+      {catchItem.photo_url && (
+        <MediaZoomViewer
+          isOpen={isZoomOpen}
+          onClose={() => setIsZoomOpen(false)}
+          src={getR2ImageUrlProxy(catchItem.photo_url)}
+          alt={catchItem.fish_species?.name || 'Captură'}
+          type="image"
+        />
+      )}
     </Card>
   );
 };

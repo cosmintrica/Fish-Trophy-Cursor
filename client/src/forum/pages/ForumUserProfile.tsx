@@ -112,7 +112,7 @@ export default function ForumUserProfile() {
 
       // No need to check for category/subcategory conflicts anymore
       // The /user/ prefix in the route ensures this is always a user profile
-      
+
       // Fetch by username (case-insensitive)
       const { data: userByUsername, error: errorByUsername } = await supabase
         .from('forum_users')
@@ -133,6 +133,9 @@ export default function ForumUserProfile() {
     enabled: !!username,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // SEO Data - Hook must be called before conditional returns
+  const { websiteData, organizationData } = useStructuredData();
 
 
   // Get rank icon helper
@@ -187,7 +190,7 @@ export default function ForumUserProfile() {
 
   // Fără loading - afișăm direct conținutul (datele se încarcă în background)
 
-  if (error || (!isLoading && !userProfile)) {
+  if (isLoading || error || !userProfile) {
     // Don't navigate here - it's handled in useEffect above
     // Just show loading or error message
     if (isLoading) {
@@ -242,8 +245,7 @@ export default function ForumUserProfile() {
 
   const isOwnProfile = currentUser?.id === userProfile.user_id;
 
-  // SEO Data - OG tags dinamice pentru user profile
-  const { websiteData, organizationData } = useStructuredData();
+
   const profileUrl = `https://fishtrophy.ro/forum/user/${encodeURIComponent(userProfile.username)}`;
   const profileTitle = `${userProfile.username} - Profil Forum - Fish Trophy`;
   const profileDescription = `Profilul utilizatorului ${userProfile.username} pe Fish Trophy. ${userProfile.post_count} postări, ${userProfile.topic_count} topicuri, ${userProfile.reputation_points} puncte reputație. Rank: ${userProfile.rank.replace(/_/g, ' ')}.`;
@@ -274,513 +276,513 @@ export default function ForumUserProfile() {
         onLogin={handleLogin}
         onLogout={handleLogout}
       >
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0.75rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem'
-      }}>
-        {/* Header Profil - Compact și Mobile-Friendly */}
         <div style={{
-          backgroundColor: theme.surface,
-          border: `1px solid ${theme.border}`,
-          borderRadius: '0.5rem',
-          padding: 'clamp(0.75rem, 2vw, 1rem)',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0.75rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.75rem'
+          gap: '1rem'
         }}>
-          {/* Top Section: Avatar, Username, Rank - Compact */}
+          {/* Header Profil - Compact și Mobile-Friendly */}
           <div style={{
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.5rem',
+            padding: 'clamp(0.75rem, 2vw, 1rem)',
             display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            flexWrap: 'wrap'
+            flexDirection: 'column',
+            gap: '0.75rem'
           }}>
-            {/* Avatar - Mai mic pe mobile */}
+            {/* Top Section: Avatar, Username, Rank - Compact */}
             <div style={{
-              width: 'clamp(60px, 12vw, 80px)',
-              height: 'clamp(60px, 12vw, 80px)',
-              borderRadius: '50%',
-              background: userProfile.avatar_url
-                ? `url(${userProfile.avatar_url}) center/cover`
-                : `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: '700',
-              border: `2px solid ${theme.border}`,
-              flexShrink: 0
+              gap: '0.75rem',
+              flexWrap: 'wrap'
             }}>
-              {!userProfile.avatar_url && (
-                userProfile.username.charAt(0).toUpperCase()
-              )}
-            </div>
-
-            {/* Username and Rank - Compact */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Avatar - Mai mic pe mobile */}
               <div style={{
+                width: 'clamp(60px, 12vw, 80px)',
+                height: 'clamp(60px, 12vw, 80px)',
+                borderRadius: '50%',
+                background: userProfile.avatar_url
+                  ? `url(${userProfile.avatar_url}) center/cover`
+                  : `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                marginBottom: '0.25rem'
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+                fontWeight: '700',
+                border: `2px solid ${theme.border}`,
+                flexShrink: 0
               }}>
-                <h1 style={{
-                  fontSize: 'clamp(1.125rem, 3vw, 1.5rem)',
-                  fontWeight: '700',
-                  color: theme.text,
-                  margin: 0,
-                  lineHeight: '1.2'
-                }}>
-                  {userProfile.username}
-                </h1>
-                <span style={{
-                  fontSize: 'clamp(1rem, 2.5vw, 1.25rem)'
-                }}>
-                  {getRankIcon(userProfile.rank)}
-                </span>
-                <span style={{
-                  fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
-                  color: theme.textSecondary,
-                  fontWeight: '500'
-                }}>
-                  {userProfile.rank.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </span>
-                {userProfile.is_online && (
-                  <span style={{
-                    fontSize: '0.625rem',
-                    color: '#10b981',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem'
-                  }}>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: '#10b981'
-                    }} />
-                    Online
-                  </span>
+                {!userProfile.avatar_url && (
+                  userProfile.username.charAt(0).toUpperCase()
                 )}
               </div>
 
-              {/* Signature - Compact */}
-              {userProfile.signature && (
+              {/* Username and Rank - Compact */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
-                  color: theme.textSecondary,
-                  fontStyle: 'italic',
-                  marginTop: '0.25rem',
-                  lineHeight: '1.3'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.25rem'
                 }}>
-                  {userProfile.signature}
+                  <h1 style={{
+                    fontSize: 'clamp(1.125rem, 3vw, 1.5rem)',
+                    fontWeight: '700',
+                    color: theme.text,
+                    margin: 0,
+                    lineHeight: '1.2'
+                  }}>
+                    {userProfile.username}
+                  </h1>
+                  <span style={{
+                    fontSize: 'clamp(1rem, 2.5vw, 1.25rem)'
+                  }}>
+                    {getRankIcon(userProfile.rank)}
+                  </span>
+                  <span style={{
+                    fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
+                    color: theme.textSecondary,
+                    fontWeight: '500'
+                  }}>
+                    {userProfile.rank.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </span>
+                  {userProfile.is_online && (
+                    <span style={{
+                      fontSize: '0.625rem',
+                      color: '#10b981',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}>
+                      <div style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: '#10b981'
+                      }} />
+                      Online
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-            <div style={{ flexShrink: 0 }}>
-              <ShareButton
-                url={profileUrl}
-                title={profileTitle}
-                description={profileDescription}
-                size="sm"
-                variant="ghost"
-              />
-            </div>
-          </div>
 
-          {/* Stats Section: Reputation, Power, Posts, Topics - Compact Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '0.5rem',
-            paddingTop: '0.75rem',
-            borderTop: `1px solid ${theme.border}`
-          }}>
-            {/* Reputație Totală */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                color: theme.textSecondary,
-                fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-              }}>
-                <Award size={12} />
-                <span>Rep.</span>
+                {/* Signature - Compact */}
+                {userProfile.signature && (
+                  <div style={{
+                    fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
+                    color: theme.textSecondary,
+                    fontStyle: 'italic',
+                    marginTop: '0.25rem',
+                    lineHeight: '1.3'
+                  }}>
+                    {userProfile.signature}
+                  </div>
+                )}
               </div>
-              <div style={{
-                fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-                fontWeight: '700',
-                color: theme.text
-              }}>
-                {userProfile.reputation_points.toLocaleString('ro-RO')}
+              <div style={{ flexShrink: 0 }}>
+                <ShareButton
+                  url={profileUrl}
+                  title={profileTitle}
+                  description={profileDescription}
+                  size="sm"
+                  variant="ghost"
+                />
               </div>
             </div>
 
-            {/* Putere Reputație */}
+            {/* Stats Section: Reputation, Power, Posts, Topics - Compact Grid */}
             <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                color: theme.textSecondary,
-                fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-              }}>
-                <TrendingUp size={12} />
-                <span>Putere</span>
-              </div>
-              <div style={{
-                fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-                fontWeight: '700',
-                color: theme.primary
-              }}>
-                {userProfile.reputation_power}/7
-              </div>
-            </div>
-
-            {/* Postări */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                color: theme.textSecondary,
-                fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-              }}>
-                <MessageSquare size={12} />
-                <span>Post.</span>
-              </div>
-              <div style={{
-                fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-                fontWeight: '700',
-                color: theme.text
-              }}>
-                {userProfile.post_count.toLocaleString('ro-RO')}
-              </div>
-            </div>
-
-            {/* Topicuri */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                color: theme.textSecondary,
-                fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
-              }}>
-                <Activity size={12} />
-                <span>Top.</span>
-              </div>
-              <div style={{
-                fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-                fontWeight: '700',
-                color: theme.text
-              }}>
-                {userProfile.topic_count.toLocaleString('ro-RO')}
-              </div>
-            </div>
-          </div>
-
-          {/* Badges Section - Compact */}
-          {userProfile.badges && userProfile.badges.length > 0 && (
-            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '0.5rem',
               paddingTop: '0.75rem',
               borderTop: `1px solid ${theme.border}`
             }}>
-              <div style={{
-                fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
-                color: theme.textSecondary,
-                marginBottom: '0.5rem',
-                fontWeight: '500'
-              }}>
-                Badge-uri:
-              </div>
+              {/* Reputație Totală */}
               <div style={{
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.375rem'
+                flexDirection: 'column',
+                gap: '0.125rem',
+                alignItems: 'center',
+                textAlign: 'center'
               }}>
-                {userProfile.badges.map((badge, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      padding: '0.125rem 0.5rem',
-                      backgroundColor: theme.primary + '20',
-                      color: theme.primary,
-                      borderRadius: '9999px',
-                      fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {badge}
-                  </span>
-                ))}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  color: theme.textSecondary,
+                  fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
+                }}>
+                  <Award size={12} />
+                  <span>Rep.</span>
+                </div>
+                <div style={{
+                  fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+                  fontWeight: '700',
+                  color: theme.text
+                }}>
+                  {userProfile.reputation_points.toLocaleString('ro-RO')}
+                </div>
+              </div>
+
+              {/* Putere Reputație */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
+                alignItems: 'center',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  color: theme.textSecondary,
+                  fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
+                }}>
+                  <TrendingUp size={12} />
+                  <span>Putere</span>
+                </div>
+                <div style={{
+                  fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+                  fontWeight: '700',
+                  color: theme.primary
+                }}>
+                  {userProfile.reputation_power}/7
+                </div>
+              </div>
+
+              {/* Postări */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
+                alignItems: 'center',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  color: theme.textSecondary,
+                  fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
+                }}>
+                  <MessageSquare size={12} />
+                  <span>Post.</span>
+                </div>
+                <div style={{
+                  fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+                  fontWeight: '700',
+                  color: theme.text
+                }}>
+                  {userProfile.post_count.toLocaleString('ro-RO')}
+                </div>
+              </div>
+
+              {/* Topicuri */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
+                alignItems: 'center',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  color: theme.textSecondary,
+                  fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)'
+                }}>
+                  <Activity size={12} />
+                  <span>Top.</span>
+                </div>
+                <div style={{
+                  fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+                  fontWeight: '700',
+                  color: theme.text
+                }}>
+                  {userProfile.topic_count.toLocaleString('ro-RO')}
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Tabs Navigation - Desktop: Tabs, Mobile: Dropdown */}
-        {!isMobile ? (
-          /* Desktop Tabs - Full Labels */
-          <div style={{
-            display: 'flex',
-            gap: '0.5rem',
-            borderBottom: `2px solid ${theme.border}`,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }}>
-            {(['info', 'posts', 'reputation', 'sanctions', 'marketplace'] as const).map((tab) => {
-              const tabConfig = {
-                info: { label: 'Informații', icon: User },
-                posts: { label: 'Postări', icon: MessageSquare },
-                reputation: { label: 'Reputație', icon: Award },
-                sanctions: { label: 'Sancțiuni', icon: Shield },
-                marketplace: { label: 'Piață', icon: ShoppingBag }
-              }[tab];
-
-              const Icon = tabConfig.icon;
-              const isActive = activeTab === tab;
-
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: '0.75rem 1rem',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    borderBottom: `2px solid ${isActive ? theme.primary : 'transparent'}`,
-                    color: isActive ? theme.primary : theme.textSecondary,
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? '600' : '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                    marginBottom: '-2px',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.color = theme.primary;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.color = theme.textSecondary;
-                    }
-                  }}
-                >
-                  <Icon size={16} />
-                  <span>{tabConfig.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          /* Mobile Dropdown */
-          <div style={{ position: 'relative' }} data-mobile-tab-menu>
-            <button
-              onClick={() => setShowMobileTabMenu(!showMobileTabMenu)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                backgroundColor: theme.surface,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.5rem',
-                color: theme.text,
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '0.5rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {{
-                  info: <User size={16} />,
-                  posts: <MessageSquare size={16} />,
-                  reputation: <Award size={16} />,
-                  sanctions: <Shield size={16} />,
-                  marketplace: <ShoppingBag size={16} />
-                }[activeTab]}
-                <span>
-                  {{
-                    info: 'Informații',
-                    posts: 'Postări',
-                    reputation: 'Reputație',
-                    sanctions: 'Sancțiuni',
-                    marketplace: 'Piață'
-                  }[activeTab]}
-                </span>
-              </div>
-              <ChevronDown
-                size={16}
-                style={{
-                  transform: showMobileTabMenu ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s'
-                }}
-              />
-            </button>
-
-            {showMobileTabMenu && (
+            {/* Badges Section - Compact */}
+            {userProfile.badges && userProfile.badges.length > 0 && (
               <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: '0.5rem',
-                backgroundColor: theme.surface,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.5rem',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                zIndex: 50,
-                overflow: 'hidden'
+                paddingTop: '0.75rem',
+                borderTop: `1px solid ${theme.border}`
               }}>
-                {(['info', 'posts', 'reputation', 'sanctions', 'marketplace'] as const).map((tab) => {
-                  const tabConfig = {
-                    info: { label: 'Informații', icon: User },
-                    posts: { label: 'Postări', icon: MessageSquare },
-                    reputation: { label: 'Reputație', icon: Award },
-                    sanctions: { label: 'Sancțiuni', icon: Shield },
-                    marketplace: { label: 'Piață', icon: ShoppingBag }
-                  }[tab];
-
-                  const Icon = tabConfig.icon;
-                  const isActive = activeTab === tab;
-
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => {
-                        setActiveTab(tab);
-                        setShowMobileTabMenu(false);
-                      }}
+                <div style={{
+                  fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
+                  color: theme.textSecondary,
+                  marginBottom: '0.5rem',
+                  fontWeight: '500'
+                }}>
+                  Badge-uri:
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.375rem'
+                }}>
+                  {userProfile.badges.map((badge, index) => (
+                    <span
+                      key={index}
                       style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        backgroundColor: isActive ? theme.primary + '20' : 'transparent',
-                        border: 'none',
-                        color: isActive ? theme.primary : theme.text,
-                        fontSize: '0.875rem',
-                        fontWeight: isActive ? '600' : '500',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        textAlign: 'left',
-                        transition: 'all 0.2s'
+                        padding: '0.125rem 0.5rem',
+                        backgroundColor: theme.primary + '20',
+                        color: theme.primary,
+                        borderRadius: '9999px',
+                        fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)',
+                        fontWeight: '600'
                       }}
                     >
-                      <Icon size={16} />
-                      <span>{tabConfig.label}</span>
-                    </button>
-                  );
-                })}
+                      {badge}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {/* Tab Content - Compact */}
-        <div style={{
-          backgroundColor: theme.surface,
-          border: `1px solid ${theme.border}`,
-          borderRadius: '0.5rem',
-          padding: 'clamp(0.75rem, 2vw, 1rem)',
-          minHeight: '300px'
-        }}>
-          {activeTab === 'info' && (
-            <GeneralInfoTab 
-              userId={userProfile.user_id}
-              userProfile={userProfile}
-              theme={theme}
-              isMobile={isMobile}
-            />
+          {/* Tabs Navigation - Desktop: Tabs, Mobile: Dropdown */}
+          {!isMobile ? (
+            /* Desktop Tabs - Full Labels */
+            <div style={{
+              display: 'flex',
+              gap: '0.5rem',
+              borderBottom: `2px solid ${theme.border}`,
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}>
+              {(['info', 'posts', 'reputation', 'sanctions', 'marketplace'] as const).map((tab) => {
+                const tabConfig = {
+                  info: { label: 'Informații', icon: User },
+                  posts: { label: 'Postări', icon: MessageSquare },
+                  reputation: { label: 'Reputație', icon: Award },
+                  sanctions: { label: 'Sancțiuni', icon: Shield },
+                  marketplace: { label: 'Piață', icon: ShoppingBag }
+                }[tab];
+
+                const Icon = tabConfig.icon;
+                const isActive = activeTab === tab;
+
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderBottom: `2px solid ${isActive ? theme.primary : 'transparent'}`,
+                      color: isActive ? theme.primary : theme.textSecondary,
+                      fontSize: '0.875rem',
+                      fontWeight: isActive ? '600' : '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s',
+                      marginBottom: '-2px',
+                      flexShrink: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.color = theme.primary;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.color = theme.textSecondary;
+                      }
+                    }}
+                  >
+                    <Icon size={16} />
+                    <span>{tabConfig.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* Mobile Dropdown */
+            <div style={{ position: 'relative' }} data-mobile-tab-menu>
+              <button
+                onClick={() => setShowMobileTabMenu(!showMobileTabMenu)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem',
+                  color: theme.text,
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {{
+                    info: <User size={16} />,
+                    posts: <MessageSquare size={16} />,
+                    reputation: <Award size={16} />,
+                    sanctions: <Shield size={16} />,
+                    marketplace: <ShoppingBag size={16} />
+                  }[activeTab]}
+                  <span>
+                    {{
+                      info: 'Informații',
+                      posts: 'Postări',
+                      reputation: 'Reputație',
+                      sanctions: 'Sancțiuni',
+                      marketplace: 'Piață'
+                    }[activeTab]}
+                  </span>
+                </div>
+                <ChevronDown
+                  size={16}
+                  style={{
+                    transform: showMobileTabMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s'
+                  }}
+                />
+              </button>
+
+              {showMobileTabMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: '0.5rem',
+                  backgroundColor: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  zIndex: 50,
+                  overflow: 'hidden'
+                }}>
+                  {(['info', 'posts', 'reputation', 'sanctions', 'marketplace'] as const).map((tab) => {
+                    const tabConfig = {
+                      info: { label: 'Informații', icon: User },
+                      posts: { label: 'Postări', icon: MessageSquare },
+                      reputation: { label: 'Reputație', icon: Award },
+                      sanctions: { label: 'Sancțiuni', icon: Shield },
+                      marketplace: { label: 'Piață', icon: ShoppingBag }
+                    }[tab];
+
+                    const Icon = tabConfig.icon;
+                    const isActive = activeTab === tab;
+
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => {
+                          setActiveTab(tab);
+                          setShowMobileTabMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: isActive ? theme.primary + '20' : 'transparent',
+                          border: 'none',
+                          color: isActive ? theme.primary : theme.text,
+                          fontSize: '0.875rem',
+                          fontWeight: isActive ? '600' : '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          textAlign: 'left',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Icon size={16} />
+                        <span>{tabConfig.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
-          {activeTab === 'posts' && (
-            <PostsHistoryTab 
-              userId={userProfile.user_id}
-              username={userProfile.username}
-              theme={theme}
-              isMobile={isMobile}
-            />
-          )}
-          {activeTab === 'reputation' && (
-            <ReputationHistoryTab 
-              userId={userProfile.user_id}
-              theme={theme}
-              isMobile={isMobile}
-            />
-          )}
-          {activeTab === 'sanctions' && (
-            <SanctionsTab
-              userId={userProfile.user_id}
-              theme={theme}
-              isMobile={isMobile}
-            />
-          )}
-          {activeTab === 'marketplace' && (
-            <MarketplaceTab
-              userId={userProfile.user_id}
-              theme={theme}
-              isMobile={isMobile}
-            />
-          )}
+
+          {/* Tab Content - Compact */}
+          <div style={{
+            backgroundColor: theme.surface,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '0.5rem',
+            padding: 'clamp(0.75rem, 2vw, 1rem)',
+            minHeight: '300px'
+          }}>
+            {activeTab === 'info' && (
+              <GeneralInfoTab
+                userId={userProfile.user_id}
+                userProfile={userProfile}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            )}
+            {activeTab === 'posts' && (
+              <PostsHistoryTab
+                userId={userProfile.user_id}
+                username={userProfile.username}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            )}
+            {activeTab === 'reputation' && (
+              <ReputationHistoryTab
+                userId={userProfile.user_id}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            )}
+            {activeTab === 'sanctions' && (
+              <SanctionsTab
+                userId={userProfile.user_id}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            )}
+            {activeTab === 'marketplace' && (
+              <MarketplaceTab
+                userId={userProfile.user_id}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            )}
+          </div>
         </div>
-      </div>
-    </ForumLayout>
+      </ForumLayout>
     </>
   );
 }
 
 // General Info Tab Component
-function GeneralInfoTab({ 
-  userId, 
-  userProfile, 
-  theme, 
-  isMobile 
-}: { 
-  userId: string; 
-  userProfile: ForumUserProfileData; 
-  theme: any; 
+function GeneralInfoTab({
+  userId,
+  userProfile,
+  theme,
+  isMobile
+}: {
+  userId: string;
+  userProfile: ForumUserProfileData;
+  theme: any;
   isMobile: boolean;
 }) {
   // Fetch records count
@@ -1030,15 +1032,15 @@ function GeneralInfoTab({
 }
 
 // Posts History Tab Component
-function PostsHistoryTab({ 
-  userId, 
+function PostsHistoryTab({
+  userId,
   username,
-  theme, 
-  isMobile 
-}: { 
-  userId: string; 
+  theme,
+  isMobile
+}: {
+  userId: string;
   username: string;
-  theme: any; 
+  theme: any;
   isMobile: boolean;
 }) {
   const navigate = useNavigate();
@@ -1100,13 +1102,13 @@ function PostsHistoryTab({
         .in('id', subcategoryIds);
 
       const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
-      
+
       const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
       const { data: categoriesData } = await supabase
         .from('forum_categories')
         .select('id, slug')
         .in('id', categoryIds);
-      
+
       const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
 
       // Process posts and determine if they're topic creators or replies
@@ -1114,7 +1116,7 @@ function PostsHistoryTab({
         const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
         const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
         const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
-        
+
         // Check if this is the first post in the topic (topic creator)
         // A topic creator is the user who created the topic AND has post_number === 1
         const isTopicCreator = topic?.user_id === userId && post.post_number === 1;
@@ -1161,7 +1163,6 @@ function PostsHistoryTab({
             )
           )
         `)
-        .neq('user_id', userId) // Nu includem postările proprii
         .eq('is_deleted', false)
         .ilike('content', `%[mention]${username}[/mention]%`) // Caută [mention]username[/mention] în conținut (case-insensitive)
         .order('created_at', { ascending: false })
@@ -1184,20 +1185,20 @@ function PostsHistoryTab({
         .in('id', subcategoryIds);
 
       const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
-      
+
       const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
       const { data: categoriesData } = await supabase
         .from('forum_categories')
         .select('id, slug')
         .in('id', categoryIds);
-      
+
       const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
 
       return (mentionsData || []).map(post => {
         const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
         const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
         const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
-        
+
         return {
           ...post,
           topic: topic,
@@ -1240,7 +1241,6 @@ function PostsHistoryTab({
             )
           )
         `)
-        .neq('user_id', userId) // Nu includem postările proprii
         .eq('is_deleted', false)
         .ilike('content', `%[quote user="${username}"%`) // Caută [quote user="username" în conținut (case-insensitive)
         .order('created_at', { ascending: false })
@@ -1263,20 +1263,20 @@ function PostsHistoryTab({
         .in('id', subcategoryIds);
 
       const subcategoriesMap = new Map((subcategoriesData || []).map(sc => [sc.id, sc]));
-      
+
       const categoryIds = [...new Set((subcategoriesData || []).map(sc => sc.category_id).filter(Boolean))];
       const { data: categoriesData } = await supabase
         .from('forum_categories')
         .select('id, slug')
         .in('id', categoryIds);
-      
+
       const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c]));
 
       return (quotesData || []).map(post => {
         const topic = Array.isArray(post.topic) ? post.topic[0] : post.topic;
         const subcategory = topic?.subcategory_id ? subcategoriesMap.get(topic.subcategory_id) : null;
         const category = subcategory?.category_id ? categoriesMap.get(subcategory.category_id) : null;
-        
+
         return {
           ...post,
           topic: topic,
@@ -1298,7 +1298,7 @@ function PostsHistoryTab({
     const repliesCount = posts.filter(post => !post.isTopicCreator).length;
     const mentionsCount = mentions.length;
     const quotesCount = quotes.length;
-    
+
     return {
       topics: topicsCount,
       replies: repliesCount,
@@ -1410,7 +1410,7 @@ function PostsHistoryTab({
           };
           const isActive = filter === filterType;
           const count = filterCounts[filterType];
-          
+
           return (
             <button
               key={filterType}
@@ -1460,13 +1460,13 @@ function PostsHistoryTab({
           padding: '2rem',
           color: theme.textSecondary
         }}>
-          {filter === 'topics' ? 'Nu există topicuri create' : 
-           filter === 'replies' ? 'Nu există răspunsuri' :
-           filter === 'mentions' ? 'Nu există mențiuni' :
-           'Nu există citări'}
+          {filter === 'topics' ? 'Nu există topicuri create' :
+            filter === 'replies' ? 'Nu există răspunsuri' :
+              filter === 'mentions' ? 'Nu există mențiuni' :
+                'Nu există citări'}
         </div>
       ) : (
-        <div 
+        <div
           ref={postsContainerRef}
           style={{
             display: 'flex',
@@ -1535,7 +1535,7 @@ function PostsHistoryTab({
                 </div>
 
                 {/* Post Content Preview */}
-                <div 
+                <div
                   style={{
                     fontSize: isMobileState ? '0.75rem' : '0.875rem',
                     color: theme.textSecondary,
@@ -1579,13 +1579,13 @@ function PostsHistoryTab({
 }
 
 // Reputation History Tab Component
-function ReputationHistoryTab({ 
-  userId, 
-  theme, 
-  isMobile 
-}: { 
-  userId: string; 
-  theme: any; 
+function ReputationHistoryTab({
+  userId,
+  theme,
+  isMobile
+}: {
+  userId: string;
+  theme: any;
   isMobile: boolean;
 }) {
   // Fetch reputation logs (RLS will limit to last 10 for non-admins)
@@ -1607,12 +1607,12 @@ function ReputationHistoryTab({
   // Calculate cumulative reputation over time for chart
   const chartData = useMemo(() => {
     if (logs.length === 0) return [];
-    
+
     // Sort by date ascending for cumulative calculation
-    const sortedLogs = [...logs].sort((a, b) => 
+    const sortedLogs = [...logs].sort((a, b) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-    
+
     let cumulative = 0;
     return sortedLogs.map(log => {
       cumulative += log.points;
@@ -1651,10 +1651,10 @@ function ReputationHistoryTab({
 
   if (logs.length === 0) {
     return (
-      <div style={{ 
-        textAlign: 'center', 
+      <div style={{
+        textAlign: 'center',
         padding: '2rem',
-        color: theme.textSecondary 
+        color: theme.textSecondary
       }}>
         <Award size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
         <p>Nu există istoric reputație disponibil.</p>
@@ -1696,107 +1696,109 @@ function ReputationHistoryTab({
           }}>
             Evoluție Reputație
           </div>
-          <ResponsiveContainer width="100%" height={isMobile ? 200 : 250} minHeight={isMobile ? 200 : 250}>
-            <LineChart data={chartData.map(d => ({
-              date: d.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }),
-              time: d.date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
-              cumulative: d.cumulative,
-              points: d.points
-            }))} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
-              <XAxis 
-                dataKey="date" 
-                stroke={theme.textSecondary}
-                fontSize={isMobile ? 10 : 12}
-                tick={{ fill: theme.textSecondary }}
-              />
-              <YAxis 
-                stroke={theme.textSecondary}
-                fontSize={isMobile ? 10 : 12}
-                tick={{ fill: theme.textSecondary }}
-              />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: theme.mode === 'dark' ? 'rgba(30, 30, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '0.5rem',
-                  color: theme.text,
-                  padding: '0.75rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                  backdropFilter: 'blur(8px)'
-                }}
-                labelStyle={{ 
-                  color: theme.text, 
-                  marginBottom: '0.5rem', 
-                  fontWeight: '600',
-                  fontSize: '0.875rem'
-                }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload || payload.length === 0) return null;
-                  const data = payload[0].payload;
-                  return (
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem',
-                      minWidth: '150px'
-                    }}>
-                      <div style={{ 
-                        fontWeight: '600', 
-                        fontSize: '0.875rem', 
-                        marginBottom: '0.25rem',
-                        color: theme.text,
-                        borderBottom: `1px solid ${theme.border}`,
-                        paddingBottom: '0.5rem'
-                      }}>
-                        {data.date} {data.time}
-                      </div>
-                      <div style={{ 
-                        fontSize: '0.8125rem',
-                        color: theme.text,
+          <div style={{ width: '100%', height: isMobile ? 200 : 250 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData.map(d => ({
+                date: d.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }),
+                time: d.date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+                cumulative: d.cumulative,
+                points: d.points
+              }))} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                <XAxis
+                  dataKey="date"
+                  stroke={theme.textSecondary}
+                  fontSize={isMobile ? 10 : 12}
+                  tick={{ fill: theme.textSecondary }}
+                />
+                <YAxis
+                  stroke={theme.textSecondary}
+                  fontSize={isMobile ? 10 : 12}
+                  tick={{ fill: theme.textSecondary }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme.mode === 'dark' ? 'rgba(30, 30, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.5rem',
+                    color: theme.text,
+                    padding: '0.75rem',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  labelStyle={{
+                    color: theme.text,
+                    marginBottom: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
+                  }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const data = payload[0].payload;
+                    return (
+                      <div style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        minWidth: '150px'
                       }}>
-                        <span>Reputație:</span>
-                        <span style={{ 
-                          fontWeight: '700', 
-                          color: data.cumulative >= 0 ? '#10b981' : '#ef4444',
-                          fontSize: '0.875rem'
+                        <div style={{
+                          fontWeight: '600',
+                          fontSize: '0.875rem',
+                          marginBottom: '0.25rem',
+                          color: theme.text,
+                          borderBottom: `1px solid ${theme.border}`,
+                          paddingBottom: '0.5rem'
                         }}>
-                          {data.cumulative >= 0 ? '+' : ''}{data.cumulative.toLocaleString('ro-RO')}
-                        </span>
-                      </div>
-                      <div style={{ 
-                        fontSize: '0.8125rem',
-                        color: theme.text,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span>Modificare:</span>
-                        <span style={{ 
-                          fontWeight: '700', 
-                          color: data.points >= 0 ? '#10b981' : '#ef4444',
-                          fontSize: '0.875rem'
+                          {data.date} {data.time}
+                        </div>
+                        <div style={{
+                          fontSize: '0.8125rem',
+                          color: theme.text,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
                         }}>
-                          {data.points >= 0 ? '+' : ''}{data.points.toLocaleString('ro-RO')}
-                        </span>
+                          <span>Reputație:</span>
+                          <span style={{
+                            fontWeight: '700',
+                            color: data.cumulative >= 0 ? '#10b981' : '#ef4444',
+                            fontSize: '0.875rem'
+                          }}>
+                            {data.cumulative >= 0 ? '+' : ''}{data.cumulative.toLocaleString('ro-RO')}
+                          </span>
+                        </div>
+                        <div style={{
+                          fontSize: '0.8125rem',
+                          color: theme.text,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span>Modificare:</span>
+                          <span style={{
+                            fontWeight: '700',
+                            color: data.points >= 0 ? '#10b981' : '#ef4444',
+                            fontSize: '0.875rem'
+                          }}>
+                            {data.points >= 0 ? '+' : ''}{data.points.toLocaleString('ro-RO')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="cumulative" 
-                stroke={theme.primary}
-                strokeWidth={2}
-                dot={{ fill: theme.primary, r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+                    );
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="cumulative"
+                  stroke={theme.primary}
+                  strokeWidth={2}
+                  dot={{ fill: theme.primary, r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -1844,10 +1846,10 @@ function ReputationHistoryTab({
                     alignItems: 'center',
                     gap: '0.25rem',
                     padding: '0.25rem 0.5rem',
-                    backgroundColor: isPositive 
+                    backgroundColor: isPositive
                       ? (isAdminAward ? '#3b82f6' : '#10b981') + '20'
                       : '#ef4444' + '20',
-                    color: isPositive 
+                    color: isPositive
                       ? (isAdminAward ? '#3b82f6' : '#10b981')
                       : '#ef4444',
                     borderRadius: '0.375rem',
@@ -1950,13 +1952,13 @@ function ReputationHistoryTab({
 }
 
 // Sanctions Tab Component
-function SanctionsTab({ 
-  userId, 
-  theme, 
-  isMobile 
-}: { 
-  userId: string; 
-  theme: any; 
+function SanctionsTab({
+  userId,
+  theme,
+  isMobile
+}: {
+  userId: string;
+  theme: any;
   isMobile: boolean;
 }) {
   // Fetch all restrictions (active + history)
@@ -2062,7 +2064,7 @@ function SanctionsTab({
             {activeRestrictions.map((restriction) => {
               const appliedByUsername = restriction.issued_by && usernamesMap?.get(restriction.issued_by);
               const isExpired = restriction.expires_at && new Date(restriction.expires_at) < new Date();
-              
+
               return (
                 <div
                   key={restriction.id}
@@ -2102,7 +2104,7 @@ function SanctionsTab({
                       </span>
                     )}
                   </div>
-                  
+
                   {restriction.reason && (
                     <div style={{
                       fontSize: isMobile ? '0.8125rem' : '0.875rem',
@@ -2113,7 +2115,7 @@ function SanctionsTab({
                       <strong>Motiv:</strong> {restriction.reason}
                     </div>
                   )}
-                  
+
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -2161,7 +2163,7 @@ function SanctionsTab({
             {historyRestrictions.map((restriction) => {
               const appliedByUsername = restriction.issued_by && usernamesMap?.get(restriction.issued_by);
               const deactivatedByUsername = (restriction as any).deactivated_by && usernamesMap?.get((restriction as any).deactivated_by);
-              
+
               return (
                 <div
                   key={restriction.id}
@@ -2199,7 +2201,7 @@ function SanctionsTab({
                       Dezactivată
                     </span>
                   </div>
-                  
+
                   {restriction.reason && (
                     <div style={{
                       fontSize: isMobile ? '0.75rem' : '0.8125rem',
@@ -2210,7 +2212,7 @@ function SanctionsTab({
                       <strong>Motiv:</strong> {restriction.reason}
                     </div>
                   )}
-                  
+
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -2264,13 +2266,13 @@ function SanctionsTab({
 }
 
 // Marketplace Tab Component
-function MarketplaceTab({ 
-  userId, 
-  theme, 
-  isMobile 
-}: { 
-  userId: string; 
-  theme: any; 
+function MarketplaceTab({
+  userId,
+  theme,
+  isMobile
+}: {
+  userId: string;
+  theme: any;
   isMobile: boolean;
 }) {
   // Fetch sales verification
@@ -2369,7 +2371,7 @@ function MarketplaceTab({
                 </>
               )}
             </div>
-            
+
             <div style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',

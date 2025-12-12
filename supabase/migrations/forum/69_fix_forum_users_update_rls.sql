@@ -1,4 +1,4 @@
--- Migration: Fix forum_users UPDATE RLS policy
+-- Migration 69: Fix forum_users UPDATE RLS policy
 -- Problem: Users cannot update their own last_seen_at because RLS is blocking
 -- Solution: Recreate UPDATE policy with simpler check
 

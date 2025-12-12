@@ -3,7 +3,7 @@
  * Manages posts data and operations using React Query
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import {
     getPosts,
     createPost,
@@ -41,6 +41,7 @@ export function usePosts(topicId: string | null | undefined, page = 1, pageSize 
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
+        placeholderData: keepPreviousData // Păstrează datele anterioare în timp ce se încarcă noile date (previne flash/scroll jump)
     })
 
     return {
@@ -70,8 +71,12 @@ export function useCreatePost() {
         onSuccess: (result) => {
             // Invalidează cache-ul pentru posts din topic-ul creat
             if (result.data?.topic_id) {
-                queryClient.invalidateQueries({ 
-                    queryKey: ['posts', result.data.topic_id] 
+                queryClient.invalidateQueries({
+                    queryKey: ['posts', result.data.topic_id]
+                })
+                // Also invalidate topics list to update last post info
+                queryClient.invalidateQueries({
+                    queryKey: ['topics']
                 })
             }
         },
@@ -86,10 +91,10 @@ export function useCreatePost() {
         }
     }
 
-    return { 
-        create, 
-        creating: mutation.isPending, 
-        error: mutation.error as Error | null 
+    return {
+        create,
+        creating: mutation.isPending,
+        error: mutation.error as Error | null
     }
 }
 
@@ -110,8 +115,8 @@ export function useUpdatePost() {
         onSuccess: (result) => {
             // Invalidează cache-ul pentru posts din topic-ul editat
             if (result.data?.topic_id) {
-                queryClient.invalidateQueries({ 
-                    queryKey: ['posts', result.data.topic_id] 
+                queryClient.invalidateQueries({
+                    queryKey: ['posts', result.data.topic_id]
                 })
             }
         },
@@ -126,10 +131,10 @@ export function useUpdatePost() {
         }
     }
 
-    return { 
-        update, 
-        updating: mutation.isPending, 
-        error: mutation.error as Error | null 
+    return {
+        update,
+        updating: mutation.isPending,
+        error: mutation.error as Error | null
     }
 }
 
@@ -149,8 +154,11 @@ export function useDeletePost() {
         },
         onSuccess: () => {
             // Invalidează cache-ul pentru toate posts (nu știm topic_id după ștergere)
-            queryClient.invalidateQueries({ 
-                queryKey: ['posts'] 
+            queryClient.invalidateQueries({
+                queryKey: ['posts']
+            })
+            queryClient.invalidateQueries({
+                queryKey: ['topics']
             })
         },
     })
@@ -164,9 +172,9 @@ export function useDeletePost() {
         }
     }
 
-    return { 
-        deletePost: deletePostAction, 
-        deleting: mutation.isPending, 
-        error: mutation.error as Error | null 
+    return {
+        deletePost: deletePostAction,
+        deleting: mutation.isPending,
+        error: mutation.error as Error | null
     }
 }

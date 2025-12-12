@@ -380,7 +380,8 @@ export interface CategoryWithChildren extends ForumCategory {
 
 // Topics & Posts
 export interface TopicCreateParams {
-    subcategory_id: string
+    subcategory_id?: string
+    subforum_id?: string
     title: string
     content: string // First post content
     topic_type?: TopicType

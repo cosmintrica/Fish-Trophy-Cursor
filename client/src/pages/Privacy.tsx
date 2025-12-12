@@ -36,13 +36,13 @@ export default function Privacy() {
   const content = (
     <div className={cn(
       "mx-auto transition-colors duration-200",
-      isForum ? "max-w-[1200px] p-4 text-slate-900 dark:text-slate-100" : "max-w-[1100px] py-8 px-4 text-gray-800"
+      isForum ? "max-w-[1200px] p-4 text-slate-900 dark:text-slate-100" : "max-w-[1100px] py-8 px-4 text-gray-800 dark:text-gray-200"
     )}>
       <div className={cn(
         "rounded-2xl transition-all duration-200",
         isForum
           ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8"
-          : "bg-white p-12 shadow-xl rounded-2xl"
+          : "bg-white dark:bg-slate-800 p-12 shadow-xl rounded-2xl border border-gray-100 dark:border-slate-700"
       )}>
         {/* Header */}
         <div className="mb-8 text-center">
@@ -56,13 +56,13 @@ export default function Privacy() {
           </div>
           <h1 className={cn(
             "font-bold mb-2",
-            isForum ? "text-3xl text-slate-900 dark:text-white" : "text-4xl text-gray-900"
+            isForum ? "text-3xl text-slate-900 dark:text-white" : "text-4xl text-gray-900 dark:text-white"
           )}>
             Politica de Confidențialitate
           </h1>
           <p className={cn(
             "text-base",
-            isForum ? "text-slate-500 dark:text-slate-400" : "text-gray-500"
+            isForum ? "text-slate-500 dark:text-slate-400" : "text-gray-500 dark:text-gray-400"
           )}>
             Ultima actualizare: 10 decembrie 2025
           </p>
@@ -72,7 +72,7 @@ export default function Privacy() {
         <section className="mb-8">
           <p className={cn(
             "text-lg leading-relaxed mb-4",
-            isForum ? "text-slate-800 dark:text-slate-200" : "text-gray-700"
+            isForum ? "text-slate-800 dark:text-slate-200" : "text-gray-700 dark:text-gray-300"
           )}>
             Bine ai venit pe <strong>Fish Trophy</strong>! Respectăm confidențialitatea ta și ne angajăm să protejăm
             datele tale personale. Această Politică de Confidențialitate explică cum colectăm, folosim, stocăm și
@@ -85,7 +85,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <FileText size={24} />
             1. Datele pe care le colectăm
@@ -94,17 +94,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <h3 className={cn(
               "text-xl font-semibold mb-3",
-              isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+              isForum ? "text-slate-900 dark:text-white" : "text-gray-900 dark:text-white"
             )}>
               1.1. Date furnizate de tine
             </h3>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Date de cont:</strong> nume de utilizator, adresă de email, parolă (criptată)</li>
               <li><strong>Profil:</strong> nume afișat, avatar, semnătură, preferințe</li>
@@ -114,13 +114,13 @@ export default function Privacy() {
 
             <h3 className={cn(
               "text-xl font-semibold mt-6 mb-3",
-              isForum ? "text-slate-900 dark:text-white" : "text-gray-900"
+              isForum ? "text-slate-900 dark:text-white" : "text-gray-900 dark:text-white"
             )}>
               1.2. Date colectate automat
             </h3>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Date tehnice:</strong> adresă IP, tip de browser, sistem de operare, dispozitiv</li>
               <li><strong>Date de utilizare:</strong> pagini vizitate, timpul petrecut, acțiuni efectuate</li>
@@ -134,7 +134,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <Eye size={24} />
             2. Cum folosim datele tale
@@ -143,17 +143,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Folosim datele tale pentru:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li>Furnizarea și îmbunătățirea serviciilor noastre</li>
               <li>Gestionarea contului tău și autentificarea</li>
@@ -170,7 +170,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <Lock size={24} />
             3. Baza legală pentru prelucrare
@@ -179,17 +179,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Prelucrăm datele tale personale pe baza următoarelor:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Consimțământ:</strong> pentru cookie-uri de analiză și marketing</li>
               <li><strong>Executarea contractului:</strong> pentru furnizarea serviciilor</li>
@@ -203,7 +203,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             4. Partajarea datelor cu terți
           </h2>
@@ -211,17 +211,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Nu vindem datele tale. Partajăm date doar cu:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Furnizori de servicii:</strong> Supabase (bază de date), Netlify (hosting), Google Analytics (analiză, cu consimțământ)</li>
               <li><strong>Autorități:</strong> doar dacă este cerut legal</li>
@@ -237,7 +237,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             5. Drepturile tale (GDPR)
           </h2>
@@ -245,17 +245,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-4",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Ai următoarele drepturi:
             </p>
             <ul className={cn(
               "list-disc pl-6 space-y-2 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <li><strong>Dreptul de acces:</strong> poți solicita o copie a datelor tale</li>
               <li><strong>Dreptul de rectificare:</strong> poți actualiza datele incorecte</li>
@@ -267,7 +267,7 @@ export default function Privacy() {
             </ul>
             <p className={cn(
               "mt-4 leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Pentru a exercita aceste drepturi, contactează-ne la:{' '}
               <a href="mailto:privacy@fishtrophy.ro" className="text-blue-600 dark:text-blue-400 hover:underline">
@@ -281,7 +281,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             6. Securitatea datelor
           </h2>
@@ -289,11 +289,11 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Implementăm măsuri de securitate tehnice și organizatorice pentru protejarea datelor tale:
               criptare SSL/TLS, autentificare sigură, acces restricționat, backup-uri regulate și monitorizare continuă.
@@ -305,7 +305,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             7. Perioada de stocare
           </h2>
@@ -313,11 +313,11 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Păstrăm datele tale atât timp cât este necesar pentru furnizarea serviciilor sau conform cerințelor legale.
               La ștergerea contului, datele sunt șterse definitiv în termen de 30 de zile, cu excepția celor necesare
@@ -330,7 +330,7 @@ export default function Privacy() {
         <section className="mb-8">
           <h2 className={cn(
             "text-2xl font-semibold mb-4 flex items-center gap-2",
-            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600"
+            isForum ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"
           )}>
             <Mail size={24} />
             8. Contact
@@ -339,17 +339,17 @@ export default function Privacy() {
             "p-6 rounded-lg border",
             isForum
               ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-              : "bg-gray-50 border-gray-200"
+              : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
           )}>
             <p className={cn(
               "leading-relaxed mb-2",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               Pentru întrebări despre confidențialitate sau pentru a exercita drepturile tale:
             </p>
             <p className={cn(
               "leading-relaxed",
-              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700"
+              isForum ? "text-slate-700 dark:text-slate-300" : "text-gray-700 dark:text-gray-300"
             )}>
               <strong>Email:</strong>{' '}
               <a href="mailto:privacy@fishtrophy.ro" className="text-blue-600 dark:text-blue-400 hover:underline">
@@ -364,7 +364,7 @@ export default function Privacy() {
           "mt-12 pt-8 border-t text-center text-sm",
           isForum
             ? "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
-            : "border-gray-200 text-gray-500"
+            : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400"
         )}>
           <p>
             Această politică poate fi actualizată periodic. Vom notifica utilizatorii despre modificări semnificative.

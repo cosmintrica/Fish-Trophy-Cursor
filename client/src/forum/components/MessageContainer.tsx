@@ -97,23 +97,27 @@ export default function MessageContainer({
 
   // Parse BBCode content for display
   const parsedContent = useMemo(() => {
-    // Funcție helper pentru generarea permalink-urilor în quote-uri
     const getPostPermalink = (postId: string): string => {
       // Dacă avem slug-urile necesare, construim permalink-ul corect (FĂRĂ categorySlug)
       if (subcategorySlug && topicSlug) {
-        // Format: /forum/{subcategorySlug}/{topicSlug}#post{postNumber}
-        // Folosim postNumberMap pentru a găsi postNumber-ul pentru postId-ul din quote
+        // Cazul 1: postId este deja un număr (postNumber din BBCode)
+        if (/^\d+$/.test(postId)) {
+          return `/forum/${subcategorySlug}/${topicSlug}#post${postId}`;
+        }
+
+        // Cazul 2: postId este un UUID, căutăm în map pentru a găsi postNumber
         const quotePostNumber = postNumberMap?.get(postId);
         if (quotePostNumber) {
           return `/forum/${subcategorySlug}/${topicSlug}#post${quotePostNumber}`;
         }
-        // Fallback la postId dacă nu avem postNumber
+
+        // Cazul 3: Fallback la UUID (format post-{uuid})
         return `/forum/${subcategorySlug}/${topicSlug}#post-${postId}`;
       }
-      // Fallback la UUID
+      // Fallback la ruta generică /post/{id}
       return `/forum/post/${postId}`;
     };
-    
+
     const parsed = parseBBCode(post.content, {
       categorySlug,
       subcategorySlug,
@@ -149,10 +153,11 @@ export default function MessageContainer({
     };
   }, [parsedContent]);
 
-  // Intercept clicks on mention links to use React Router navigation
+  // Intercept clicks on mention links AND quote links to use React Router navigation / smooth scroll
   useEffect(() => {
     if (!contentRef.current) return;
 
+    // Handle Mentions
     const mentionLinks = contentRef.current.querySelectorAll('.bbcode-mention');
     const handleMentionClick = (e: Event) => {
       e.preventDefault();
@@ -164,13 +169,52 @@ export default function MessageContainer({
       }
     };
 
+    // Handle Quote Links (Smooth Scroll)
+    const quoteLinks = contentRef.current.querySelectorAll('.quote-link');
+    const handleQuoteClick = (e: Event) => {
+      const link = e.currentTarget as HTMLAnchorElement;
+      const href = link.getAttribute('href');
+
+      // Dacă e link intern (hash), facem smooth scroll manual
+      if (href && href.includes('#')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const hashIndex = href.indexOf('#');
+        const hash = href.substring(hashIndex); // ex: #post4
+        const targetId = hash.substring(1); // ex: post4
+
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // Adăugăm efectul de highlight
+          element.classList.add('highlight-post');
+          setTimeout(() => element.classList.remove('highlight-post'), 2000);
+
+          // Actualizăm URL-ul fără refresh
+          window.history.pushState(null, '', hash);
+        } else {
+          // Dacă elementul nu e în pagină (ex: alt topic), navigăm normal
+          navigate(href);
+        }
+      }
+    };
+
     mentionLinks.forEach(link => {
       link.addEventListener('click', handleMentionClick);
+    });
+
+    quoteLinks.forEach(link => {
+      link.addEventListener('click', handleQuoteClick);
     });
 
     return () => {
       mentionLinks.forEach(link => {
         link.removeEventListener('click', handleMentionClick);
+      });
+      quoteLinks.forEach(link => {
+        link.removeEventListener('click', handleQuoteClick);
       });
     };
   }, [parsedContent, navigate]);
@@ -186,7 +230,7 @@ export default function MessageContainer({
 
   const handleGearClick = async () => {
     if (!post.authorId) return;
-    
+
     setShowGearModal(true);
     setIsLoadingGear(true);
     try {
@@ -349,9 +393,9 @@ export default function MessageContainer({
         )}
 
         {/* Layout: Sidebar + Content - Optimizat pentru mobil */}
-        <div style={{ 
-          display: 'flex', 
-          minHeight: isMobile ? '150px' : '200px', 
+        <div style={{
+          display: 'flex',
+          minHeight: isMobile ? '150px' : '200px',
           flexDirection: 'row',
           width: '100%',
           maxWidth: '100%',
@@ -366,9 +410,9 @@ export default function MessageContainer({
           />
 
           {/* Content area - Flex pentru a nu ieși din lățime */}
-          <div style={{ 
-            flex: 1, 
-            display: 'flex', 
+          <div style={{
+            flex: 1,
+            display: 'flex',
             flexDirection: 'column',
             minWidth: 0, // Important pentru overflow
             maxWidth: '100%'
@@ -396,10 +440,10 @@ export default function MessageContainer({
             >
               {isEditing ? (
                 /* Editor inline pentru editare */
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
                     gap: '0.75rem',
                     animation: 'fadeIn 0.3s ease-in-out'
                   }}
@@ -411,7 +455,7 @@ export default function MessageContainer({
                     currentContent={editContent}
                     isMobile={isMobile}
                   />
-                  
+
                   {/* Textarea pentru editare */}
                   <textarea
                     ref={editTextareaRef}
@@ -439,7 +483,7 @@ export default function MessageContainer({
                       e.target.style.borderColor = theme.border;
                     }}
                   />
-                  
+
                   {/* Motiv editare (doar pentru admin) */}
                   {forumUser?.isAdmin && (
                     <div>
@@ -480,7 +524,7 @@ export default function MessageContainer({
                       />
                     </div>
                   )}
-                  
+
                   {/* Preview pentru editare */}
                   {showEditPreview && (
                     <div
@@ -508,7 +552,7 @@ export default function MessageContainer({
                       />
                     </div>
                   )}
-                  
+
                   {/* Butoane Salvează/Anulează */}
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                     <button
@@ -602,7 +646,7 @@ export default function MessageContainer({
                     animation: 'fadeIn 0.3s ease-in-out'
                   }}
                 >
-                  <div 
+                  <div
                     ref={contentRef}
                     style={{
                       wordWrap: 'break-word',
@@ -611,7 +655,7 @@ export default function MessageContainer({
                     }}
                     dangerouslySetInnerHTML={{ __html: parsedContent }}
                   />
-                  
+
                   {/* Image Zoom Modal */}
                   {zoomedImage && (
                     <ImageZoom
@@ -621,7 +665,7 @@ export default function MessageContainer({
                       onClose={() => setZoomedImage(null)}
                     />
                   )}
-                  
+
                   {/* Edit Info - afișează informații despre editare */}
                   {post.editedAt && (
                     <EditInfo

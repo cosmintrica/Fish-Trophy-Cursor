@@ -75,7 +75,7 @@ export const ProfileEditTab = ({
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Informații profil</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-50">Informații profil</h2>
                 {!isEditing ? (
                     <Button onClick={() => setIsEditing(true)} variant="outline">
                         <Edit className="w-4 h-4 mr-2" />
@@ -102,34 +102,36 @@ export const ProfileEditTab = ({
                 <CardContent className="pt-6 space-y-4">
                     {/* Nume complet */}
                     <div>
-                        <Label>Nume complet *</Label>
+                        <Label className="text-gray-900 dark:text-slate-50">Nume complet *</Label>
                         {isEditing ? (
                             <Input
                                 value={profileData.displayName}
                                 onChange={(e) => setProfileData({ ...profileData, displayName: e.target.value })}
                                 placeholder="Numele tău complet"
+                                className="dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700"
                             />
                         ) : (
-                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                <User className="w-5 h-5 text-gray-600" />
-                                <p className="text-gray-900 font-medium">{profileData.displayName || '-'}</p>
+                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                <User className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+                                <p className="text-gray-900 dark:text-slate-50 font-medium">{profileData.displayName || '-'}</p>
                             </div>
                         )}
                     </div>
 
                     {/* Telefon */}
                     <div>
-                        <Label>Telefon</Label>
+                        <Label className="text-gray-900 dark:text-slate-50">Telefon</Label>
                         {isEditing ? (
                             <Input
                                 value={profileData.phone}
                                 onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
                                 placeholder="+40 XXX XXX XXX"
+                                className="dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700"
                             />
                         ) : (
-                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                <Phone className="w-5 h-5 text-gray-600" />
-                                <p className="text-gray-900">{profileData.phone || '-'}</p>
+                            <div className="mt-2 flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                <Phone className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+                                <p className="text-gray-900 dark:text-slate-50">{profileData.phone || '-'}</p>
                             </div>
                         )}
                     </div>
@@ -137,7 +139,7 @@ export const ProfileEditTab = ({
                     {/* Județ */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <Label>Județ *</Label>
+                            <Label className="text-gray-900 dark:text-slate-50">Județ *</Label>
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
@@ -163,12 +165,12 @@ export const ProfileEditTab = ({
                             />
                         ) : (
                             <div className="mt-2">
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <MapPin className="w-5 h-5 text-blue-600" />
-                                    <p className="text-gray-900 flex-1">{countyName || '-'}</p>
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                    <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    <p className="text-gray-900 dark:text-slate-50 flex-1">{countyName || '-'}</p>
                                     <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_county_publicly
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-gray-200 text-gray-700'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
                                         }`}>
                                         {profileData.show_county_publicly ? 'Public' : 'Privat'}
                                     </span>
@@ -180,7 +182,7 @@ export const ProfileEditTab = ({
                     {/* Oraș */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <Label>Oraș *</Label>
+                            <Label className="text-gray-900 dark:text-slate-50">Oraș *</Label>
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
@@ -207,12 +209,12 @@ export const ProfileEditTab = ({
                             />
                         ) : (
                             <div className="mt-2">
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <MapPin className="w-5 h-5 text-purple-600" />
-                                    <p className="text-gray-900 flex-1">{cityName || '-'}</p>
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                    <MapPin className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                    <p className="text-gray-900 dark:text-slate-50 flex-1">{cityName || '-'}</p>
                                     <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_city_publicly
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-gray-200 text-gray-700'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
                                         }`}>
                                         {profileData.show_city_publicly ? 'Public' : 'Privat'}
                                     </span>
@@ -223,17 +225,17 @@ export const ProfileEditTab = ({
 
                     {/* Bio */}
                     <div>
-                        <Label>Bio</Label>
+                        <Label className="text-gray-900 dark:text-slate-50">Bio</Label>
                         {isEditing ? (
                             <textarea
                                 value={profileData.bio}
                                 onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                                 placeholder="Spune ceva despre tine..."
-                                className="w-full mt-1 p-2 border border-gray-300 rounded-md min-h-[100px]"
+                                className="w-full mt-1 p-2 border border-gray-300 dark:border-slate-700 rounded-md min-h-[100px] dark:bg-slate-800 dark:text-slate-50"
                             />
                         ) : (
-                            <div className="mt-2 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                                <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">{profileData.bio || '-'}</p>
+                            <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900/50">
+                                <p className="text-gray-900 dark:text-slate-50 whitespace-pre-wrap leading-relaxed">{profileData.bio || '-'}</p>
                             </div>
                         )}
                     </div>
@@ -241,7 +243,7 @@ export const ProfileEditTab = ({
                     {/* Website */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <Label>Website</Label>
+                            <Label className="text-gray-900 dark:text-slate-50">Website</Label>
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
@@ -263,21 +265,22 @@ export const ProfileEditTab = ({
                                 value={profileData.website}
                                 onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
                                 placeholder="https://..."
+                                className="dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700"
                             />
                         ) : (
                             <div className="mt-2">
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <Globe className="w-5 h-5 text-green-600" />
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                    <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />
                                     <div className="flex-1">
                                         {profileData.website ? (
-                                            <a href={profileData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            <a href={profileData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
                                                 {profileData.website}
                                             </a>
-                                        ) : '-'}
+                                        ) : <span className="text-gray-500 dark:text-slate-400">-</span>}
                                     </div>
                                     <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_website_publicly
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-gray-200 text-gray-700'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
                                         }`}>
                                         {profileData.show_website_publicly ? 'Public' : 'Privat'}
                                     </span>
@@ -289,7 +292,7 @@ export const ProfileEditTab = ({
                     {/* YouTube Channel */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <Label>Canal YouTube</Label>
+                            <Label className="text-gray-900 dark:text-slate-50">Canal YouTube</Label>
                             {isEditing && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <span className="text-xs text-gray-600">Public</span>
@@ -311,21 +314,22 @@ export const ProfileEditTab = ({
                                 value={profileData.youtube_channel}
                                 onChange={(e) => setProfileData({ ...profileData, youtube_channel: e.target.value })}
                                 placeholder="https://youtube.com/@..."
+                                className="dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700"
                             />
                         ) : (
                             <div className="mt-2">
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <Youtube className="w-5 h-5 text-red-600" />
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                    <Youtube className="w-5 h-5 text-red-600 dark:text-red-400" />
                                     <div className="flex-1">
                                         {profileData.youtube_channel ? (
-                                            <a href={profileData.youtube_channel} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            <a href={profileData.youtube_channel} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
                                                 {profileData.youtube_channel}
                                             </a>
-                                        ) : '-'}
+                                        ) : <span className="text-gray-500 dark:text-slate-400">-</span>}
                                     </div>
                                     <span className={`text-xs px-2 py-1 rounded-full ${profileData.show_youtube_publicly
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-gray-200 text-gray-700'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
                                         }`}>
                                         {profileData.show_youtube_publicly ? 'Public' : 'Privat'}
                                     </span>

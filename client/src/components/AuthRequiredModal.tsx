@@ -23,22 +23,22 @@ export const AuthRequiredModal = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+        {/* Header - Compact */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 p-4 text-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">{title}</h2>
-                <p className="text-blue-100 text-sm mt-1">Cont necesar</p>
+                <h2 className="text-lg font-bold leading-tight">{title}</h2>
+                <p className="text-blue-100 text-xs">Cont necesar</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 flex-shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
@@ -47,7 +47,7 @@ export const AuthRequiredModal = ({
 
         {/* Content */}
         <div className="p-6">
-          <p className="text-gray-700 mb-6">
+          <p className="text-gray-700 dark:text-slate-200 mb-6">
             {message}
           </p>
 
@@ -57,7 +57,7 @@ export const AuthRequiredModal = ({
                 onClose();
                 onLogin();
               }}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-6 text-base font-semibold shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-700 text-white py-6 text-base font-semibold shadow-lg flex items-center justify-center gap-2"
             >
               <LogIn className="w-5 h-5" />
               Autentificare
@@ -74,7 +74,7 @@ export const AuthRequiredModal = ({
                 }
               }}
               variant="outline"
-              className="w-full border-2 border-gray-300 hover:border-blue-500 py-6 text-base font-semibold flex items-center justify-center gap-2"
+              className="w-full border-2 border-gray-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-400 py-6 text-base font-semibold flex items-center justify-center gap-2 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
             >
               <UserPlus className="w-5 h-5" />
               Creează cont nou

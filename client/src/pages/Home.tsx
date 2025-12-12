@@ -11,16 +11,43 @@ import { getMapLocationDetails, MapLocationType, getMarkerColor } from '@/servic
 import { generateShopCard, generateAJVPSOfficeCard, generateAccommodationCard } from '@/utils/mapCardTemplates';
 import { supabase } from '@/lib/supabase';
 import type * as GeoJSON from 'geojson';
-import { geocodingService } from '@/services/geocoding';
-import { useAuth } from '@/hooks/useAuth';
-import { useAnalytics } from '@/hooks/useAnalytics';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import FishingEntryModal from '@/components/FishingEntryModal';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
+import { geocodingService } from '@/services/geocoding';
+import { useAuth } from '@/hooks/useAuth';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
-// FAQ Component with smooth, professional animations
+
+const faqData = [
+  {
+    question: "Ce este Fish Trophy și pentru cine este destinat?",
+    answer: "Fish Trophy este platforma națională pentru pescari pasionați din România. Este destinată tuturor celor care iubesc pescuitul și doresc să înregistreze, urmărească și concureze cu recordurile lor."
+  },
+  {
+    question: "De ce nu promovați locațiile exacte de pescuit?",
+    answer: "Fish Trophy nu promovează locațiile exacte de pescuit din respect față de natură și pentru a preveni supraexploatarea zonelor sensibile. Ne concentrăm pe zonele de pescuit, păstrând echilibrul natural al ecosistemelor acvatice."
+  },
+  {
+    question: "Care sunt scopurile Fish Trophy?",
+    answer: "Scopul nostru principal este să facem din pescuit un sport național frumos și respectat. Promovăm respectul față de natură, contribuim la amenajarea spațiilor de pescuit și facem presiune asupra autorităților pentru protejarea zonelor acvatice."
+  },
+  {
+    question: "Cum funcționează sistemul de recorduri?",
+    answer: "Sistemul nostru de recorduri este transparent și verificat. Pescarii pot înregistra prinderea cu dovezi fotografice, informații despre locație (zonă generală), dimensiuni și greutate. Toate recordurile sunt verificate de comunitate."
+  },
+  {
+    question: "Cum contribuiți la protejarea naturii?",
+    answer: "Promovăm pescuitul responsabil prin educarea comunității despre tehnici durabile, respectarea perioadelor de reproducere și limitelor de prindere. Fiecare pescar din comunitatea noastră devine un gardian al naturii."
+  },
+  {
+    question: "Ce planuri aveți pentru dezvoltarea platformei?",
+    answer: "Planificăm să dezvoltăm funcționalități pentru competiții locale și naționale, un sistem de mentorat pentru pescarii începători și parteneriate cu autoritățile locale pentru amenajarea zonelor de pescuit."
+  }
+];
+
 function FAQItem({ question, answer, index, isOpen, onToggle }: {
   question: string;
   answer: string;
@@ -29,13 +56,13 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-white/20 overflow-hidden hover:shadow-lg transition-shadow duration-500 ease-out">
+    <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl shadow-md border border-white/20 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-shadow duration-500 ease-out">
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors duration-300"
+        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors duration-200"
       >
-        <h3 className="text-base md:text-lg font-semibold text-gray-900 flex items-start gap-2">
-          <span className="text-blue-600 font-bold text-base">Q{index + 1}.</span>
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-start gap-2">
+          <span className="text-blue-600 dark:text-blue-400 font-bold text-base">Q{index + 1}.</span>
           <span className="flex-1">{question}</span>
         </h3>
         <div
@@ -43,7 +70,7 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
             }`}
         >
           <svg
-            className="w-5 h-5 text-gray-500 transition-colors duration-300"
+            className="w-5 h-5 text-gray-500 dark:text-slate-400 transition-colors duration-200"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -66,7 +93,7 @@ function FAQItem({ question, answer, index, isOpen, onToggle }: {
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
           }}
         >
-          <p className="text-base text-gray-700 leading-relaxed pl-6">
+          <p className="text-base text-gray-700 dark:text-slate-200 leading-relaxed pl-6">
             {answer}
           </p>
         </div>
@@ -88,6 +115,11 @@ const mobileCSS = `
     transform: translateZ(0);
     backface-visibility: hidden;
     perspective: 1000px;
+    background-color: #f8fafc;
+  }
+
+  .dark .maplibregl-container {
+    background-color: #0f172a !important;
   }
 
   .maplibregl-canvas {
@@ -139,6 +171,8 @@ export default function Home() {
   const { trackMapInteraction } = useAnalytics();
   const { websiteData, organizationData, navigationData } = useStructuredData();
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
+
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -407,8 +441,8 @@ export default function Home() {
           })
             .setLngLat(coordinates)
             .setHTML(`
-            <div class="p-4 bg-white rounded-xl shadow-md border border-gray-200 flex items-center justify-center min-h-[100px]">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div class="p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-200 dark:border-slate-700 flex items-center justify-center min-h-[100px]">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
             </div>
           `)
             .addTo(_map);
@@ -420,31 +454,31 @@ export default function Home() {
               loadingPopup.setOffset([0, popupOffset]);
 
               const popupHTML = isMobile ? `
-            <div class="p-4 min-w-[200px] max-w-[240px] bg-white rounded-xl shadow-lg border border-gray-100 relative">
-              <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+            <div class="p-4 min-w-[200px] max-w-[240px] bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 relative">
+              <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
 
               <div class="mb-3">
-                <h3 class="font-bold text-sm text-gray-800 mb-1 flex items-start gap-2">
+                <h3 class="font-bold text-sm text-gray-800 dark:text-slate-100 mb-1 flex items-start gap-2">
                   <span class="text-lg flex-shrink-0">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
                   <span class="break-words">${fullDetails.name}</span>
                 </h3>
-                ${fullDetails.subtitle ? `<p class="text-xs text-gray-600 mb-1">${fullDetails.subtitle}</p>` : ''}
-                <p class="text-xs text-gray-500">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
+                ${fullDetails.subtitle ? `<p class="text-xs text-gray-600 dark:text-slate-400 mb-1">${fullDetails.subtitle}</p>` : ''}
+                <p class="text-xs text-gray-500 dark:text-slate-400">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
               </div>
 
               ${fullDetails.description ? `
               <div class="mb-3">
-                <p class="text-xs text-gray-600 leading-relaxed line-clamp-2">${fullDetails.description}</p>
+                <p class="text-xs text-gray-600 dark:text-slate-200 leading-relaxed line-clamp-2">${fullDetails.description}</p>
               </div>
               ` : ''}
 
               ${fullDetails.administrare ? `
-              <div class="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                ${fullDetails.administrare_url ? `<a href="${fullDetails.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-700 hover:text-blue-900 leading-relaxed underline">${fullDetails.administrare}</a>` : `<p class="text-xs text-blue-700 leading-relaxed">${fullDetails.administrare}</p>`}
+              <div class="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg border border-blue-100 dark:border-blue-900/50">
+                ${fullDetails.administrare_url ? `<a href="${fullDetails.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 leading-relaxed underline">${fullDetails.administrare}</a>` : `<p class="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">${fullDetails.administrare}</p>`}
               </div>
               ` : ''}
 
@@ -452,25 +486,25 @@ export default function Home() {
               <div class="mb-3 space-y-1.5">
                 ${fullDetails.website ? `
                 <div class="flex items-center gap-1.5 text-xs">
-                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                   </svg>
-                  <a href="${fullDetails.website && (fullDetails.website.startsWith('http') ? fullDetails.website : 'https://' + fullDetails.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${fullDetails.website ? fullDetails.website.replace(/^https?:\/\//, '') : ''}</a>
+                  <a href="${fullDetails.website && (fullDetails.website.startsWith('http') ? fullDetails.website : 'https://' + fullDetails.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 truncate">${fullDetails.website ? fullDetails.website.replace(/^https?:\/\//, '') : ''}</a>
                 </div>
                 ` : ''}
                 ${fullDetails.phone ? `
                 <div class="flex items-center gap-1.5 text-xs">
-                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                   </svg>
-                  <a href="tel:${fullDetails.phone}" class="text-blue-600 hover:text-blue-800">${fullDetails.phone}</a>
+                  <a href="tel:${fullDetails.phone}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">${fullDetails.phone}</a>
                 </div>
                 ` : ''}
               </div>
               ` : ''}
 
               <div class="mb-3">
-                <p class="text-xs font-semibold text-gray-700">Recorduri: <span class="text-blue-600 font-bold">${fullDetails.recordCount || 0}</span></p>
+                <p class="text-xs font-semibold text-gray-700 dark:text-slate-200">Recorduri: <span class="text-blue-600 dark:text-blue-400 font-bold">${fullDetails.recordCount || 0}</span></p>
               </div>
 
               <div class="flex gap-2 mb-3">
@@ -481,14 +515,14 @@ export default function Home() {
                   Adaugă record
                 </button>
               </div>
-              <div class="flex gap-2 pt-2 border-t border-gray-100">
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${fullDetails.coords[1]},${fullDetails.coords[0]}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border border-gray-200 shadow-sm hover:shadow">
+              <div class="flex gap-2 pt-2 border-t border-gray-100 dark:border-slate-700">
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${fullDetails.coords[1]},${fullDetails.coords[0]}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-500 text-gray-700 dark:text-slate-200 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border border-gray-200 dark:border-slate-600 shadow-sm hover:shadow">
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
                   Google Maps
                 </a>
-                <a href="https://maps.apple.com/?daddr=${fullDetails.coords[1]},${fullDetails.coords[0]}&dirflg=d" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border border-gray-200 shadow-sm hover:shadow">
+                <a href="https://maps.apple.com/?daddr=${fullDetails.coords[1]},${fullDetails.coords[0]}&dirflg=d" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-500 text-gray-700 dark:text-slate-200 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border border-gray-200 dark:border-slate-600 shadow-sm hover:shadow">
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
@@ -497,30 +531,30 @@ export default function Home() {
               </div>
             </div>
           ` : `
-            <div class="p-5 min-w-[320px] max-w-[380px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-              <button class="absolute top-4 right-4 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+            <div class="p-5 min-w-[320px] max-w-[380px] bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 relative">
+              <button class="absolute top-4 right-4 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
               <div class="mb-4">
-                <h3 class="font-bold text-xl text-gray-800 mb-2 flex items-start gap-2">
+                <h3 class="font-bold text-xl text-gray-800 dark:text-slate-100 mb-2 flex items-start gap-2">
                   <span class="text-2xl flex-shrink-0">${fullDetails.type === 'river' || fullDetails.type === 'fluviu' ? '🌊' : fullDetails.type === 'lake' ? '🏞️' : fullDetails.type === 'balti_salbatic' ? '🌿' : fullDetails.type === 'private_pond' ? '🏡' : '💧'}</span>
                   <span class="break-words">${fullDetails.name}</span>
                 </h3>
-                ${fullDetails.subtitle ? `<p class="text-sm text-gray-600 mb-1">${fullDetails.subtitle}</p>` : ''}
-                <p class="text-sm text-gray-500">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
+                ${fullDetails.subtitle ? `<p class="text-sm text-gray-600 dark:text-slate-400 mb-1">${fullDetails.subtitle}</p>` : ''}
+                <p class="text-sm text-gray-500 dark:text-slate-400">${fullDetails.county}, ${fullDetails.region.charAt(0).toUpperCase() + fullDetails.region.slice(1)}</p>
               </div>
 
               ${fullDetails.description ? `
               <div class="mb-4">
-                <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">${fullDetails.description}</p>
+                <p class="text-sm text-gray-600 dark:text-slate-200 leading-relaxed line-clamp-3">${fullDetails.description}</p>
               </div>
               ` : ''}
 
               ${fullDetails.administrare ? `
-              <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                ${fullDetails.administrare_url ? `<a href="${fullDetails.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-700 hover:text-blue-900 leading-relaxed underline">${fullDetails.administrare}</a>` : `<p class="text-sm text-blue-700 leading-relaxed">${fullDetails.administrare}</p>`}
+              <div class="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                ${fullDetails.administrare_url ? `<a href="${fullDetails.administrare_url}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 leading-relaxed underline">${fullDetails.administrare}</a>` : `<p class="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">${fullDetails.administrare}</p>`}
               </div>
               ` : ''}
 
@@ -528,18 +562,18 @@ export default function Home() {
               <div class="mb-4 space-y-2">
                 ${fullDetails.website ? `
                 <div class="flex items-center gap-2 text-sm">
-                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                   </svg>
-                  <a href="${fullDetails.website && (fullDetails.website.startsWith('http') ? fullDetails.website : 'https://' + fullDetails.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 truncate">${fullDetails.website ? fullDetails.website.replace(/^https?:\/\//, '') : ''}</a>
+                  <a href="${fullDetails.website && (fullDetails.website.startsWith('http') ? fullDetails.website : 'https://' + fullDetails.website)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 truncate">${fullDetails.website ? fullDetails.website.replace(/^https?:\/\//, '') : ''}</a>
                 </div>
                 ` : ''}
                 ${fullDetails.phone ? `
                 <div class="flex items-center gap-2 text-sm">
-                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                   </svg>
-                  <a href="tel:${fullDetails.phone}" class="text-blue-600 hover:text-blue-800">${fullDetails.phone}</a>
+                  <a href="tel:${fullDetails.phone}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">${fullDetails.phone}</a>
                 </div>
                 ` : ''}
               </div>
@@ -547,12 +581,12 @@ export default function Home() {
 
               <div class="mb-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-semibold text-gray-700">Recorduri:</span>
+                  <span class="text-sm font-semibold text-gray-700 dark:text-slate-200">Recorduri:</span>
                   <div class="flex items-center gap-1">
                     ${(fullDetails.recordCount || 0) >= 1 ? '<span class="text-yellow-500">🥇</span>' : ''}
                     ${(fullDetails.recordCount || 0) >= 2 ? '<span class="text-gray-400">🥈</span>' : ''}
                     ${(fullDetails.recordCount || 0) >= 3 ? '<span class="text-amber-600">🥉</span>' : ''}
-                    <span class="text-sm font-bold text-gray-800">${fullDetails.recordCount || 0}</span>
+                    <span class="text-sm font-bold text-gray-800 dark:text-slate-100">${fullDetails.recordCount || 0}</span>
                   </div>
                 </div>
               </div>
@@ -565,14 +599,14 @@ export default function Home() {
                   Adaugă record
                 </button>
               </div>
-              <div class="flex gap-2 pt-3 border-t border-gray-100">
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${fullDetails.coords[1]},${fullDetails.coords[0]}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium transition-colors border border-gray-200 shadow-sm hover:shadow">
+              <div class="flex gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${fullDetails.coords[1]},${fullDetails.coords[0]}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-500 text-gray-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition-colors border border-gray-200 dark:border-slate-600 shadow-sm hover:shadow">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
                   Google Maps
                 </a>
-                <a href="https://maps.apple.com/?daddr=${fullDetails.coords[1]},${fullDetails.coords[0]}&dirflg=d" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium transition-colors border border-gray-200 shadow-sm hover:shadow">
+                <a href="https://maps.apple.com/?daddr=${fullDetails.coords[1]},${fullDetails.coords[0]}&dirflg=d" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-500 text-gray-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition-colors border border-gray-200 dark:border-slate-600 shadow-sm hover:shadow">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
@@ -1701,32 +1735,32 @@ export default function Home() {
       anchor: 'bottom', // Anchor at bottom so tip points to marker
       offset: [0, userPopupOffset] // Offset to position tip at marker edge
     }).setHTML(`
-      <div class="p-4 min-w-[200px] max-w-[250px] bg-white rounded-2xl shadow-xl border border-gray-100 relative">
-        <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
+      <div class="p-4 min-w-[200px] max-w-[250px] bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 relative">
+        <button class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-all duration-200 hover:rotate-90 z-20 cursor-pointer" onclick="this.closest('.maplibregl-popup').remove()">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
 
         <div class="text-center mb-3">
-          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
+          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white dark:border-slate-600 rounded-full flex items-center justify-center overflow-hidden shadow-lg mx-auto mb-2">
             ${userPhoto ?
         `<img src="${userPhoto}" alt="${userName}" class="w-full h-full object-cover rounded-full" />` :
         `<span class="text-white font-bold text-lg">${userName.charAt(0).toUpperCase()}</span>`
       }
           </div>
-          <h3 class="font-bold text-lg text-gray-800 mb-1">${userName}</h3>
-          <p class="text-sm text-blue-600 font-medium">📍 Locația ta curentă</p>
+          <h3 class="font-bold text-lg text-gray-800 dark:text-white mb-1">${userName}</h3>
+          <p class="text-sm text-blue-600 dark:text-blue-400 font-medium">📍 Locația ta curentă</p>
         </div>
 
-        <div class="space-y-2 p-3 bg-gray-50 rounded-xl">
+        <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
           <div class="text-center">
-            <p class="text-xs font-semibold text-gray-700 mb-1">Coordonate GPS</p>
-            <p class="text-xs text-gray-600 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+            <p class="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">Coordonate GPS</p>
+            <p class="text-xs text-gray-600 dark:text-slate-200 font-mono">${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
           </div>
           <div class="text-center">
-            <p class="text-xs font-semibold text-gray-700 mb-1">Adresă</p>
-            <p class="text-xs text-gray-600 leading-relaxed">${address}</p>
+            <p class="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">Adresă</p>
+            <p class="text-xs text-gray-600 dark:text-slate-200 leading-relaxed">${address}</p>
           </div>
         </div>
       </div>
@@ -1873,16 +1907,16 @@ export default function Home() {
         type="website"
         structuredData={[websiteData, organizationData, navigationData] as unknown as Record<string, unknown>[]}
       />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-50 transition-colors duration-200">
         {/* Mobile Menu Overlay */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden">
-            <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-xl p-6">
+            <div className="fixed right-0 top-0 h-full w-64 bg-white dark:bg-slate-900 shadow-xl p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Meniu</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Meniu</h2>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-700 dark:text-slate-200"
                 >
                   <X className="h-6 w-6" />
                 </button>
@@ -1890,21 +1924,21 @@ export default function Home() {
               <nav className="space-y-4">
                 <Link
                   to="/"
-                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  className="block text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Acasă
                 </Link>
                 <Link
                   to="/submission-guide"
-                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  className="block text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Ghid Submisie
                 </Link>
                 <Link
                   to="/profile"
-                  className="block text-gray-700 hover:text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  className="block text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Profilul meu
@@ -1929,7 +1963,7 @@ export default function Home() {
         </section>
 
         {/* Map Section */}
-        <section className="px-4 md:px-6 lg:px-8 mb-16">
+        <section className="px-4 md:px-6 lg:px-8 mb-8">
           <div className="max-w-7xl mx-auto">
             {/* Search Bar */}
             <div className="relative mb-6 max-w-md mx-auto">
@@ -1940,7 +1974,7 @@ export default function Home() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleSearchKeyPress}
-                  className="w-full px-4 py-3 pl-12 pr-4 bg-white border border-gray-200 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 pl-12 pr-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                   style={{ willChange: 'box-shadow, border-color' }}
                 />
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
@@ -1954,7 +1988,7 @@ export default function Home() {
                       setSearchQuery('');
                       setShowSearchResults(false);
                     }}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1963,27 +1997,27 @@ export default function Home() {
 
               {/* Search Results Dropdown */}
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
                   {searchResults.map((location, index) => (
                     <button
                       key={index}
                       onClick={() => {
                         selectLocation(location);
                       }}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-700 border-b border-gray-100 dark:border-slate-700 last:border-b-0 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg">
+                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-lg">
                           {location.type === 'river' || location.type === 'fluviu' ? '🌊' : location.type === 'lake' ? '🏞️' : location.type === 'balti_salbatic' ? '🌿' : location.type === 'private_pond' ? '🏡' : '💧'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{location.name}</p>
-                          <p className="text-sm text-gray-600 truncate">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{location.name}</p>
+                          <p className="text-sm text-gray-600 dark:text-slate-400 truncate">
                             {location.subtitle && `${location.subtitle} • `}
                             {location.county}, {location.region.charAt(0).toUpperCase() + location.region.slice(1)}
                           </p>
                         </div>
-                        <div className="text-xs text-gray-500 capitalize">
+                        <div className="text-xs text-gray-500 dark:text-slate-400 capitalize">
                           {location.type === 'river' || location.type === 'fluviu' ? 'Ape curgătoare' :
                             location.type === 'lake' ? 'Lac' :
                               location.type === 'balti_salbatic' ? 'Bălți Sălbatice' :
@@ -1996,7 +2030,7 @@ export default function Home() {
               )}
 
               {showSearchResults && searchResults.length === 0 && searchQuery && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 p-4 text-center text-gray-500 dark:text-slate-400">
                   Nu s-au găsit locații pentru "{searchQuery}"
                 </div>
               )}
@@ -2006,7 +2040,7 @@ export default function Home() {
             <div className="mb-6">
               {/* Main Filters - Locații de Pescuit */}
               <div className="mb-3">
-                <p className="text-xs md:text-sm font-semibold text-gray-700 mb-2 text-center">Locații de Pescuit</p>
+                <p className="text-xs md:text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2 text-center">Locații de Pescuit</p>
                 <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
                   {[
                     { type: 'all', label: 'Toate', icon: MapPin, color: 'bg-gray-500 hover:bg-gray-600' },
@@ -2031,7 +2065,7 @@ export default function Home() {
                       <button
                         key={type}
                         onClick={() => filterLocations(type)}
-                        className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${activeFilter === type ? 'ring-2 ring-blue-200' : ''
+                        className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${activeFilter === type ? 'ring-2 ring-blue-200 dark:ring-blue-700' : ''
                           }`}
                         style={{ willChange: 'transform, box-shadow, background-color' }}
                       >
@@ -2046,8 +2080,8 @@ export default function Home() {
               </div>
 
               {/* Secondary Filters - Servicii și Facilități */}
-              <div className="border-t border-gray-200 pt-3">
-                <p className="text-xs md:text-sm font-semibold text-gray-700 mb-2 text-center">Servicii și Facilități</p>
+              <div className="border-t border-gray-200 dark:border-slate-700 pt-3">
+                <p className="text-xs md:text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2 text-center">Servicii și Facilități</p>
                 <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
                   {[
                     { type: 'shop', label: 'Magazine', icon: MapPin, color: 'bg-violet-500 hover:bg-violet-600', count: shopMarkers.length },
@@ -2057,7 +2091,7 @@ export default function Home() {
                     <button
                       key={type}
                       onClick={() => filterLocations(type)}
-                      className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${activeFilter === type ? 'ring-2 ring-blue-200' : ''
+                      className={`${color} text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1.5 hover:scale-105 ${activeFilter === type ? 'ring-2 ring-blue-200 dark:ring-blue-700' : ''
                         }`}
                       style={{ willChange: 'transform, box-shadow, background-color' }}
                     >
@@ -2083,15 +2117,15 @@ export default function Home() {
             {/* Map Container */}
             <div className="relative">
               {mapError ? (
-                <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl overflow-hidden bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
                   <div className="text-center p-8">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Eroare la încărcarea hărții</h3>
-                    <p className="text-gray-600 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Eroare la încărcarea hărții</h3>
+                    <p className="text-gray-600 dark:text-slate-400 mb-4">Harta nu a putut fi încărcată. Te rugăm să reîmprospătezi pagina.</p>
                     <button
                       onClick={() => window.location.reload()}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
@@ -2112,14 +2146,14 @@ export default function Home() {
               <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
                 <button
                   onClick={() => mapInstanceRef.current?.zoomIn()}
-                  className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                  className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 p-2 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 transition-all duration-200 hover:shadow-xl"
                   title="Zoom in"
                 >
                   <span className="text-lg font-bold">+</span>
                 </button>
                 <button
                   onClick={() => mapInstanceRef.current?.zoomOut()}
-                  className="bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl"
+                  className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 p-2 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 transition-all duration-200 hover:shadow-xl"
                   title="Zoom out"
                 >
                   <span className="text-lg font-bold">−</span>
@@ -2130,29 +2164,29 @@ export default function Home() {
               <div className="absolute bottom-4 left-4 z-10">
                 <div className="relative group">
                   <button
-                    className="bg-white hover:bg-gray-50 text-gray-700 p-2.5 rounded-lg shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl w-10 h-10 flex items-center justify-center"
+                    className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 p-2.5 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 transition-all duration-200 hover:shadow-xl w-10 h-10 flex items-center justify-center"
                     title="Schimbă stilul hărții"
                   >
                     <Layers className="w-5 h-5" />
                   </button>
-                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden min-w-[120px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden min-w-[120px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <button
                       onClick={() => changeMapStyle('osm')}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${mapStyle === 'osm' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${mapStyle === 'osm' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-200'}`}
                     >
                       <span>🗺️</span>
                       <span className="text-sm">Standard</span>
                     </button>
                     <button
                       onClick={() => changeMapStyle('satellite')}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${mapStyle === 'satellite' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${mapStyle === 'satellite' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-200'}`}
                     >
                       <span>🛰️</span>
                       <span className="text-sm">Satelit</span>
                     </button>
                     <button
                       onClick={() => changeMapStyle('hybrid')}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${mapStyle === 'hybrid' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${mapStyle === 'hybrid' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-200'}`}
                     >
                       <span>🌍</span>
                       <span className="text-sm">Hibrid</span>
@@ -2166,7 +2200,7 @@ export default function Home() {
                 <button
                   onClick={centerOnUserLocation}
                   disabled={isLocating}
-                  className={`bg-white hover:bg-gray-50 text-gray-700 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:shadow-xl ${isLocating ? 'opacity-50 cursor-not-allowed' : ''
+                  className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 p-3 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 transition-all duration-200 hover:shadow-xl ${isLocating ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   title="Centrare pe locația mea"
                 >
@@ -2182,39 +2216,14 @@ export default function Home() {
         </section>
 
         {/* FAQ Section */}
-        <section className="px-4 md:px-6 lg:px-8 mb-16">
+        <section className="px-4 md:px-6 lg:px-8 mb-0 pb-8">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 dark:text-white mb-10">
               Întrebări Frecvente
             </h2>
 
             <div className="space-y-3">
-              {[
-                {
-                  question: "Ce este Fish Trophy și pentru cine este destinat?",
-                  answer: "Fish Trophy este platforma națională pentru pescari pasionați din România. Este destinată tuturor celor care iubesc pescuitul și doresc să înregistreze, urmărească și concureze cu recordurile lor."
-                },
-                {
-                  question: "De ce nu promovați locațiile exacte de pescuit?",
-                  answer: "Fish Trophy nu promovează locațiile exacte de pescuit din respect față de natură și pentru a preveni supraexploatarea zonelor sensibile. Ne concentrăm pe zonele de pescuit, păstrând echilibrul natural al ecosistemelor acvatice."
-                },
-                {
-                  question: "Care sunt scopurile Fish Trophy?",
-                  answer: "Scopul nostru principal este să facem din pescuit un sport național frumos și respectat. Promovăm respectul față de natură, contribuim la amenajarea spațiilor de pescuit și facem presiune asupra autorităților pentru protejarea zonelor acvatice."
-                },
-                {
-                  question: "Cum funcționează sistemul de recorduri?",
-                  answer: "Sistemul nostru de recorduri este transparent și verificat. Pescarii pot înregistra prinderea cu dovezi fotografice, informații despre locație (zonă generală), dimensiuni și greutate. Toate recordurile sunt verificate de comunitate."
-                },
-                {
-                  question: "Cum contribuiți la protejarea naturii?",
-                  answer: "Promovăm pescuitul responsabil prin educarea comunității despre tehnici durabile, respectarea perioadelor de reproducere și limitelor de prindere. Fiecare pescar din comunitatea noastră devine un gardian al naturii."
-                },
-                {
-                  question: "Ce planuri aveți pentru dezvoltarea platformei?",
-                  answer: "Planificăm să dezvoltăm funcționalități pentru competiții locale și naționale, un sistem de mentorat pentru pescarii începători și parteneriate cu autoritățile locale pentru amenajarea zonelor de pescuit."
-                }
-              ].map((faq, index) => (
+              {faqData.map((faq, index) => (
                 <FAQItem
                   key={index}
                   question={faq.question}
@@ -2231,20 +2240,20 @@ export default function Home() {
         {/* Location Request Overlay */}
         {showLocationRequest && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl transition-colors duration-200">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Navigation className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 Permite accesul la locație
               </h3>
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-slate-300 mb-8 leading-relaxed">
                 Pentru a-ți arăta locațiile de pescuit cele mai apropiate și pentru a-ți oferi o experiență personalizată
               </p>
               <div className="flex gap-4">
                 <button
                   onClick={() => handleLocationPermission(false)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded-2xl font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Nu acum
                 </button>
@@ -2262,25 +2271,25 @@ export default function Home() {
         {/* Shop Popup Modal */}
         {showShopPopup && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-            <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl transition-colors duration-200">
               <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <MapPin className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 În Curând!
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-slate-300 mb-6 leading-relaxed">
                 Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând.
               </p>
-              <p className="text-gray-700 mb-8 leading-relaxed font-medium">
+              <p className="text-gray-700 dark:text-slate-200 mb-8 leading-relaxed font-medium">
                 Vrei să-ți adaugi magazinul pe hartă?
                 <br />
-                <span className="text-blue-600">Trimite-ne un email cu detaliile tale!</span>
+                <span className="text-blue-600 dark:text-blue-400">Trimite-ne un email cu detaliile tale!</span>
               </p>
               <div className="flex gap-4">
                 <button
                   onClick={() => setShowShopPopup(false)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded-2xl font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Închide
                 </button>

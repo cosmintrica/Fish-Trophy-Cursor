@@ -16,19 +16,19 @@ const EmailConfirmation = () => {
       // Supabase redirects with access_token and refresh_token in URL fragments (hash)
       // Check if user is already authenticated (email was confirmed)
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       // If user is already authenticated and has OAuth provider, redirect immediately
       // This prevents showing email confirmation message for OAuth users
       if (session?.user) {
         const providers = session.user.app_metadata?.providers || [];
         const isOAuthUser = providers.length > 0 && providers.includes('google');
-        
+
         if (isOAuthUser) {
           // OAuth users don't need email confirmation, redirect immediately
           navigate('/', { replace: true });
           return;
         }
-        
+
         // For regular email users who already confirmed, show success message
         if (session.user.email_confirmed_at) {
           setStatus('success');
@@ -43,7 +43,7 @@ const EmailConfirmation = () => {
       const hashParams = new URLSearchParams(hash);
       let accessToken = hashParams.get('access_token');
       let refreshToken = hashParams.get('refresh_token');
-      
+
       // Fallback: check query params if hash is empty
       if (!accessToken || !refreshToken) {
         accessToken = searchParams.get('access_token') || accessToken;
@@ -150,12 +150,12 @@ const EmailConfirmation = () => {
   const getStatusColor = () => {
     switch (status) {
       case 'success':
-        return 'border-green-200 bg-green-50';
+        return 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800';
       case 'error':
       case 'expired':
-        return 'border-red-200 bg-red-50';
+        return 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800';
       default:
-        return 'border-blue-200 bg-blue-50';
+        return 'border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800';
     }
   };
 
@@ -175,7 +175,7 @@ const EmailConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <Card className={`${getStatusColor()} border-2`}>
           <CardHeader className="text-center">
@@ -187,16 +187,16 @@ const EmailConfirmation = () => {
               {message}
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             {status === 'success' && (
               <div className="text-center space-y-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">
                   Contul tău a fost activat cu succes! Acum te poți autentifica și începe să adaugi recorduri.
                 </p>
-                <Button 
+                <Button
                   onClick={() => navigate('/')}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                   Mergi la pagina principală
                 </Button>
@@ -205,14 +205,14 @@ const EmailConfirmation = () => {
 
             {(status === 'error' || status === 'expired') && (
               <div className="text-center space-y-4">
-                <p className="text-sm text-gray-600">
-                  {status === 'expired' 
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                  {status === 'expired'
                     ? 'Link-ul de confirmare a expirat. Poți cere un link nou sau să te înregistrezi din nou.'
                     : 'A apărut o problemă cu confirmarea email-ului. Te rugăm să încerci din nou.'
                   }
                 </p>
                 <div className="space-y-2">
-                  <Button 
+                  <Button
                     onClick={handleResendConfirmation}
                     variant="outline"
                     className="w-full"
@@ -220,9 +220,9 @@ const EmailConfirmation = () => {
                     <Mail className="w-4 h-4 mr-2" />
                     Retrimite email-ul de confirmare
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => navigate('/')}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                   >
                     Mergi la pagina principală
                   </Button>
@@ -232,7 +232,7 @@ const EmailConfirmation = () => {
 
             {status === 'loading' && (
               <div className="text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">
                   Se procesează confirmarea email-ului. Te rugăm să aștepți...
                 </p>
               </div>
@@ -240,10 +240,10 @@ const EmailConfirmation = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
+        <div className="text-center mt-8">
+          <p className="text-xs text-muted-foreground">
             Ai probleme? Contactează-ne la{' '}
-            <a href="mailto:support@fishtrophy.ro" className="text-blue-600 hover:underline">
+            <a href="mailto:support@fishtrophy.ro" className="text-blue-600 hover:underline dark:text-blue-400">
               support@fishtrophy.ro
             </a>
           </p>

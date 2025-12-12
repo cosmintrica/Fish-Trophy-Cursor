@@ -632,11 +632,11 @@ const PublicProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-8 transition-colors duration-200">
         <div className="max-w-5xl mx-auto px-4">
           <div className="animate-pulse space-y-4">
-            <div className="bg-gray-200 h-64 rounded-2xl"></div>
-            <div className="h-32 bg-gray-200 rounded-2xl"></div>
+            <div className="bg-gray-200 dark:bg-slate-700 h-64 rounded-2xl"></div>
+            <div className="h-32 bg-gray-200 dark:bg-slate-700 rounded-2xl"></div>
           </div>
         </div>
       </div>
@@ -645,12 +645,12 @@ const PublicProfile = () => {
 
   if (!userProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-8 transition-colors duration-200">
         <div className="max-w-5xl mx-auto px-4">
-          <Card>
+          <Card className="dark:bg-card dark:border-border">
             <CardContent className="p-12 text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Profilul nu a fost găsit</h1>
-              <p className="text-gray-600">Utilizatorul cu acest ID nu există sau profilul este privat.</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-50 mb-4">Profilul nu a fost găsit</h1>
+              <p className="text-gray-600 dark:text-slate-400">Utilizatorul cu acest ID nu există sau profilul este privat.</p>
             </CardContent>
           </Card>
         </div>
@@ -659,11 +659,11 @@ const PublicProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 py-8 px-4 sm:px-6 transition-colors duration-200">
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Main Profile Card - Cover + Avatar + Info + Buttons */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-visible border border-gray-100 relative">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-xl overflow-visible border border-gray-100 dark:border-border relative">
           {/* Cover Photo */}
           <div className="h-48 md:h-64 lg:h-80 bg-gray-900 relative group z-0 overflow-hidden rounded-t-2xl">
             {showCoverEditor && userProfile?.cover_photo_url ? (
@@ -750,7 +750,7 @@ const PublicProfile = () => {
                     </button>
                     {showCoverMenu && createPortal(
                       <div
-                        className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 w-48 cover-menu-portal"
+                        className="fixed z-[9999] bg-white dark:bg-card rounded-lg shadow-xl border border-gray-200 dark:border-border w-48 cover-menu-portal"
                         style={{
                           top: coverMenuPos.top,
                           left: coverMenuPos.left,
@@ -758,7 +758,7 @@ const PublicProfile = () => {
                         }}
                       >
                         <div className="py-1">
-                          <label className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
+                          <label className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer block">
                             <Upload className="w-4 h-4" />
                             Încarcă cover
                             <input
@@ -776,7 +776,7 @@ const PublicProfile = () => {
                                 setShowCoverEditor(true);
                                 setShowCoverMenu(false);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2"
                             >
                               <Move className="w-4 h-4" />
                               Editează poziția
@@ -786,7 +786,7 @@ const PublicProfile = () => {
                             <button
                               onClick={handleCoverDelete}
                               disabled={isUploadingCover}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50"
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50"
                             >
                               <Trash2 className="w-4 h-4" />
                               Șterge cover
@@ -803,7 +803,7 @@ const PublicProfile = () => {
           </div>
 
           {/* Profile Header Content - Info + Buttons (positioned to the right of avatar) */}
-          <div className="px-4 pb-6 pt-6 md:px-6 md:pl-56 lg:pl-60 relative z-20 bg-white rounded-b-2xl">
+          <div className="px-4 pb-6 pt-6 md:px-6 md:pl-56 lg:pl-60 relative z-20 bg-white dark:bg-card rounded-b-2xl">
             {/* Avatar Container - Positioned absolutely overlapping cover */}
             <div
               ref={avatarContainerRef}
@@ -811,12 +811,7 @@ const PublicProfile = () => {
             >
               {/* Avatar with Border - Circular */}
               <div
-                className="relative w-full h-full bg-white group/avatar cursor-pointer"
-                style={{
-                  borderRadius: '50%',
-                  border: '4px solid white',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                }}
+                className="relative w-full h-full bg-white dark:bg-slate-800 group/avatar cursor-pointer border-4 border-white dark:border-card shadow-xl rounded-full"
                 onClick={handleAvatarClick}
               >
                 {/* Image Container */}
@@ -838,7 +833,7 @@ const PublicProfile = () => {
                     />
                   ) : (
                     <div
-                      className="w-full h-full bg-slate-100 text-slate-400 font-bold text-5xl flex items-center justify-center"
+                      className="w-full h-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 font-bold text-5xl flex items-center justify-center"
                       style={{ borderRadius: '50%' }}
                     >
                       {userProfile?.display_name?.charAt(0).toUpperCase() || 'U'}
@@ -860,7 +855,7 @@ const PublicProfile = () => {
               {/* Menu - Using Portal to escape overflow-hidden */}
               {isOwner && showAvatarMenu && createPortal(
                 <div
-                  className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 w-48 avatar-menu-portal"
+                  className="fixed z-[9999] bg-white dark:bg-card rounded-lg shadow-xl border border-gray-200 dark:border-border w-48 avatar-menu-portal"
                   style={{
                     top: avatarMenuPos.top,
                     left: avatarMenuPos.left,
@@ -868,7 +863,7 @@ const PublicProfile = () => {
                   }}
                 >
                   <div className="py-1">
-                    <label className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer block">
+                    <label className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer block">
                       <Upload className="w-4 h-4" />
                       Încarcă avatar
                       <input
@@ -884,7 +879,7 @@ const PublicProfile = () => {
                       <button
                         onClick={handleAvatarDelete}
                         disabled={isUploadingAvatar}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50"
                       >
                         <Trash2 className="w-4 h-4" />
                         Șterge avatar
@@ -900,16 +895,16 @@ const PublicProfile = () => {
                 {userProfile?.username ? (
                   <Link
                     to={`/profile/${userProfile.username}`}
-                    className="text-xl md:text-2xl font-bold text-gray-900 leading-tight hover:text-blue-600 transition-colors cursor-pointer inline-block"
+                    className="text-xl md:text-2xl font-bold text-gray-900 dark:text-slate-50 leading-tight hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer inline-block"
                   >
                     {userProfile?.display_name || 'Utilizator'}
                   </Link>
                 ) : (
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-slate-50 leading-tight">
                     {userProfile?.display_name || 'Utilizator'}
                   </h1>
                 )}
-                <p className="text-gray-500 font-medium text-xs md:text-sm mt-1 flex items-center gap-2 justify-center md:justify-start">
+                <p className="text-gray-500 dark:text-slate-400 font-medium text-xs md:text-sm mt-1 flex items-center gap-2 justify-center md:justify-start">
                   {(() => {
                     const locationParts: string[] = [];
                     if (userProfile?.show_county_publicly && countyName) {
@@ -925,7 +920,7 @@ const PublicProfile = () => {
                           <MapPin className="w-3.5 h-3.5" />
                           {locationText}
                         </span>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span className="w-1 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
                       </>
                     ) : null;
                   })()}
@@ -937,7 +932,7 @@ const PublicProfile = () => {
 
                 {/* Bio */}
                 {userProfile?.bio && (
-                  <p className="text-gray-600 mt-2 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0">
+                  <p className="text-gray-600 dark:text-slate-400 mt-2 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0">
                     {userProfile.bio}
                   </p>
                 )}
@@ -949,7 +944,7 @@ const PublicProfile = () => {
                   <>
                     <Link
                       to="/messages?context=site"
-                      className="relative px-3 py-1.5 bg-gray-100 text-gray-900 text-xs md:text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                      className="relative px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-slate-100 text-xs md:text-sm font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors shadow-sm flex items-center justify-center gap-1.5"
                     >
                       <Inbox className="w-3.5 h-3.5" />
                       Inbox
@@ -989,23 +984,23 @@ const PublicProfile = () => {
         </div>
 
         {/* Content Card - Stats + Trophies + Gear */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 relative">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-xl border border-gray-100 dark:border-border relative">
           <div className="px-4 md:px-6 py-6">
             {/* Stats Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Capturi Totale', value: totalCatches, icon: Fish, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { label: 'Record Personal', value: biggestCatch ? `${biggestCatch.weight} kg` : '-', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
-                { label: 'Locații', value: uniqueLocations, icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'Zile Membru', value: daysSinceMember, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' }
+                { label: 'Capturi Totale', value: totalCatches, icon: Fish, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                { label: 'Record Personal', value: biggestCatch ? `${biggestCatch.weight} kg` : '-', icon: Trophy, color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                { label: 'Locații', value: uniqueLocations, icon: MapPin, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+                { label: 'Zile Membru', value: daysSinceMember, icon: TrendingUp, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20' }
               ].map((stat, i) => (
-                <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                <div key={i} className="bg-white dark:bg-slate-800/50 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-border flex items-center gap-4 hover:shadow-md transition-shadow">
                   <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}>
                     <stat.icon className={`w-5 h-5 ${stat.color}`} />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-gray-900 leading-none">{stat.value}</div>
-                    <div className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
+                    <div className="text-xl font-bold text-gray-900 dark:text-slate-50 leading-none">{stat.value}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
                   </div>
                 </div>
               ))}
@@ -1016,15 +1011,15 @@ const PublicProfile = () => {
               {/* Left Column: Trophy Showcase */}
               <div className="lg:col-span-2 space-y-6">
                 {topThree.length > 0 && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-sm border border-gray-100 dark:border-border p-6">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-slate-50 mb-4 flex items-center gap-2">
                       <Trophy className="w-5 h-5 text-amber-500" />
                       Sala Trofeelor
                     </h2>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       {topThree.map((record, index) => {
                         const medals = ['🥇', '🥈', '🥉'];
-                        const bgs = ['bg-amber-50 border-amber-100', 'bg-slate-50 border-slate-100', 'bg-orange-50 border-orange-100'];
+                        const bgs = ['bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800', 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800', 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800'];
 
                         return (
                           <div
@@ -1032,7 +1027,7 @@ const PublicProfile = () => {
                             className={`rounded-lg sm:rounded-xl border ${bgs[index]} p-2 sm:p-3 cursor-pointer hover:-translate-y-1 transition-transform`}
                             onClick={() => openRecordModal(record)}
                           >
-                            <div className="aspect-square rounded-md sm:rounded-lg overflow-hidden bg-white mb-2 sm:mb-3 relative shadow-sm">
+                            <div className="aspect-square rounded-md sm:rounded-lg overflow-hidden bg-white dark:bg-slate-900 mb-2 sm:mb-3 relative shadow-sm">
                               {(record.image_url || record.photo_url) ? (
                                 <img
                                   src={getR2ImageUrlProxy(record.image_url || record.photo_url!)}
@@ -1045,16 +1040,16 @@ const PublicProfile = () => {
                                   }}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-slate-700">
                                   <Fish className="w-8 h-8" />
                                 </div>
                               )}
                               <div className="absolute top-1 left-1 sm:top-2 sm:left-2 text-lg sm:text-2xl drop-shadow-sm">{medals[index]}</div>
                             </div>
                             <div className="text-center">
-                              <div className="font-bold text-gray-900 truncate text-xs sm:text-sm">{record.fish_species?.name}</div>
-                              <div className="text-xs sm:text-sm font-semibold text-blue-600">{record.weight} kg</div>
-                              <div className="text-[10px] sm:text-xs text-gray-500 truncate">{record.fishing_locations?.name}</div>
+                              <div className="font-bold text-gray-900 dark:text-slate-50 truncate text-xs sm:text-sm">{record.fish_species?.name}</div>
+                              <div className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400">{record.weight} kg</div>
+                              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 truncate">{record.fishing_locations?.name}</div>
                             </div>
                           </div>
                         );
@@ -1064,14 +1059,14 @@ const PublicProfile = () => {
                 )}
 
                 {/* Recent Activity / All Catches */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Fish className="w-5 h-5 text-blue-600" />
+                <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-100 dark:border-border p-6">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-slate-50 mb-4 flex items-center gap-2">
+                    <Fish className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     Jurnal de Capturi
                   </h2>
 
                   {userCatches.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
+                    <div className="text-center py-12 text-gray-400 dark:text-slate-400">
                       Nu există capturi înregistrate.
                     </div>
                   ) : (
@@ -1105,21 +1100,21 @@ const PublicProfile = () => {
                   }
 
                   return (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Despre</h3>
+                    <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-100 dark:border-border p-6">
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-slate-50 uppercase tracking-wider mb-4">Despre</h3>
                       <div className="space-y-4 text-sm">
                         {hasPublicWebsite && (
-                          <div className="flex items-center gap-3 text-gray-600">
-                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                          <div className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center shrink-0">
                               <Globe className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900">Website</div>
+                              <div className="font-medium text-gray-900 dark:text-slate-50">Website</div>
                               <a
                                 href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center gap-1"
+                                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                               >
                                 {formatWebsiteUrl(userProfile.website)}
                                 <ExternalLink className="w-3 h-3" />
@@ -1129,17 +1124,17 @@ const PublicProfile = () => {
                         )}
 
                         {hasPublicYouTube && (
-                          <div className="flex items-center gap-3 text-gray-600">
-                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                          <div className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center shrink-0">
                               <Youtube className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900">YouTube</div>
+                              <div className="font-medium text-gray-900 dark:text-slate-50">YouTube</div>
                               <a
                                 href={userProfile.youtube_channel.startsWith('http') ? userProfile.youtube_channel : `https://${userProfile.youtube_channel}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center gap-1"
+                                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                               >
                                 {getYoutubeChannelName(userProfile.youtube_channel)}
                                 <ExternalLink className="w-3 h-3" />
@@ -1149,12 +1144,12 @@ const PublicProfile = () => {
                         )}
 
                         {hasPublicLocation && (
-                          <div className="flex items-center gap-3 text-gray-600">
-                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                          <div className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
+                            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center shrink-0">
                               <MapPin className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900">Locație</div>
+                              <div className="font-medium text-gray-900 dark:text-slate-50">Locație</div>
                               <div>
                                 {(() => {
                                   const locationParts: string[] = [];

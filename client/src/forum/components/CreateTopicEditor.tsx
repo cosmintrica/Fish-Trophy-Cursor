@@ -16,26 +16,36 @@ import { parseBBCode } from '../../services/forum/bbcode';
 interface CreateTopicEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  categoryId: string;
-  categoryName: string;
-  user: {
+  categoryId: string; // This can be a slug or ID
+  subcategoryId?: string | null;
+  subforumId?: string | null;
+  isSubforum?: boolean;
+  onSuccess?: () => void;
+  // Legacy props kept for compatibility but optional now
+  categoryName?: string;
+  user?: {
     username: string;
     rank: string;
   };
-  onTopicCreated: () => void;
+  onTopicCreated?: () => void;
 }
 
 export default function CreateTopicEditor({
   isOpen,
   onClose,
   categoryId,
+  subcategoryId,
+  subforumId,
+  isSubforum,
   categoryName,
   user,
-  onTopicCreated
+  onTopicCreated,
+  onSuccess
 }: CreateTopicEditorProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [resolvedSubcategoryId, setResolvedSubcategoryId] = useState<string | null>(null);
+  const [resolvedSubcategoryId, setResolvedSubcategoryId] = useState<string | null>(subcategoryId || null);
+  const [resolvedSubforumId, setResolvedSubforumId] = useState<string | null>(subforumId || null);
   const [showPreview, setShowPreview] = useState(false);
   const { create, creating, error: createError } = useCreateTopic();
   const { forumUser } = useAuth();
@@ -45,6 +55,12 @@ export default function CreateTopicEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Update resolved IDs when props change
+  useEffect(() => {
+    if (subcategoryId) setResolvedSubcategoryId(subcategoryId);
+    if (subforumId) setResolvedSubforumId(subforumId);
+  }, [subcategoryId, subforumId]);
+
   // Detect mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -53,31 +69,55 @@ export default function CreateTopicEditor({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Rezolvă slug-ul în UUID
+  // Rezolvă slug-ul în UUID (poate fi subcategorie sau subforum)
   useEffect(() => {
-    const resolveSubcategoryId = async () => {
+    const resolveId = async () => {
       if (!categoryId) {
         setResolvedSubcategoryId(null);
+        setResolvedSubforumId(null);
         return;
       }
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
 
       if (isUUID) {
+        // Dacă e UUID, presupunem că e subcategorie (default behavior)
+        // TODO: Ar trebui ideal să verificăm ce fel de ID este
         setResolvedSubcategoryId(categoryId);
       } else {
-        const { data } = await supabase
+        // 1. Verificăm dacă e subcategorie
+        const { data: subcat } = await supabase
           .from('forum_subcategories')
           .select('id')
           .eq('slug', categoryId)
           .eq('is_active', true)
           .maybeSingle();
 
-        setResolvedSubcategoryId(data?.id || null);
+        if (subcat) {
+          setResolvedSubcategoryId(subcat.id);
+          setResolvedSubforumId(null);
+        } else {
+          // 2. Verificăm dacă e subforum
+          const { data: subforum } = await supabase
+            .from('forum_subforums')
+            .select('id')
+            .eq('slug', categoryId)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (subforum) {
+            setResolvedSubforumId(subforum.id);
+            setResolvedSubcategoryId(null);
+          } else {
+            // Nu am găsit nimic
+            setResolvedSubcategoryId(null);
+            setResolvedSubforumId(null);
+          }
+        }
       }
     };
 
-    resolveSubcategoryId();
+    resolveId();
   }, [categoryId]);
 
   // Auto-resize textarea
@@ -118,13 +158,14 @@ export default function CreateTopicEditor({
       return;
     }
 
-    if (!resolvedSubcategoryId) {
-      showToast('Eroare: Subcategoria nu a fost găsită!', 'error');
+    if (!resolvedSubcategoryId && !resolvedSubforumId) {
+      showToast('Eroare: Categoria nu a fost găsită!', 'error');
       return;
     }
 
     const result = await create({
-      subcategory_id: resolvedSubcategoryId,
+      subcategory_id: resolvedSubcategoryId || undefined,
+      subforum_id: resolvedSubforumId || undefined,
       title: title.trim(),
       content: content.trim()
     });
@@ -132,12 +173,15 @@ export default function CreateTopicEditor({
     if (result.success) {
       setTitle('');
       setContent('');
-      onTopicCreated();
+      if (onTopicCreated) onTopicCreated();
+      if (onSuccess) onSuccess();
+      // Only close if we don't handle navigation in onSuccess/onTopicCreated
+      // For now we close always as the parent re-renders
       onClose();
       showToast('Topic creat cu succes!', 'success');
     } else {
       console.error('Error creating topic:', result.error);
-      
+
       if (result.error?.code === 'USER_RESTRICTED' && result.error?.title) {
         showToast(
           result.error.title ? `${result.error.title}: ${result.error.message}` : result.error.message,

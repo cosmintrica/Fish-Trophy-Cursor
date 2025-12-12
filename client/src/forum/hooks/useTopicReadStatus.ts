@@ -139,6 +139,9 @@ export function useMultipleTopicsReadStatus(topicIds: string[]) {
             return { topicId, hasUnread: false };
           }
 
+          // Debug log pentru a vedea de ce nu apare statusul necitit
+          if (data) console.log(`Topic ${topicId} has unread posts for user ${forumUser.id}`);
+
           return { topicId, hasUnread: data || false };
         });
 
@@ -277,5 +280,75 @@ export function useMultipleSubcategoriesUnreadStatus(subcategoryIds: string[]) {
     unreadMap: unreadMap || {},
     isLoading,
     hasUnread: (subcategoryId: string) => unreadMap?.[subcategoryId] || false,
+  };
+}
+
+/**
+ * Hook pentru verificarea status-ului read/unread pentru multiple subforumuri (batch)
+ * Util pentru liste de subforumuri
+ */
+export function useMultipleSubforumsUnreadStatus(subforumIds: string[]) {
+  const { forumUser } = useAuth();
+
+  const { data: unreadMap, isLoading } = useQuery<Record<string, boolean>>({
+    queryKey: forumUser ? ['subforums-read-status-batch', forumUser.id, subforumIds.sort().join(',')] : ['disabled'],
+    queryFn: async () => {
+      if (!forumUser || subforumIds.length === 0) return {};
+
+      try {
+        // Try batch RPC first
+        const { data, error } = await supabase.rpc('has_unread_topics_in_subforums_batch', {
+          p_user_id: forumUser.id,
+          p_subforum_ids: subforumIds,
+        });
+
+        if (!error && data) {
+          return (data as Array<{ subforum_id: string; has_unread: boolean }>).reduce(
+            (acc, { subforum_id, has_unread }) => {
+              acc[subforum_id] = has_unread;
+              return acc;
+            },
+            {} as Record<string, boolean>
+          );
+        }
+
+        // Fallback to individual calls
+        console.warn('Batch RPC for subforums not available, falling back to individual calls');
+        const promises = subforumIds.map(async (subforumId) => {
+          try {
+            const { data, error } = await supabase.rpc('has_unread_topics_in_subforum', {
+              p_user_id: forumUser.id,
+              p_subforum_id: subforumId,
+            });
+
+            if (error) {
+              return { subforumId, hasUnread: false };
+            }
+            return { subforumId, hasUnread: data || false };
+          } catch (e) {
+            return { subforumId, hasUnread: false };
+          }
+        });
+
+        const results = await Promise.all(promises);
+
+        return results.reduce((acc, { subforumId, hasUnread }) => {
+          acc[subforumId] = hasUnread;
+          return acc;
+        }, {} as Record<string, boolean>);
+      } catch (error) {
+        console.error('Error in useMultipleSubforumsUnreadStatus:', error);
+        return {};
+      }
+    },
+    enabled: !!forumUser && subforumIds.length > 0,
+    staleTime: 30 * 1000,
+    gcTime: 2 * 60 * 1000,
+  });
+
+  return {
+    unreadMap: unreadMap || {},
+    isLoading,
+    hasUnread: (subforumId: string) => unreadMap?.[subforumId] || false,
   };
 }

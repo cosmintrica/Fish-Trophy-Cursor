@@ -52,9 +52,9 @@ const FishingShops = () => {
           { icon: MapPin, value: locationsCount || 0, label: 'Locații de pescuit', isNumber: true },
           { icon: Star, value: '4.8/5', label: 'Rating utilizatori', isNumber: false }
         ];
-        
+
         setStats(newStats);
-        
+
         // Resetează animația când datele se încarcă
         hasAnimated.current = false;
       } catch (error) {
@@ -70,14 +70,14 @@ const FishingShops = () => {
     // Cleanup animații anterioare
     animationFrameRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
     animationFrameRefs.current = [];
-    
+
     // Verifică dacă datele sunt încărcate (nu mai sunt 0)
     const hasData = stats.some(s => s.isNumber && typeof s.value === 'number' && s.value > 0);
     if (!hasData) {
       hasAnimated.current = false;
       return;
     }
-    
+
     // Resetează animația dacă datele s-au schimbat (de la 0 la valori pozitive)
     // Verifică dacă displayStats are încă 0 pentru statisticile care acum au valori > 0
     const needsAnimation = stats.some((stat, index) => {
@@ -87,33 +87,33 @@ const FishingShops = () => {
       }
       return false;
     });
-    
+
     if (!needsAnimation && hasAnimated.current) {
       return;
     }
-    
+
     hasAnimated.current = true;
-    
+
     // Durata fixă pentru toate statisticile (2 secunde)
     const duration = 2000;
-    
+
     // Animație pentru fiecare statistică
     stats.forEach((stat, index) => {
       if (stat.isNumber && typeof stat.value === 'number' && stat.value > 0) {
         const endValue = stat.value;
-        
+
         // Delay mic pentru efect cascadă
         setTimeout(() => {
           const startTime = performance.now();
-          
+
           const animate = (currentTime: number) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             // Easing function pentru animație smooth
             const easeOutQuart = 1 - Math.pow(1 - progress, 4);
             const current = Math.floor(endValue * easeOutQuart);
-            
+
             setDisplayStats(prev => {
               const newStats = [...prev];
               newStats[index] = {
@@ -122,7 +122,7 @@ const FishingShops = () => {
               };
               return newStats;
             });
-            
+
             if (progress < 1) {
               const rafId = requestAnimationFrame(animate);
               animationFrameRefs.current.push(rafId);
@@ -138,7 +138,7 @@ const FishingShops = () => {
               });
             }
           };
-          
+
           const rafId = requestAnimationFrame(animate);
           animationFrameRefs.current.push(rafId);
         }, index * 100); // 100ms delay între fiecare statistică
@@ -154,7 +154,7 @@ const FishingShops = () => {
         });
       }
     });
-    
+
     // Cleanup function
     return () => {
       animationFrameRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
@@ -169,7 +169,7 @@ const FishingShops = () => {
     setIsSubmitting(true);
     try {
       const emailLower = email.trim().toLowerCase();
-      
+
       // Verifică dacă email-ul există deja pentru fishing_shops
       const { data: existing } = await supabase
         .from('subscribers')
@@ -207,7 +207,7 @@ const FishingShops = () => {
             .select('source')
             .eq('email', emailLower)
             .maybeSingle();
-          
+
           if (check?.source === 'fishing_shops') {
             toast.error('Acest email este deja înregistrat pentru Fishing Shops!');
           } else {
@@ -271,11 +271,11 @@ const FishingShops = () => {
             <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
               <ShoppingBag className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
               În Curând!
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând. 
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Funcționalitatea pentru magazinele de pescuit va fi disponibilă în curând.
               Vrei să-ți adaugi magazinul pe hartă?
             </p>
           </div>
@@ -283,42 +283,42 @@ const FishingShops = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12" style={{ contain: 'layout style' }}>
             {displayStats.map((stat, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="text-center"
-                style={{ 
+                style={{
                   willChange: 'transform',
                   transform: 'translateZ(0)',
                   contain: 'layout style'
                 }}
               >
-                <div 
-                  className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3"
-                  style={{ 
+                <div
+                  className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{
                     willChange: 'transform',
                     transform: 'translateZ(0)'
                   }}
                 >
-                  <stat.icon className="w-8 h-8 text-blue-600" />
+                  <stat.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div 
-                  className="text-2xl font-bold text-gray-900 mb-1"
-                  style={{ 
+                <div
+                  className="text-2xl font-bold text-gray-900 dark:text-white mb-1"
+                  style={{
                     willChange: 'contents',
                     transform: 'translateZ(0)'
                   }}
                 >
                   {stat.value}
                 </div>
-                <div className="text-sm text-gray-600">{stat.label}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3"
               onClick={() => setIsShopModalOpen(true)}
             >
@@ -326,7 +326,7 @@ const FishingShops = () => {
               Trimite Detalii
             </Button>
             <Link to="/">
-              <Button size="lg" variant="outline" className="px-8 py-3">
+              <Button size="lg" variant="outline" className="px-8 py-3 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700">
                 <MapPin className="w-5 h-5 mr-2" />
                 Vezi Locații
               </Button>
@@ -336,42 +336,42 @@ const FishingShops = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white" style={{ contain: 'layout style' }}>
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900" style={{ contain: 'layout style' }}>
         <div className="max-w-7xl mx-auto" style={{ willChange: 'auto' }}>
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Beneficiile de a fi pe Fish Trophy
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Descoperă cum poți crește afacerea ta prin prezența pe platforma noastră
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8" style={{ contain: 'layout' }}>
             {benefits.map((benefit, index) => (
-              <Card 
-                key={index} 
-                className="text-center hover:shadow-lg transition-shadow"
-                style={{ 
+              <Card
+                key={index}
+                className="text-center hover:shadow-lg transition-shadow bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
+                style={{
                   willChange: 'transform',
                   transform: 'translateZ(0)',
                   contain: 'layout style'
                 }}
               >
                 <CardHeader>
-                  <div 
-                    className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                    style={{ 
+                  <div
+                    className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{
                       willChange: 'transform',
                       transform: 'translateZ(0)'
                     }}
                   >
-                    <benefit.icon className="w-8 h-8 text-blue-600" />
+                    <benefit.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <CardTitle className="text-lg">{benefit.title}</CardTitle>
+                  <CardTitle className="text-lg text-gray-900 dark:text-white">{benefit.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-gray-600">
+                  <CardDescription className="text-gray-600 dark:text-gray-300">
                     {benefit.description}
                   </CardDescription>
                 </CardContent>
@@ -385,39 +385,39 @@ const FishingShops = () => {
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Cum funcționează?
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Procesul simplu de a-ți adăuga magazinul pe Fish Trophy
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-green-600">1</span>
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-green-600 dark:text-green-400">1</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Trimite Detaliile</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Trimite Detaliile</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Completează formularul cu informațiile despre magazinul tău
               </p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">2</span>
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">2</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Verificare</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Verificare</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Echipa noastră verifică și aprobă informațiile
               </p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-purple-600">3</span>
+              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">3</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Activare</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Activare</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Magazinul tău apare pe hartă și este vizibil pentru toți utilizatorii
               </p>
             </div>
@@ -426,35 +426,35 @@ const FishingShops = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
             Ai întrebări? Contactează-ne!
           </h2>
-          
+
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             {contactInfo.map((info, index) => (
               <div key={index} className="text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <info.icon className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <info.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="font-medium text-gray-900 mb-1">{info.label}</div>
-                <div className="text-gray-600">{info.value}</div>
+                <div className="font-medium text-gray-900 dark:text-white mb-1">{info.label}</div>
+                <div className="text-gray-600 dark:text-gray-300">{info.value}</div>
               </div>
             ))}
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          <div className="bg-blue-50 dark:bg-slate-800/50 rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Vrei să fii primul care testează?
             </h3>
-            <p className="text-gray-600 mb-6">
-              Trimite-ne un email cu detaliile magazinului tău și vei fi notificat 
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Trimite-ne un email cu detaliile magazinului tău și vei fi notificat
               când funcționalitatea devine disponibilă.
             </p>
-            
+
             {isSubscribed ? (
-              <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 rounded-lg p-4">
+              <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-lg p-4">
                 <CheckCircle className="w-5 h-5" />
                 <span className="font-medium">Te-ai abonat cu succes!</span>
               </div>
@@ -467,7 +467,7 @@ const FishingShops = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Adresa ta de email"
                     required
-                    className="w-full px-5 py-2.5 pr-28 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm"
+                    className="w-full px-5 py-2.5 pr-28 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
                     disabled={isSubmitting}
                   />
                   <button
@@ -502,13 +502,13 @@ const FishingShops = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/">
-              <Button size="lg" variant="secondary" className="px-8 py-3">
+              <Button size="lg" variant="secondary" className="px-8 py-3 bg-white text-blue-600 hover:bg-blue-50 border-none">
                 <MapPin className="w-5 h-5 mr-2" />
                 Vezi Harta
               </Button>
             </Link>
             <Link to="/records">
-              <Button size="lg" variant="outline" className="px-8 py-3 border-white text-gray-900 bg-white hover:text-blue-600">
+              <Button size="lg" variant="outline" className="px-8 py-3 border-white text-white hover:bg-white hover:text-blue-600 bg-transparent">
                 <Trophy className="w-5 h-5 mr-2" />
                 Vezi Recorduri
               </Button>

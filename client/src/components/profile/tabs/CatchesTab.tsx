@@ -199,11 +199,11 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
       </div>
 
       {catches.length === 0 ? (
-        <Card>
+            <Card>
           <CardContent className="text-center py-12">
-            <Fish className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă capturi</h3>
-            <p className="text-gray-600 mb-4">Începe să adaugi capturile tale în jurnal!</p>
+            <Fish className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-2">Nu ai încă capturi</h3>
+            <p className="text-gray-600 dark:text-slate-400 mb-4">Începe să adaugi capturile tale în jurnal!</p>
             <Button onClick={onShowCatchModal}>
               Adaugă prima captură
             </Button>
@@ -214,7 +214,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
           {catches.map((catchItem) => (
             <Card 
               key={catchItem.id} 
-              className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col aspect-square sm:aspect-auto sm:h-full"
+              className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col aspect-square sm:aspect-auto sm:h-full bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
               onClick={() => {
                 setSelectedCatch(catchItem);
                 setShowDetailModal(true);
@@ -345,7 +345,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
               {/* Desktop: CardContent normal */}
               <CardContent className="hidden sm:block p-4 flex-shrink-0">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-bold text-lg text-gray-900">
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-slate-50">
                     {catchItem.fish_species?.name || 'Specie necunoscută'}
                   </h3>
                   {catchItem.global_id && (
@@ -359,7 +359,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                           toast.error('Eroare la copierea ID-ului');
                         }
                       }}
-                      className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-gray-50 hover:bg-gray-100 transition-colors font-mono shrink-0"
+                      className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
                       title="Click pentru a copia ID-ul"
                     >
                       #{catchItem.global_id}
@@ -368,7 +368,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                 </div>
 
                 {catchItem.fishing_locations && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-3">
+                  <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-slate-400 mb-3">
                     <MapPin className="w-3.5 h-3.5" />
                     <span className="truncate">{catchItem.fishing_locations.name}</span>
                   </div>
@@ -379,24 +379,24 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                     {catchItem.weight && (
                       <div className="flex items-center gap-1.5">
                         <Scale className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-semibold text-gray-900">{catchItem.weight} kg</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-slate-50">{catchItem.weight} kg</span>
                       </div>
                     )}
                     {catchItem.length_cm && (
                       <div className="flex items-center gap-1.5">
-                        <Ruler className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-semibold text-gray-900">{catchItem.length_cm} cm</span>
+                        <Ruler className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-slate-50">{catchItem.length_cm} cm</span>
                       </div>
                     )}
                   </div>
                 )}
 
                 {catchItem.notes && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{catchItem.notes}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-3 line-clamp-2">{catchItem.notes}</p>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
+                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400">
                     <div className="flex items-center gap-1">
                       <Heart className={`w-3.5 h-3.5 ${catchItem.is_liked_by_current_user ? 'fill-red-500 text-red-500' : ''}`} />
                       <span>{catchItem.like_count || 0}</span>
@@ -406,7 +406,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                       <span>{catchItem.comment_count || 0}</span>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-slate-400">
                     {new Date(catchItem.captured_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
@@ -421,8 +421,8 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                       }}
                       className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                         catchItem.is_liked_by_current_user
-                          ? 'text-red-600 bg-red-50 hover:bg-red-100'
-                          : 'text-gray-600 bg-gray-50 hover:bg-gray-100'
+                          ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
+                          : 'text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600'
                       }`}
                     >
                       <Heart

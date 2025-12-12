@@ -6,16 +6,42 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   server: {
-    https: false, // HTTP pentru a evita mixed content cu netlify dev
     // Note: Web Crypto API funcționează pe HTTP pe localhost (doar pe IP-uri de rețea necesită HTTPS)
     port: 5173,
     host: '0.0.0.0', // Allow access from network (for mobile testing)
     strictPort: true, // Prevent port fallback
+    // Reduce file watcher load to prevent ECONNRESET errors
+    watch: {
+      // Only watch source files, exclude node_modules and build outputs
+      ignored: [
+        '**/node_modules/**', 
+        '**/dist/**', 
+        '**/.git/**', 
+        '**/.vite/**',
+        '**/coverage/**',
+        '**/.next/**',
+        '**/build/**',
+        '**/out/**',
+        '**/.netlify/**',
+        '**/supabase/.branches/**',
+        '**/supabase/.temp/**',
+      ],
+      // Use polling as fallback for better stability on Windows
+      usePolling: false, // Try native first, fallback to polling if needed
+      interval: 100, // Polling interval if enabled
+    },
+    // Increase timeout to prevent premature connection resets
     hmr: {
-      overlay: false, // Disable error overlay to reduce console noise
-      // HMR va folosi automat host-ul server-ului (0.0.0.0 permite acces din rețea)
-      protocol: 'ws', // WebSocket protocol
-      clientPort: 8889, // Force HMR to go through Netlify Dev proxy
+      // HMR configuration for Netlify Dev
+      // When browser accesses through Netlify Dev proxy (8889), WebSocket must also use 8889
+      // When browser accesses directly (5173), WebSocket uses 5173
+      protocol: 'ws',
+      // clientPort tells browser which port to connect to for WebSocket
+      // Netlify Dev sets NETLIFY_DEV=true, so we use that to detect proxy mode
+      // If not set, Vite will auto-detect from request (works for direct access)
+      clientPort: process.env.NETLIFY_DEV === 'true' ? 8889 : undefined,
+      // Increase timeout to prevent connection resets
+      timeout: 60000, // 60 seconds
     },
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

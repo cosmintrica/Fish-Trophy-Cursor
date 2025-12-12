@@ -21,13 +21,16 @@ import {
   Mail,
   Menu
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
 import RecordDetailsModal from '@/components/RecordDetailsModal';
 import { MapEditor } from '@/components/admin/MapEditor';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Trash2 } from 'lucide-react';
 
 const Admin: React.FC = () => {
+  const { theme, isDarkMode } = useTheme();
   const [trafficData, setTrafficData] = useState({
     pageViews: 0,
     uniqueVisitors: 0,
@@ -66,6 +69,8 @@ const Admin: React.FC = () => {
   const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [inquiryToDelete, setInquiryToDelete] = useState<any>(null);
 
   // Metric filters
   const [showPageViews, setShowPageViews] = useState(true);
@@ -294,7 +299,7 @@ const Admin: React.FC = () => {
       };
 
       const rpcPeriod = mapPeriodToRPC(trafficData.selectedPeriod);
-      
+
       // Call optimized RPC function - single call instead of 8+ queries
       const { data: completeAnalytics, error: analyticsError } = await supabase
         .rpc('get_complete_analytics', { p_time_period: rpcPeriod });
@@ -464,17 +469,33 @@ const Admin: React.FC = () => {
             recordsCount[r.user_id] = (recordsCount[r.user_id] || 0) + 1;
           });
 
-          // Load username from profiles for each user
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, email, phone, created_at')
-            .in('id', usersWithSignIn.map(u => u.id));
-
-          // Create a map of profile data by user ID
+          // Load username and avatar from profiles for each user
+          // Split into batches to avoid 400 Bad Request if too many IDs
+          // userIds is already declared above (line 460)
+          const batchSize = 100;
           const profilesMap = new Map();
-          profilesData?.forEach(profile => {
-            profilesMap.set(profile.id, profile);
-          });
+          
+          for (let i = 0; i < userIds.length; i += batchSize) {
+            const batch = userIds.slice(i, i + batchSize);
+            if (batch.length > 0) {
+              const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, username, display_name, email, phone, created_at, photo_url, county_id, city_id, role, updated_at')
+                .in('id', batch);
+              
+              if (profilesError) {
+                console.error('Error loading profiles batch:', profilesError);
+              } else if (profilesData) {
+                profilesData.forEach(profile => {
+                  profilesMap.set(profile.id, profile);
+                });
+              }
+            }
+          }
+          
+          const profilesData = Array.from(profilesMap.values());
+
+          // profilesMap is already created above
 
           // Combine data with profile info
           const usersWithData = usersWithSignIn.map(user => {
@@ -485,7 +506,12 @@ const Admin: React.FC = () => {
               display_name: profile?.display_name || user.display_name || null,
               email: profile?.email || user.email || null,
               phone: profile?.phone || null,
+              photo_url: profile?.photo_url || null,
+              county_id: profile?.county_id || null,
+              city_id: profile?.city_id || null,
+              is_admin: profile?.role === 'admin' || false,
               created_at: profile?.created_at || user.created_at,
+              updated_at: profile?.updated_at || user.updated_at || user.created_at,
               records: [{ count: recordsCount[user.id] || 0 }]
             };
           });
@@ -938,7 +964,7 @@ const Admin: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen py-4 sm:py-6 md:py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-4 sm:py-6 md:py-12 transition-colors duration-200">
       <div className="container mx-auto px-3 sm:px-4">
         <div className="text-center mb-6 sm:mb-8 md:mb-12">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 sm:mb-4">
@@ -972,7 +998,7 @@ const Admin: React.FC = () => {
           {/* Sidebar */}
           <div className={`w-full lg:w-56 flex-shrink-0 transition-all duration-300 ${isMobileMenuOpen ? 'block' : 'hidden lg:block'
             }`}>
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2 sm:p-3">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm p-2 sm:p-3">
               <nav className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
@@ -984,11 +1010,11 @@ const Admin: React.FC = () => {
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-left transition-colors text-xs sm:text-sm ${activeSection === item.id
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium'
+                        : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                     >
-                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${activeSection === item.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'}`} />
                       <span className="text-xs sm:text-sm truncate">{item.label}</span>
                     </button>
                   );
@@ -1344,8 +1370,8 @@ const Admin: React.FC = () => {
                               <button
                                 onClick={() => setShowPageViews(!showPageViews)}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showPageViews
-                                    ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
                               >
                                 <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showPageViews ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
@@ -1355,8 +1381,8 @@ const Admin: React.FC = () => {
                               <button
                                 onClick={() => setShowUniqueVisitors(!showUniqueVisitors)}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showUniqueVisitors
-                                    ? 'bg-green-100 text-green-700 border border-green-300'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  ? 'bg-green-100 text-green-700 border border-green-300'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
                               >
                                 <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showUniqueVisitors ? 'bg-green-500' : 'bg-gray-400'}`}></div>
@@ -1366,8 +1392,8 @@ const Admin: React.FC = () => {
                               <button
                                 onClick={() => setShowSessions(!showSessions)}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-colors ${showSessions
-                                    ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-300'
+                                  ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-300'
                                   }`}
                               >
                                 <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded ${showSessions ? 'bg-orange-500' : 'bg-gray-400'}`}></div>
@@ -1377,17 +1403,17 @@ const Admin: React.FC = () => {
                             </div>
 
                             {/* Line Chart - Recharts */}
-                            <div className="flex-1 relative w-full" style={{ minHeight: '250px', height: '100%' }}>
-                              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
+                            <div className="flex-1 relative w-full" style={{ minHeight: '250px', height: '400px' }}>
+                              <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={250}>
                                 <LineChart data={memoizedTrafficData.map(point => ({
                                   time: convertToRomaniaTime(point.time_period),
                                   page_views: showPageViews ? (point.page_views || 0) : null,
                                   unique_visitors: showUniqueVisitors ? (point.unique_visitors || 0) : null,
                                   sessions: showSessions ? (point.sessions || 0) : null,
                                 }))} margin={{ top: 5, right: 10, left: -10, bottom: 70 }}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                                  <XAxis 
-                                    dataKey="time" 
+                                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#1e293b' : '#f3f4f6'} />
+                                  <XAxis
+                                    dataKey="time"
                                     stroke="#6b7280"
                                     fontSize={10}
                                     tick={{ fill: '#6b7280' }}
@@ -1396,26 +1422,27 @@ const Admin: React.FC = () => {
                                     height={70}
                                     interval="preserveStartEnd"
                                   />
-                                  <YAxis 
+                                  <YAxis
                                     stroke="#6b7280"
                                     fontSize={10}
                                     tick={{ fill: '#6b7280' }}
                                     width={40}
                                   />
-                                  <Tooltip 
+                                  <Tooltip
                                     contentStyle={{
-                                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                                      backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                                      border: isDarkMode ? '1px solid rgba(30, 41, 59, 0.5)' : '1px solid rgba(229, 231, 235, 0.5)',
                                       borderRadius: '0.5rem',
-                                      color: 'white'
+                                      color: isDarkMode ? '#f8fafc' : '#0f172a',
+                                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                                     }}
-                                    labelStyle={{ color: '#e5e7eb' }}
+                                    labelStyle={{ color: isDarkMode ? '#94a3b8' : '#64748b' }}
                                   />
                                   {showPageViews && (
-                                    <Line 
-                                      type="monotone" 
-                                      dataKey="page_views" 
-                                      stroke="#3b82f6" 
+                                    <Line
+                                      type="monotone"
+                                      dataKey="page_views"
+                                      stroke="#3b82f6"
                                       strokeWidth={2}
                                       dot={{ fill: '#3b82f6', r: 4 }}
                                       activeDot={{ r: 6 }}
@@ -1423,10 +1450,10 @@ const Admin: React.FC = () => {
                                     />
                                   )}
                                   {showUniqueVisitors && (
-                                    <Line 
-                                      type="monotone" 
-                                      dataKey="unique_visitors" 
-                                      stroke="#10b981" 
+                                    <Line
+                                      type="monotone"
+                                      dataKey="unique_visitors"
+                                      stroke="#10b981"
                                       strokeWidth={2}
                                       dot={{ fill: '#10b981', r: 4 }}
                                       activeDot={{ r: 6 }}
@@ -1434,10 +1461,10 @@ const Admin: React.FC = () => {
                                     />
                                   )}
                                   {showSessions && (
-                                    <Line 
-                                      type="monotone" 
-                                      dataKey="sessions" 
-                                      stroke="#f59e0b" 
+                                    <Line
+                                      type="monotone"
+                                      dataKey="sessions"
+                                      stroke="#f59e0b"
                                       strokeWidth={2}
                                       dot={{ fill: '#f59e0b', r: 4 }}
                                       activeDot={{ r: 6 }}
@@ -1506,7 +1533,7 @@ const Admin: React.FC = () => {
                       </div>
                     </div>
                     {/* Netlify Deployment Status */}
-                    <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200">
+                    <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-border">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                         <div className="space-y-0.5">
                           <span className="text-muted-foreground text-xs sm:text-sm">Status Deploy:</span>
@@ -1697,127 +1724,192 @@ const Admin: React.FC = () => {
 
               {/* Users Management Tab */}
               <TabsContent value="users" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      Gestionare Utilizatori ({users.length})
-                    </CardTitle>
-                    <CardDescription>
-                      Lista tuturor utilizatorilor din baza de date
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="overflow-x-auto">
-                    <div className="space-y-3 sm:space-y-4 min-w-0">
-                      {users.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Users className="w-12 h-12 mx-auto mb-4" />
-                          <p>Nu există utilizatori în baza de date</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {/* Header Row */}
-                          <div className="grid grid-cols-[40px_minmax(120px,1fr)_minmax(150px,2fr)_80px_100px_80px] gap-3 px-3 py-2 bg-gray-50 rounded-lg border text-xs font-medium text-gray-600">
-                            <div></div>
-                            <div>Nume</div>
-                            <div>Email</div>
-                            <div>Recorduri</div>
-                            <div>Ultima activitate</div>
-                            <div className="text-center">Acțiuni</div>
-                          </div>
-
-                          {/* User Rows */}
-                          {users.map((user) => (
-                            <div key={user.id} className="grid grid-cols-[40px_minmax(120px,1fr)_minmax(150px,2fr)_80px_100px_80px] gap-3 items-center px-3 py-2 border rounded-lg hover:bg-gray-50 transition-colors">
-                              {/* Avatar */}
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span className="text-blue-600 font-medium text-xs">
-                                  {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
-                                </span>
-                              </div>
-
-                              {/* Name & Username */}
-                              <div className="min-w-0">
-                                <div className="font-medium text-sm truncate" title={user.display_name || 'Fără nume'}>
-                                  {user.display_name || 'Fără nume'}
-                                </div>
-                                {user.username && (
-                                  <div className="text-xs text-gray-500 truncate" title={`@${user.username}`}>
-                                    @{user.username}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Email */}
-                              <div className="text-xs text-gray-600 truncate min-w-0" title={user.email}>
-                                {user.email}
-                              </div>
-
-                              {/* Records Count */}
-                              <div className="text-sm font-medium text-gray-900">
-                                {user.records?.[0]?.count || 0}
-                              </div>
-
-                              {/* Last Sign In */}
-                              <div className="text-xs text-gray-500">
-                                {user.last_sign_in_at ? (
-                                  new Date(user.last_sign_in_at).toLocaleDateString('ro-RO', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric'
-                                  })
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex gap-1 justify-center flex-shrink-0">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleViewUserDetails(user)}
-                                  className="text-xs px-2 h-7"
-                                  title="Vezi detalii"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleViewUserProfile(user)}
-                                  className="text-xs px-2 h-7"
-                                  title="Vezi profil public"
-                                  disabled={!user.username}
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                </Button>
-                              </div>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* Main Users List */}
+                  <div className="lg:col-span-3">
+                    <Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                          <Users className="w-5 h-5" />
+                          Gestionare Utilizatori ({users.length})
+                        </CardTitle>
+                        <CardDescription className="text-gray-600 dark:text-slate-300">
+                          Lista tuturor utilizatorilor din baza de date
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="overflow-x-auto">
+                        <div className="space-y-3 sm:space-y-4 min-w-0">
+                          {users.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                              <p>Nu există utilizatori în baza de date</p>
                             </div>
-                          ))}
+                          ) : (
+                            <div className="space-y-2">
+                              {/* Header Row */}
+                              <div className="grid grid-cols-[60px_1fr_200px_100px_120px_100px] gap-3 px-3 py-2 bg-gray-50 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-300">
+                                <div></div>
+                                <div>Utilizator</div>
+                                <div>Email</div>
+                                <div>Recorduri</div>
+                                <div>Ultima activitate</div>
+                                <div className="text-center">Acțiuni</div>
+                              </div>
+
+                              {/* User Rows */}
+                              {users.map((user) => (
+                                <div key={user.id} className="grid grid-cols-[60px_1fr_200px_100px_120px_100px] gap-3 items-center px-3 py-3 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors bg-white dark:bg-slate-800">
+                                  {/* Avatar */}
+                                  <div className="flex-shrink-0">
+                                    {user.photo_url ? (
+                                      <img
+                                        src={getR2ImageUrlProxy(user.photo_url)}
+                                        alt={user.display_name || user.email}
+                                        className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 dark:border-slate-600"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          if (target.nextElementSibling) {
+                                            (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                          }
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className={`w-10 h-10 ${user.photo_url ? 'hidden' : 'flex'} bg-blue-100 dark:bg-blue-900/30 rounded-full items-center justify-center`}>
+                                      <span className="text-blue-600 dark:text-blue-400 font-medium text-sm">
+                                        {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Name & Username */}
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-sm text-gray-900 dark:text-white truncate" title={user.display_name || 'Fără nume'}>
+                                      {user.display_name || 'Fără nume'}
+                                    </div>
+                                    {user.username && (
+                                      <div className="text-xs text-gray-500 dark:text-slate-400 truncate" title={`@${user.username}`}>
+                                        @{user.username}
+                                      </div>
+                                    )}
+                                    {user.is_admin && (
+                                      <Badge variant="default" className="mt-1 text-xs">Admin</Badge>
+                                    )}
+                                  </div>
+
+                                  {/* Email */}
+                                  <div className="text-xs text-gray-600 dark:text-slate-300 truncate min-w-0" title={user.email}>
+                                    {user.email}
+                                  </div>
+
+                                  {/* Records Count */}
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {user.records?.[0]?.count || 0}
+                                  </div>
+
+                                  {/* Last Sign In */}
+                                  <div className="text-xs text-gray-500 dark:text-slate-400">
+                                    {user.last_sign_in_at ? (
+                                      new Date(user.last_sign_in_at).toLocaleDateString('ro-RO', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric'
+                                      })
+                                    ) : (
+                                      <span className="text-gray-400 dark:text-slate-500">-</span>
+                                    )}
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex gap-1 justify-center flex-shrink-0">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleViewUserDetails(user)}
+                                      className="text-xs px-2 h-7 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+                                      title="Vezi detalii"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleViewUserProfile(user)}
+                                      className="text-xs px-2 h-7 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+                                      title="Vezi profil public"
+                                      disabled={!user.username}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Statistics Sidebar */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-gray-900 dark:text-white">Statistici</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/50">
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{users.length}</div>
+                            <div className="text-xs text-blue-700 dark:text-blue-300">Total utilizatori</div>
+                          </div>
+                          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900/50">
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                              {users.filter(u => u.records?.[0]?.count > 0).length}
+                            </div>
+                            <div className="text-xs text-green-700 dark:text-green-300">Cu recorduri</div>
+                          </div>
+                          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-900/50">
+                            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                              {users.filter(u => u.is_admin).length}
+                            </div>
+                            <div className="text-xs text-purple-700 dark:text-purple-300">Admins</div>
+                          </div>
+                          <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-900/50">
+                            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                              {users.reduce((sum, u) => sum + (u.records?.[0]?.count || 0), 0)}
+                            </div>
+                            <div className="text-xs text-orange-700 dark:text-orange-300">Total recorduri</div>
+                          </div>
+                          <div className="p-3 bg-gray-50 dark:bg-slate-950/50 rounded-lg border border-gray-200 dark:border-slate-800">
+                            <div className="text-2xl font-bold text-gray-600 dark:text-slate-300">
+                              {users.filter(u => u.last_sign_in_at && new Date(u.last_sign_in_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                            </div>
+                            <div className="text-xs text-gray-700 dark:text-slate-200">Activi (7 zile)</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Backup Tab */}
               <TabsContent value="backup" className="space-y-6">
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                       <Database className="w-5 h-5" />
                       Backup Baza de Date
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-gray-600 dark:text-slate-300">
                       Creează un backup complet al bazei de date. Backup-ul include toate tabelele importante.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-semibold text-blue-900 mb-2">ℹ️ Informații</h4>
-                      <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">ℹ️ Informații</h4>
+                      <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
                         <li>Backup-ul include: profiles, records, fishing_locations, fish_species, user_gear, catches, private_messages</li>
                         <li>Backup-ul va fi descărcat ca fișier JSON</li>
                         <li>Recomandat: Fă backup înainte de modificări majore</li>
@@ -1846,9 +1938,9 @@ const Admin: React.FC = () => {
                     </Button>
 
                     {backupData && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
-                        <h4 className="font-semibold text-green-900">✅ Backup creat cu succes!</h4>
-                        <div className="text-sm text-green-800 space-y-1">
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-lg p-4 space-y-3">
+                        <h4 className="font-semibold text-green-900 dark:text-green-300">✅ Backup creat cu succes!</h4>
+                        <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
                           <p><span className="font-medium">Tabele:</span> {backupData.summary.successful_tables}/{backupData.summary.total_tables}</p>
                           <p><span className="font-medium">Înregistrări:</span> {backupData.summary.total_records.toLocaleString('ro-RO')}</p>
                           <p><span className="font-medium">Mărime:</span> {(backupData.summary.backup_size_bytes / 1024 / 1024).toFixed(2)} MB</p>
@@ -1857,7 +1949,7 @@ const Admin: React.FC = () => {
                         <Button
                           onClick={handleDownloadBackup}
                           variant="outline"
-                          className="w-full sm:w-auto text-xs sm:text-sm"
+                          className="w-full border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                         >
                           <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                           Descarcă Backup
@@ -1882,21 +1974,21 @@ const Admin: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     {shopInquiries.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-gray-500 dark:text-slate-200">
                         <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
                         <p>Nu există mesaje de la magazine momentan.</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {shopInquiries.map((inquiry) => (
-                          <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
+                          <Card key={inquiry.id} className="hover:shadow-md transition-shadow bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
                             <CardContent className="p-3 sm:p-4 md:p-6">
                               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
                                     {inquiry.shop_name}
                                   </h3>
-                                  <div className="space-y-1 text-xs sm:text-sm text-gray-600">
+                                  <div className="space-y-1 text-xs sm:text-sm text-gray-600 dark:text-slate-200">
                                     <p><span className="font-medium">Proprietar:</span> {inquiry.owner_name}</p>
                                     <p className="truncate"><span className="font-medium">Email:</span> {inquiry.email}</p>
                                     {inquiry.phone && <p><span className="font-medium">Telefon:</span> {inquiry.phone}</p>}
@@ -1906,7 +1998,7 @@ const Admin: React.FC = () => {
                                     {inquiry.google_maps_link && (
                                       <p>
                                         <span className="font-medium">Google Maps:</span>{' '}
-                                        <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                                        <a href={inquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline break-all">
                                           Vezi locația
                                         </a>
                                       </p>
@@ -1923,23 +2015,23 @@ const Admin: React.FC = () => {
 
                               {inquiry.description && (
                                 <div className="mb-3 sm:mb-4">
-                                  <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">{inquiry.description}</p>
+                                  <p className="text-xs sm:text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap break-words">{inquiry.description}</p>
                                 </div>
                               )}
 
                               {inquiry.images && inquiry.images.length > 0 && (
                                 <div className="mb-3 sm:mb-4">
-                                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Poze:</p>
+                                  <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Poze:</p>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                     {inquiry.images.map((img: string, idx: number) => (
-                                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-20 sm:h-24 object-cover rounded-lg" />
+                                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-20 sm:h-24 object-cover rounded-lg border border-gray-200 dark:border-slate-700" />
                                     ))}
                                   </div>
                                 </div>
                               )}
 
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 sm:pt-4 border-t">
-                                <p className="text-xs text-gray-500">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 pt-3 sm:pt-4 border-t border-gray-200 dark:border-slate-700">
+                                <p className="text-xs text-gray-500 dark:text-slate-400">
                                   Trimis pe {new Date(inquiry.created_at).toLocaleString('ro-RO')}
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -1950,7 +2042,7 @@ const Admin: React.FC = () => {
                                       setSelectedInquiry(inquiry);
                                       setIsInquiryModalOpen(true);
                                     }}
-                                    className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                    className="text-xs sm:text-sm flex-1 sm:flex-initial border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                                   >
                                     <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                                     <span className="hidden sm:inline">Vezi Detalii</span>
@@ -1962,11 +2054,24 @@ const Admin: React.FC = () => {
                                     onClick={() => {
                                       window.location.href = `mailto:${inquiry.email}?subject=Re: Cerere Magazin - ${inquiry.shop_name}`;
                                     }}
-                                    className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                    className="text-xs sm:text-sm flex-1 sm:flex-initial border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                                   >
                                     <Mail className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                                     <span className="hidden sm:inline">Răspunde</span>
                                     <span className="sm:hidden">Mail</span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setInquiryToDelete(inquiry);
+                                      setIsDeleteConfirmOpen(true);
+                                    }}
+                                    className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                                  >
+                                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Șterge</span>
+                                    <span className="sm:hidden">Del</span>
                                   </Button>
                                 </div>
                               </div>
@@ -1995,8 +2100,8 @@ const Admin: React.FC = () => {
       {/* Shop Inquiry Details Modal */}
       {isInquiryModalOpen && selectedInquiry && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-500 dark:from-orange-600 dark:to-red-600 text-white p-6 rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Store className="w-6 h-6" />
                 <h2 className="text-2xl font-bold">{selectedInquiry.shop_name}</h2>
@@ -2012,25 +2117,25 @@ const Admin: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 bg-white dark:bg-slate-800">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Informații Contact</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Informații Contact</h3>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Proprietar:</span> {selectedInquiry.owner_name}</p>
-                    <p><span className="font-medium">Email:</span> {selectedInquiry.email}</p>
-                    {selectedInquiry.phone && <p><span className="font-medium">Telefon:</span> {selectedInquiry.phone}</p>}
+                    <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Proprietar:</span> {selectedInquiry.owner_name}</p>
+                    <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Email:</span> {selectedInquiry.email}</p>
+                    {selectedInquiry.phone && <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Telefon:</span> {selectedInquiry.phone}</p>}
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Locație</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Locație</h3>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Adresă:</span> {selectedInquiry.address}</p>
-                    {selectedInquiry.city && <p><span className="font-medium">Oraș:</span> {selectedInquiry.city}</p>}
-                    {selectedInquiry.county && <p><span className="font-medium">Județ:</span> {selectedInquiry.county}</p>}
+                    <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Adresă:</span> {selectedInquiry.address}</p>
+                    {selectedInquiry.city && <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Oraș:</span> {selectedInquiry.city}</p>}
+                    {selectedInquiry.county && <p className="text-gray-700 dark:text-slate-200"><span className="font-medium">Județ:</span> {selectedInquiry.county}</p>}
                     {selectedInquiry.google_maps_link && (
                       <p>
-                        <a href={selectedInquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        <a href={selectedInquiry.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
                           Vezi pe Google Maps
                         </a>
                       </p>
@@ -2041,38 +2146,50 @@ const Admin: React.FC = () => {
 
               {selectedInquiry.description && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Detalii</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedInquiry.description}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Detalii</h3>
+                  <p className="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap">{selectedInquiry.description}</p>
                 </div>
               )}
 
               {selectedInquiry.images && selectedInquiry.images.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Poze</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Poze</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {selectedInquiry.images.map((img: string, idx: number) => (
-                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-48 object-cover rounded-lg" />
+                      <img key={idx} src={img} alt={`Poza ${idx + 1}`} className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-slate-700" />
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setIsInquiryModalOpen(false);
                     setSelectedInquiry(null);
                   }}
-                  className="flex-1"
+                  className="flex-1 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                 >
                   Închide
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setIsInquiryModalOpen(false);
+                    setInquiryToDelete(selectedInquiry);
+                    setIsDeleteConfirmOpen(true);
+                  }}
+                  className="flex-1"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Șterge Mesaj
                 </Button>
                 <Button
                   onClick={() => {
                     window.location.href = `mailto:${selectedInquiry.email}?subject=Re: Cerere Magazin - ${selectedInquiry.shop_name}`;
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Răspunde prin Email
@@ -2085,81 +2202,136 @@ const Admin: React.FC = () => {
 
       {/* User Details Modal */}
       {isUserModalOpen && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-content w-full max-w-2xl">
-            <Card className="bg-white border-0 shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl">
               <CardContent className="p-0">
-                {/* Header */}
-                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-lg">
+                {/* Header - Compact */}
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 p-4 text-white rounded-t-lg">
                   <button
                     onClick={closeUserModal}
-                    className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+                    className="absolute top-3 right-3 p-2 hover:bg-white/20 rounded-full transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
 
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                      <span className="text-white font-bold text-2xl">
+                  <div className="flex items-center space-x-3">
+                    {selectedUser.photo_url ? (
+                      <img
+                        src={getR2ImageUrlProxy(selectedUser.photo_url)}
+                        alt={selectedUser.display_name || selectedUser.email}
+                        className="w-12 h-12 rounded-xl object-cover border-2 border-white/30"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          if (target.nextElementSibling) {
+                            (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-12 h-12 ${selectedUser.photo_url ? 'hidden' : 'flex'} bg-white/20 rounded-xl items-center justify-center`}>
+                      <span className="text-white font-bold text-lg">
                         {selectedUser.display_name?.charAt(0) || selectedUser.email?.charAt(0) || 'U'}
                       </span>
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold">Detalii Utilizator</h2>
-                      <p className="text-blue-100">Informații complete despre utilizator</p>
+                      <h2 className="text-xl font-bold">{selectedUser.display_name || 'Fără nume'}</h2>
+                      <p className="text-blue-100 text-sm">{selectedUser.email}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 space-y-6">
-                  {/* User Info */}
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-bold text-xl">
-                        {selectedUser.display_name?.charAt(0) || selectedUser.email?.charAt(0) || 'U'}
-                      </span>
+                <div className="p-6 space-y-6 bg-white dark:bg-slate-800">
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/50">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{selectedUser.records?.[0]?.count || 0}</div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300">Recorduri</div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold">{selectedUser.display_name || 'Fără nume'}</h3>
-                      <p className="text-gray-600">{selectedUser.email}</p>
-                      <p className="text-sm text-gray-500">
-                        Membru din {new Date(selectedUser.created_at).toLocaleDateString('ro-RO')}
-                      </p>
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900/50">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {selectedUser.is_admin ? 'Da' : 'Nu'}
+                      </div>
+                      <div className="text-xs text-green-700 dark:text-green-300">Admin</div>
+                    </div>
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-900/50">
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {selectedUser.username ? 'Da' : 'Nu'}
+                      </div>
+                      <div className="text-xs text-purple-700 dark:text-purple-300">Username</div>
+                    </div>
+                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-900/50">
+                      <div className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                        {selectedUser.last_sign_in_at ? new Date(selectedUser.last_sign_in_at).toLocaleDateString('ro-RO') : 'N/A'}
+                      </div>
+                      <div className="text-xs text-orange-700 dark:text-orange-300">Ultima autentificare</div>
                     </div>
                   </div>
 
                   {/* User Details */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Informații Personale</h4>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
-                        <p><span className="font-medium">Telefon:</span> {selectedUser.phone || 'Nu este specificat'}</p>
-                        <p><span className="font-medium">Județ:</span> {selectedUser.county_id || 'Nu este specificat'}</p>
-                        <p><span className="font-medium">Oraș:</span> {selectedUser.city_id || 'Nu este specificat'}</p>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Informații Personale</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Email:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.email}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Telefon:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.phone || 'Nu este specificat'}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Username:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.username || 'Nu este setat'}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Județ:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.county_id || 'Nu este specificat'}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Oraș:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.city_id || 'Nu este specificat'}</span>
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Statistici</h4>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="font-medium">Recorduri:</span> {selectedUser.records?.[0]?.count || 0}</p>
-                        <p><span className="font-medium">Ultima activitate:</span> {new Date(selectedUser.updated_at).toLocaleDateString('ro-RO')}</p>
-                        <p><span className="font-medium">Status:</span>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Statistici și Activități</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Recorduri:</span>
+                          <span className="text-gray-900 dark:text-white font-bold">{selectedUser.records?.[0]?.count || 0}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Membru din:</span>
+                          <span className="text-gray-900 dark:text-white">{new Date(selectedUser.created_at).toLocaleDateString('ro-RO')}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Ultima activitate:</span>
+                          <span className="text-gray-900 dark:text-white">{selectedUser.updated_at ? new Date(selectedUser.updated_at).toLocaleDateString('ro-RO') : 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">Status:</span>
                           <Badge variant={selectedUser.is_admin ? "default" : "secondary"} className="ml-2">
                             {selectedUser.is_admin ? 'Admin' : 'Utilizator'}
                           </Badge>
-                        </p>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+                          <span className="font-medium text-gray-600 dark:text-slate-200">ID:</span>
+                          <span className="text-gray-900 dark:text-white font-mono text-xs">{selectedUser.id.slice(0, 8)}...</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex justify-end space-x-2 pt-4 border-t">
-                    <Button variant="outline" onClick={closeUserModal}>
+                  <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-slate-700">
+                    <Button variant="outline" onClick={closeUserModal} className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700">
                       Închide
                     </Button>
-                    <Button onClick={() => handleViewUserProfile(selectedUser)}>
+                    <Button onClick={() => handleViewUserProfile(selectedUser)} className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Vezi Profil Public
                     </Button>
@@ -2167,6 +2339,73 @@ const Admin: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && inquiryToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 dark:from-red-600 dark:to-red-700 p-6 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Confirmă ștergerea</h3>
+                  <p className="text-red-100 text-sm mt-1">Această acțiune este permanentă</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700 dark:text-slate-200">
+                Ești sigur că vrei să ștergi mesajul de la <strong>{inquiryToDelete.shop_name}</strong>?
+              </p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">
+                Această acțiune nu poate fi anulată.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDeleteConfirmOpen(false);
+                    setInquiryToDelete(null);
+                  }}
+                  className="flex-1 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+                >
+                  Anulează
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase
+                        .from('fishing_shop_inquiries')
+                        .delete()
+                        .eq('id', inquiryToDelete.id);
+                      
+                      if (error) throw error;
+                      
+                      toast.success('Mesaj șters cu succes!');
+                      setIsDeleteConfirmOpen(false);
+                      setInquiryToDelete(null);
+                      if (isInquiryModalOpen) {
+                        setIsInquiryModalOpen(false);
+                        setSelectedInquiry(null);
+                      }
+                      await loadShopInquiries();
+                    } catch (error: any) {
+                      toast.error('Eroare la ștergerea mesajului: ' + (error.message || 'Necunoscută'));
+                    }
+                  }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Șterge
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

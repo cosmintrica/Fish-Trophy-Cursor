@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
 import ShareButton from '@/components/ShareButton';
+import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 // Helper function for relative time
 const getRelativeTime = (date: string): string => {
@@ -101,6 +102,9 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editText, setEditText] = useState<{ [key: string]: string }>({});
   const [deletingComment, setDeletingComment] = useState<string | null>(null);
+  
+  // Zoom state
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   // Define functions before useEffect to avoid hoisting issues
   const loadCatchStats = useCallback(async () => {
@@ -561,7 +565,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl max-w-full sm:max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+        className="bg-white dark:bg-slate-800 rounded-xl max-w-full sm:max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
         style={{
           transform: isOpen ? 'translateZ(0) scale(1)' : 'translateZ(0) scale(0.95)',
           opacity: isOpen ? 1 : 0,
@@ -571,9 +575,9 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between z-10">
           <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-base font-semibold truncate">Detalii Captură</h2>
+            <h2 className="text-base font-semibold truncate text-gray-900 dark:text-slate-50">Detalii Captură</h2>
             {catchData.global_id && (
               <button
                 onClick={async (e) => {
@@ -585,7 +589,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                     toast.error('Eroare la copierea ID-ului');
                   }
                 }}
-                className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded bg-gray-50 hover:bg-gray-100 transition-colors font-mono shrink-0"
+                className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
                 title="Click pentru a copia ID-ul"
               >
                 #{catchData.global_id}
@@ -610,17 +614,17 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   e.stopPropagation();
                   onEdit();
                 }}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 touch-manipulation"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors shrink-0 touch-manipulation"
                 title="Editează captura"
               >
-                <Edit className="w-5 h-5 text-gray-600" />
+                <Edit className="w-5 h-5 text-gray-600 dark:text-slate-300" />
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 touch-manipulation"
+              className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors shrink-0 touch-manipulation"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-600 dark:text-slate-300" />
             </button>
           </div>
         </div>
@@ -632,16 +636,17 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
               {/* Left: Image */}
               <div className="order-2 lg:order-1 w-full">
                 {catchData.photo_url ? (
-                  <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-md">
+                  <div className="aspect-square bg-gray-100 dark:bg-slate-900 rounded-lg overflow-hidden shadow-md border border-gray-200 dark:border-slate-700 cursor-pointer group/zoom">
                     <img
                       src={getR2ImageUrlProxy(catchData.photo_url)}
                       alt={catchData.fish_species?.name || 'Captură'}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover/zoom:scale-105"
+                      onClick={() => setIsZoomOpen(true)}
                     />
                   </div>
                 ) : (
-                  <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center shadow-lg">
-                    <Fish className="w-24 h-24 text-blue-400" />
+                  <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl flex items-center justify-center shadow-lg border border-blue-200 dark:border-blue-900/50">
+                    <Fish className="w-24 h-24 text-blue-400 dark:text-blue-500" />
                   </div>
                 )}
               </div>
@@ -649,46 +654,50 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
               {/* Right: Details */}
               <div className="order-1 lg:order-2 space-y-2 sm:space-y-3">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-50 mb-1">
                     {catchData.fish_species?.name || 'Specie necunoscută'}
                   </h3>
                   {catchData.fish_species?.scientific_name && (
-                    <p className="text-xs text-gray-500 italic">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 italic">
                       {catchData.fish_species.scientific_name}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-gray-700 bg-gray-50 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+                  <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-700 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm border border-gray-200 dark:border-slate-600">
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                     <span className="font-medium">{formattedDate}</span>
                   </div>
 
                   {catchData.fishing_locations && (
-                    <div className="flex items-center gap-2 text-gray-700 bg-gray-50 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm">
-                      <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
-                      <span className="font-medium truncate">{catchData.fishing_locations.name}</span>
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-700 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm border border-gray-200 dark:border-slate-600">
+                      <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-medium truncate">
+                        {catchData.fishing_locations.county && catchData.fishing_locations.name 
+                          ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
+                          : catchData.fishing_locations.name}
+                      </span>
                     </div>
                   )}
 
                   {(catchData.weight || catchData.length_cm) && (
                     <div className="grid grid-cols-2 gap-2">
                       {catchData.weight && (
-                        <div className="flex items-center gap-1.5 sm:gap-2 bg-blue-50 p-2 rounded-md">
-                          <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+                        <div className="flex items-center gap-1.5 sm:gap-2 bg-blue-50 dark:bg-blue-900/30 p-2 rounded-md border border-blue-200 dark:border-blue-900/50">
+                          <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                           <div>
-                            <div className="text-[9px] sm:text-[10px] text-gray-500">Greutate</div>
-                            <div className="font-bold text-xs sm:text-sm text-gray-900">{catchData.weight} kg</div>
+                            <div className="text-[9px] sm:text-[10px] text-blue-600 dark:text-blue-400">Greutate</div>
+                            <div className="font-bold text-xs sm:text-sm text-blue-900 dark:text-blue-100">{catchData.weight} kg</div>
                           </div>
                         </div>
                       )}
                       {catchData.length_cm && (
-                        <div className="flex items-center gap-1.5 sm:gap-2 bg-green-50 p-2 rounded-md">
-                          <Ruler className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 shrink-0" />
+                        <div className="flex items-center gap-1.5 sm:gap-2 bg-green-50 dark:bg-green-900/30 p-2 rounded-md border border-green-200 dark:border-green-900/50">
+                          <Ruler className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 dark:text-green-400 shrink-0" />
                           <div>
-                            <div className="text-[9px] sm:text-[10px] text-gray-500">Lungime</div>
-                            <div className="font-bold text-xs sm:text-sm text-gray-900">{catchData.length_cm} cm</div>
+                            <div className="text-[9px] sm:text-[10px] text-green-600 dark:text-green-400">Lungime</div>
+                            <div className="font-bold text-xs sm:text-sm text-green-900 dark:text-green-100">{catchData.length_cm} cm</div>
                           </div>
                         </div>
                       )}
@@ -696,22 +705,22 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   )}
 
                   {catchData.notes && (
-                    <div className="bg-gray-50 p-2.5 rounded-md border border-gray-200">
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Note</div>
-                      <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{catchData.notes}</p>
+                    <div className="bg-gray-50 dark:bg-slate-700 p-2.5 rounded-md border border-gray-200 dark:border-slate-600">
+                      <div className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Note</div>
+                      <p className="text-xs text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{catchData.notes}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Like/Comment buttons - available for all users (including owner) */}
                 {user && (
-                  <div className="flex items-center gap-3 pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
                     <button
                       onClick={handleLike}
                       disabled={isLiking}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] ${catchData.is_liked_by_current_user
-                        ? 'text-red-600 bg-red-50 hover:bg-red-100 active:bg-red-200'
-                        : 'text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300'
+                        ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
+                        : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
                         }`}
                       style={{
                         transform: 'translateZ(0)',
@@ -731,11 +740,11 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
                     <button
                       onClick={() => setShowCommentForm(!showCommentForm)}
-                      className="flex items-center gap-2 text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 px-3 py-2 rounded-lg transition-colors touch-manipulation"
+                      className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 px-3 py-2 rounded-lg transition-colors touch-manipulation"
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span className="text-sm font-medium">{catchData.comment_count || 0}</span>
-                      <span className="text-sm text-gray-600 ml-auto hidden sm:inline">Lasă un comentariu</span>
+                      <span className="text-sm text-gray-600 dark:text-slate-400 ml-auto hidden sm:inline">Lasă un comentariu</span>
                     </button>
                   </div>
                 )}
@@ -744,17 +753,17 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
             {/* Comments Section - Always visible */}
             {user && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-50 mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
 
                 {/* Comment Form - available for all users when showCommentForm is true */}
                 {showCommentForm && (
-                  <div className="mb-4 bg-gray-50 p-3 rounded-lg">
+                  <div className="mb-4 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                     <Textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Lasă un comentariu..."
-                      className="min-h-[60px] text-sm mb-2 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                      className="min-h-[60px] text-sm mb-2 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && e.ctrlKey) {
                           handleSubmitComment();
@@ -776,10 +785,10 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                 {/* Comments List - Show all comments including replies */}
                 <div className="space-y-2">
                   {comments.length === 0 ? (
-                    <div className="text-center py-6 bg-gray-50 rounded-lg">
-                      <MessageCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500">Nu există comentarii încă</p>
-                      <p className="text-[10px] text-gray-400 mt-1">Fii primul care comentează!</p>
+                    <div className="text-center py-6 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
+                      <MessageCircle className="w-8 h-8 text-gray-300 dark:text-slate-500 mx-auto mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-slate-400">Nu există comentarii încă</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Fii primul care comentează!</p>
                     </div>
                   ) : (
                     <>
@@ -814,6 +823,17 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Media Zoom Viewer */}
+      {catchData.photo_url && (
+        <MediaZoomViewer
+          isOpen={isZoomOpen}
+          onClose={() => setIsZoomOpen(false)}
+          src={getR2ImageUrlProxy(catchData.photo_url)}
+          alt={catchData.fish_species?.name || 'Captură'}
+          type="image"
+        />
+      )}
     </div>
   );
 };
@@ -861,11 +881,11 @@ const CommentItem: React.FC<{
   const isReplying = replyingTo === comment.id;
 
   return (
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
         {/* Main Comment */}
         <div className="p-2.5 sm:p-3">
           <div className="flex gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 overflow-hidden shrink-0 border border-white shadow-sm">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 overflow-hidden shrink-0 border border-white dark:border-slate-700 shadow-sm">
               {comment.user_avatar_url ? (
                 <img
                   src={getR2ImageUrlProxy(comment.user_avatar_url)}
@@ -881,14 +901,14 @@ const CommentItem: React.FC<{
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <span className="font-semibold text-xs sm:text-sm text-gray-900">
+                  <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-slate-50">
                     {comment.user_display_name || comment.user_username || 'Utilizator'}
                   </span>
-                  <span className="text-[10px] sm:text-xs text-gray-500">
+                  <span className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400">
                     {getRelativeTime(comment.created_at)}
                   </span>
                   {comment.is_edited && (
-                    <span className="text-[10px] sm:text-xs text-gray-400 italic">(editat)</span>
+                    <span className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500 italic">(editat)</span>
                   )}
                 </div>
                 {(isCommentOwner || isCatchOwner) && (
@@ -902,18 +922,18 @@ const CommentItem: React.FC<{
                               setEditText({ ...editText, [comment.id]: comment.content });
                             }
                           }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                           title="Editează"
                         >
-                          <Edit className="w-4 h-4 text-gray-500" />
+                          <Edit className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                         </button>
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
                           disabled={deletingComment === comment.id}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                           title="Șterge"
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
                         </button>
                       </>
                     )}
@@ -921,10 +941,10 @@ const CommentItem: React.FC<{
                       <button
                         onClick={() => handleDeleteCommentAsOwner(comment.id)}
                         disabled={deletingComment === comment.id}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                         title="Șterge ca owner"
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
                       </button>
                     )}
                   </div>
@@ -935,7 +955,7 @@ const CommentItem: React.FC<{
                   <Textarea
                     value={editText[comment.id] || ''}
                     onChange={(e) => setEditText({ ...editText, [comment.id]: e.target.value })}
-                    className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                    className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.ctrlKey) {
                         handleEditComment(comment.id);
@@ -962,7 +982,7 @@ const CommentItem: React.FC<{
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-700 text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                <p className="text-gray-700 dark:text-slate-200 text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{comment.content}</p>
               )}
 
               {!isEditing && (
@@ -970,14 +990,14 @@ const CommentItem: React.FC<{
                   {isCatchOwner && (
                     <button
                       onClick={() => setReplyingTo(isReplying ? null : comment.id)}
-                      className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 hover:text-gray-900 transition-colors px-2 py-1 rounded hover:bg-gray-50 touch-manipulation"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 transition-colors px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-700 touch-manipulation"
                     >
                       <Reply className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">Răspunde</span>
                     </button>
                   )}
                   {comment.reply_count !== undefined && comment.reply_count > 0 && (
-                    <span className="text-xs sm:text-sm text-gray-500">
+                    <span className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
                       {comment.reply_count} {comment.reply_count === 1 ? 'răspuns' : 'răspunsuri'}
                     </span>
                   )}
@@ -990,13 +1010,13 @@ const CommentItem: React.FC<{
 
         {/* Reply Form */}
         {isReplying && (
-          <div className="px-2.5 sm:px-4 pb-2.5 sm:pb-4 border-t border-gray-100 bg-gray-50">
+          <div className="px-2.5 sm:px-4 pb-2.5 sm:pb-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700">
             <div className="pt-2.5 sm:pt-4">
               <Textarea
                 value={replyText[comment.id] || ''}
                 onChange={(e) => setReplyText({ ...replyText, [comment.id]: e.target.value })}
                 placeholder="Scrie un răspuns..."
-                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base mb-2 sm:mb-3 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base mb-2 sm:mb-3 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.ctrlKey) {
                     handleSubmitReply(comment.id);
@@ -1050,14 +1070,14 @@ const CommentItem: React.FC<{
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        <span className="font-semibold text-xs sm:text-sm text-gray-900">
+                        <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-slate-50">
                           {reply.user_display_name || reply.user_username || 'Utilizator'}
                         </span>
-                        <span className="text-[10px] sm:text-xs text-gray-500">
+                        <span className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400">
                           {getRelativeTime(reply.created_at)}
                         </span>
                         {reply.is_edited && (
-                          <span className="text-[10px] sm:text-xs text-gray-400 italic">(editat)</span>
+                          <span className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500 italic">(editat)</span>
                         )}
                       </div>
                       {(user?.id === reply.user_id || isCatchOwner) && (
@@ -1071,18 +1091,18 @@ const CommentItem: React.FC<{
                                     setEditText({ ...editText, [reply.id]: reply.content });
                                   }
                                 }}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                                 title="Editează"
                               >
-                                <Edit className="w-4 h-4 text-gray-500" />
+                                <Edit className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                               </button>
                               <button
                                 onClick={() => handleDeleteComment(reply.id)}
                                 disabled={deletingComment === reply.id}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                                 title="Șterge"
                               >
-                                <Trash2 className="w-4 h-4 text-red-500" />
+                                <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
                               </button>
                             </>
                           )}
@@ -1090,10 +1110,10 @@ const CommentItem: React.FC<{
                             <button
                               onClick={() => handleDeleteCommentAsOwner(reply.id)}
                               disabled={deletingComment === reply.id}
-                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
+                              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors touch-manipulation min-h-[40px] min-w-[40px] flex items-center justify-center"
                               title="Șterge ca owner"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
                             </button>
                           )}
                         </div>
@@ -1104,7 +1124,7 @@ const CommentItem: React.FC<{
                         <Textarea
                           value={editText[reply.id] || ''}
                           onChange={(e) => setEditText({ ...editText, [reply.id]: e.target.value })}
-                          className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                          className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && e.ctrlKey) {
                               handleEditComment(reply.id);
@@ -1131,7 +1151,7 @@ const CommentItem: React.FC<{
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-700 text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                      <p className="text-gray-700 dark:text-slate-200 text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{reply.content}</p>
                     )}
                   </div>
                 </div>

@@ -4,8 +4,14 @@
  */
 
 import { useState } from 'react';
-import { Share2, Facebook, Twitter, MessageCircle, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
+import { Share2, Facebook, MessageCircle, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
 import { toast } from 'sonner';
+// X logo pentru Twitter (X)
+const XIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
 
 interface ShareButtonProps {
   url: string;
@@ -50,12 +56,12 @@ export default function ShareButton({
       }
     },
     {
-      name: 'Twitter',
-      icon: Twitter,
-      color: 'text-blue-400 hover:bg-blue-50',
+      name: 'X (Twitter)',
+      icon: XIcon,
+      color: 'text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700',
       onClick: () => {
         window.open(
-          `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
+          `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
           '_blank',
           'width=600,height=400'
         );
@@ -119,9 +125,9 @@ export default function ShareButton({
   };
 
   const variantClasses = {
-    default: 'bg-blue-600 text-white hover:bg-blue-700',
-    outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
-    ghost: 'text-gray-700 hover:bg-gray-100'
+    default: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
+    outline: 'border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700',
+    ghost: 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700'
   };
 
   return (
@@ -143,12 +149,12 @@ export default function ShareButton({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[99998]"
             onClick={() => setShowMenu(false)}
           />
           
           {/* Menu */}
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 py-1">
+          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 z-[99999] py-1">
             {shareOptions.map((option) => {
               const Icon = option.icon;
               return (
@@ -158,11 +164,11 @@ export default function ShareButton({
                   className={`
                     w-full px-4 py-2 text-left flex items-center gap-3
                     ${option.color}
-                    hover:bg-gray-50 transition-colors
+                    hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors
                   `}
                 >
-                  <Icon size={18} />
-                  <span className="text-sm font-medium">{option.name}</span>
+                  {typeof Icon === 'function' ? <Icon size={18} /> : Icon}
+                  <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{option.name}</span>
                 </button>
               );
             })}
