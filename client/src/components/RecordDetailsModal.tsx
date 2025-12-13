@@ -444,6 +444,46 @@ const RecordDetailsModal = ({
                   </Button>
                 )}
               </div>
+
+              {/* Internal Links - Discrete, small */}
+              {(record.fish_species || record.fishing_locations) && (
+                <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
+                    <span className="text-gray-400 dark:text-slate-500">Vezi și alte recorduri:</span>
+                    {record.fish_species && (
+                      <Link
+                        to={`/records?species=${record.species_id}`}
+                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        de {record.fish_species.name}
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </Link>
+                    )}
+                    {record.fishing_locations && (
+                      <>
+                        <span className="text-gray-300 dark:text-slate-600">•</span>
+                        <Link
+                          to={`/records?location=${record.location_id}`}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {(() => {
+                            const type = record.fishing_locations?.type || '';
+                            const name = record.fishing_locations?.name || '';
+                            if (type === 'lac' || type === 'baraj') return `pe ${name}`;
+                            if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
+                            if (type === 'mare') return `pe ${name}`;
+                            if (type === 'delta') return `în ${name}`;
+                            return `de la ${name}`;
+                          })()}
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

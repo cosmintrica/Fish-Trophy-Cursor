@@ -869,47 +869,44 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                 </div>
 
                 {/* Internal Links - Discrete, small */}
-                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
-                    <span className="text-gray-400 dark:text-slate-500">Vezi și:</span>
-                    {catchData.fish_species && (
-                      <Link
-                        to={`/records?species=${catchData.species_id}`}
-                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Alte capturi de {catchData.fish_species.name}
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    )}
-                    {catchData.fishing_locations && (
-                      <>
-                        <span className="text-gray-300 dark:text-slate-600">•</span>
+                {(catchData.fish_species || catchData.fishing_locations) && (
+                  <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
+                      <span className="text-gray-400 dark:text-slate-500">Vezi și alte capturi:</span>
+                      {catchData.fish_species && (
                         <Link
-                          to={`/records?location=${catchData.location_id}`}
-                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
+                          to={`/records?species=${catchData.species_id}`}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Alte capturi de la {catchData.fishing_locations.name}
-                          <ExternalLink className="w-3 h-3" />
+                          de {catchData.fish_species.name}
+                          <ExternalLink className="w-2.5 h-2.5" />
                         </Link>
-                      </>
-                    )}
-                    {username && (
-                      <>
-                        <span className="text-gray-300 dark:text-slate-600">•</span>
-                        <Link
-                          to={`/profile/${username}`}
-                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Alte capturi de {username}
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </>
-                    )}
+                      )}
+                      {catchData.fishing_locations && (
+                        <>
+                          <span className="text-gray-300 dark:text-slate-600">•</span>
+                          <Link
+                            to={`/records?location=${catchData.location_id}`}
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {(() => {
+                              const type = catchData.fishing_locations?.type || '';
+                              const name = catchData.fishing_locations?.name || '';
+                              if (type === 'lac' || type === 'baraj') return `pe ${name}`;
+                              if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
+                              if (type === 'mare') return `pe ${name}`;
+                              if (type === 'delta') return `în ${name}`;
+                              return `de la ${name}`;
+                            })()}
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </Link>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
