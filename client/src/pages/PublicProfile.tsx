@@ -14,6 +14,9 @@ import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { registerUnreadCountCallback } from '@/hooks/useRealtimeMessages';
 import { CatchCard } from '@/components/profile/CatchCard';
+import SEOHead from '@/components/SEOHead';
+import { useStructuredData } from '@/hooks/useStructuredData';
+import ShareButton from '@/components/ShareButton';
 
 interface UserProfile {
   id: string;
@@ -272,6 +275,24 @@ const PublicProfile = () => {
       loadUserData();
     }
   }, [username]);
+
+  // Handle URL hash to open catch modal (e.g., /profile/username#catch-1)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#catch-')) {
+      const catchId = hash.replace('#catch-', '');
+      // Try to find catch by global_id first, then by id
+      const catchItem = userCatches.find(c => 
+        c.global_id?.toString() === catchId || c.id === catchId
+      );
+      if (catchItem && !showCatchDetailModal) {
+        setSelectedCatch(catchItem);
+        setShowCatchDetailModal(true);
+        // Scroll to top to show modal
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [userCatches, showCatchDetailModal]);
 
   // Update cover position when device type changes or when profile loads
   useEffect(() => {
@@ -630,6 +651,9 @@ const PublicProfile = () => {
     }
   };
 
+  // Hooks MUST be called before any conditional returns
+  const { websiteData, organizationData } = useStructuredData();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-8 transition-colors duration-200">
@@ -658,9 +682,38 @@ const PublicProfile = () => {
     );
   }
 
+  // SEO Data - dinamice bazate pe profil (doar dacă există userProfile)
+  const profileUrl = userProfile?.username 
+    ? `https://fishtrophy.ro/profile/${userProfile.username}`
+    : userProfile
+    ? `https://fishtrophy.ro/profile/${username}`
+    : 'https://fishtrophy.ro';
+  const profileTitle = userProfile 
+    ? `${userProfile.display_name} - Profil Pescar | Fish Trophy`
+    : 'Profil Pescar | Fish Trophy';
+  const profileDescription = userProfile
+    ? `Vezi profilul pescarului ${userProfile.display_name} pe Fish Trophy. Recorduri, capturi, statistici și multe altele.`
+    : 'Profil pescar pe Fish Trophy';
+  const profileImage = userProfile?.photo_url || userProfile?.cover_photo_url || 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+  const profileKeywords = userProfile
+    ? `profil ${userProfile.display_name}, recorduri ${userProfile.display_name}, capturi ${userProfile.display_name}, pescar ${userProfile.display_name}, profil pescar romania`
+    : 'profil pescar, recorduri pescuit, capturi pescuit';
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 py-8 px-4 sm:px-6 transition-colors duration-200">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <>
+      {userProfile && (
+        <SEOHead
+          title={profileTitle}
+          description={profileDescription}
+          keywords={profileKeywords}
+          image={profileImage}
+          url={profileUrl}
+          type="profile"
+          structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+        />
+      )}
+      <div className="min-h-screen bg-gray-100 dark:bg-slate-900 py-8 px-4 sm:px-6 transition-colors duration-200">
+        <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Main Profile Card - Cover + Avatar + Info + Buttons */}
         <div className="bg-white dark:bg-card rounded-2xl shadow-xl overflow-visible border border-gray-100 dark:border-border relative">
@@ -960,9 +1013,33 @@ const PublicProfile = () => {
                     >
                       Editează profilul
                     </a>
+                    {userProfile && (
+                      <div className="relative z-[10000]">
+                        <ShareButton
+                          url={profileUrl}
+                          title={profileTitle}
+                          description={profileDescription}
+                          image={profileImage}
+                          size="sm"
+                          variant="outline"
+                        />
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
+                    {userProfile && (
+                      <div className="relative z-[10000]">
+                        <ShareButton
+                          url={profileUrl}
+                          title={profileTitle}
+                          description={profileDescription}
+                          image={profileImage}
+                          size="sm"
+                          variant="outline"
+                        />
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         if (user) {
@@ -1267,6 +1344,7 @@ const PublicProfile = () => {
             setShowCatchDetailModal(false);
             setSelectedCatch(null);
           }}
+          username={userProfile?.username || username}
           onCatchUpdated={() => {
             // Don't reload entire page, just update the catch in the list
             // The modal handles its own state updates
@@ -1302,7 +1380,8 @@ const PublicProfile = () => {
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authModalMode}
       />
-    </div >
+    </div>
+    </>
   );
 };
 

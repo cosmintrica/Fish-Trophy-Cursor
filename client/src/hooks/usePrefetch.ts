@@ -118,43 +118,10 @@ export function usePrefetch() {
     });
   };
 
-  /**
-   * Prefetch leaderboards page data
-   */
-  const prefetchLeaderboards = async () => {
-    // Leaderboards nu are un query key specific, dar putem prefetch records pentru top users
-    const queryKey = queryKeys.allRecords();
-    
-    const cachedData = queryClient.getQueryData(queryKey);
-    if (cachedData) {
-      return;
-    }
-
-    // Prefetch records pentru leaderboards
-    await queryClient.prefetchQuery({
-      queryKey,
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('records')
-          .select('*, fish_species:species_id(name), profiles!records_user_id_fkey(username, display_name, photo_url)')
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        return data;
-      },
-      staleTime: 2 * 60 * 1000, // 2 minute
-    });
-  };
-
   return {
     prefetchProfile,
     prefetchRecords,
     prefetchSpecies,
-    prefetchLeaderboards,
   };
 }
 

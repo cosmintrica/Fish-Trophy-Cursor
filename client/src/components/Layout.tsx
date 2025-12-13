@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleDarkMode, isDarkMode } = useTheme();
   const { user, logout, loading } = useAuth();
   const { trackUserAction } = useAnalytics();
-  const { prefetchProfile, prefetchRecords, prefetchSpecies, prefetchLeaderboards } = usePrefetch();
+  const { prefetchProfile, prefetchRecords, prefetchSpecies } = usePrefetch();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userUsername, setUserUsername] = useState<string | null>(null);
@@ -173,7 +173,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 bg-fixed transition-colors duration-200">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-b border-blue-200/50 dark:border-slate-700/50 shadow-lg transition-colors duration-200" role="banner">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-b border-blue-200/50 dark:border-slate-700/50 shadow-lg transition-colors duration-200" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
@@ -334,7 +334,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile Menu Overlay */}
-      <div className={`lg:hidden fixed inset-0 z-50 transition-all duration-300 ease-out ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      <div className={`lg:hidden fixed inset-0 z-[60] transition-all duration-300 ease-out ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}>
         {/* Backdrop */}
         <div
@@ -670,12 +670,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                     <Link to="/profile" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
                       <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
                       Profilul meu
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/leaderboards" className="text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center group">
-                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                      Clasamente
                     </Link>
                   </li>
                   <li>

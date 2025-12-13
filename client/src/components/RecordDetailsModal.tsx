@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -154,7 +155,33 @@ const RecordDetailsModal = ({
     }
   };
 
+  // SEO Meta Tags for Record
+  const recordTitle = `Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`;
+  const recordDescription = `Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`;
+  const recordUrl = `https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`;
+  const recordImage = getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+
   return (
+    <>
+      {isOpen && record && (
+        <Helmet>
+          <title>{recordTitle}</title>
+          <meta name="description" content={recordDescription} />
+          <meta property="og:type" content="article" />
+          <meta property="og:title" content={recordTitle} />
+          <meta property="og:description" content={recordDescription} />
+          <meta property="og:image" content={recordImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:url" content={recordUrl} />
+          <meta property="og:site_name" content="Fish Trophy" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={recordTitle} />
+          <meta name="twitter:description" content={recordDescription} />
+          <meta name="twitter:image" content={recordImage} />
+          <link rel="canonical" href={recordUrl} />
+        </Helmet>
+      )}
     <div 
       className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
       style={{
@@ -413,6 +440,7 @@ const RecordDetailsModal = ({
         />
       )}
     </div>
+    </>
   );
 };
 

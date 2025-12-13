@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import ShopInquiryModal from '@/components/ShopInquiryModal';
+import SEOHead from '@/components/SEOHead';
+import { useStructuredData } from '@/hooks/useStructuredData';
 
 const FishingShops = () => {
   const [stats, setStats] = useState([
@@ -231,6 +233,13 @@ const FishingShops = () => {
     }
   }, [email]);
 
+  const { websiteData, organizationData } = useStructuredData();
+  const shopsUrl = 'https://fishtrophy.ro/fishing-shops';
+  const shopsTitle = 'Magazine Pescuit România - Echipament Pescuit | Fish Trophy';
+  const shopsDescription = 'Descoperă magazinele de pescuit din România. Echipament pescuit, undițe, momele, accesorii și multe altele. Lista completă de magazine pescuit verificate.';
+  const shopsImage = 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+  const shopsKeywords = 'magazine pescuit, echipament pescuit, magazin pescuit romania, undite pescuit, momele pescuit, carlige pescuit, echipament pescuit romania, magazin pescuit online, echipament pescuit profesional';
+
   const benefits = useMemo(() => [
     {
       icon: MapPin,
@@ -261,7 +270,17 @@ const FishingShops = () => {
   ], []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50" style={{ willChange: 'auto' }}>
+    <>
+      <SEOHead
+        title={shopsTitle}
+        description={shopsDescription}
+        keywords={shopsKeywords}
+        image={shopsImage}
+        url={shopsUrl}
+        type="website"
+        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50" style={{ willChange: 'auto' }}>
 
 
       {/* Hero Section */}
@@ -523,6 +542,7 @@ const FishingShops = () => {
         onClose={() => setIsShopModalOpen(false)}
       />
     </div>
+    </>
   );
 };
 

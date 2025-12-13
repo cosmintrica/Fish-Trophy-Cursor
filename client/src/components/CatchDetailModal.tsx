@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,6 +79,7 @@ interface CatchDetailModalProps {
   onCatchUpdated?: () => void;
   isOwner?: boolean;
   onEdit?: () => void;
+  username?: string; // Username for share URL
 }
 
 export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
@@ -86,7 +88,8 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   onClose,
   onCatchUpdated,
   isOwner = false,
-  onEdit
+  onEdit,
+  username
 }) => {
   const { user } = useAuth();
   const [catchData, setCatchData] = useState<Catch | null>(catchItem);
@@ -552,7 +555,35 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
   if (!isOpen || !catchData) return null;
 
+  // SEO Meta Tags for Catch
+  const catchTitle = `Captură ${catchData.fish_species?.name || 'Pescuit'} - ${catchData.weight || 'N/A'}kg - Fish Trophy`;
+  const catchDescription = `Captură de pescuit: ${catchData.fish_species?.name || 'Specie necunoscută'}${catchData.weight ? ` de ${catchData.weight}kg` : ''}, capturat la ${catchData.fishing_locations?.name || 'locație necunoscută'}.`;
+  // Use username if available, otherwise fallback to user_id
+  const profileIdentifier = username || catchData.user_id;
+  const catchUrl = `https://fishtrophy.ro/profile/${profileIdentifier}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`;
+  const catchImage = catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
+
   return (
+    <>
+      {isOpen && catchData && (
+        <Helmet>
+          <title>{catchTitle}</title>
+          <meta name="description" content={catchDescription} />
+          <meta property="og:type" content="article" />
+          <meta property="og:title" content={catchTitle} />
+          <meta property="og:description" content={catchDescription} />
+          <meta property="og:image" content={catchImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:url" content={catchUrl} />
+          <meta property="og:site_name" content="Fish Trophy" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={catchTitle} />
+          <meta name="twitter:description" content={catchDescription} />
+          <meta name="twitter:image" content={catchImage} />
+          <link rel="canonical" href={catchUrl} />
+        </Helmet>
+      )}
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
       style={{
@@ -599,10 +630,10 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
           <div className="flex items-center gap-2">
             {catchData && (
               <ShareButton
-                url={`https://fishtrophy.ro/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`}
-                title={`Captură ${catchData.fish_species?.name || 'Pescuit'} - ${catchData.weight || 'N/A'}kg - Fish Trophy`}
-                description={`Captură de pescuit: ${catchData.fish_species?.name || 'Specie necunoscută'}${catchData.weight ? ` de ${catchData.weight}kg` : ''}, capturat la ${catchData.fishing_locations?.name || 'locație necunoscută'}.`}
-                image={catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
+                url={catchUrl}
+                title={catchTitle}
+                description={catchDescription}
+                image={catchImage}
                 size="sm"
                 variant="ghost"
               />
@@ -833,6 +864,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
         />
       )}
     </div>
+    </>
   );
 };
 

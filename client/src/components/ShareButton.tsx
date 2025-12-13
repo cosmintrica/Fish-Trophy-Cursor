@@ -3,9 +3,32 @@
  * Suportă: Facebook, Twitter, WhatsApp, LinkedIn, Copy Link
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Share2, Facebook, MessageCircle, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Helper to check if element is in a modal
+const isInModal = (element: HTMLElement | null): boolean => {
+  if (!element) return false;
+  let current: HTMLElement | null = element;
+  while (current) {
+    // Check for modal indicators
+    if (
+      current.classList.contains('fixed') && 
+      (current.style.zIndex || getComputedStyle(current).zIndex) &&
+      parseInt(getComputedStyle(current).zIndex) >= 100
+    ) {
+      return true;
+    }
+    // Also check for modal-like containers
+    if (current.classList.contains('modal') || current.getAttribute('role') === 'dialog') {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+};
 // X logo pentru Twitter (X)
 const XIcon = ({ size }: { size: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -34,6 +57,8 @@ export default function ShareButton({
 }: ShareButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const fullUrl = url.startsWith('http') ? url : `https://fishtrophy.ro${url}`;
   const encodedUrl = encodeURIComponent(fullUrl);
@@ -41,17 +66,36 @@ export default function ShareButton({
   const encodedDescription = encodeURIComponent(description || title);
   const encodedImage = encodeURIComponent(image);
 
+  // Window features for desktop only (mobile doesn't support popup windows)
+  // Detect mobile at click time, not at render time
+  const getWindowFeatures = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return undefined;
+    const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+    if (isMobile) {
+      return undefined; // Mobile: no features, just open in new tab
+    }
+    return 'width=600,height=400,menubar=no,toolbar=no,resizable=yes,scrollbars=yes';
+  };
+
   const shareOptions = [
     {
       name: 'Facebook',
       icon: Facebook,
       color: 'text-blue-600 hover:bg-blue-50',
       onClick: () => {
-        window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-          '_blank',
-          'width=600,height=400'
-        );
+        const features = getWindowFeatures();
+        if (features) {
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+            '_blank',
+            features
+          );
+        } else {
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+            '_blank'
+          );
+        }
         setShowMenu(false);
       }
     },
@@ -60,11 +104,19 @@ export default function ShareButton({
       icon: XIcon,
       color: 'text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700',
       onClick: () => {
-        window.open(
-          `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
-          '_blank',
-          'width=600,height=400'
-        );
+        const features = getWindowFeatures();
+        if (features) {
+          window.open(
+            `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
+            '_blank',
+            features
+          );
+        } else {
+          window.open(
+            `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
+            '_blank'
+          );
+        }
         setShowMenu(false);
       }
     },
@@ -86,11 +138,19 @@ export default function ShareButton({
       icon: Linkedin,
       color: 'text-blue-700 hover:bg-blue-50',
       onClick: () => {
-        window.open(
-          `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-          '_blank',
-          'width=600,height=400'
-        );
+        const features = getWindowFeatures();
+        if (features) {
+          window.open(
+            `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+            '_blank',
+            features
+          );
+        } else {
+          window.open(
+            `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+            '_blank'
+          );
+        }
         setShowMenu(false);
       }
     },
@@ -130,8 +190,53 @@ export default function ShareButton({
     ghost: 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700'
   };
 
+  // No position calculation needed - using absolute positioning relative to container
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.share-button-container') && !target.closest('.share-menu-portal')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [showMenu]);
+
+  // Check if in modal - calculate directly in render to avoid async issues
+  const inModal = buttonRef.current ? isInModal(buttonRef.current) : false;
+
+  // Render menu content - shared between modal and portal
+  const renderMenuContent = () => (
+    <>
+      {shareOptions.map((option) => {
+        const Icon = option.icon;
+        return (
+          <button
+            key={option.name}
+            onClick={option.onClick}
+            className={`
+              w-full px-4 py-2 text-left flex items-center gap-3
+              ${option.color}
+              hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors
+            `}
+          >
+            <Icon size={18} />
+            <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{option.name}</span>
+          </button>
+        );
+      })}
+    </>
+  );
+
   return (
-    <div className="relative inline-block">
+    <div ref={buttonRef} className="relative inline-block share-button-container">
       <button
         onClick={() => setShowMenu(!showMenu)}
         className={`
@@ -145,35 +250,33 @@ export default function ShareButton({
         <Share2 size={iconSizes[size]} />
       </button>
 
-      {showMenu && (
+      {showMenu && inModal && (
+        <div 
+          ref={menuRef}
+          className="absolute right-0 top-full mt-2 z-[99999] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 w-48"
+        >
+          {renderMenuContent()}
+        </div>
+      )}
+
+      {showMenu && !inModal && typeof document !== 'undefined' && createPortal(
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[99998]"
             onClick={() => setShowMenu(false)}
           />
-          
-          {/* Menu */}
-          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 z-[99999] py-1">
-            {shareOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <button
-                  key={option.name}
-                  onClick={option.onClick}
-                  className={`
-                    w-full px-4 py-2 text-left flex items-center gap-3
-                    ${option.color}
-                    hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors
-                  `}
-                >
-                  {typeof Icon === 'function' ? <Icon size={18} /> : Icon}
-                  <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{option.name}</span>
-                </button>
-              );
-            })}
+          <div 
+            ref={menuRef}
+            className="fixed z-[99999] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 w-48 share-menu-portal"
+            style={{
+              top: buttonRef.current ? `${buttonRef.current.getBoundingClientRect().bottom + window.scrollY + 8}px` : '0px',
+              right: buttonRef.current ? `${window.innerWidth - buttonRef.current.getBoundingClientRect().right + window.scrollX}px` : '0px'
+            }}
+          >
+            {renderMenuContent()}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

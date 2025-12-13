@@ -391,6 +391,23 @@ const Records = () => {
     );
   };
 
+  // Handle URL hash to open record modal (e.g., /records#record-2)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#record-')) {
+      const recordId = hash.replace('#record-', '');
+      // Try to find record by global_id first, then by id
+      const record = allRecords.find(r => 
+        (r as any).global_id?.toString() === recordId || r.id === recordId
+      );
+      if (record && !isModalOpen) {
+        openRecordModal(record);
+        // Scroll to top to show modal
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [allRecords, isModalOpen]);
+
   const { websiteData, organizationData } = useStructuredData();
   const filteredRecords = getFilteredRecords();
   const recordCount = filteredRecords.length;
@@ -420,7 +437,7 @@ const Records = () => {
           </div>
 
           {/* Search and Filters - Mobile Friendly */}
-          <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 dark:border-slate-700 p-3 sm:p-4 mb-4 sm:mb-6 relative z-40">
+          <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 dark:border-slate-700 p-3 sm:p-4 mb-4 sm:mb-6 relative z-30">
             {/* Main Search Bar */}
             <div className="mb-4">
               <div className="relative max-w-xl mx-auto">

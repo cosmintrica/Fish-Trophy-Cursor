@@ -8,46 +8,46 @@
 - recorduri pe specii, recorduri pe locatii, clasamente pescuit
 - **ȘI ORICE ALT TERMEN LEGAT DE PESCUIT ÎN ROMÂNIA**
 
-## 1. Meta Tags & SEOHead Dinamice - ✅ ÎN PROGRES
+## 1. Meta Tags & SEOHead Dinamice - ✅ ÎN PROGRES (40% DONE)
 
 ### ⚠️ PROBLEMĂ CRITICĂ: Open Graph tags statice
 **Toate paginile arată la fel pe social media!** Trebuie Open Graph tags dinamice pentru fiecare pagină.
 
-### Pagini principale (✅ Records - DONE)
-- [x] Records - keywords: recorduri pescuit, capturi, trofee, specii pesti
-- [ ] Species - keywords: specii pesti, pescuit romania, tehnici pescuit
-- [ ] Home - keywords: pescuit romania, locatii pescuit, harta pescuit
-- [ ] Leaderboards - keywords: clasamente pescuit, top pescari, competiții
+### Pagini principale
+- [x] ✅ Records - keywords: recorduri pescuit, capturi, trofee, specii pesti (DONE)
+- [x] ✅ Species - keywords: specii pesti, pescuit romania, tehnici pescuit (DONE)
+- [x] ✅ Home - keywords: pescuit romania, locatii pescuit, harta pescuit (DONE)
+- [x] ❌ Leaderboards - ELIMINATĂ (pagina nu există, link-uri șterse din footer)
 - [ ] FishingShops - keywords: magazine pescuit, echipament pescuit, magazin pescuit romania
 - [ ] PublicProfile - keywords dinamice: profil [username], recorduri [username], capturi [username]
 
 ### Pagini Forum
-- [ ] ForumHome - keywords: forum pescuit, discuții pescuit, comunitate pescari
-- [ ] CategoryPage - keywords dinamice bazate pe categorie (DIY, tehnici, sfaturi, etc.) + OG tags
-- [ ] TopicPage - keywords dinamice bazate pe topic + structured data Article + OG tags
-- [ ] ForumUserProfile - keywords: profil pescar, statistici pescar, postări pescar + OG tags
+- [x] ✅ ForumHome - keywords: forum pescuit, discuții pescuit, comunitate pescari (DONE)
+- [x] ✅ CategoryPage - keywords dinamice bazate pe categorie + OG tags (DONE)
+- [x] ✅ TopicPage - keywords dinamice bazate pe topic + structured data Article + OG tags (DONE)
+- [x] ✅ ForumUserProfile - keywords: profil pescar, statistici pescar, postări pescar + OG tags (DONE)
 
 ### Pagini cu conținut specific
 - [ ] Record Details - OG tags cu imagine record, specie, greutate, pescar
 - [ ] Catch Details - OG tags cu imagine captură, specie, locație
 - [ ] Species Details - OG tags cu imagine specie, descriere, habitat
 
-## 2. Share Buttons & Social Media - TODO
+## 2. Share Buttons & Social Media - ✅ 60% DONE
 
 ### Componente necesare:
-- [ ] ShareButton component reutilizabil (Facebook, Twitter, WhatsApp, LinkedIn, Copy Link)
-- [ ] Share buttons pe Records page (pentru fiecare record)
-- [ ] Share buttons pe Catch details (jurnal capturi)
-- [ ] Share buttons pe User Profile (public profile)
-- [ ] Share buttons pe Forum Topics
-- [ ] Share buttons pe Forum Posts (pentru postări importante)
+- [x] ✅ ShareButton component reutilizabil (Facebook, Twitter, WhatsApp, LinkedIn, Copy Link) (DONE)
+- [x] ✅ Share buttons pe Records page (pentru fiecare record) (DONE)
+- [x] ✅ Share buttons pe Catch details (jurnal capturi) (DONE)
+- [ ] Share buttons pe User Profile (public profile) - LIPSEȘTE
+- [x] ✅ Share buttons pe Forum Topics (DONE)
+- [ ] Share buttons pe Forum Posts (pentru postări importante) - OPTIONAL
 
 ### Funcționalități:
-- [ ] Share cu preview corect (imagine, titlu, descriere)
-- [ ] Copy link cu toast notification
-- [ ] Share pe WhatsApp cu text pre-formatat
-- [ ] Share pe Facebook cu Open Graph tags corecte
-- [ ] Share pe Twitter cu Twitter Cards
+- [x] ✅ Share cu preview corect (imagine, titlu, descriere) (DONE)
+- [x] ✅ Copy link cu toast notification (DONE)
+- [x] ✅ Share pe WhatsApp cu text pre-formatat (DONE)
+- [ ] Share pe Facebook cu Open Graph tags corecte - DEPINDE DE OG TAGS DINAMICE
+- [ ] Share pe Twitter cu Twitter Cards - DEPINDE DE OG TAGS DINAMICE
 
 ## 3. Open Graph Tags Dinamice - TODO
 
@@ -80,15 +80,24 @@
 - [ ] BreadcrumbList - pentru navigare
 - [ ] FAQPage - pentru pagini cu întrebări frecvente
 
-## 5. Sitemap.xml Dinamic - TODO
+## 5. Sitemap.xml Dinamic - ⚠️ PARȚIAL (20% DONE)
+
+### Status actual:
+- [x] ✅ Netlify Function există (`netlify/functions/sitemap.mjs`)
+- [x] ✅ Pagini statice incluse (Home, Records, Species, FishingShops, SubmissionGuide)
+- [ ] ❌ Recorduri verificate - NU sunt incluse (trebuie query dinamic)
+- [ ] ❌ Specii - NU sunt incluse individual (doar pagina generală)
+- [ ] ❌ Categorii forum - NU sunt incluse
+- [ ] ❌ Topicuri forum - NU sunt incluse
+- [ ] ❌ Profile publice - NU sunt incluse
 
 ### Necesită Netlify Function care generează:
-- Toate paginile statice
-- Toate recordurile verificate (prioritate 0.8)
-- Toate speciile (prioritate 0.7)
-- Toate categoriile forum (prioritate 0.9)
-- Toate topicurile forum (prioritate 0.8)
-- Toate paginile de profil public (prioritate 0.6)
+- [x] Toate paginile statice (DONE)
+- [ ] Toate recordurile verificate (prioritate 0.8) - TODO
+- [ ] Toate speciile (prioritate 0.7) - TODO
+- [ ] Toate categoriile forum (prioritate 0.9) - TODO
+- [ ] Toate topicurile forum (prioritate 0.8) - TODO
+- [ ] Toate paginile de profil public (prioritate 0.6) - TODO
 
 ## 6. Robots.txt Îmbunătățit - TODO
 
@@ -228,14 +237,42 @@
 
 ## Prioritate Implementare
 
+### ✅ COMPLETAT (40%):
+1. ✅ **Meta tags pentru paginile principale**: Records, Species, Home, Forum (ForumHome, CategoryPage, TopicPage, ForumUserProfile)
+2. ✅ **ShareButton component**: Implementat complet cu Facebook, Twitter, WhatsApp, LinkedIn, Copy Link
+3. ✅ **Share buttons pe Records**: Implementat pentru fiecare record
+4. ✅ **Share buttons pe Catch details**: Implementat în CatchDetailModal
+5. ✅ **Share buttons pe Forum Topics**: Implementat în TopicPage
+6. ✅ **Structured Data parțial**: Website, Organization, Article (TopicPage)
+7. ✅ **Google Search Console**: Configurat de utilizator
+8. ✅ **Google Tag Manager + Analytics 4**: Configurat de utilizator
+
+### 🔴 CRITIC - TODO:
 1. **CRITIC**: Open Graph tags dinamice pentru toate paginile (share pe social media)
-2. **CRITIC**: Share buttons pe recorduri, capturi, user profile
-3. **HIGH**: Meta tags pentru toate paginile principale (Records ✅, Species, Forum)
-4. **HIGH**: Structured data pentru forum topics și categories
-5. **HIGH**: Google Search Console setup și monitoring
-6. **MEDIUM**: Sitemap dinamic
-7. **MEDIUM**: Robots.txt îmbunătățit
-8. **MEDIUM**: Internal linking strategy
-9. **LOW**: Content optimization (H tags, alt tags)
-10. **LOW**: Long-tail keywords și content marketing
+   - FishingShops - LIPSEȘTE SEOHead
+   - PublicProfile - LIPSEȘTE SEOHead
+   - Record Details Modal - LIPSEȘTE OG tags dinamice
+   - Catch Details Modal - LIPSEȘTE OG tags dinamice
+2. **CRITIC**: Share buttons pe User Profile (public profile) - LIPSEȘTE
+
+### 🟡 HIGH - TODO:
+3. **HIGH**: Sitemap dinamic complet (acum e doar static cu pagini principale)
+   - Recorduri verificate individual
+   - Topicuri forum individuale
+   - Profile publice individuale
+4. **HIGH**: Structured data complet
+   - VideoObject pentru recorduri cu video
+   - QAPage pentru topicuri întrebări
+   - ProfilePage pentru user profiles
+   - BreadcrumbList pentru navigare
+
+### 🟢 MEDIUM - TODO:
+5. **MEDIUM**: Robots.txt îmbunătățit
+6. **MEDIUM**: Internal linking strategy (breadcrumbs, related content)
+7. **MEDIUM**: Dynamic OG Images generator pentru recorduri/capturi
+
+### 🔵 LOW - TODO:
+8. **LOW**: Content optimization (H tags, alt tags)
+9. **LOW**: Long-tail keywords și content marketing
+10. **LOW**: Core Web Vitals optimizare (LCP, CLS, caching strategy)
 

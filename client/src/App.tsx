@@ -39,7 +39,6 @@ const Profile = lazy(() => import('@/pages/Profile')); // Pagina profil (probabi
 
 // Pagini mici - importate normal (nu blochează)
 import Species from '@/pages/Species';
-import Leaderboards from '@/pages/Leaderboards';
 import Records from '@/pages/Records';
 import SubmissionGuide from '@/pages/SubmissionGuide';
 import PublicProfile from '@/pages/PublicProfile';
@@ -110,7 +109,6 @@ function AppContent() {
             />
             <Route path="/email-confirmation" element={<EmailConfirmation />} />
             <Route path="/species" element={<Species />} />
-            <Route path="/leaderboards" element={<Leaderboards />} />
             <Route path="/records" element={<Records />} />
             <Route path="/profile/:username" element={<PublicProfile />} />
             <Route path="/submission-guide" element={<SubmissionGuide />} />
