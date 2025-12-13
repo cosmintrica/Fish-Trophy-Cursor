@@ -54,14 +54,6 @@ const isViteModule = (url) => {
          (url.endsWith('.tsx') || url.endsWith('.ts') || url.includes('?v='));
 };
 
-// Helper: Verifică dacă request-ul este pentru module Vite (development)
-const isViteModule = (url) => {
-  // In development, Vite serves source files directly
-  // These should never be cached by service worker
-  return url.includes('/src/') && 
-         (url.endsWith('.tsx') || url.endsWith('.ts') || url.includes('?v='));
-};
-
 // Helper: Network First Strategy
 const networkFirst = async (request) => {
   try {

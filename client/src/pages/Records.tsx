@@ -312,6 +312,10 @@ const Records = () => {
   const closeRecordModal = () => {
     setIsModalOpen(false);
     setSelectedRecord(null);
+    // Remove hash from URL to prevent reopening modal
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
   };
 
   const handleEditRecord = (record: FishRecord) => {
@@ -393,6 +397,9 @@ const Records = () => {
 
   // Handle URL hash to open record modal (e.g., /records#record-2)
   useEffect(() => {
+    // Only run if we have records loaded
+    if (allRecords.length === 0) return;
+    
     const hash = window.location.hash;
     if (hash && hash.startsWith('#record-')) {
       const recordId = hash.replace('#record-', '');

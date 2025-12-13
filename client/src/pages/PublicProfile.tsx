@@ -1343,6 +1343,10 @@ const PublicProfile = () => {
           onClose={() => {
             setShowCatchDetailModal(false);
             setSelectedCatch(null);
+            // Remove hash from URL to prevent reopening modal
+            if (window.location.hash) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
           }}
           username={userProfile?.username || username}
           onCatchUpdated={() => {
