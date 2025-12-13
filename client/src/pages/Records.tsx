@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown, Video } from 'lucide-react';
+import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown, Video, User } from 'lucide-react';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -210,8 +210,10 @@ const Records = () => {
   // Search filters
   const [speciesSearchTerm, setSpeciesSearchTerm] = useState('');
   const [locationSearchTerm, setLocationSearchTerm] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   // Update records when React Query data changes (compare by length and first ID to prevent loops)
   const prevRecordsLengthRef = useRef<number>(0);
@@ -394,14 +396,17 @@ const Records = () => {
     setSelectedSpecies('all');
     setSelectedLocation('all');
     setSelectedStatus('all');
+    setSelectedUser('all');
     setMinWeight('');
     setMaxWeight('');
     setDateFrom('');
     setDateTo('');
     setSpeciesSearchTerm('');
     setLocationSearchTerm('');
+    setUserSearchTerm('');
     setShowSpeciesDropdown(false);
     setShowLocationDropdown(false);
+    setShowUserDropdown(false);
   };
 
   const openRecordModal = (record: FishRecord) => {
@@ -468,6 +473,43 @@ const Records = () => {
     setSelectedLocation(locationId);
     setLocationSearchTerm(locationName);
     setShowLocationDropdown(false);
+  };
+
+  // Get unique users from records
+  const getUniqueUsers = () => {
+    const userMap = new Map<string, { id: string; username?: string; display_name: string }>();
+    records.forEach(record => {
+      if (record.profiles) {
+        const key = record.profiles.username || record.user_id;
+        if (!userMap.has(key)) {
+          userMap.set(key, {
+            id: record.user_id,
+            username: record.profiles.username,
+            display_name: record.profiles.display_name || 'Utilizator'
+          });
+        }
+      }
+    });
+    return Array.from(userMap.values()).sort((a, b) => 
+      a.display_name.localeCompare(b.display_name)
+    );
+  };
+
+  const getFilteredUsers = () => {
+    const users = getUniqueUsers();
+    if (!userSearchTerm.trim()) return users;
+    const term = userSearchTerm.toLowerCase();
+    return users.filter(u =>
+      u.display_name.toLowerCase().includes(term) ||
+      (u.username && u.username.toLowerCase().includes(term))
+    );
+  };
+
+  const selectUser = (userId: string, username: string | undefined, displayName: string) => {
+    // Use username if available, otherwise use user_id
+    setSelectedUser(username || userId);
+    setUserSearchTerm(displayName);
+    setShowUserDropdown(false);
   };
 
   const getRankIcon = (rank: number) => {
@@ -710,6 +752,61 @@ const Records = () => {
                 )}
               </div>
 
+              {/* User Filter */}
+              <div className="relative group">
+                <div
+                  className="flex items-center bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-800/50 rounded-lg px-3 py-2 transition-all cursor-pointer min-w-[160px]"
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                >
+                  <User className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-purple-900 dark:text-purple-100">Pescar</div>
+                    <div className="text-xs text-purple-700 dark:text-purple-300 truncate">
+                      {selectedUser === 'all' ? 'Toți' : getUniqueUsers().find(u => (u.username || u.id) === selectedUser)?.display_name?.substring(0, 15) || 'Selectează'}
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-3 h-3 text-purple-600 dark:text-purple-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+                </div>
+
+                {showUserDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] max-h-64 overflow-y-auto">
+                    <div className="p-2">
+                      <input
+                        type="text"
+                        placeholder="Caută pescar..."
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 mb-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white dark:placeholder-gray-400"
+                      />
+                      <div
+                        className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg font-medium text-purple-700 dark:text-purple-300"
+                        onClick={() => {
+                          setSelectedUser('all');
+                          setUserSearchTerm('');
+                          setShowUserDropdown(false);
+                        }}
+                      >
+                        👤 Toți pescarii
+                      </div>
+                      {getFilteredUsers().map(u => (
+                        <div
+                          key={u.id}
+                          className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-slate-700 cursor-pointer text-sm rounded-lg text-gray-700 dark:text-slate-200"
+                          onClick={() => selectUser(u.id, u.username, u.display_name)}
+                        >
+                          <div className="font-medium">{u.display_name}</div>
+                          {u.username && (
+                            <div className="text-xs text-gray-500 dark:text-slate-400">
+                              @{u.username}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <button
@@ -763,7 +860,7 @@ const Records = () => {
               <span className="font-medium">
                 {getFilteredRecords().length} recorduri găsite
               </span>
-              {(selectedSpecies !== 'all' || selectedLocation !== 'all' || searchTerm) && (
+              {(selectedSpecies !== 'all' || selectedLocation !== 'all' || selectedUser !== 'all' || searchTerm) && (
                 <button
                   onClick={resetFilters}
                   className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
