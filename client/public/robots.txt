@@ -7,9 +7,13 @@ Sitemap: https://fishtrophy.ro/sitemap.xml
 # Disallow admin pages and private areas
 Disallow: /admin
 Disallow: /admin/
+Disallow: /profile
 Disallow: /profile/
 Disallow: /map-test
 Disallow: /og-generator
+
+# Allow public profile pages (with username)
+Allow: /profile/*
 
 # Allow all public pages
 Allow: /
@@ -18,6 +22,10 @@ Allow: /species
 Allow: /black-sea
 Allow: /fishing-shops
 Allow: /submission-guide
+
+# Allow forum pages
+Allow: /forum
+Allow: /forum/*
 
 # Crawl delay
 Crawl-delay: 1
