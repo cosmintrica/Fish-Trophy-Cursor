@@ -595,7 +595,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) =
                 options={cityOptions}
                 value={selectedCity}
                 onChange={setSelectedCity}
-                placeholder={selectedCounty ? "Selectează orașul" : "Selectează mai întâi județul"}
+                placeholder="Selectează orașul"
                 searchPlaceholder="Caută oraș..."
                 disabled={!selectedCounty}
                 isDarkMode={isDarkMode}
