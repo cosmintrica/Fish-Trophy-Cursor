@@ -13,6 +13,7 @@ import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import ShareButton from '@/components/ShareButton';
 import { createSlug, findSpeciesBySlug, findLocationBySlug } from '@/utils/slug';
+import { toast } from 'sonner';
 
 interface FishRecord {
   id: string;
@@ -1105,8 +1106,27 @@ const Records = () => {
             isOpen={isModalOpen}
             onClose={closeRecordModal}
             isAdmin={isAdmin}
-            canEdit={isAdmin}
             onEdit={handleEditRecord}
+            onDelete={async (recordId: string) => {
+              // Delete functionality for admin
+              if (window.confirm('Ești sigur că vrei să ștergi acest record?')) {
+                try {
+                  const { error } = await supabase
+                    .from('records')
+                    .delete()
+                    .eq('id', recordId);
+                  
+                  if (error) throw error;
+                  
+                  toast.success('Record șters cu succes');
+                  closeRecordModal();
+                  // Refresh records
+                  window.location.reload();
+                } catch (error: any) {
+                  toast.error('Eroare la ștergere: ' + (error.message || 'Eroare necunoscută'));
+                }
+              }
+            }}
           />
 
           {/* Edit Record Modal */}

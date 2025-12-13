@@ -55,8 +55,6 @@ interface RecordDetailsModalProps {
   onEdit?: (record: FishRecord) => void;
   onDelete?: (recordId: string) => void;
   isAdmin?: boolean;
-  canEdit?: boolean;
-  hideCloseButton?: boolean; // Hide the "Închide" button (useful when X button and click-outside already handle closing)
 }
 
 const RecordDetailsModal = ({
@@ -66,8 +64,6 @@ const RecordDetailsModal = ({
   onEdit,
   onDelete,
   isAdmin = false,
-  canEdit = false,
-  hideCloseButton = false,
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
@@ -415,40 +411,32 @@ const RecordDetailsModal = ({
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-800">
-                {(!hideCloseButton) && (
-                  <Button 
-                    variant="outline" 
-                    onClick={onClose}
-                    className="w-full sm:w-auto touch-manipulation border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                  >
-                    Închide
-                  </Button>
-                )}
+              {/* Actions - Only for Admin */}
+              {isAdmin && (onEdit || onDelete) && (
+                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-800">
+                  {onEdit && (
+                    <Button 
+                      onClick={handleEdit} 
+                      className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full sm:w-auto touch-manipulation"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editează
+                    </Button>
+                  )}
 
-                {canEdit && (
-                  <Button 
-                    onClick={handleEdit} 
-                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full sm:w-auto touch-manipulation"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editează
-                  </Button>
-                )}
-
-                {isAdmin && (
-                  <Button
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={isLoading}
-                    className="w-full sm:w-auto touch-manipulation"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {isLoading ? 'Se șterge...' : 'Șterge'}
-                  </Button>
-                )}
-              </div>
+                  {onDelete && (
+                    <Button
+                      variant="destructive"
+                      onClick={handleDelete}
+                      disabled={isLoading}
+                      className="w-full sm:w-auto touch-manipulation"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {isLoading ? 'Se șterge...' : 'Șterge'}
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* Internal Links - Discrete, small */}
               {(record.fish_species || record.fishing_locations) && (

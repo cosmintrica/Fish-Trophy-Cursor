@@ -2094,7 +2094,30 @@ const Admin: React.FC = () => {
         isOpen={isRecordModalOpen}
         onClose={closeRecordModal}
         isAdmin={true}
-        canEdit={false}
+        onEdit={(record) => {
+          // Edit functionality for admin - can be implemented later
+          toast.info('Funcționalitatea de editare va fi disponibilă în curând');
+        }}
+        onDelete={async (recordId: string) => {
+          // Delete functionality for admin
+          if (window.confirm('Ești sigur că vrei să ștergi acest record?')) {
+            try {
+              const { error } = await supabase
+                .from('records')
+                .delete()
+                .eq('id', recordId);
+              
+              if (error) throw error;
+              
+              toast.success('Record șters cu succes');
+              closeRecordModal();
+              // Refresh page to update records list
+              window.location.reload();
+            } catch (error: any) {
+              toast.error('Eroare la ștergere: ' + (error.message || 'Eroare necunoscută'));
+            }
+          }
+        }}
       />
 
       {/* Shop Inquiry Details Modal */}
