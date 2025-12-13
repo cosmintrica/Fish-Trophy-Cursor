@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
 import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
+import { useStructuredData } from '@/hooks/useStructuredData';
 
 interface FishRecord {
   id: string;
@@ -66,6 +67,7 @@ const RecordDetailsModal = ({
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const { createVideoObjectData } = useStructuredData();
 
   if (!isOpen || !record) return null;
 
@@ -161,6 +163,16 @@ const RecordDetailsModal = ({
   const recordUrl = `https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`;
   const recordImage = getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
+  // Video structured data (if video exists)
+  const videoStructuredData = record.video_url ? createVideoObjectData({
+    name: recordTitle,
+    description: recordDescription,
+    thumbnailUrl: recordImage,
+    contentUrl: getR2ImageUrlProxy(record.video_url),
+    uploadDate: getCapturedAt(),
+    author: record.profiles?.display_name || 'Pescar'
+  }) : null;
+
   return (
     <>
       {isOpen && record && (
@@ -180,6 +192,11 @@ const RecordDetailsModal = ({
           <meta name="twitter:description" content={recordDescription} />
           <meta name="twitter:image" content={recordImage} />
           <link rel="canonical" href={recordUrl} />
+          {videoStructuredData && (
+            <script type="application/ld+json">
+              {JSON.stringify(videoStructuredData)}
+            </script>
+          )}
         </Helmet>
       )}
     <div 

@@ -285,12 +285,95 @@ export function useStructuredData() {
     ]
   }), []);
 
+  // BreadcrumbList helper - pentru navigare
+  const createBreadcrumbData = (items: Array<{ name: string; url: string }>) => ({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url
+    }))
+  });
+
+  // ProfilePage helper - pentru profile publice
+  const createProfilePageData = (profile: {
+    name: string;
+    description: string;
+    image?: string;
+    url: string;
+    recordCount?: number;
+    catchCount?: number;
+  }) => ({
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    mainEntity: {
+      '@type': 'Person',
+      name: profile.name,
+      description: profile.description,
+      image: profile.image || 'https://fishtrophy.ro/icon-512.png',
+      url: profile.url,
+      ...(profile.recordCount !== undefined && {
+        additionalProperty: [
+          {
+            '@type': 'PropertyValue',
+            name: 'Recorduri',
+            value: profile.recordCount.toString()
+          },
+          ...(profile.catchCount !== undefined ? [{
+            '@type': 'PropertyValue',
+            name: 'Capturi',
+            value: profile.catchCount.toString()
+          }] : [])
+        ]
+      })
+    }
+  });
+
+  // VideoObject helper - pentru recorduri/capturi cu video
+  const createVideoObjectData = (video: {
+    name: string;
+    description: string;
+    thumbnailUrl: string;
+    contentUrl: string;
+    uploadDate: string;
+    duration?: string; // ISO 8601 format (e.g., "PT2M30S" for 2 minutes 30 seconds)
+    author?: string;
+  }) => ({
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: video.name,
+    description: video.description,
+    thumbnailUrl: video.thumbnailUrl,
+    contentUrl: video.contentUrl,
+    uploadDate: video.uploadDate,
+    ...(video.duration && { duration: video.duration }),
+    ...(video.author && {
+      author: {
+        '@type': 'Person',
+        name: video.author
+      }
+    }),
+    publisher: {
+      '@type': 'Organization',
+      name: 'Fish Trophy',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://fishtrophy.ro/icon-512.png'
+      }
+    }
+  });
+
   return {
     websiteData,
     organizationData,
     navigationData,
     createArticleData,
     createRecordData,
-    createSpeciesData
+    createSpeciesData,
+    createBreadcrumbData,
+    createProfilePageData,
+    createVideoObjectData
   };
 }

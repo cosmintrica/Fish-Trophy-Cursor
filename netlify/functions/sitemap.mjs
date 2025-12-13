@@ -69,6 +69,50 @@ export const handler = async (event) => {
       priority: '0.5'
     });
 
+    // Privacy & Legal pages
+    urls.push({
+      loc: `${baseUrl}/privacy`,
+      lastmod: currentDate,
+      changefreq: 'yearly',
+      priority: '0.3'
+    });
+
+    urls.push({
+      loc: `${baseUrl}/cookies`,
+      lastmod: currentDate,
+      changefreq: 'yearly',
+      priority: '0.3'
+    });
+
+    // Forum static pages
+    urls.push({
+      loc: `${baseUrl}/forum`,
+      lastmod: currentDate,
+      changefreq: 'daily',
+      priority: '0.9'
+    });
+
+    urls.push({
+      loc: `${baseUrl}/forum/recent`,
+      lastmod: currentDate,
+      changefreq: 'daily',
+      priority: '0.8'
+    });
+
+    urls.push({
+      loc: `${baseUrl}/forum/members`,
+      lastmod: currentDate,
+      changefreq: 'weekly',
+      priority: '0.7'
+    });
+
+    urls.push({
+      loc: `${baseUrl}/forum/rules`,
+      lastmod: currentDate,
+      changefreq: 'monthly',
+      priority: '0.6'
+    });
+
     // Dynamic content from Supabase
     if (supabase) {
       try {

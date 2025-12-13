@@ -8,6 +8,7 @@ import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
 import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
+import { useStructuredData } from '@/hooks/useStructuredData';
 
 // Helper function for relative time
 const getRelativeTime = (date: string): string => {
@@ -92,6 +93,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   username
 }) => {
   const { user } = useAuth();
+  const { createVideoObjectData } = useStructuredData();
   const [catchData, setCatchData] = useState<Catch | null>(catchItem);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -563,6 +565,16 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   const catchUrl = `https://fishtrophy.ro/profile/${profileIdentifier}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`;
   const catchImage = catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
+  // Video structured data (if video exists)
+  const videoStructuredData = catchData.video_url ? createVideoObjectData({
+    name: catchTitle,
+    description: catchDescription,
+    thumbnailUrl: catchImage,
+    contentUrl: getR2ImageUrlProxy(catchData.video_url),
+    uploadDate: catchData.captured_at,
+    author: username || 'Pescar'
+  }) : null;
+
   return (
     <>
       {isOpen && catchData && (
@@ -582,6 +594,11 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
           <meta name="twitter:description" content={catchDescription} />
           <meta name="twitter:image" content={catchImage} />
           <link rel="canonical" href={catchUrl} />
+          {videoStructuredData && (
+            <script type="application/ld+json">
+              {JSON.stringify(videoStructuredData)}
+            </script>
+          )}
         </Helmet>
       )}
     <div

@@ -669,7 +669,7 @@ const PublicProfile = () => {
   };
 
   // Hooks MUST be called before any conditional returns
-  const { websiteData, organizationData } = useStructuredData();
+  const { websiteData, organizationData, createProfilePageData } = useStructuredData();
 
   if (loading) {
     return (
@@ -726,7 +726,18 @@ const PublicProfile = () => {
           image={profileImage}
           url={profileUrl}
           type="profile"
-          structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+          structuredData={[
+            websiteData, 
+            organizationData,
+            createProfilePageData({
+              name: userProfile.display_name,
+              description: profileDescription,
+              image: userProfile.photo_url || userProfile.cover_photo_url || undefined,
+              url: profileUrl,
+              recordCount: userRecords.length,
+              catchCount: userCatches.length
+            })
+          ] as unknown as Record<string, unknown>[]}
         />
       )}
       <div className="min-h-screen bg-gray-100 dark:bg-slate-900 py-8 px-4 sm:px-6 transition-colors duration-200">
