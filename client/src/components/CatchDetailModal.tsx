@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
 import { useStructuredData } from '@/hooks/useStructuredData';
+import { createSlug } from '@/utils/slug';
 
 // Helper function for relative time
 const getRelativeTime = (date: string): string => {
@@ -875,7 +876,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                       <span className="text-gray-400 dark:text-slate-500">Vezi și alte capturi:</span>
                       {catchData.fish_species && (
                         <Link
-                          to={`/records?species=${catchData.species_id}`}
+                          to={`/records?species=${createSlug(catchData.fish_species.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -887,7 +888,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                         <>
                           <span className="text-gray-300 dark:text-slate-600">•</span>
                           <Link
-                            to={`/records?location=${catchData.location_id}`}
+                            to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
                             className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                             onClick={(e) => e.stopPropagation()}
                           >

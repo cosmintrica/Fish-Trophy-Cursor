@@ -10,6 +10,7 @@ import { getR2ImageUrlProxy } from '@/lib/supabase';
 import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
 import { useStructuredData } from '@/hooks/useStructuredData';
+import { createSlug } from '@/utils/slug';
 
 interface FishRecord {
   id: string;
@@ -452,7 +453,7 @@ const RecordDetailsModal = ({
                     <span className="text-gray-400 dark:text-slate-500">Vezi și alte recorduri:</span>
                     {record.fish_species && (
                       <Link
-                        to={`/records?species=${record.species_id}`}
+                        to={`/records?species=${createSlug(record.fish_species.name)}`}
                         className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -464,7 +465,7 @@ const RecordDetailsModal = ({
                       <>
                         <span className="text-gray-300 dark:text-slate-600">•</span>
                         <Link
-                          to={`/records?location=${record.location_id}`}
+                          to={`/records?location=${createSlug(record.fishing_locations.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >

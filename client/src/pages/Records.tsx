@@ -12,6 +12,7 @@ import FishingEntryModal from '@/components/FishingEntryModal';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import ShareButton from '@/components/ShareButton';
+import { createSlug, findSpeciesBySlug, findLocationBySlug } from '@/utils/slug';
 
 interface FishRecord {
   id: string;
@@ -66,9 +67,100 @@ const Records = () => {
   const [records, setRecords] = useState<FishRecord[]>([]);
   const loading = recordsLoading || speciesLoading || locationsLoading;
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Initialize filters from URL params (support both slug and ID)
+  const getInitialSpecies = () => {
+    const speciesParam = searchParams.get('species');
+    if (!speciesParam) return 'all';
+    
+    // Try to find by slug first (when species data is loaded)
+    if (species.length > 0) {
+      const found = findSpeciesBySlug(species, speciesParam);
+      if (found) return found.id;
+    }
+    
+    // Fallback to ID if slug not found (for backward compatibility)
+    return speciesParam;
+  };
+  
+  const getInitialLocation = () => {
+    const locationParam = searchParams.get('location') || searchParams.get('location_id');
+    if (!locationParam) return 'all';
+    
+    // Try to find by slug first (when locations data is loaded)
+    if (locations.length > 0) {
+      const found = findLocationBySlug(locations, locationParam);
+      if (found) return found.id;
+    }
+    
+    // Fallback to ID if slug not found (for backward compatibility)
+    return locationParam;
+  };
+  
   const [selectedSpecies, setSelectedSpecies] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState(searchParams.get('location_id') || 'all');
+  const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  
+  // Track if we're initializing from URL to prevent loops
+  const isInitializingRef = useRef(true);
+  
+  // Sync filters with URL params when data loads (only once on mount)
+  useEffect(() => {
+    if (!loading && species.length > 0 && locations.length > 0 && isInitializingRef.current) {
+      const speciesFromUrl = getInitialSpecies();
+      const locationFromUrl = getInitialLocation();
+      
+      if (speciesFromUrl !== 'all') {
+        setSelectedSpecies(speciesFromUrl);
+        const foundSpecies = species.find(s => s.id === speciesFromUrl);
+        if (foundSpecies) {
+          setSpeciesSearchTerm(foundSpecies.name);
+        }
+      }
+      
+      if (locationFromUrl !== 'all') {
+        setSelectedLocation(locationFromUrl);
+        const foundLocation = locations.find(l => l.id === locationFromUrl);
+        if (foundLocation) {
+          setLocationSearchTerm(foundLocation.name);
+        }
+      }
+      
+      isInitializingRef.current = false;
+    }
+  }, [loading, species, locations]);
+  
+  // Update URL when filters change manually (use slugs, not IDs)
+  useEffect(() => {
+    // Skip if we're still initializing
+    if (isInitializingRef.current || loading || species.length === 0 || locations.length === 0) {
+      return;
+    }
+    
+    const params = new URLSearchParams();
+    
+    if (selectedSpecies !== 'all') {
+      const foundSpecies = species.find(s => s.id === selectedSpecies);
+      if (foundSpecies) {
+        params.set('species', createSlug(foundSpecies.name));
+      }
+    }
+    
+    if (selectedLocation !== 'all') {
+      const foundLocation = locations.find(l => l.id === selectedLocation);
+      if (foundLocation) {
+        params.set('location', createSlug(foundLocation.name));
+      }
+    }
+    
+    // Only update URL if params changed
+    const currentParams = searchParams.toString();
+    const newParams = params.toString();
+    
+    if (currentParams !== newParams) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [selectedSpecies, selectedLocation, species, locations, setSearchParams, loading, searchParams]);
   const [activeTab, setActiveTab] = useState('overall');
   const [teamStats, setTeamStats] = useState<{
     [key: string]: {
