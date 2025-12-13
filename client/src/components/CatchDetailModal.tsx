@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -865,6 +866,49 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                       ))}
                     </>
                   )}
+                </div>
+
+                {/* Internal Links - Discrete, small */}
+                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
+                    <span className="text-gray-400 dark:text-slate-500">Vezi și:</span>
+                    {catchData.fish_species && (
+                      <Link
+                        to={`/records?species=${catchData.species_id}`}
+                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Alte capturi de {catchData.fish_species.name}
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    )}
+                    {catchData.fishing_locations && (
+                      <>
+                        <span className="text-gray-300 dark:text-slate-600">•</span>
+                        <Link
+                          to={`/records?location=${catchData.location_id}`}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Alte capturi de la {catchData.fishing_locations.name}
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </>
+                    )}
+                    {username && (
+                      <>
+                        <span className="text-gray-300 dark:text-slate-600">•</span>
+                        <Link
+                          to={`/profile/${username}`}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Alte capturi de {username}
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

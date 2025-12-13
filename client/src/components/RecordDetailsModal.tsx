@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Hash } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Hash, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
