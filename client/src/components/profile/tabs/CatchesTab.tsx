@@ -265,10 +265,10 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                 )}
                 
                 {/* Gradient overlay pentru mobil - doar în partea de jos */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent sm:hidden"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent sm:hidden pointer-events-none"></div>
                 
                 {/* Detalii peste gradient - doar pe mobil */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white sm:hidden z-10">
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-white sm:hidden z-10 pointer-events-none">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-bold text-lg text-white drop-shadow-lg">
                       {catchItem.fish_species?.name || 'Specie necunoscută'}
@@ -284,7 +284,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
                             toast.error('Eroare la copierea ID-ului');
                           }
                         }}
-                        className="text-[10px] text-white/80 hover:text-white px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors font-mono shrink-0 backdrop-blur-sm"
+                        className="text-[10px] text-white/80 hover:text-white px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors font-mono shrink-0 backdrop-blur-sm pointer-events-auto"
                         title="Click pentru a copia ID-ul"
                       >
                         #{catchItem.global_id}
@@ -334,7 +334,7 @@ export const CatchesTab = ({ userId, onShowCatchModal, onCatchAdded }: CatchesTa
 
                   {/* Show like button only if not owner - pe mobil */}
                   {!isOwner && (
-                    <div className="pt-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="pt-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

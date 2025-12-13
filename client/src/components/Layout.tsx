@@ -539,10 +539,10 @@ export default function Layout({ children }: { children: ReactNode }) {
           )}
 
           {/* Footer - Fixed at bottom */}
-          <div className="mt-auto p-4 border-t border-gray-100">
+          <div className="mt-auto p-4 border-t border-gray-100 dark:border-slate-800">
             {/* Social Links */}
             <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 text-center">Urmărește-ne</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">Urmărește-ne</h4>
               <div className="flex justify-center space-x-2">
                 <a href="https://www.facebook.com/fishtrophy.ro" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-[#1877F2] rounded-md flex items-center justify-center text-white hover:bg-[#166FE5] transition-colors" onClick={closeMobileMenu}>
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -563,7 +563,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </div>
 
             {/* Textul "Făcut cu ❤️ în România" */}
-            <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
+            <div className="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-slate-400">
               <span>Făcut cu</span>
               <span className="text-red-500">❤️</span>
               <span>în România</span>
