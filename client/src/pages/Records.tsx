@@ -397,9 +397,12 @@ const Records = () => {
 
   // Handle URL hash to open record modal (e.g., /records#record-2)
   useEffect(() => {
+    // Don't check hash while loading
+    if (loading) return;
+
     const handleHashChange = () => {
-      // Only run if we have records loaded
-      if (allRecords.length === 0) return;
+      // Only run if we have records loaded and not loading
+      if (loading || allRecords.length === 0) return;
       
       const hash = window.location.hash;
       if (hash && hash.startsWith('#record-')) {
@@ -416,7 +419,7 @@ const Records = () => {
       }
     };
 
-    // Check hash immediately when records are loaded
+    // Check hash immediately when records are loaded and not loading
     handleHashChange();
 
     // Listen for hash changes (e.g., when user navigates with back/forward)
@@ -424,7 +427,7 @@ const Records = () => {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [allRecords, isModalOpen]);
+  }, [allRecords, isModalOpen, loading]);
 
   const { websiteData, organizationData } = useStructuredData();
   const filteredRecords = getFilteredRecords();

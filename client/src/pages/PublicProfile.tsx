@@ -278,9 +278,12 @@ const PublicProfile = () => {
 
   // Handle URL hash to open catch modal (e.g., /profile/username#catch-1)
   useEffect(() => {
+    // Don't check hash while loading
+    if (loading) return;
+
     const handleHashChange = () => {
-      // Only run if we have catches loaded
-      if (userCatches.length === 0) return;
+      // Only run if we have catches loaded and not loading
+      if (loading || userCatches.length === 0) return;
       
       const hash = window.location.hash;
       if (hash && hash.startsWith('#catch-')) {
@@ -298,7 +301,7 @@ const PublicProfile = () => {
       }
     };
 
-    // Check hash immediately when catches are loaded
+    // Check hash immediately when catches are loaded and not loading
     handleHashChange();
 
     // Listen for hash changes (e.g., when user navigates with back/forward)
@@ -306,7 +309,7 @@ const PublicProfile = () => {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [userCatches, showCatchDetailModal]);
+  }, [userCatches, showCatchDetailModal, loading]);
 
   // Update cover position when device type changes or when profile loads
   useEffect(() => {
