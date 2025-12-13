@@ -79,6 +79,12 @@
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out !important;
 }
 
+/* Dark mode for mobile menu */
+.dark .fixed.inset-0>.mobile-menu-card {
+  background: #0f172a !important; /* slate-900 */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
 /* Mobile menu open state */
 .fixed.inset-0>.mobile-menu-card.translate-x-0 {
   transform: translateX(0) !important;
