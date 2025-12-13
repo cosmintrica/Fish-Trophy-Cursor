@@ -56,6 +56,7 @@ interface RecordDetailsModalProps {
   onDelete?: (recordId: string) => void;
   isAdmin?: boolean;
   canEdit?: boolean;
+  hideCloseButton?: boolean; // Hide the "Închide" button (useful when X button and click-outside already handle closing)
 }
 
 const RecordDetailsModal = ({
@@ -65,7 +66,8 @@ const RecordDetailsModal = ({
   onEdit,
   onDelete,
   isAdmin = false,
-  canEdit = false
+  canEdit = false,
+  hideCloseButton = false,
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
@@ -415,13 +417,15 @@ const RecordDetailsModal = ({
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-800">
-                <Button 
-                  variant="outline" 
-                  onClick={onClose}
-                  className="w-full sm:w-auto touch-manipulation border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                >
-                  Închide
-                </Button>
+                {(!hideCloseButton) && (
+                  <Button 
+                    variant="outline" 
+                    onClick={onClose}
+                    className="w-full sm:w-auto touch-manipulation border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+                  >
+                    Închide
+                  </Button>
+                )}
 
                 {canEdit && (
                   <Button 

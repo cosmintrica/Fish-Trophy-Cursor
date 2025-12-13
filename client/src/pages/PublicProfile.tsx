@@ -1361,6 +1361,7 @@ const PublicProfile = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         record={selectedRecord}
+        hideCloseButton={true}
       />
 
       {/* Catch Detail Modal */}
