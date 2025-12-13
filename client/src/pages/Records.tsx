@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Trophy, Calendar, Users, Fish, Scale, Ruler, MapPin, Search, X, RotateCcw, Eye, Edit, ChevronDown, Video } from 'lucide-react';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -98,9 +98,16 @@ const Records = () => {
     return locationParam;
   };
   
+  const getInitialUser = () => {
+    const userParam = searchParams.get('user');
+    if (!userParam) return 'all';
+    return userParam; // Username or user ID
+  };
+  
   const [selectedSpecies, setSelectedSpecies] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedUser, setSelectedUser] = useState('all');
   
   // Track if we're initializing from URL to prevent loops
   const isInitializingRef = useRef(true);
@@ -110,6 +117,7 @@ const Records = () => {
     if (!loading && species.length > 0 && locations.length > 0 && isInitializingRef.current) {
       const speciesFromUrl = getInitialSpecies();
       const locationFromUrl = getInitialLocation();
+      const userFromUrl = getInitialUser();
       
       if (speciesFromUrl !== 'all') {
         setSelectedSpecies(speciesFromUrl);
@@ -125,6 +133,10 @@ const Records = () => {
         if (foundLocation) {
           setLocationSearchTerm(foundLocation.name);
         }
+      }
+      
+      if (userFromUrl !== 'all') {
+        setSelectedUser(userFromUrl);
       }
       
       isInitializingRef.current = false;
@@ -152,6 +164,10 @@ const Records = () => {
       if (foundLocation) {
         params.set('location', createSlug(foundLocation.name));
       }
+    }
+    
+    if (selectedUser !== 'all') {
+      params.set('user', selectedUser);
     }
     
     // Only update URL if params changed
@@ -339,6 +355,16 @@ const Records = () => {
     // Filter by location
     if (selectedLocation !== 'all') {
       filtered = filtered.filter(record => record.location_id === selectedLocation);
+    }
+
+    // Filter by user (username or user_id)
+    if (selectedUser !== 'all') {
+      filtered = filtered.filter(record => {
+        const username = record.profiles?.username?.toLowerCase();
+        const userId = record.user_id;
+        const userParam = selectedUser.toLowerCase();
+        return username === userParam || userId === selectedUser;
+      });
     }
 
     // Filter by status
@@ -1031,14 +1057,23 @@ const Records = () => {
                                 {getStatusBadge(record.status)}
                               </div>
                               <p className="text-xs sm:text-sm text-gray-700 dark:text-slate-200 font-semibold mb-1">{record.fish_species?.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-slate-400 flex items-center truncate mb-2">
+                              <Link
+                                to={`/records?location=${record.fishing_locations ? createSlug(record.fishing_locations.name) : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!record.fishing_locations) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="text-xs text-gray-500 dark:text-slate-400 flex items-center truncate mb-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              >
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                                 <span className="truncate">
                                   {record.fishing_locations?.county && record.fishing_locations?.name 
                                     ? `${record.fishing_locations.county} - ${record.fishing_locations.name}`
                                     : record.fishing_locations?.name || 'Locație necunoscută'}
                                 </span>
-                              </p>
+                              </Link>
                               {/* Weight and Length */}
                               <div className="flex items-center gap-4 text-sm">
                                 <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold">

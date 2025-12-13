@@ -729,14 +729,18 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   </div>
 
                   {catchData.fishing_locations && (
-                    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-700 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm border border-gray-200 dark:border-slate-600">
+                    <Link
+                      to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
+                      className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-700 p-2 sm:p-2.5 rounded-md text-xs sm:text-sm border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span className="font-medium truncate">
                         {catchData.fishing_locations.county && catchData.fishing_locations.name 
                           ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
                           : catchData.fishing_locations.name}
                       </span>
-                    </div>
+                    </Link>
                   )}
 
                   {(catchData.weight || catchData.length_cm) && (
