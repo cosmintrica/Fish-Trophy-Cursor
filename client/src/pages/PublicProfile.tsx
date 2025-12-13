@@ -278,23 +278,34 @@ const PublicProfile = () => {
 
   // Handle URL hash to open catch modal (e.g., /profile/username#catch-1)
   useEffect(() => {
-    // Only run if we have catches loaded
-    if (userCatches.length === 0) return;
-    
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#catch-')) {
-      const catchId = hash.replace('#catch-', '');
-      // Try to find catch by global_id first, then by id
-      const catchItem = userCatches.find(c => 
-        c.global_id?.toString() === catchId || c.id === catchId
-      );
-      if (catchItem && !showCatchDetailModal) {
-        setSelectedCatch(catchItem);
-        setShowCatchDetailModal(true);
-        // Scroll to top to show modal
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    const handleHashChange = () => {
+      // Only run if we have catches loaded
+      if (userCatches.length === 0) return;
+      
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#catch-')) {
+        const catchId = hash.replace('#catch-', '');
+        // Try to find catch by global_id first, then by id
+        const catchItem = userCatches.find(c => 
+          c.global_id?.toString() === catchId || c.id === catchId
+        );
+        if (catchItem && !showCatchDetailModal) {
+          setSelectedCatch(catchItem);
+          setShowCatchDetailModal(true);
+          // Scroll to top to show modal
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
-    }
+    };
+
+    // Check hash immediately when catches are loaded
+    handleHashChange();
+
+    // Listen for hash changes (e.g., when user navigates with back/forward)
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, [userCatches, showCatchDetailModal]);
 
   // Update cover position when device type changes or when profile loads

@@ -397,22 +397,33 @@ const Records = () => {
 
   // Handle URL hash to open record modal (e.g., /records#record-2)
   useEffect(() => {
-    // Only run if we have records loaded
-    if (allRecords.length === 0) return;
-    
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#record-')) {
-      const recordId = hash.replace('#record-', '');
-      // Try to find record by global_id first, then by id
-      const record = allRecords.find(r => 
-        (r as any).global_id?.toString() === recordId || r.id === recordId
-      );
-      if (record && !isModalOpen) {
-        openRecordModal(record);
-        // Scroll to top to show modal
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    const handleHashChange = () => {
+      // Only run if we have records loaded
+      if (allRecords.length === 0) return;
+      
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#record-')) {
+        const recordId = hash.replace('#record-', '');
+        // Try to find record by global_id first, then by id
+        const record = allRecords.find(r => 
+          (r as any).global_id?.toString() === recordId || r.id === recordId
+        );
+        if (record && !isModalOpen) {
+          openRecordModal(record);
+          // Scroll to top to show modal
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
-    }
+    };
+
+    // Check hash immediately when records are loaded
+    handleHashChange();
+
+    // Listen for hash changes (e.g., when user navigates with back/forward)
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, [allRecords, isModalOpen]);
 
   const { websiteData, organizationData } = useStructuredData();
