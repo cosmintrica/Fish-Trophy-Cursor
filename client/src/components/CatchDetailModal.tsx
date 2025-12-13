@@ -803,10 +803,14 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                       }
                       setShowCommentForm(!showCommentForm);
                     }}
-                    className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 px-3 py-2 rounded-lg transition-colors touch-manipulation"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500"
+                    style={{
+                      transform: 'translateZ(0)',
+                      willChange: 'transform, background-color'
+                    }}
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">{catchData.comment_count || 0}</span>
+                    <MessageCircle className="w-5 h-5" />
+                    <span className="text-sm font-semibold">{catchData.comment_count || 0}</span>
                     <span className="text-sm text-gray-600 dark:text-slate-400 ml-auto hidden sm:inline">Lasă un comentariu</span>
                   </button>
                 </div>
