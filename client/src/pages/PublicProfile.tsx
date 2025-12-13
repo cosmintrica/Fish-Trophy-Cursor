@@ -278,6 +278,9 @@ const PublicProfile = () => {
 
   // Handle URL hash to open catch modal (e.g., /profile/username#catch-1)
   useEffect(() => {
+    // Only run if we have catches loaded
+    if (userCatches.length === 0) return;
+    
     const hash = window.location.hash;
     if (hash && hash.startsWith('#catch-')) {
       const catchId = hash.replace('#catch-', '');
