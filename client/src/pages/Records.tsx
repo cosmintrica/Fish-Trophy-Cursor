@@ -429,7 +429,7 @@ const Records = () => {
     };
   }, [allRecords, isModalOpen, loading]);
 
-  const { websiteData, organizationData } = useStructuredData();
+  const { websiteData, organizationData, createBreadcrumbData } = useStructuredData();
   const filteredRecords = getFilteredRecords();
   const recordCount = filteredRecords.length;
   const verifiedCount = filteredRecords.filter(r => r.status === 'verified').length;

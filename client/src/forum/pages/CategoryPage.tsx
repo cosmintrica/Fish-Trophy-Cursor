@@ -371,7 +371,7 @@ export default function CategoryPage() {
   }
 
   // SEO Data for Category/Subcategory
-  const { websiteData, organizationData } = useStructuredData();
+  const { websiteData, organizationData, createBreadcrumbData } = useStructuredData();
   const currentUrl = `https://fishtrophy.ro/forum/${slugToUse}`;
   const pageTitle = subcategoryName || subforumName || categoryName || 'Categorii Forum';
   const pageDescription = subcategoryDescription || subforumDescription || categoryDescription || 'Discuții despre pescuit, tehnici, echipament și locații în România.';

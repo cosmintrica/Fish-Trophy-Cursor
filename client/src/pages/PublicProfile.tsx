@@ -669,7 +669,7 @@ const PublicProfile = () => {
   };
 
   // Hooks MUST be called before any conditional returns
-  const { websiteData, organizationData, createProfilePageData } = useStructuredData();
+  const { websiteData, organizationData, createProfilePageData, createBreadcrumbData } = useStructuredData();
 
   if (loading) {
     return (

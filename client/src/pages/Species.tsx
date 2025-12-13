@@ -287,7 +287,7 @@ const Species = () => {
   };
 
   // SEO Data
-  const { websiteData, organizationData, createSpeciesData } = useStructuredData();
+  const { websiteData, organizationData, createSpeciesData, createBreadcrumbData } = useStructuredData();
   const speciesUrl = 'https://fishtrophy.ro/species';
   const speciesTitle = 'Specii de Pești din România - Ghid Complet | Fish Trophy';
   const speciesDescription = `Descoperă toate speciile de pești din România cu informații detaliate despre habitat, tehnici de pescuit și recorduri. ${species.length} specii documentate.`;

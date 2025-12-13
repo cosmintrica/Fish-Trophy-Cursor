@@ -285,7 +285,7 @@ export default function TopicPage() {
   }, [displayPosts]);
 
   // SEO Data - OG tags dinamice pentru topic
-  const { websiteData, organizationData, createArticleData } = useStructuredData();
+  const { websiteData, organizationData, createArticleData, createBreadcrumbData } = useStructuredData();
   const topicUrl = topic ? `https://fishtrophy.ro/forum/${actualSubcategoryOrSubforumSlug}/${topic.slug}` : '';
   const topicTitle = displayTopic.title || 'Topic Forum';
   const topicDescription = displayPosts.length > 0
