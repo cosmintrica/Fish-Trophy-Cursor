@@ -26,7 +26,30 @@ export function useAllRecords() {
         throw new Error(recordsError.message)
       }
 
-      return recordsData || []
+      // If fishing_locations is missing, try to load them manually
+      const recordsWithLocations = await Promise.all(
+        (recordsData || []).map(async (record: any) => {
+          // If location data is missing but location_id exists, fetch it
+          if (!record.fishing_locations && record.location_id) {
+            try {
+              const { data: locationData } = await supabase
+                .from('fishing_locations')
+                .select('id, name, type, county')
+                .eq('id', record.location_id)
+                .single();
+              
+              if (locationData) {
+                record.fishing_locations = locationData;
+              }
+            } catch (err) {
+              console.warn('Failed to load location for record:', record.id, err);
+            }
+          }
+          return record;
+        })
+      );
+
+      return recordsWithLocations
     },
     staleTime: 1 * 60 * 1000, // 1 minut - records se schimbă mai des
     gcTime: 3 * 60 * 1000, // 3 minute

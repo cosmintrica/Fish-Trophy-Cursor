@@ -83,6 +83,7 @@ interface CatchDetailModalProps {
   isOwner?: boolean;
   onEdit?: () => void;
   username?: string; // Username for share URL
+  onAuthRequired?: () => void; // Callback when auth is required (for unauthenticated users)
 }
 
 export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
@@ -92,7 +93,8 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   onCatchUpdated,
   isOwner = false,
   onEdit,
-  username
+  username,
+  onAuthRequired
 }) => {
   const { user } = useAuth();
   const { createVideoObjectData } = useStructuredData();
@@ -286,7 +288,13 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   }, [catchItem?.id, isOpen, loadComments]);
 
   const handleLike = useCallback(async () => {
-    if (!catchData || !user) return;
+    if (!catchData) return;
+    
+    // If user is not authenticated, show auth modal
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
 
     // Optimistic update - update UI immediately
     const wasLiked = catchData.is_liked_by_current_user;
@@ -762,52 +770,55 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   )}
                 </div>
 
-                {/* Like/Comment buttons - available for all users (including owner) */}
-                {user && (
-                  <div className="flex items-center gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
-                    <button
-                      onClick={handleLike}
-                      disabled={isLiking}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] ${catchData.is_liked_by_current_user
-                        ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
-                        : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
-                        }`}
+                {/* Like/Comment buttons - Always visible, but require auth to interact */}
+                <div className="flex items-center gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+                  <button
+                    onClick={handleLike}
+                    disabled={isLiking && !!user}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] ${catchData.is_liked_by_current_user && user
+                      ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
+                      : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
+                      }`}
+                    style={{
+                      transform: 'translateZ(0)',
+                      willChange: 'transform, background-color'
+                    }}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${catchData.is_liked_by_current_user && user ? 'fill-current text-red-600' : ''}`}
                       style={{
-                        transform: 'translateZ(0)',
-                        willChange: 'transform, background-color'
+                        transform: likeAnimation ? 'translateZ(0) scale(1.2)' : 'translateZ(0) scale(1)',
+                        willChange: 'transform',
+                        transition: 'transform 0.2s ease-out'
                       }}
-                    >
-                      <Heart
-                        className={`w-5 h-5 ${catchData.is_liked_by_current_user ? 'fill-current text-red-600' : ''}`}
-                        style={{
-                          transform: likeAnimation ? 'translateZ(0) scale(1.2)' : 'translateZ(0) scale(1)',
-                          willChange: 'transform',
-                          transition: 'transform 0.2s ease-out'
-                        }}
-                      />
-                      <span className="text-sm font-semibold">{catchData.like_count || 0}</span>
-                    </button>
+                    />
+                    <span className="text-sm font-semibold">{catchData.like_count || 0}</span>
+                  </button>
 
-                    <button
-                      onClick={() => setShowCommentForm(!showCommentForm)}
-                      className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 px-3 py-2 rounded-lg transition-colors touch-manipulation"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">{catchData.comment_count || 0}</span>
-                      <span className="text-sm text-gray-600 dark:text-slate-400 ml-auto hidden sm:inline">Lasă un comentariu</span>
-                    </button>
-                  </div>
-                )}
+                  <button
+                    onClick={() => {
+                      if (!user) {
+                        onAuthRequired?.();
+                        return;
+                      }
+                      setShowCommentForm(!showCommentForm);
+                    }}
+                    className="flex items-center gap-2 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 px-3 py-2 rounded-lg transition-colors touch-manipulation"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">{catchData.comment_count || 0}</span>
+                    <span className="text-sm text-gray-600 dark:text-slate-400 ml-auto hidden sm:inline">Lasă un comentariu</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Comments Section - Always visible */}
-            {user && (
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-50 mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-50 mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
 
-                {/* Comment Form - available for all users when showCommentForm is true */}
-                {showCommentForm && (
+                {/* Comment Form - available for authenticated users when showCommentForm is true */}
+                {showCommentForm && user && (
                   <div className="mb-4 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                     <Textarea
                       value={newComment}
@@ -909,7 +920,6 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   </div>
                 )}
               </div>
-            )}
           </div>
         </div>
       </div>

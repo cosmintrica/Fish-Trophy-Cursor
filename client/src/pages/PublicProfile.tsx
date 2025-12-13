@@ -1383,6 +1383,9 @@ const PublicProfile = () => {
           }}
           isOwner={isOwner}
           onEdit={undefined}
+          onAuthRequired={() => {
+            setShowAuthRequiredModal(true);
+          }}
         />
       )}
 
@@ -1402,8 +1405,8 @@ const PublicProfile = () => {
           setIsAuthModalOpen(true);
         }}
         title="Autentificare necesară"
-        message="Trebuie să fii autentificat pentru a trimite un mesaj privat."
-        actionName="trimiterea unui mesaj privat"
+        message="Trebuie să fii autentificat pentru a interacționa cu conținutul (like, comentarii)."
+        actionName="interacțiunea cu conținutul"
       />
 
       {/* Auth Modal */}
