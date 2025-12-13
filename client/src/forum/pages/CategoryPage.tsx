@@ -394,7 +394,23 @@ export default function CategoryPage() {
         image={pageImage}
         url={currentUrl}
         type="website"
-        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+        structuredData={(() => {
+          const breadcrumbItems = [
+            { name: 'Acasă', url: 'https://fishtrophy.ro/' },
+            { name: 'Forum', url: 'https://fishtrophy.ro/forum' }
+          ];
+          if (parentCategory && parentCategory.slug) {
+            breadcrumbItems.push({ name: parentCategory.name, url: `https://fishtrophy.ro/forum/${parentCategory.slug}` });
+          }
+          if (subcategoryName && slugToUse) {
+            breadcrumbItems.push({ name: subcategoryName, url: `https://fishtrophy.ro/forum/${slugToUse}` });
+          } else if (subforumName && slugToUse) {
+            breadcrumbItems.push({ name: subforumName, url: `https://fishtrophy.ro/forum/${slugToUse}` });
+          } else if (categoryName && slugToUse) {
+            breadcrumbItems.push({ name: categoryName, url: `https://fishtrophy.ro/forum/${slugToUse}` });
+          }
+          return [websiteData, organizationData, createBreadcrumbData(breadcrumbItems)] as unknown as Record<string, unknown>[];
+        })()}
       />
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>

@@ -233,7 +233,7 @@ const FishingShops = () => {
     }
   }, [email]);
 
-  const { websiteData, organizationData } = useStructuredData();
+  const { websiteData, organizationData, createBreadcrumbData } = useStructuredData();
   const shopsUrl = 'https://fishtrophy.ro/fishing-shops';
   const shopsTitle = 'Magazine Pescuit România - Echipament Pescuit | Fish Trophy';
   const shopsDescription = 'Descoperă magazinele de pescuit din România. Echipament pescuit, undițe, momele, accesorii și multe altele. Lista completă de magazine pescuit verificate.';
@@ -278,7 +278,14 @@ const FishingShops = () => {
         image={shopsImage}
         url={shopsUrl}
         type="website"
-        structuredData={[websiteData, organizationData] as unknown as Record<string, unknown>[]}
+        structuredData={[
+          websiteData, 
+          organizationData,
+          createBreadcrumbData([
+            { name: 'Acasă', url: 'https://fishtrophy.ro/' },
+            { name: 'Magazine Pescuit', url: 'https://fishtrophy.ro/fishing-shops' }
+          ])
+        ] as unknown as Record<string, unknown>[]}
       />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50" style={{ willChange: 'auto' }}>
 
