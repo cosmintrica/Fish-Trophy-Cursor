@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
 import ShareButton from '@/components/ShareButton';
-import { MediaZoomViewer } from '@/components/MediaZoomViewer';
+import ImageZoom from '@/forum/components/ImageZoom';
 
 // Helper function for relative time
 const getRelativeTime = (date: string): string => {
@@ -824,14 +824,12 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
         </div>
       </div>
 
-      {/* Media Zoom Viewer */}
-      {catchData.photo_url && (
-        <MediaZoomViewer
-          isOpen={isZoomOpen}
-          onClose={() => setIsZoomOpen(false)}
+      {/* Image Zoom */}
+      {isZoomOpen && catchData.photo_url && (
+        <ImageZoom
           src={getR2ImageUrlProxy(catchData.photo_url)}
           alt={catchData.fish_species?.name || 'Captură'}
-          type="image"
+          onClose={() => setIsZoomOpen(false)}
         />
       )}
     </div>

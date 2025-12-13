@@ -2,8 +2,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Fish, Heart, MessageCircle, MapPin, Scale, Ruler } from 'lucide-react';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useState } from 'react';
-import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 interface CatchItem {
   id: string;
@@ -44,8 +42,6 @@ interface CatchCardProps {
 }
 
 export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = false }: CatchCardProps) => {
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
-
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col aspect-square sm:aspect-auto sm:h-full dark:bg-slate-800 dark:border-slate-700"
@@ -62,12 +58,8 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
           <img
             src={getR2ImageUrlProxy(catchItem.photo_url)}
             alt={catchItem.fish_species?.name || 'Captură'}
-            className="absolute inset-0 w-full h-full object-cover cursor-zoom-in"
+            className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsZoomOpen(true);
-            }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -248,17 +240,6 @@ export const CatchCard = ({ catchItem, onCatchClick, onLike, showLikeButton = fa
           </span>
         </div>
       </CardContent>
-
-      {/* Media Zoom Viewer */}
-      {catchItem.photo_url && (
-        <MediaZoomViewer
-          isOpen={isZoomOpen}
-          onClose={() => setIsZoomOpen(false)}
-          src={getR2ImageUrlProxy(catchItem.photo_url)}
-          alt={catchItem.fish_species?.name || 'Captură'}
-          type="image"
-        />
-      )}
     </Card>
   );
 };

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
 import ShareButton from '@/components/ShareButton';
+import ImageZoom from '@/forum/components/ImageZoom';
 
 interface FishRecord {
   id: string;
@@ -63,6 +64,7 @@ const RecordDetailsModal = ({
   canEdit = false
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   if (!isOpen || !record) return null;
 
@@ -313,19 +315,13 @@ const RecordDetailsModal = ({
                         <img
                           src={getR2ImageUrlProxy(getImageUrl()!)}
                           alt={`Poza record ${record.fish_species?.name}`}
-                          className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow border border-gray-200 dark:border-slate-600"
+                          className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow border border-gray-200 dark:border-slate-600 cursor-pointer"
+                          onClick={() => setIsZoomOpen(true)}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                           }}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
-                          <button className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 p-2 rounded-full transition-all">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                          </button>
-                        </div>
                       </div>
                     )}
                     {record.video_url && (
@@ -407,6 +403,15 @@ const RecordDetailsModal = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Image Zoom */}
+      {isZoomOpen && getImageUrl() && (
+        <ImageZoom
+          src={getR2ImageUrlProxy(getImageUrl()!)}
+          alt={`Poza record ${record.fish_species?.name}`}
+          onClose={() => setIsZoomOpen(false)}
+        />
+      )}
     </div>
   );
 };

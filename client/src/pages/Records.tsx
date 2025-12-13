@@ -12,7 +12,6 @@ import FishingEntryModal from '@/components/FishingEntryModal';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import ShareButton from '@/components/ShareButton';
-import { MediaZoomViewer } from '@/components/MediaZoomViewer';
 
 interface FishRecord {
   id: string;
@@ -92,11 +91,6 @@ const Records = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FishRecord | null>(null);
   
-  // Zoom states
-  const [zoomMediaSrc, setZoomMediaSrc] = useState<string>('');
-  const [zoomMediaType, setZoomMediaType] = useState<'image' | 'video'>('image');
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
-
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [minWeight, setMinWeight] = useState('');
@@ -852,11 +846,6 @@ const Records = () => {
                                   src={getR2ImageUrlProxy(imageUrl)}
                                   alt={record.fish_species?.name || 'Record'}
                                   className="w-full h-full object-cover transition-transform duration-200 group-hover/zoom:scale-105"
-                                  onClick={() => {
-                                    setZoomMediaSrc(getR2ImageUrlProxy(imageUrl));
-                                    setZoomMediaType('image');
-                                    setIsZoomOpen(true);
-                                  }}
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -868,11 +857,6 @@ const Records = () => {
                                   className="w-full h-full object-cover transition-transform duration-200 group-hover/zoom:scale-105"
                                   muted
                                   playsInline
-                                  onClick={() => {
-                                    setZoomMediaSrc(getR2ImageUrlProxy(videoUrl));
-                                    setZoomMediaType('video');
-                                    setIsZoomOpen(true);
-                                  }}
                                 />
                               ) : null}
                               {videoUrl && (
@@ -1016,14 +1000,6 @@ const Records = () => {
             />
           )}
 
-          {/* Media Zoom Viewer */}
-          <MediaZoomViewer
-            isOpen={isZoomOpen}
-            onClose={() => setIsZoomOpen(false)}
-            src={zoomMediaSrc}
-            alt="Record media"
-            type={zoomMediaType}
-          />
         </div>
       </div>
     </>
