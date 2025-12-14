@@ -63,16 +63,15 @@ export default function EditorInputModal({
         return;
       }
     } else if (type === 'catch' || type === 'gear') {
-      // Pentru catch/gear, validăm ID-ul (UUID sau număr)
+      // Pentru catch/gear, validăm doar numărul (global_id)
       if (!url.trim()) {
-        setError('ID-ul este obligatoriu!');
+        setError('Numărul este obligatoriu!');
         return;
       }
-      // Validare ID: UUID sau număr
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim());
+      // Validare: doar număr
       const isNumber = /^\d+$/.test(url.trim());
-      if (!isUUID && !isNumber) {
-        setError('ID invalid! Folosește UUID sau număr.');
+      if (!isNumber) {
+        setError('Număr invalid! Folosește doar numărul.');
         return;
       }
     } else {
@@ -164,9 +163,9 @@ export default function EditorInputModal({
       case 'record':
         return 'Număr record';
       case 'catch':
-        return 'UUID sau număr captură';
+        return 'Număr captură';
       case 'gear':
-        return 'UUID echipament';
+        return 'Număr echipament';
     }
   };
 

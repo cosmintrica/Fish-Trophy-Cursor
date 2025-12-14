@@ -138,8 +138,8 @@ export default function MessageContainer({
 
     const embedRoots = new Map<HTMLElement, Root>();
 
-    // Use a small delay to ensure DOM is updated after dangerouslySetInnerHTML
-    const timeoutId = setTimeout(() => {
+    // Use requestAnimationFrame + setTimeout to ensure DOM is fully updated after dangerouslySetInnerHTML
+    const renderEmbeds = () => {
       if (!contentRef.current) return;
 
       // Find all embed containers
@@ -151,6 +151,8 @@ export default function MessageContainer({
       recordEmbeds.forEach((container) => {
         const recordId = (container as HTMLElement).dataset.recordId;
         if (recordId && !embedRoots.has(container as HTMLElement)) {
+          // Clear existing content
+          container.innerHTML = '';
           const root = createRoot(container as HTMLElement);
           root.render(<RecordEmbed recordId={recordId} />);
           embedRoots.set(container as HTMLElement, root);
@@ -161,6 +163,8 @@ export default function MessageContainer({
       catchEmbeds.forEach((container) => {
         const catchId = (container as HTMLElement).dataset.catchId;
         if (catchId && !embedRoots.has(container as HTMLElement)) {
+          // Clear existing content
+          container.innerHTML = '';
           const root = createRoot(container as HTMLElement);
           root.render(<CatchEmbed catchId={catchId} />);
           embedRoots.set(container as HTMLElement, root);
@@ -171,16 +175,22 @@ export default function MessageContainer({
       gearEmbeds.forEach((container) => {
         const gearId = (container as HTMLElement).dataset.gearId;
         if (gearId && !embedRoots.has(container as HTMLElement)) {
+          // Clear existing content
+          container.innerHTML = '';
           const root = createRoot(container as HTMLElement);
           root.render(<GearEmbed gearId={gearId} />);
           embedRoots.set(container as HTMLElement, root);
         }
       });
-    }, 100);
+    };
+
+    // Use requestAnimationFrame to wait for DOM update, then setTimeout for safety
+    requestAnimationFrame(() => {
+      setTimeout(renderEmbeds, 150);
+    });
 
     // Cleanup on unmount
     return () => {
-      clearTimeout(timeoutId);
       embedRoots.forEach((root, container) => {
         root.unmount();
       });
