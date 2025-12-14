@@ -19,7 +19,7 @@ export const useRecords = (userId: string | undefined) => {
                 .from('records')
                 .select(`
                     *,
-                    fish_species:species_id(name),
+                    fish_species:species_id(name, scientific_name),
                     fishing_locations:location_id(name, type, county),
                     profiles!records_user_id_fkey(id, display_name, username, photo_url)
                 `)

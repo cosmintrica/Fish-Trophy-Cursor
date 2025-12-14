@@ -50,8 +50,20 @@ export default function EditorInputModal({
         setError('Username invalid! Folosește doar litere, cifre, puncte, underscore sau cratimă.');
         return;
       }
-    } else if (type === 'record' || type === 'catch' || type === 'gear') {
-      // Pentru embed-uri, validăm ID-ul (UUID sau număr)
+    } else if (type === 'record') {
+      // Pentru record, validăm doar numărul (global_id)
+      if (!url.trim()) {
+        setError('Numărul recordului este obligatoriu!');
+        return;
+      }
+      // Validare: doar număr
+      const isNumber = /^\d+$/.test(url.trim());
+      if (!isNumber) {
+        setError('Număr invalid! Folosește doar numărul recordului.');
+        return;
+      }
+    } else if (type === 'catch' || type === 'gear') {
+      // Pentru catch/gear, validăm ID-ul (UUID sau număr)
       if (!url.trim()) {
         setError('ID-ul este obligatoriu!');
         return;
@@ -150,7 +162,7 @@ export default function EditorInputModal({
       case 'mention':
         return 'username';
       case 'record':
-        return 'UUID sau număr record';
+        return 'Număr record';
       case 'catch':
         return 'UUID sau număr captură';
       case 'gear':

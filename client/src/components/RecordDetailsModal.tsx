@@ -41,6 +41,7 @@ interface FishRecord {
   global_id?: number | null;
   fish_species?: {
     name: string;
+    scientific_name?: string;
   };
   fishing_locations?: {
     name: string;
@@ -343,6 +344,23 @@ const RecordDetailsModal = ({
                     <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
                       Record
                     </span>
+                    {record.global_id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(record.global_id!.toString());
+                            toast.success(`ID ${record.global_id} copiat!`);
+                          } catch (err) {
+                            toast.error('Eroare la copierea ID-ului');
+                          }
+                        }}
+                        className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
+                        title="Click pentru a copia ID-ul"
+                      >
+                        #{record.global_id}
+                      </button>
+                    )}
                     {record.status === 'verified' && (
                       <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-[10px] font-bold uppercase tracking-wider">
                         <CheckCircle className="w-3 h-3" /> Verificat
@@ -352,6 +370,11 @@ const RecordDetailsModal = ({
                   <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mt-0">
                     {recordTitle}
                   </h2>
+                  {record.fish_species?.scientific_name && (
+                    <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1">
+                      {record.fish_species.scientific_name}
+                    </p>
+                  )}
                 </div>
 
                 {/* Header Actions: Close Button (Correctly positioned) */}

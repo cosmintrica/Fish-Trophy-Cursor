@@ -467,7 +467,7 @@ const PublicProfile = () => {
         .select(`
           *,
           profiles:user_id(display_name, username, photo_url),
-          fish_species:species_id(name),
+          fish_species:species_id(name, scientific_name),
           fishing_locations:location_id(name, type, county)
         `)
         .eq('user_id', profileData.id)
