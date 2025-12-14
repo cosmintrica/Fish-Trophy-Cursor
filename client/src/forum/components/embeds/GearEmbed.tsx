@@ -39,6 +39,7 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
         if (isMounted) {
           setError('Eroare la încărcarea echipamentului');
           console.error('Error loading gear embed:', err);
+          console.error('Gear ID:', gearId);
         }
       } finally {
         if (isMounted) {

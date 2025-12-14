@@ -89,8 +89,14 @@ export async function fetchRecordEmbedData(recordId: string): Promise<RecordEmbe
 
     const { data, error } = await query.single();
 
-    if (error || !data) {
+    if (error) {
       console.error('Error fetching record embed:', error);
+      console.error('Query details:', { recordId, isUUID, globalId: isUUID ? null : parseInt(recordId, 10) });
+      return null;
+    }
+
+    if (!data) {
+      console.warn('No record found for:', recordId);
       return null;
     }
 
@@ -158,8 +164,14 @@ export async function fetchCatchEmbedData(catchId: string): Promise<CatchEmbedDa
 
     const { data, error } = await query.single();
 
-    if (error || !data) {
+    if (error) {
       console.error('Error fetching catch embed:', error);
+      console.error('Query details:', { catchId, isUUID, globalId: isUUID ? null : parseInt(catchId, 10) });
+      return null;
+    }
+
+    if (!data) {
+      console.warn('No catch found for:', catchId);
       return null;
     }
 
@@ -190,28 +202,52 @@ export async function fetchCatchEmbedData(catchId: string): Promise<CatchEmbedDa
 }
 
 /**
- * Fetch gear data by ID
+ * Fetch gear data by ID (supports both UUID and global_id)
  */
 export async function fetchGearEmbedData(gearId: string): Promise<GearEmbedData | null> {
   try {
-    const { data, error } = await supabase
+    // Try to parse as UUID first
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gearId);
+    
+    let query = supabase
       .from('user_gear')
       .select(`
         id,
         name,
         brand,
         model,
-        price,
+        purchase_price,
         purchase_date,
         image_url,
         description,
-        category
+        gear_type,
+        global_id
       `)
-      .eq('id', gearId)
-      .single();
+      .eq('is_public', true)
+      .limit(1);
 
-    if (error || !data) {
+    if (isUUID) {
+      query = query.eq('id', gearId);
+    } else {
+      // Try as global_id (number)
+      const globalId = parseInt(gearId, 10);
+      if (!isNaN(globalId)) {
+        query = query.eq('global_id', globalId);
+      } else {
+        return null;
+      }
+    }
+
+    const { data, error } = await query.single();
+
+    if (error) {
       console.error('Error fetching gear embed:', error);
+      console.error('Query details:', { gearId, isUUID, globalId: isUUID ? null : parseInt(gearId, 10) });
+      return null;
+    }
+
+    if (!data) {
+      console.warn('No gear found for:', gearId);
       return null;
     }
 

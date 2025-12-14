@@ -40,6 +40,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
         if (isMounted) {
           setError('Eroare la încărcarea capturii');
           console.error('Error loading catch embed:', err);
+          console.error('Catch ID:', catchId);
         }
       } finally {
         if (isMounted) {

@@ -40,6 +40,7 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
         if (isMounted) {
           setError('Eroare la încărcarea recordului');
           console.error('Error loading record embed:', err);
+          console.error('Record ID:', recordId);
         }
       } finally {
         if (isMounted) {
