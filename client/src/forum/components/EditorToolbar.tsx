@@ -676,6 +676,43 @@ export default function EditorToolbar({
       {/* Separator */}
       <div style={{ width: '1px', height: '1.5rem', backgroundColor: theme.border, margin: '0 0.25rem' }} />
 
+      {/* Embeds (Record, Catch, Gear) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        <button
+          type="button"
+          onClick={formatRecord}
+          title="Inserare Record"
+          style={buttonStyle}
+          onMouseEnter={buttonHover}
+          onMouseLeave={buttonLeave}
+        >
+          <Trophy size={isMobile ? 14 : 16} />
+        </button>
+        <button
+          type="button"
+          onClick={formatCatch}
+          title="Inserare Captură"
+          style={buttonStyle}
+          onMouseEnter={buttonHover}
+          onMouseLeave={buttonLeave}
+        >
+          <Fish size={isMobile ? 14 : 16} />
+        </button>
+        <button
+          type="button"
+          onClick={formatGear}
+          title="Inserare Echipament"
+          style={buttonStyle}
+          onMouseEnter={buttonHover}
+          onMouseLeave={buttonLeave}
+        >
+          <Wrench size={isMobile ? 14 : 16} />
+        </button>
+      </div>
+
+      {/* Separator */}
+      <div style={{ width: '1px', height: '1.5rem', backgroundColor: theme.border, margin: '0 0.25rem' }} />
+
       {/* Spoiler */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
         <button
