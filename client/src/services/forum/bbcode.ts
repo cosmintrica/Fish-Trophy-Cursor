@@ -11,6 +11,7 @@ import type { BBCodeParseResult } from './types'
 
 const BB_CODE_PATTERNS = {
     record: /\[record\]([\w-]+)\[\/record\]/gi,
+    catch: /\[catch\]([\w-]+)\[\/catch\]/gi,
     gear: /\[gear\]([\w-]+)\[\/gear\]/gi,
     quote: /\[quote user="([^"]+)" post_id="([^"]+)"\]([\s\S]*?)\[\/quote\]/gi,
     mention: /\[mention\](.+?)\[\/mention\]/gi,
@@ -367,7 +368,7 @@ export function parseBBCode(
     const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
 
     // If content has HTML tags but no BBCode tags, return as-is (already processed)
-    const hasBBCodeTags = /\[(video|img|url|b|i|u|s|h[1-3]|list|code|quote|record|gear|mention|spoiler)/i.test(content);
+    const hasBBCodeTags = /\[(video|img|url|b|i|u|s|h[1-3]|list|code|quote|record|catch|gear|mention|spoiler)/i.test(content);
 
     if (hasHtmlTags && !hasBBCodeTags) {
         // Content is already HTML, return as-is (but still escape for security)
@@ -377,6 +378,7 @@ export function parseBBCode(
             html: content, // Return as-is if it's already HTML
             embeds: {
                 records: [],
+                catches: [],
                 gear: [],
                 quotes: []
             }
@@ -388,6 +390,7 @@ export function parseBBCode(
 
     const embeds: BBCodeParseResult['embeds'] = {
         records: [],
+        catches: [],
         gear: [],
         quotes: []
     }
@@ -400,6 +403,16 @@ export function parseBBCode(
         embeds.records.push(recordId)
         const replacement = `<div class="bbcode-record-embed" data-record-id="${escapeHtml(recordId)}">
       <div class="loading">Loading record ${escapeHtml(recordId)}...</div>
+    </div>`
+        replacements.push({ original: match, replacement })
+        return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
+    })
+
+    // Parse [catch] tags
+    html = html.replace(BB_CODE_PATTERNS.catch, (match, catchId) => {
+        embeds.catches.push(catchId)
+        const replacement = `<div class="bbcode-catch-embed" data-catch-id="${escapeHtml(catchId)}">
+      <div class="loading">Loading catch ${escapeHtml(catchId)}...</div>
     </div>`
         replacements.push({ original: match, replacement })
         return `__BBCODE_REPLACEMENT_${replacements.length - 1}__`
@@ -695,6 +708,13 @@ export function generateRecordBBCode(recordId: string): string {
 }
 
 /**
+ * Generate BBCode for embedding a catch
+ */
+export function generateCatchBBCode(catchId: string): string {
+    return `[catch]${catchId}[/catch]`
+}
+
+/**
  * Generate BBCode for embedding gear
  */
 export function generateGearBBCode(gearId: string): string {
@@ -709,6 +729,7 @@ export function stripBBCode(content: string): string {
 
     // Remove all BBCode tags
     stripped = stripped.replace(/\[record\][\w-]+\[\/record\]/gi, '[Record]')
+    stripped = stripped.replace(/\[catch\][\w-]+\[\/catch\]/gi, '[Captură]')
     stripped = stripped.replace(/\[gear\][\w-]+\[\/gear\]/gi, '[Echipament]')
     stripped = stripped.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '[Quote]')
     stripped = stripped.replace(/\[mention\](.+?)\[\/mention\]/gi, '@$1')
@@ -745,6 +766,15 @@ export function validateBBCode(content: string): { valid: boolean; errors: strin
         const recordId = match[1]
         if (!recordId || recordId.length < 3) {
             errors.push(`ID record invalid: ${recordId}`)
+        }
+    }
+
+    // Check for invalid catch IDs
+    const catchMatches = content.matchAll(BB_CODE_PATTERNS.catch)
+    for (const match of catchMatches) {
+        const catchId = match[1]
+        if (!catchId || catchId.length < 3) {
+            errors.push(`ID captură invalid: ${catchId}`)
         }
     }
 

@@ -76,9 +76,12 @@ interface UserRecord {
   verified_at?: string;
   rejection_reason?: string;
   fish_species?: {
+    id: string;
     name: string;
+    scientific_name?: string;
   };
   fishing_locations?: {
+    id: string;
     name: string;
     type: string;
     county: string;
@@ -87,6 +90,7 @@ interface UserRecord {
     id: string;
     display_name: string;
     username?: string;
+    email?: string;
     photo_url?: string;
   };
 }
@@ -1441,7 +1445,7 @@ const PublicProfile = () => {
       {/* Edit Record Modal */}
       {editingRecord && (
         <FishingEntryModal
-          entry={editingRecord}
+          entry={editingRecord as any}
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);

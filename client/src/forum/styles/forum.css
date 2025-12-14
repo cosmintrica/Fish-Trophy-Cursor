@@ -604,11 +604,12 @@
   }
 }
 
-/* Record and Gear embeds */
+/* Record, Catch and Gear embeds */
 .bbcode-record-embed,
+.bbcode-catch-embed,
 .bbcode-gear-embed {
   margin: 1rem 0;
-  padding: 1rem;
+  padding: 0;
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 0.5rem;
@@ -670,6 +671,7 @@
   }
 
   .bbcode-record-embed,
+  .bbcode-catch-embed,
   .bbcode-gear-embed {
     background: rgba(255, 255, 255, 0.02);
     border-color: rgba(255, 255, 255, 0.1);

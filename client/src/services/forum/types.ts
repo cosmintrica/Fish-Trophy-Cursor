@@ -448,6 +448,7 @@ export interface BBCodeParseResult {
     html: string
     embeds: {
         records: string[] // Record IDs
+        catches: string[] // Catch IDs
         gear: string[] // Gear IDs
         quotes: { user: string; post_id: string; text: string }[]
     }

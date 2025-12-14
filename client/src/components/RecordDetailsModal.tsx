@@ -51,7 +51,7 @@ interface FishRecord {
     id: string;
     display_name: string;
     username?: string;
-    email: string;
+    email?: string;
     photo_url?: string;
   };
   verified_by_profile?: {

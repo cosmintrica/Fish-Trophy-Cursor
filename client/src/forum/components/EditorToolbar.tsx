@@ -20,7 +20,10 @@ import {
   Video,
   Smile,
   EyeOff,
-  AtSign
+  AtSign,
+  Trophy,
+  Fish,
+  Wrench
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import EditorInputModal from './EditorInputModal';
@@ -40,7 +43,7 @@ export default function EditorToolbar({
   isMobile = false 
 }: EditorToolbarProps) {
   const { theme } = useTheme();
-  const [inputModal, setInputModal] = useState<{ type: 'link' | 'image' | 'video'; isOpen: boolean }>({
+  const [inputModal, setInputModal] = useState<{ type: 'link' | 'image' | 'video' | 'record' | 'catch' | 'gear'; isOpen: boolean }>({
     type: 'link',
     isOpen: false
   });
@@ -294,6 +297,117 @@ export default function EditorToolbar({
       if (textarea) {
         const currentText = currentContent || textarea.value;
         const newText = currentText + `[video]${url}[/video]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
+  };
+
+  // Record Embed
+  const formatRecord = () => {
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
+    setInputModal({ type: 'record', isOpen: true });
+  };
+
+  const handleRecordInsert = (id: string) => {
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    if (savedCursorPositionRef.current) {
+      setTimeout(() => {
+        insertText(`[record]`, '[/record]', id, true);
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[record]${id}[/record]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
+  };
+
+  // Catch Embed
+  const formatCatch = () => {
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
+    setInputModal({ type: 'catch', isOpen: true });
+  };
+
+  const handleCatchInsert = (id: string) => {
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    if (savedCursorPositionRef.current) {
+      setTimeout(() => {
+        insertText(`[catch]`, '[/catch]', id, true);
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[catch]${id}[/catch]`;
+        onContentChange?.(newText);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+            textareaRef.current.focus({ preventScroll: true });
+          }
+        }, 50);
+      }
+    }
+  };
+
+  // Gear Embed
+  const formatGear = () => {
+    if (textareaRef.current) {
+      savedCursorPositionRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+    }
+    setInputModal({ type: 'gear', isOpen: true });
+  };
+
+  const handleGearInsert = (id: string) => {
+    const savedScroll = savedCursorPositionRef.current?.scrollTop ?? (window.pageYOffset || document.documentElement.scrollTop);
+    if (savedCursorPositionRef.current) {
+      setTimeout(() => {
+        insertText(`[gear]`, '[/gear]', id, true);
+        setTimeout(() => {
+          window.scrollTo({ top: savedScroll, behavior: 'auto' });
+        }, 100);
+      }, 100);
+    } else {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentText = currentContent || textarea.value;
+        const newText = currentText + `[gear]${id}[/gear]`;
         onContentChange?.(newText);
         setTimeout(() => {
           if (textareaRef.current) {
@@ -618,7 +732,7 @@ export default function EditorToolbar({
         />
       </div>
 
-      {/* Modaluri pentru Link/Image/Video/Mention */}
+      {/* Modaluri pentru Link/Image/Video/Record/Catch/Gear */}
       <EditorInputModal
         isOpen={inputModal.isOpen && inputModal.type === 'link'}
         type="link"
@@ -638,6 +752,27 @@ export default function EditorToolbar({
         type="video"
         onClose={() => setInputModal({ type: 'video', isOpen: false })}
         onInsert={handleVideoInsert}
+        isMobile={isMobile}
+      />
+      <EditorInputModal
+        isOpen={inputModal.isOpen && inputModal.type === 'record'}
+        type="record"
+        onClose={() => setInputModal({ type: 'record', isOpen: false })}
+        onInsert={handleRecordInsert}
+        isMobile={isMobile}
+      />
+      <EditorInputModal
+        isOpen={inputModal.isOpen && inputModal.type === 'catch'}
+        type="catch"
+        onClose={() => setInputModal({ type: 'catch', isOpen: false })}
+        onInsert={handleCatchInsert}
+        isMobile={isMobile}
+      />
+      <EditorInputModal
+        isOpen={inputModal.isOpen && inputModal.type === 'gear'}
+        type="gear"
+        onClose={() => setInputModal({ type: 'gear', isOpen: false })}
+        onInsert={handleGearInsert}
         isMobile={isMobile}
       />
     </div>

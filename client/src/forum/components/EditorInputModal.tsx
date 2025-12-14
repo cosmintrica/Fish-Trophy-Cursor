@@ -3,12 +3,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Link, Image, Video, AtSign } from 'lucide-react';
+import { X, Link, Image, Video, AtSign, Trophy, Fish, Wrench } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface EditorInputModalProps {
   isOpen: boolean;
-  type: 'link' | 'image' | 'video' | 'mention';
+  type: 'link' | 'image' | 'video' | 'mention' | 'record' | 'catch' | 'gear';
   onClose: () => void;
   onInsert: (url: string, text?: string) => void;
   isMobile?: boolean;
@@ -48,6 +48,19 @@ export default function EditorInputModal({
       // Validare username simplă (doar alfanumerice, underscore, puncte)
       if (!/^[a-zA-Z0-9_.-]+$/.test(url.trim())) {
         setError('Username invalid! Folosește doar litere, cifre, puncte, underscore sau cratimă.');
+        return;
+      }
+    } else if (type === 'record' || type === 'catch' || type === 'gear') {
+      // Pentru embed-uri, validăm ID-ul (UUID sau număr)
+      if (!url.trim()) {
+        setError('ID-ul este obligatoriu!');
+        return;
+      }
+      // Validare ID: UUID sau număr
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim());
+      const isNumber = /^\d+$/.test(url.trim());
+      if (!isUUID && !isNumber) {
+        setError('ID invalid! Folosește UUID sau număr.');
         return;
       }
     } else {
@@ -98,6 +111,12 @@ export default function EditorInputModal({
         return 'Inserare Video';
       case 'mention':
         return 'Mențiune Utilizator';
+      case 'record':
+        return 'Inserare Record';
+      case 'catch':
+        return 'Inserare Captură';
+      case 'gear':
+        return 'Inserare Echipament';
     }
   };
 
@@ -111,6 +130,12 @@ export default function EditorInputModal({
         return <Video size={isMobile ? 18 : 20} />;
       case 'mention':
         return <AtSign size={isMobile ? 18 : 20} />;
+      case 'record':
+        return <Trophy size={isMobile ? 18 : 20} />;
+      case 'catch':
+        return <Fish size={isMobile ? 18 : 20} />;
+      case 'gear':
+        return <Wrench size={isMobile ? 18 : 20} />;
     }
   };
 
@@ -124,6 +149,12 @@ export default function EditorInputModal({
         return 'https://www.youtube.com/watch?v=... sau https://vimeo.com/...';
       case 'mention':
         return 'username';
+      case 'record':
+        return 'UUID sau număr record';
+      case 'catch':
+        return 'UUID sau număr captură';
+      case 'gear':
+        return 'UUID echipament';
     }
   };
 
@@ -233,11 +264,13 @@ export default function EditorInputModal({
                   marginBottom: '0.5rem'
                 }}
               >
-                {type === 'mention' ? 'Username' : `URL ${type === 'video' ? '(YouTube sau Vimeo)' : ''}`}
+                {type === 'mention' ? 'Username' : 
+                 type === 'record' || type === 'catch' || type === 'gear' ? 'ID' :
+                 `URL ${type === 'video' ? '(YouTube sau Vimeo)' : ''}`}
               </label>
               <input
                 id="url-input"
-                type={type === 'mention' ? 'text' : 'url'}
+                type={type === 'mention' || type === 'record' || type === 'catch' || type === 'gear' ? 'text' : 'url'}
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);

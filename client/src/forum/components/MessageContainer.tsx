@@ -4,11 +4,15 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createRoot, Root } from 'react-dom/client';
 import { useNavigate } from 'react-router-dom';
 import { Save, X, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import RecordEmbed from './embeds/RecordEmbed';
+import CatchEmbed from './embeds/CatchEmbed';
+import GearEmbed from './embeds/GearEmbed';
 import { parseBBCode } from '../../services/forum/bbcode';
 import { useUpdatePost } from '../hooks/usePosts';
 import { useToast } from '../contexts/ToastContext';
@@ -127,6 +131,62 @@ export default function MessageContainer({
     });
     return parsed.html;
   }, [post.content, postNumber, categorySlug, subcategorySlug, topicSlug, postNumberMap]);
+
+  // Render embed components (records, catches, gear)
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    const embedRoots = new Map<HTMLElement, Root>();
+
+    // Use a small delay to ensure DOM is updated after dangerouslySetInnerHTML
+    const timeoutId = setTimeout(() => {
+      if (!contentRef.current) return;
+
+      // Find all embed containers
+      const recordEmbeds = contentRef.current.querySelectorAll('.bbcode-record-embed[data-record-id]');
+      const catchEmbeds = contentRef.current.querySelectorAll('.bbcode-catch-embed[data-catch-id]');
+      const gearEmbeds = contentRef.current.querySelectorAll('.bbcode-gear-embed[data-gear-id]');
+
+      // Render record embeds
+      recordEmbeds.forEach((container) => {
+        const recordId = (container as HTMLElement).dataset.recordId;
+        if (recordId && !embedRoots.has(container as HTMLElement)) {
+          const root = createRoot(container as HTMLElement);
+          root.render(<RecordEmbed recordId={recordId} />);
+          embedRoots.set(container as HTMLElement, root);
+        }
+      });
+
+      // Render catch embeds
+      catchEmbeds.forEach((container) => {
+        const catchId = (container as HTMLElement).dataset.catchId;
+        if (catchId && !embedRoots.has(container as HTMLElement)) {
+          const root = createRoot(container as HTMLElement);
+          root.render(<CatchEmbed catchId={catchId} />);
+          embedRoots.set(container as HTMLElement, root);
+        }
+      });
+
+      // Render gear embeds
+      gearEmbeds.forEach((container) => {
+        const gearId = (container as HTMLElement).dataset.gearId;
+        if (gearId && !embedRoots.has(container as HTMLElement)) {
+          const root = createRoot(container as HTMLElement);
+          root.render(<GearEmbed gearId={gearId} />);
+          embedRoots.set(container as HTMLElement, root);
+        }
+      });
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(timeoutId);
+      embedRoots.forEach((root, container) => {
+        root.unmount();
+      });
+      embedRoots.clear();
+    };
+  }, [parsedContent]);
 
   // Add click handlers for images to enable zoom
   useEffect(() => {
