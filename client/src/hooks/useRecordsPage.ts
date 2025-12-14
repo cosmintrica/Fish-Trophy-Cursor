@@ -17,7 +17,7 @@ export function useAllRecords() {
           *,
           fish_species:species_id(name, scientific_name),
           fishing_locations:location_id(name, type, county),
-          profiles!records_user_id_fkey(id, display_name, username, email)
+          profiles!records_user_id_fkey(id, display_name, username, email, photo_url)
         `)
         .eq('status', 'verified')
         .order('weight', { ascending: false })

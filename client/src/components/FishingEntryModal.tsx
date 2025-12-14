@@ -55,6 +55,7 @@ interface BaseEntry {
     type: string;
     county: string;
   };
+  extra_images?: string[]; // Added support for multiple images
 }
 
 interface FishingEntryModalProps {
@@ -64,17 +65,17 @@ interface FishingEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  
+
   // Entry data (for edit mode)
   entry?: BaseEntry | null;
-  
+
   // Pre-filled location (for add mode from map)
   locationId?: string;
   locationName?: string;
-  
+
   // Admin mode
   isAdmin?: boolean;
-  
+
   // Delete handler (for edit mode)
   onDelete?: () => void;
 }
@@ -121,11 +122,11 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<{ photos?: string[]; video?: string }>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+
   // Track files to be deleted from R2 (only delete when saving, not when canceling)
   const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
   const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
-  
+
   // Store original URLs for cancel restoration
   const [originalPhotoUrls, setOriginalPhotoUrls] = useState<string[]>([]);
   const [originalVideoUrl, setOriginalVideoUrl] = useState<string>('');
@@ -193,15 +194,15 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
   // Populate form when entry changes (edit mode)
   useEffect(() => {
     if (entry && isOpen && isEdit) {
-      // Records use image_url, catches use photo_url
+      // Records use image_url (main) + extra_images (array), catches use photo_url
       const existingPhotoUrls = isRecord
-        ? (entry.image_url ? [entry.image_url] : [])
+        ? [entry.image_url, ...(entry.extra_images || [])].filter(Boolean) as string[]
         : (entry.photo_url ? [entry.photo_url] : []);
-      
+
       // Store original URLs for cancel restoration
       setOriginalPhotoUrls(existingPhotoUrls);
       setOriginalVideoUrl(entry.video_url || '');
-      
+
       // Fetch global_id if not in entry object
       const loadEntryId = async () => {
         const tableName = isRecord ? 'records' : 'catches';
@@ -210,7 +211,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           .select('global_id')
           .eq('id', entry.id)
           .single();
-        
+
         // Records use date_caught (date) + time_caught (time), catches use captured_at (timestamptz)
         let capturedAt: string;
         if (isRecord) {
@@ -222,10 +223,10 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           // Catches use captured_at directly
           capturedAt = entry.captured_at || new Date().toISOString().slice(0, 16);
         }
-        
+
         // Records use 'length' (integer), catches use 'length_cm' (decimal)
         const lengthValue = isRecord ? entry.length : entry.length_cm;
-        
+
         setFormData(prev => ({
           ...prev,
           species_id: entry.species_id || '',
@@ -241,7 +242,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           global_id: data?.global_id || entry.global_id || null
         }));
       };
-      
+
       loadEntryId();
       setPreviewUrls({
         photos: existingPhotoUrls.map(url => getR2ImageUrlProxy(url)),
@@ -250,7 +251,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       setSelectedLocation(entry.location_id || '');
       setSpeciesSearchTerm(entry.fish_species?.name || '');
       setLocationSearchTerm(entry.fishing_locations?.name || '');
-      
+
       // Reset deletion tracking
       setPhotosToDelete([]);
       setVideoToDelete(null);
@@ -273,7 +274,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       setSelectedLocation(locationId || '');
       setSpeciesSearchTerm('');
       setLocationSearchTerm(locationName || '');
-      
+
       // Reset deletion tracking
       setPhotosToDelete([]);
       setVideoToDelete(null);
@@ -341,9 +342,9 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       const normalizedName = removeDiacritics(l.name.toLowerCase());
       const normalizedCounty = removeDiacritics(l.county.toLowerCase());
       const normalizedType = removeDiacritics(l.type.toLowerCase());
-      return normalizedName.includes(normalizedTerm) || 
-             normalizedCounty.includes(normalizedTerm) ||
-             normalizedType.includes(normalizedTerm);
+      return normalizedName.includes(normalizedTerm) ||
+        normalizedCounty.includes(normalizedTerm) ||
+        normalizedType.includes(normalizedTerm);
     });
   };
 
@@ -367,26 +368,26 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       }));
     } else {
       const file = files[0];
-      
+
       // Validare explicită pentru tipul de fișier video (inclusiv .mov de pe iPhone)
       // iPhone folosește video/quicktime pentru .mov
       const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/avi', 'video/mov'];
       const validExtensions = ['.mp4', '.mov', '.avi', '.m4v'];
       const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
       const isValidVideoType = file.type.startsWith('video/') || validVideoTypes.includes(file.type) || validExtensions.includes(fileExtension);
-      
+
       if (!isValidVideoType) {
         toast.error('Tip de fișier nevalid. Acceptăm doar videouri: MP4, MOV, AVI');
         return;
       }
-      
+
       // Validare pentru dimensiunea fișierului (max 100MB)
       const maxSize = 100 * 1024 * 1024; // 100MB
       if (file.size > maxSize) {
         toast.error('Fișierul este prea mare. Dimensiunea maximă este 100MB');
         return;
       }
-      
+
       setFormData(prev => ({ ...prev, video_file: file }));
       setPreviewUrls(prev => ({
         ...prev,
@@ -405,7 +406,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       }
 
       const baseUrl = getNetlifyFunctionsBaseUrl();
-      const deleteEndpoint = baseUrl 
+      const deleteEndpoint = baseUrl
         ? `${baseUrl}/.netlify/functions/delete-r2-file`
         : '/.netlify/functions/delete-r2-file';
 
@@ -430,7 +431,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
   const removePhoto = (index: number) => {
     const isExistingPhoto = index < formData.photo_urls.length;
-    
+
     if (isExistingPhoto) {
       // Mark existing photo for deletion (don't delete from R2 yet - only on save)
       const photoUrl = formData.photo_urls[index];
@@ -442,7 +443,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     setFormData(prev => {
       const newPhotos = [...prev.photo_urls];
       const newFiles = [...prev.photo_files];
-      
+
       if (index < newPhotos.length) {
         newPhotos.splice(index, 1);
       } else {
@@ -452,7 +453,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         }
         newFiles.splice(fileIndex, 1);
       }
-      
+
       return {
         ...prev,
         photo_urls: newPhotos,
@@ -505,7 +506,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         .select('global_id')
         .eq('id', entry.id)
         .single();
-      
+
       if (entryData?.global_id) {
         finalEntryId = `${isRecord ? 'record' : 'catch'}-${entryData.global_id}`;
       } else {
@@ -523,23 +524,23 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     const fileExtension = sanitizedFileName.split('.').pop() || '';
     const baseFileName = sanitizedFileName.replace(/\.[^/.]+$/, '');
     const fileName = `${finalEntryId}_${timestamp}_${baseFileName}.${fileExtension}`;
-    
+
     const subCategory = fileType === 'photo' ? 'images' : 'videos';
     // Records use 'records' category, catches use 'journal' category
     const category = isRecord ? 'records' : 'journal';
 
     // Use presigned URL for large files (>10MB) or videos (especially .mov from iPhone)
+    // BUT: In development, always use Netlify Function to avoid CORS issues
     const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
     const isLargeFile = file.size > LARGE_FILE_THRESHOLD || fileType === 'video';
     const isMovFile = file.name.toLowerCase().endsWith('.mov') || file.type === 'video/quicktime';
+    const isDevelopment = import.meta.env.DEV;
 
-    if (isLargeFile || isMovFile) {
-      // Use presigned URL for direct upload to R2
+    // Only use presigned URL in production (avoids CORS issues in development)
+    if ((isLargeFile || isMovFile) && !isDevelopment) {
+      // Use presigned URL for direct upload to R2 (production only)
       try {
-        const baseUrl = getNetlifyFunctionsBaseUrl();
-        const presignedUrlEndpoint = baseUrl
-          ? `${baseUrl}/.netlify/functions/get-r2-presigned-url`
-          : '/.netlify/functions/get-r2-presigned-url';
+        const presignedUrlEndpoint = '/.netlify/functions/get-r2-presigned-url';
 
         // Get presigned URL
         const presignedResponse = await fetch(presignedUrlEndpoint, {
@@ -596,9 +597,9 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     const baseUrl = getNetlifyFunctionsBaseUrl();
     const uploadUrls = baseUrl
       ? [
-          `${baseUrl}/.netlify/functions/upload`,
-          '/.netlify/functions/upload'
-        ]
+        `${baseUrl}/.netlify/functions/upload`,
+        '/.netlify/functions/upload'
+      ]
       : ['/.netlify/functions/upload'];
 
     let lastError: Error | null = null;
@@ -672,14 +673,17 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         return;
       }
 
-      if (formData.photo_files.length === 0 && formData.photo_urls.length === 0) {
-        toast.error('Cel puțin o fotografie este obligatorie pentru record');
-        return;
-      }
+      // Admin can save without photos/video, but regular users need them
+      if (!isAdmin) {
+        if (formData.photo_files.length === 0 && formData.photo_urls.length === 0) {
+          toast.error('Cel puțin o fotografie este obligatorie pentru record');
+          return;
+        }
 
-      if (!formData.video_file && !formData.video_url) {
-        toast.error('Videoclipul este obligatoriu pentru record');
-        return;
+        if (!formData.video_file && !formData.video_url) {
+          toast.error('Videoclipul este obligatoriu pentru record');
+          return;
+        }
       }
     }
 
@@ -695,7 +699,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           .select('username')
           .eq('id', user.id)
           .single();
-        
+
         if (!profile?.username) {
           throw new Error('Username-ul nu este disponibil');
         }
@@ -728,7 +732,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           });
         }
       }
-      
+
       if (videoToDelete) {
         await deleteFileFromR2(videoToDelete).catch(err => {
           console.warn('Failed to delete video from R2:', err);
@@ -736,7 +740,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       }
 
       if (isRecord) {
-          // Handle record submission/update
+        // Handle record submission/update
         if (isEdit && entry) {
           // Update record
           // Find species name from selected species_id
@@ -757,7 +761,8 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
             date_caught: formData.captured_at.split('T')[0], // records use date_caught (date)
             time_caught: formData.captured_at.split('T')[1] || null, // records use time_caught (time)
             notes: formData.notes || null,
-            image_url: photoUrls.length > 0 ? photoUrls[0] : null, // records use image_url, not photo_url
+            image_url: photoUrls.length > 0 ? photoUrls[0] : null, // Main image
+            extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
             video_url: videoUrl,
             updated_at: new Date().toISOString()
           };
@@ -818,6 +823,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
             time_caught: formData.captured_at.split('T')[1] || null,
             notes: formData.notes || null,
             image_url: photoUrls[0] || null, // records use image_url, not photo_url
+            extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
             video_url: videoUrl,
             status: 'pending'
           };
@@ -937,7 +943,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
       // Get file URLs before deletion for R2 cleanup
       let filesToDelete: string[] = [];
-      
+
       if (isRecord) {
         // Records: image_url and video_url
         if (entry.image_url) {
@@ -959,7 +965,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       // Delete files from R2 first
       if (filesToDelete.length > 0) {
         toast.loading(`Se șterg ${filesToDelete.length} fișier${filesToDelete.length > 1 ? 'e' : ''} din R2...`, { id: toastId });
-        
+
         for (const fileUrl of filesToDelete) {
           await deleteFileFromR2(fileUrl).catch(err => {
             console.warn('Failed to delete file from R2:', fileUrl, err);
@@ -969,17 +975,17 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       }
 
       const tableName = isRecord ? 'records' : 'catches';
-      
+
       // Delete from database
       toast.loading('Se șterge din baza de date...', { id: toastId });
-      
+
       console.log('Deleting from database:', {
         tableName,
         entryId: entry.id,
         userId: user.id,
         entryUserId: (entry as any).user_id
       });
-      
+
       // First, verify the entry exists and belongs to the user
       const { data: verifyData, error: verifyError } = await supabase
         .from(tableName)
@@ -1365,14 +1371,12 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                     <span className="text-xs text-gray-600 dark:text-slate-200">{formData.is_public ? 'Public' : 'Privat'}</span>
                     <div
                       onClick={() => handleInputChange('is_public', !formData.is_public)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        formData.is_public ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-300 dark:bg-slate-700'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_public ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-300 dark:bg-slate-700'
+                        }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-200 transition-transform ${
-                          formData.is_public ? 'translate-x-6' : 'translate-x-1'
-                        }`}
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-200 transition-transform ${formData.is_public ? 'translate-x-6' : 'translate-x-1'
+                          }`}
                       />
                     </div>
                   </label>

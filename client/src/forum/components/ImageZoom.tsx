@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Maximize2, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface ImageZoomProps {
   src: string;
@@ -11,9 +11,11 @@ interface ImageZoomProps {
   className?: string;
   style?: React.CSSProperties;
   onClose?: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
 }
 
-export default function ImageZoom({ src, alt, className = '', style, onClose }: ImageZoomProps) {
+export default function ImageZoom({ src, alt, className = '', style, onClose, onNext, onPrev }: ImageZoomProps) {
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -51,6 +53,12 @@ export default function ImageZoom({ src, alt, className = '', style, onClose }: 
       if (e.key === 'Escape' && onClose) {
         onClose();
       }
+      if (e.key === 'ArrowLeft' && onPrev) {
+        onPrev();
+      }
+      if (e.key === 'ArrowRight' && onNext) {
+        onNext();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -58,7 +66,7 @@ export default function ImageZoom({ src, alt, className = '', style, onClose }: 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, onNext, onPrev]);
 
   // Handle drag start
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -253,8 +261,36 @@ export default function ImageZoom({ src, alt, className = '', style, onClose }: 
         </button>
       </div>
 
+      {/* Navigation Arrows */}
+      {onPrev && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrev();
+          }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[10000] p-4 outline-none"
+          aria-label="Previous Image"
+        >
+          <ArrowLeft size={32} strokeWidth={2} />
+        </button>
+      )}
+
+      {onNext && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext();
+          }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[10000] p-4 outline-none"
+          aria-label="Next Image"
+        >
+          <ArrowRight size={32} strokeWidth={2} />
+        </button>
+      )}
+
       {/* Image zoomed */}
       <img
+        key={src} // Force re-render on src change to reset zoom
         src={src}
         alt={alt}
         onMouseDown={handleMouseDown}

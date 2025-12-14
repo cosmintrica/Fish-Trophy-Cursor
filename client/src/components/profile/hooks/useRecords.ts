@@ -20,7 +20,8 @@ export const useRecords = (userId: string | undefined) => {
                 .select(`
                     *,
                     fish_species:species_id(name),
-                    fishing_locations:location_id(name, type, county)
+                    fishing_locations:location_id(name, type, county),
+                    profiles!records_user_id_fkey(id, display_name, username, photo_url)
                 `)
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })

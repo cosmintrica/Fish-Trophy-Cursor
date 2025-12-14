@@ -196,13 +196,26 @@ export const getR2ImageUrlProxy = (imageUrl: string): string => {
     return imageUrl;
   }
   
-  // Use proxy for R2 URLs to avoid CORS issues
-  // In development, use proxy if netlify dev is running, otherwise use direct URL (will show CORS error)
-  // In production, always use proxy
-  const baseUrl = getNetlifyFunctionsBaseUrl();
-  const proxyPath = `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
+  // In production, always use proxy (relative path)
+  if (import.meta.env.PROD) {
+    return `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
+  }
   
-  return baseUrl ? `${baseUrl}${proxyPath}` : proxyPath;
+  // In development:
+  // 1. Try to use Netlify Dev proxy if available (port 8889)
+  // 2. Fallback to direct R2 URL (R2 allows CORS for public buckets, so this should work)
+  // R2 public buckets allow CORS, so direct URLs work in development
+  // The proxy is mainly needed for production to ensure consistent behavior
+  const baseUrl = getNetlifyFunctionsBaseUrl();
+  
+  // If Netlify Dev is running (baseUrl is set), use proxy
+  if (baseUrl) {
+    return `${baseUrl}/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fallback: Use direct R2 URL (works because R2 public buckets allow CORS)
+  // This ensures images work even if Netlify Dev is not running
+  return imageUrl;
 }
 
 export const getFishSpeciesImage = (speciesName: string, imageType: 'main' | 'detail' | 'habitat' = 'main'): string => {

@@ -12,11 +12,13 @@ import { InlineCoverEditor } from '@/components/profile/InlineCoverEditor';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { registerUnreadCountCallback } from '@/hooks/useRealtimeMessages';
 import { CatchCard } from '@/components/profile/CatchCard';
 import SEOHead from '@/components/SEOHead';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import ShareButton from '@/components/ShareButton';
+import FishingEntryModal from '@/components/FishingEntryModal';
 
 interface UserProfile {
   id: string;
@@ -81,6 +83,12 @@ interface UserRecord {
     type: string;
     county: string;
   };
+  profiles?: {
+    id: string;
+    display_name: string;
+    username?: string;
+    photo_url?: string;
+  };
 }
 
 interface UserCatch {
@@ -117,6 +125,7 @@ interface UserCatch {
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
@@ -134,6 +143,33 @@ const PublicProfile = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [editingRecord, setEditingRecord] = useState<UserRecord | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Helper function to reload records
+  const reloadRecords = async () => {
+    if (!userProfile?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('records')
+        .select(`
+          *,
+          fish_species:species_id(name, scientific_name),
+          fishing_locations:location_id(name, type, county),
+          profiles:user_id(id, display_name, username, photo_url)
+        `)
+        .eq('user_id', userProfile.id)
+        .eq('status', 'verified')
+        .order('weight', { ascending: false });
+
+      if (error) throw error;
+      setUserRecords((data as UserRecord[]) || []);
+    } catch (error: any) {
+      console.error('Error reloading records:', error);
+      toast.error('Eroare la reîncărcarea recordurilor');
+    }
+  };
 
   // Track if we just uploaded a cover to auto-open editor
   const [justUploadedCover, setJustUploadedCover] = useState(false);
@@ -294,6 +330,8 @@ const PublicProfile = () => {
         );
         if (catchItem && !showCatchDetailModal) {
           setSelectedCatch(catchItem);
+          // Check if current user is the owner
+          setIsOwner(user?.id === catchItem.user_id);
           setShowCatchDetailModal(true);
           // Scroll to top to show modal
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -424,6 +462,7 @@ const PublicProfile = () => {
         .from('records')
         .select(`
           *,
+          profiles:user_id(display_name, username, photo_url),
           fish_species:species_id(name),
           fishing_locations:location_id(name, type, county)
         `)
@@ -1188,6 +1227,8 @@ const PublicProfile = () => {
                           catchItem={catchItem}
                           onCatchClick={() => {
                             setSelectedCatch(catchItem);
+                            // Check if current user is the owner
+                            setIsOwner(user?.id === catchItem.user_id);
                             setShowCatchDetailModal(true);
                           }}
                         />
@@ -1365,9 +1406,62 @@ const PublicProfile = () => {
 
       <RecordDetailsModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedRecord(null);
+        }}
         record={selectedRecord}
+        isOwner={selectedRecord ? user?.id === selectedRecord.user_id : false}
+        isAdmin={isAdmin}
+        onEdit={(record) => {
+          setEditingRecord(record as UserRecord);
+          setIsEditModalOpen(true);
+          setIsModalOpen(false);
+        }}
+        onDelete={async (recordId) => {
+          try {
+            const { error } = await supabase
+              .from('records')
+              .delete()
+              .eq('id', recordId);
+            
+            if (error) throw error;
+            
+            toast.success('Record șters cu succes!');
+            setUserRecords(prev => prev.filter(r => r.id !== recordId));
+            setIsModalOpen(false);
+            setSelectedRecord(null);
+          } catch (error: any) {
+            console.error('Error deleting record:', error);
+            toast.error('Eroare la ștergerea recordului');
+          }
+        }}
       />
+
+      {/* Edit Record Modal */}
+      {editingRecord && (
+        <FishingEntryModal
+          entry={editingRecord}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingRecord(null);
+          }}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            setEditingRecord(null);
+            reloadRecords();
+          }}
+          type="record"
+          mode="edit"
+          isAdmin={isAdmin}
+          onDelete={() => {
+            setIsEditModalOpen(false);
+            setEditingRecord(null);
+            reloadRecords();
+          }}
+        />
+      )}
 
       {/* Catch Detail Modal */}
       {selectedCatch && (

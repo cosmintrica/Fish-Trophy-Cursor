@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
-import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Hash, ExternalLink } from 'lucide-react';
+import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Video, ExternalLink, Share2, Info, ArrowLeft, ArrowRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,10 @@ import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import { createSlug } from '@/utils/slug';
+import { ReportModal } from '@/components/ReportModal';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthRequiredModal } from '@/components/AuthRequiredModal';
+import AuthModal from '@/components/AuthModal';
 
 interface FishRecord {
   id: string;
@@ -18,14 +22,15 @@ interface FishRecord {
   species_id: string;
   location_id: string;
   weight: number;
-  length?: number; // records use 'length' (integer), not 'length_cm'
-  length_cm?: number; // legacy/compatibility field
-  date_caught?: string; // records use 'date_caught' (date)
-  time_caught?: string; // records use 'time_caught' (time)
-  captured_at?: string; // computed/legacy field - combine date_caught + time_caught
+  length?: number;
+  length_cm?: number;
+  date_caught?: string;
+  time_caught?: string;
+  captured_at?: string;
   notes?: string;
-  image_url?: string; // records use 'image_url', not 'photo_url'
-  photo_url?: string; // legacy/compatibility field
+  image_url?: string;
+  extra_images?: string[]; // Added support for multiple images
+  photo_url?: string;
   video_url?: string;
   status: string;
   created_at: string;
@@ -47,6 +52,7 @@ interface FishRecord {
     display_name: string;
     username?: string;
     email: string;
+    photo_url?: string;
   };
   verified_by_profile?: {
     id: string;
@@ -62,7 +68,43 @@ interface RecordDetailsModalProps {
   onEdit?: (record: FishRecord) => void;
   onDelete?: (recordId: string) => void;
   isAdmin?: boolean;
+  isOwner?: boolean;
 }
+
+const VideoPlayer = ({ url, poster }: { url: string, poster?: string }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  if (!isPlaying) {
+    return (
+      <div
+        className="w-full h-full relative cursor-pointer group"
+        onClick={() => setIsPlaying(true)}
+      >
+        {poster ? (
+          <img src={poster} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt="Video thumbnail" />
+        ) : (
+          <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+            <Video className="w-12 h-12 text-slate-700" />
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-transform shadow-lg">
+            <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-1 fill-white" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={url}
+      controls
+      autoPlay
+      className="w-full h-full"
+    />
+  );
+};
 
 const RecordDetailsModal = ({
   record,
@@ -71,15 +113,27 @@ const RecordDetailsModal = ({
   onEdit,
   onDelete,
   isAdmin = false,
+  isOwner = false,
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isAuthRequiredModalOpen, setIsAuthRequiredModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const { createVideoObjectData } = useStructuredData();
+  const { user } = useAuth();
 
-  // Prevent body scroll when modal is open
+  // Gallery Logic State - Must be before early return
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Performance: Use layout effect or simple effect to handle body scroll lock
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Force hardware acceleration on modal content
+      const modalContent = document.getElementById('record-modal-content');
+      if (modalContent) modalContent.style.willChange = 'transform';
     } else {
       document.body.style.overflow = '';
     }
@@ -88,42 +142,12 @@ const RecordDetailsModal = ({
     };
   }, [isOpen]);
 
+  // Reset gallery index when record changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [record?.id]);
+
   if (!isOpen || !record) return null;
-
-  const getStatusInfo = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return {
-          icon: <CheckCircle className="w-5 h-5" />,
-          text: 'Verificat',
-          color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
-          bgColor: 'bg-green-50 dark:bg-green-900/20'
-        };
-      case 'pending':
-        return {
-          icon: <AlertCircle className="w-5 h-5" />,
-          text: 'În așteptare',
-          color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
-          bgColor: 'bg-yellow-50 dark:bg-yellow-900/20'
-        };
-      case 'rejected':
-        return {
-          icon: <X className="w-5 h-5" />,
-          text: 'Respins',
-          color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
-          bgColor: 'bg-red-50 dark:bg-red-900/20'
-        };
-      default:
-        return {
-          icon: <Clock className="w-5 h-5" />,
-          text: 'Necunoscut',
-          color: 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-300 border-gray-200 dark:border-slate-600',
-          bgColor: 'bg-gray-50 dark:bg-slate-800'
-        };
-    }
-  };
-
-  const statusInfo = getStatusInfo(record.status);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ro-RO', {
@@ -135,7 +159,6 @@ const RecordDetailsModal = ({
     });
   };
 
-  // Combine date_caught + time_caught for records, or use captured_at
   const getCapturedAt = () => {
     if (record.date_caught && record.time_caught) {
       return `${record.date_caught}T${record.time_caught}`;
@@ -143,15 +166,24 @@ const RecordDetailsModal = ({
     return record.captured_at || record.date_caught || record.created_at;
   };
 
-  // Get image URL - records use image_url, catches use photo_url
-  const getImageUrl = () => {
-    return record.image_url || record.photo_url;
+  // Gallery Logic Helpers
+  const getImageUrl = () => record.image_url || record.photo_url;
+  const allImages = [record.image_url || record.photo_url, ...(record.extra_images || [])].filter(Boolean) as string[];
+  const recordTitle = record.fish_species?.name || 'Specie Necunoscută';
+  const shareTitle = `Record ${record.fish_species?.name} - ${record.weight}kg - Fish Trophy`;
+
+  const handleNextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
   };
 
-  // Get length - records use length (integer), catches use length_cm (decimal)
-  const getLength = () => {
-    return record.length || record.length_cm;
+  const handlePrevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
+
+  const currentImageUrl = allImages[currentImageIndex];
+  const getLength = () => record.length || record.length_cm;
 
   const handleEdit = () => {
     if (onEdit) {
@@ -162,7 +194,6 @@ const RecordDetailsModal = ({
 
   const handleDelete = async () => {
     if (!onDelete || !record.id) return;
-
     if (window.confirm('Ești sigur că vrei să ștergi acest record?')) {
       setIsLoading(true);
       try {
@@ -176,17 +207,14 @@ const RecordDetailsModal = ({
     }
   };
 
-  // SEO Meta Tags for Record
-  const recordTitle = `Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`;
   const recordDescription = `Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`;
   const recordUrl = `https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`;
   const recordImage = getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
-  // Video structured data (if video exists)
   const videoStructuredData = record.video_url ? createVideoObjectData({
     name: recordTitle,
     description: recordDescription,
-    thumbnailUrl: recordImage,
+    thumbnailUrl: currentImageUrl ? getR2ImageUrlProxy(currentImageUrl) : 'https://fishtrophy.ro/social-media-banner-v2.jpg',
     contentUrl: getR2ImageUrlProxy(record.video_url),
     uploadDate: getCapturedAt(),
     author: record.profiles?.display_name || 'Pescar'
@@ -194,308 +222,285 @@ const RecordDetailsModal = ({
 
   return (
     <>
-      {isOpen && record && (
-        <Helmet>
-          <title>{recordTitle}</title>
-          <meta name="description" content={recordDescription} />
-          <meta property="og:type" content="article" />
-          <meta property="og:title" content={recordTitle} />
-          <meta property="og:description" content={recordDescription} />
-          <meta property="og:image" content={recordImage} />
-          <meta property="og:image:width" content="1200" />
-          <meta property="og:image:height" content="630" />
-          <meta property="og:url" content={recordUrl} />
-          <meta property="og:site_name" content="Fish Trophy" />
-          <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content={recordTitle} />
-          <meta name="twitter:description" content={recordDescription} />
-          <meta name="twitter:image" content={recordImage} />
-          <link rel="canonical" href={recordUrl} />
-          {videoStructuredData && (
-            <script type="application/ld+json">
-              {JSON.stringify(videoStructuredData)}
-            </script>
-          )}
-        </Helmet>
-      )}
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
-      style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        opacity: isOpen ? 1 : 0,
-        transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-        willChange: 'opacity'
-      }}
-      onClick={onClose}
-    >
-      <div 
-        className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[95vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+      <Helmet>
+        <title>{shareTitle}</title>
+        <meta name="description" content={recordDescription} />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={shareTitle} />
+        <meta property="og:description" content={recordDescription} />
+        <meta property="og:image" content={recordImage} />
+        <meta property="og:url" content={recordUrl} />
+      </Helmet>
+
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/60 dark:bg-black/70 transition-opacity duration-300"
+        onClick={onClose}
       >
-        <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl h-full flex flex-col overflow-hidden">
-          <CardContent className="p-0 flex flex-col h-full overflow-hidden">
-            {/* Header */}
-            <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 p-4 sm:p-6 text-white rounded-t-lg">
-              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2">
-                <ShareButton
-                  url={`https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`}
-                  title={`Record ${record.fish_species?.name || 'Pescuit'} - ${record.weight}kg - Fish Trophy`}
-                  description={`Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`}
-                  image={getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg'}
-                  size="sm"
-                  variant="ghost"
+        <div
+          id="record-modal-content"
+          className="bg-white dark:bg-slate-800 w-full sm:max-w-4xl md:max-w-[1000px] h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in-95 duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close Button Mobile/Desktop absolute */}
+          {/* This button is now moved to the header for desktop, but kept for mobile */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors md:hidden touch-manipulation"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* Left Side - Media (Hero) */}
+          <div className="w-full md:w-[45%] flex-1 min-h-0 relative bg-slate-100 dark:bg-slate-900 flex items-center justify-center group overflow-hidden flex-shrink-0">
+            {allImages.length > 0 ? (
+              <div
+                className="relative w-full h-full cursor-zoom-in group/image"
+                onClick={() => setIsZoomOpen(true)}
+              >
+                <img
+                  src={getR2ImageUrlProxy(currentImageUrl)}
+                  alt={`${record.fish_species?.name} - Imagine ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 will-change-transform"
+                  loading="eager"
                 />
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-white/20 rounded-full transition-colors touch-manipulation"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                {/* Gradient Overlay for Text Contrast if needed */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none" />
+
+                {/* Navigation Arrows - Always visible on mobile, hover on desktop */}
+                {allImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrevImage();
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 sm:p-2 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white rounded-full opacity-100 md:opacity-0 md:group-hover/image:opacity-100 transition-all duration-200 z-20 backdrop-blur-[2px] touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      aria-label="Imaginea anterioară"
+                    >
+                      <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNextImage();
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 sm:p-2 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white rounded-full opacity-100 md:opacity-0 md:group-hover/image:opacity-100 transition-all duration-200 z-20 backdrop-blur-[2px] touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      aria-label="Imaginea următoare"
+                    >
+                      <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
+                    {/* Dots Indicator - Always visible on mobile */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 pointer-events-none">
+                      {allImages.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-2 h-2 sm:w-1.5 sm:h-1.5 rounded-full transition-all shadow-sm ${idx === currentImageIndex ? 'bg-white w-5 sm:w-4' : 'bg-white/60'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : record.video_url ? (
+              <div className="w-full h-full bg-black">
+                <VideoPlayer url={getR2ImageUrlProxy(record.video_url)} poster={getR2ImageUrlProxy(record.photo_url || '')} />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-slate-400 p-8 min-h-[200px]">
+                <Fish className="w-16 h-16 mb-2 opacity-50" />
+                <span className="text-sm">Fără imagine</span>
+              </div>
+            )}
+
+            {/* Mobile Overlay Info (When collapsed) */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/60 to-transparent text-white md:hidden">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 bg-blue-500/80 text-white text-[10px] font-bold uppercase rounded-full">
+                  Record
+                </span>
+                {record.status === 'verified' && (
+                  <span className="flex items-center gap-1 text-green-400 text-[10px] font-bold uppercase">
+                    <CheckCircle className="w-3 h-3" /> Verificat
+                  </span>
+                )}
+              </div>
+              <h2 className="text-2xl font-black mb-1">{record.fish_species?.name}</h2>
+              <div className="flex items-center gap-2 text-slate-300 text-sm">
+                <MapPin className="w-4 h-4" />
+                {record.fishing_locations?.name}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Details */}
+          <div className="w-full md:w-[55%] flex flex-col md:h-full bg-white dark:bg-slate-900 overflow-y-auto overscroll-contain custom-scrollbar min-h-0">
+            {/* Desktop Header */}
+            <div className="hidden md:block p-5 pb-3 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 -ml-0.5">
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      Record
+                    </span>
+                    {record.status === 'verified' && (
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-[10px] font-bold uppercase tracking-wider">
+                        <CheckCircle className="w-3 h-3" /> Verificat
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mt-0">
+                    {recordTitle}
+                  </h2>
+                </div>
+
+                {/* Header Actions: Close Button (Correctly positioned) */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">
-                  <Fish className="w-6 h-6 sm:w-8 sm:h-8" />
+              {/* Location & Meta Row */}
+              <div className="flex flex-col gap-3 mb-0.5 mt-1.5">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
+                  <MapPin className="w-4 h-4 text-blue-500" />
+                  {record.fishing_locations?.name || 'Locație necunoscută'}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-lg sm:text-2xl font-bold truncate">{record.fish_species?.name || 'Specie necunoscută'}</h2>
-                  <p className="text-sm sm:text-base text-blue-100 truncate">{record.fishing_locations?.name || 'Locație necunoscută'}</p>
-                </div>
+
               </div>
             </div>
 
-            {/* Content */}
-            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 overscroll-contain bg-white dark:bg-slate-800" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {/* Status Badge */}
-              <div className="flex items-center justify-between">
-                <Badge className={`${statusInfo.color} border`}>
-                  {statusInfo.icon}
-                  <span className="ml-2">{statusInfo.text}</span>
-                </Badge>
-                {record.global_id ? (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(record.global_id!.toString());
-                        toast.success(`ID ${record.global_id} copiat!`);
-                      } catch (err) {
-                        toast.error('Eroare la copierea ID-ului');
-                      }
-                    }}
-                    className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-500 transition-colors font-mono"
-                    title="Click pentru a copia ID-ul"
-                  >
-                    #{record.global_id}
-                  </button>
+            <div className="p-4 md:p-4 space-y-4">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                    <Scale className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase">Greutate</span>
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {record.weight} <span className="text-xs text-slate-400 font-medium">kg</span>
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-1">
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase">Lungime</span>
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {getLength() || '-'} <span className="text-xs text-slate-400 font-medium">cm</span>
+                  </div>
+                </div>
+              </div>
+
+
+
+
+              {/* User Info */}
+              <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/50">
+                {record.profiles?.photo_url ? (
+                  <img src={getR2ImageUrlProxy(record.profiles.photo_url)} className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" alt="User" />
                 ) : (
-                  <div className="text-sm text-gray-500 dark:text-slate-400">
-                    ID: {record.id.slice(0, 8)}
+                  <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                    <User className="w-4 h-4 text-slate-400" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Capturat de</p>
+                  <a href={`/profile/${record.profiles?.username || record.user_id}`} className="text-sm font-bold text-slate-900 dark:text-white hover:text-blue-500 transition-colors">
+                    {record.profiles?.display_name || 'Utilizator Anonim'}
+                  </a>
+                </div>
+              </div>
+
+              {/* Video Section (if image was main) */}
+              {getImageUrl() && record.video_url && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <Video className="w-3.5 h-3.5 text-red-500" /> Video Captură
+                  </h3>
+                  <div className="rounded-lg overflow-hidden bg-black aspect-video relative group">
+                    <video
+                      src={getR2ImageUrlProxy(record.video_url)}
+                      preload="metadata"
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Meta Info */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Capturat pe: <span className="font-medium text-slate-900 dark:text-slate-200">{formatDate(getCapturedAt())}</span></span>
+                  </div>
+
+                  {/* Share - Compact & Right Aligned */}
+                  <ShareButton
+                    url={`https://fishtrophy.ro/records?record=${record.id}`}
+                    title={shareTitle}
+                    description={`Vezi captura de ${record.weight}kg!`}
+                    image={currentImageUrl || ''}
+                    variant="ghost"
+                    size="sm"
+                    showLabel={true}
+                    className="text-[10px] h-6 px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  />
+                </div>
+
+                {record.notes && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-100 dark:border-yellow-900/20">
+                    <h4 className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase mb-1">Povestea capturii</h4>
+                    <p className="text-xs text-yellow-800 dark:text-yellow-200 italic">"{record.notes}"</p>
                   </div>
                 )}
               </div>
 
-              {/* Main Stats */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-200 dark:border-blue-900/50">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <Scale className="w-5 h-5 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium">Greutate</p>
-                      <p className="text-lg sm:text-2xl font-bold text-blue-900 dark:text-blue-100 truncate">
-                        {record.weight || 'N/A'} kg
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-green-200 dark:border-green-900/50">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <Ruler className="w-5 h-5 sm:w-8 sm:h-8 text-green-600 dark:text-green-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium">Lungime</p>
-                      <p className="text-lg sm:text-2xl font-bold text-green-900 dark:text-green-100 truncate">
-                        {getLength() || 'N/A'} cm
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Pescar</p>
-                      {record.profiles?.username || record.user_id ? (
-                        <a
-                          href={record.profiles?.username ? `/records?user=${record.profiles.username}` : `/records?user=${record.user_id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                          }}
-                          className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block"
-                        >
-                          {record.profiles?.display_name || 'Utilizator'}
-                        </a>
-                      ) : (
-                        <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">{record.profiles?.display_name || 'Utilizator'}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
-                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Locație</p>
-                      {record.fishing_locations?.name ? (
-                        <a
-                          href={`/records?location=${createSlug(record.fishing_locations.name)}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                          }}
-                          className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block"
-                        >
-                          {record.fishing_locations.name}
-                        </a>
-                      ) : (
-                        <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">Necunoscută</p>
-                      )}
-                      <p className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 capitalize truncate">
-                        {record.fishing_locations?.type} • {record.fishing_locations?.county}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
-                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Data capturii</p>
-                      <p className="font-medium text-xs sm:text-sm truncate text-gray-900 dark:text-white">{formatDate(getCapturedAt())}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
-                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Adăugat</p>
-                      <p className="font-medium text-xs sm:text-sm truncate text-gray-900 dark:text-white">{formatDate(record.created_at)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Media Gallery */}
-              {(getImageUrl() || record.video_url) && (
-                <div className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-800 dark:text-white mb-3 flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Media
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {getImageUrl() && (
-                      <div className="relative group">
-                        <img
-                          src={getR2ImageUrlProxy(getImageUrl()!)}
-                          alt={`Poza record ${record.fish_species?.name}`}
-                          className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow border border-gray-200 dark:border-slate-600 cursor-pointer"
-                          onClick={() => setIsZoomOpen(true)}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                    {record.video_url && (
-                      <div className="relative group">
-                        <video
-                          src={getR2ImageUrlProxy(record.video_url)}
-                          controls
-                          className="w-full h-48 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow border border-gray-200 dark:border-slate-600"
-                          onError={(e) => {
-                            const target = e.target as HTMLVideoElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
+              {/* Admin Actions */}
+              {(isOwner || isAdmin) && (
+                <div className="grid grid-cols-2 gap-2.5 pt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-1.5 text-xs h-9 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                    onClick={() => {
+                      if (onEdit && record) onEdit(record);
+                    }}
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Editează
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="w-full gap-1.5 text-xs h-9 bg-red-500 hover:bg-red-600 text-white border-none"
+                    onClick={() => {
+                      if (onDelete && record) onDelete(record.id);
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Șterge
+                  </Button>
                 </div>
               )}
 
-              {/* Notes */}
-              {record.notes && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg p-4">
-                  <h4 className="font-medium text-yellow-800 dark:text-yellow-300 mb-2">Note</h4>
-                  <p className="text-yellow-700 dark:text-yellow-400">{record.notes}</p>
-                </div>
-              )}
-
-              {/* Rejection Reason */}
-              {record.status === 'rejected' && record.rejection_reason && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
-                  <h4 className="font-medium text-red-800 dark:text-red-300 mb-2">Motivul respingerii</h4>
-                  <p className="text-red-700 dark:text-red-400">{record.rejection_reason}</p>
-                </div>
-              )}
-
-              {/* Admin Info */}
-              {isAdmin && record.verified_by && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-3 sm:p-4">
-                  <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2 text-sm sm:text-base">Informații Admin</h4>
-                  <p className="text-blue-700 dark:text-blue-400 text-xs sm:text-sm">
-                    Verificat de: {record.verified_by_profile?.display_name || record.verified_by_profile?.username || record.verified_by} la {record.verified_at ? formatDate(record.verified_at) : 'N/A'}
-                  </p>
-                </div>
-              )}
-
-              {/* Actions - Only for Admin */}
-              {isAdmin && (onEdit || onDelete) && (
-                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-800">
-                  {onEdit && (
-                    <Button 
-                      onClick={handleEdit} 
-                      className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full sm:w-auto touch-manipulation"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editează
-                    </Button>
-                  )}
-
-                  {onDelete && (
-                    <Button
-                      variant="destructive"
-                      onClick={handleDelete}
-                      disabled={isLoading}
-                      className="w-full sm:w-auto touch-manipulation"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      {isLoading ? 'Se șterge...' : 'Șterge'}
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Internal Links - Discrete, small */}
-              {(record.fish_species || record.fishing_locations || record.profiles?.username) && (
-                <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+              {/* Internal Links + Report Button - All on one row */}
+              <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
+                {(record.fish_species || record.fishing_locations || record.profiles?.username) && (
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
                     <span className="text-gray-400 dark:text-slate-500">Vezi și alte recorduri:</span>
                     {record.profiles?.username && (
                       <a
                         href={`/records?user=${record.profiles.username}`}
                         className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onClose();
-                        }}
+                        onClick={(e) => { e.stopPropagation(); onClose(); }}
                       >
                         de {record.profiles.display_name || 'utilizator'}
                         <ExternalLink className="w-2.5 h-2.5" />
@@ -503,14 +508,11 @@ const RecordDetailsModal = ({
                     )}
                     {record.fish_species && (
                       <>
-                        {record.profiles?.username && <span className="text-gray-300 dark:text-slate-600">•</span>}
+                        {(record.profiles?.username) && <span className="text-gray-300 dark:text-slate-600">•</span>}
                         <a
                           href={`/records?species=${createSlug(record.fish_species.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onClose(); }}
                         >
                           de {record.fish_species.name}
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -523,42 +525,90 @@ const RecordDetailsModal = ({
                         <a
                           href={`/records?location=${createSlug(record.fishing_locations.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onClose(); }}
                         >
-                          {(() => {
-                            const type = record.fishing_locations?.type || '';
-                            const name = record.fishing_locations?.name || '';
-                            if (type === 'lac' || type === 'baraj') return `pe ${name}`;
-                            if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
-                            if (type === 'mare') return `pe ${name}`;
-                            if (type === 'delta') return `în ${name}`;
-                            return `de la ${name}`;
-                          })()}
+                          <span className="truncate max-w-[120px]">
+                            {(() => {
+                              const type = record.fishing_locations?.type || '';
+                              const name = record.fishing_locations?.name || '';
+                              if (type === 'lac' || type === 'baraj') return `pe ${name}`;
+                              if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
+                              if (type === 'mare') return `pe ${name}`;
+                              if (type === 'delta') return `în ${name}`;
+                              return `de la ${name}`;
+                            })()}
+                          </span>
                           <ExternalLink className="w-2.5 h-2.5" />
                         </a>
                       </>
                     )}
                   </div>
-                </div>
-              )}
+                )}
+                {!isOwner && (
+                  <button 
+                    className="flex items-center gap-1 text-[10px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors flex-shrink-0"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (user) {
+                        setIsReportModalOpen(true);
+                      } else {
+                        setIsAuthRequiredModalOpen(true);
+                      }
+                    }}
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Raportează
+                  </button>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div >
+      </div >
 
-      {/* Image Zoom - Using Portal to prevent click propagation to modal */}
-      {isZoomOpen && getImageUrl() && typeof document !== 'undefined' && createPortal(
+      {isZoomOpen && currentImageUrl && typeof document !== 'undefined' && createPortal(
         <ImageZoom
-          src={getR2ImageUrlProxy(getImageUrl()!)}
-          alt={`Poza record ${record.fish_species?.name}`}
+          src={getR2ImageUrlProxy(currentImageUrl)}
+          alt={`Poza record ${record.fish_species?.name} - ${currentImageIndex + 1}`}
           onClose={() => setIsZoomOpen(false)}
+          onNext={allImages.length > 1 ? handleNextImage : undefined}
+          onPrev={allImages.length > 1 ? handlePrevImage : undefined}
         />,
         document.body
       )}
-    </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportType="record"
+        itemId={record.id}
+        itemUrl={`${window.location.origin}/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`}
+        reporterId={user?.id}
+      />
+
+      <AuthRequiredModal
+        isOpen={isAuthRequiredModalOpen}
+        onClose={() => setIsAuthRequiredModalOpen(false)}
+        onLogin={() => {
+          setIsAuthRequiredModalOpen(false);
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
+        onRegister={() => {
+          setIsAuthRequiredModalOpen(false);
+          setAuthModalMode('register');
+          setIsAuthModalOpen(true);
+        }}
+        title="Autentificare necesară"
+        message="Trebuie să fii autentificat pentru a raporta un record."
+        actionName="raportarea unui record"
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
     </>
   );
 };

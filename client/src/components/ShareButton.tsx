@@ -15,7 +15,7 @@ const isInModal = (element: HTMLElement | null): boolean => {
   while (current) {
     // Check for modal indicators
     if (
-      current.classList.contains('fixed') && 
+      current.classList.contains('fixed') &&
       (current.style.zIndex || getComputedStyle(current).zIndex) &&
       parseInt(getComputedStyle(current).zIndex) >= 100
     ) {
@@ -32,7 +32,7 @@ const isInModal = (element: HTMLElement | null): boolean => {
 // X logo pentru Twitter (X)
 const XIcon = ({ size }: { size: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
@@ -42,7 +42,7 @@ interface ShareButtonProps {
   description?: string;
   image?: string;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'outline' | 'ghost';
+  variant?: 'default' | 'outline' | 'ghost' | 'full';
   showLabel?: boolean;
   className?: string; // Allow custom className for matching other buttons
 }
@@ -189,7 +189,8 @@ export default function ShareButton({
   const variantClasses = {
     default: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
     outline: 'border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700',
-    ghost: 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700'
+    ghost: 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700',
+    full: 'w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 shadow-lg hover:shadow-xl transition-all font-bold gap-2' // Premium full width button
   };
 
   // No position calculation needed - using absolute positioning relative to container
@@ -251,29 +252,27 @@ export default function ShareButton({
         aria-label="Share"
       >
         <Share2 size={iconSizes[size]} />
+        {/* Always show label for full variant, or if showLabel is true */}
+        {(variant === 'full' || showLabel) && (
+          <span className={variant === 'full' ? 'text-sm' : 'ml-2 text-sm font-medium'}>
+            Distribuie
+          </span>
+        )}
       </button>
 
-      {showMenu && inModal && (
-        <div 
-          ref={menuRef}
-          className="absolute right-0 top-full mt-2 z-[99999] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 w-48"
-        >
-          {renderMenuContent()}
-        </div>
-      )}
-
-      {showMenu && !inModal && typeof document !== 'undefined' && createPortal(
+      {showMenu && typeof document !== 'undefined' && createPortal(
         <>
           <div
             className="fixed inset-0 z-[99998]"
             onClick={() => setShowMenu(false)}
           />
-          <div 
+          <div
             ref={menuRef}
-            className="fixed z-[99999] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 w-48 share-menu-portal"
+            className="fixed z-[99999] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 w-48 share-menu-portal text-left"
             style={{
-              top: buttonRef.current ? `${buttonRef.current.getBoundingClientRect().bottom + window.scrollY + 8}px` : '0px',
-              right: buttonRef.current ? `${window.innerWidth - buttonRef.current.getBoundingClientRect().right + window.scrollX}px` : '0px'
+              top: buttonRef.current ? `${buttonRef.current.getBoundingClientRect().bottom + 4}px` : '0px',
+              right: buttonRef.current ? `${document.documentElement.clientWidth - buttonRef.current.getBoundingClientRect().right}px` : '0px',
+              left: 'auto'
             }}
           >
             {renderMenuContent()}

@@ -19,7 +19,8 @@ import {
   Save,
   Store,
   Mail,
-  Menu
+  Menu,
+  AlertCircle
 } from 'lucide-react';
 import { supabase, getR2ImageUrlProxy } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -28,9 +29,11 @@ import { MapEditor } from '@/components/admin/MapEditor';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const Admin: React.FC = () => {
   const { theme, isDarkMode } = useTheme();
+  const { user } = useAuth();
   const [trafficData, setTrafficData] = useState({
     pageViews: 0,
     uniqueVisitors: 0,
@@ -71,6 +74,10 @@ const Admin: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [inquiryToDelete, setInquiryToDelete] = useState<any>(null);
+  const [reports, setReports] = useState<any[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState('');
 
   // Metric filters
   const [showPageViews, setShowPageViews] = useState(true);
@@ -756,6 +763,29 @@ const Admin: React.FC = () => {
     }
   };
 
+  const loadReports = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .select(`
+          *,
+          reporter:reporter_id(display_name, username, email),
+          reviewer:reviewed_by(display_name, username)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading reports:', error);
+        toast.error('Eroare la încărcarea raportărilor');
+      } else {
+        setReports(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      toast.error('Eroare la încărcarea raportărilor');
+    }
+  };
+
   // Load real data from database
   useEffect(() => {
     const loadAllData = async () => {
@@ -763,9 +793,17 @@ const Admin: React.FC = () => {
       await loadDetailedAnalytics();
       await loadTrafficGraphData();
       await loadShopInquiries();
+      await loadReports();
     };
     loadAllData();
   }, []);
+
+  // Reload reports when reports tab is selected (but not on initial load)
+  useEffect(() => {
+    if (activeSection === 'reports' && reports.length === 0) {
+      loadReports();
+    }
+  }, [activeSection]);
 
   // Load traffic data when period changes
   useEffect(() => {
@@ -1005,6 +1043,7 @@ const Admin: React.FC = () => {
     { id: 'rejected', label: 'Recorduri Respinse', icon: XCircle },
     { id: 'locations', label: 'Gestionare Locații', icon: MapPin },
     { id: 'users', label: 'Utilizatori', icon: Users },
+    { id: 'reports', label: 'Raportări', icon: AlertCircle },
     { id: 'shops', label: 'Mesaje Magazine', icon: Store },
     { id: 'backup', label: 'Backup', icon: Database },
   ];
@@ -2006,6 +2045,100 @@ const Admin: React.FC = () => {
                 </Card>
               </TabsContent>
 
+              {/* Reports Tab */}
+              <TabsContent value="reports" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      Raportări Utilizatori
+                    </CardTitle>
+                    <CardDescription>
+                      Raportări despre recorduri și capturi
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {reports.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                          Nu există raportări
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {reports.map((report) => (
+                            <div
+                              key={report.id}
+                              className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedReport(report);
+                                setIsReportModalOpen(true);
+                              }}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge
+                                      variant={
+                                        report.status === 'pending' ? 'default' :
+                                        report.status === 'resolved' ? 'default' :
+                                        report.status === 'dismissed' ? 'secondary' :
+                                        'outline'
+                                      }
+                                      className={
+                                        report.status === 'pending' ? 'bg-yellow-500' :
+                                        report.status === 'resolved' ? 'bg-green-500' :
+                                        ''
+                                      }
+                                    >
+                                      {report.status === 'pending' ? 'În așteptare' :
+                                        report.status === 'reviewed' ? 'Revizuit' :
+                                        report.status === 'resolved' ? 'Rezolvat' :
+                                        'Respins'}
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {report.report_type === 'record' ? 'Record' : 'Captură'}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-gray-700 dark:text-slate-300 mb-2 line-clamp-2">
+                                    {report.message}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-slate-400">
+                                    <span>
+                                      Raportat de: {report.reporter?.display_name || report.reporter?.username || 'Anonim'}
+                                    </span>
+                                    <span>
+                                      {new Date(report.created_at).toLocaleString('ro-RO')}
+                                    </span>
+                                    {report.reviewed_by && (
+                                      <span>
+                                        Revizuit de: {report.reviewer?.display_name || report.reviewer?.username || 'Necunoscut'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-2 text-xs">
+                                    <span className="text-gray-600 dark:text-slate-400">Link: </span>
+                                    <a
+                                      href={report.item_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                    >
+                                      {report.item_url}
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               {/* Shop Inquiries Tab */}
               <TabsContent value="shops" className="space-y-6">
                 <Card>
@@ -2408,6 +2541,224 @@ const Admin: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Report Details Modal */}
+      {isReportModalOpen && selectedReport && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 dark:from-red-600 dark:to-red-700 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Detalii Raportare</h3>
+                    <p className="text-red-100 text-sm mt-1">
+                      {selectedReport.report_type === 'record' ? 'Record' : 'Captură'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    setSelectedReport(null);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Status</label>
+                <div className="mt-1">
+                  <Badge
+                    variant={
+                      selectedReport.status === 'pending' ? 'default' :
+                      selectedReport.status === 'resolved' ? 'default' :
+                      selectedReport.status === 'dismissed' ? 'secondary' :
+                      'outline'
+                    }
+                    className={
+                      selectedReport.status === 'pending' ? 'bg-yellow-500' :
+                      selectedReport.status === 'resolved' ? 'bg-green-500' :
+                      ''
+                    }
+                  >
+                    {selectedReport.status === 'pending' ? 'În așteptare' :
+                      selectedReport.status === 'reviewed' ? 'Revizuit' :
+                      selectedReport.status === 'resolved' ? 'Rezolvat' :
+                      'Respins'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Mesaj</label>
+                <p className="mt-1 text-sm text-gray-900 dark:text-slate-100 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg">
+                  {selectedReport.message}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Raportat de</label>
+                  <div className="mt-1">
+                    {selectedReport.reporter?.username ? (
+                      <a
+                        href={`/profile/${selectedReport.reporter.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                      >
+                        {selectedReport.reporter?.display_name || selectedReport.reporter?.username || 'Anonim'}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-gray-900 dark:text-slate-100">
+                        {selectedReport.reporter?.display_name || selectedReport.reporter?.username || 'Anonim'}
+                      </p>
+                    )}
+                    {selectedReport.reporter?.email && (
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        {selectedReport.reporter.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Data raportării</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-slate-100">
+                    {new Date(selectedReport.created_at).toLocaleString('ro-RO')}
+                  </p>
+                </div>
+              </div>
+
+              {selectedReport.reviewed_by && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Revizuit de</label>
+                    <div className="mt-1">
+                      {selectedReport.reviewer?.username ? (
+                        <a
+                          href={`/profile/${selectedReport.reviewer.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        >
+                          {selectedReport.reviewer?.display_name || selectedReport.reviewer?.username || 'Necunoscut'}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-900 dark:text-slate-100">
+                          {selectedReport.reviewer?.display_name || selectedReport.reviewer?.username || 'Necunoscut'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Data revizuirii</label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-slate-100">
+                      {selectedReport.reviewed_at ? new Date(selectedReport.reviewed_at).toLocaleString('ro-RO') : '-'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Link</label>
+                <div className="mt-1 text-sm">
+                  <span className="text-gray-600 dark:text-slate-400">Link: </span>
+                  <a
+                    href={selectedReport.item_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 break-all"
+                  >
+                    {selectedReport.item_url}
+                    <ExternalLink className="w-4 h-4 ml-1 flex-shrink-0" />
+                  </a>
+                </div>
+              </div>
+
+              {selectedReport.status === 'pending' && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Note admin <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={reviewNotes || ''}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Adaugă note obligatorii pentru revizuire (minim 3 caractere)..."
+                    className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={3}
+                    required
+                  />
+                  {reviewNotes && reviewNotes.trim().length < 3 && (
+                    <p className="mt-1 text-xs text-red-500">Minim 3 caractere</p>
+                  )}
+                </div>
+              )}
+
+              {selectedReport.notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Note admin</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-slate-100 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg">
+                    {selectedReport.notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    setSelectedReport(null);
+                    setReviewNotes('');
+                  }}
+                  className="flex-1"
+                >
+                  Închide
+                </Button>
+                <Button
+                  disabled={selectedReport.status === 'pending' && (!reviewNotes || reviewNotes.trim().length < 3)}
+                  onClick={async () => {
+                    if (selectedReport.status === 'pending' && (!reviewNotes || reviewNotes.trim().length < 3)) {
+                      toast.error('Notele sunt obligatorii (minim 3 caractere)');
+                      return;
+                    }
+                    try {
+                      const { error } = await supabase
+                        .from('reports')
+                        .update({
+                          status: selectedReport.status === 'pending' ? 'reviewed' : 'pending',
+                          reviewed_by: user?.id,
+                          reviewed_at: new Date().toISOString(),
+                          notes: selectedReport.status === 'pending' ? reviewNotes.trim() : selectedReport.notes
+                        })
+                        .eq('id', selectedReport.id);
+
+                      if (error) throw error;
+
+                      toast.success('Status actualizat!');
+                      await loadReports();
+                      setIsReportModalOpen(false);
+                      setSelectedReport(null);
+                      setReviewNotes('');
+                    } catch (error: any) {
+                      toast.error('Eroare la actualizarea statusului: ' + (error.message || 'Necunoscută'));
+                    }
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Marchează ca {selectedReport.status === 'pending' ? 'revizuit' : 'în așteptare'}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

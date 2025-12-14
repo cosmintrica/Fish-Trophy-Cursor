@@ -121,9 +121,15 @@ const cacheFirst = async (request) => {
 
 // Helper: Verifică dacă suntem în development (verifică URL-ul)
 const isDevelopment = () => {
-  return self.location.hostname === 'localhost' || 
-         self.location.hostname === '127.0.0.1' ||
-         self.location.hostname.includes('netlify.app');
+  // Verifică hostname și port pentru a detecta development
+  const hostname = self.location.hostname;
+  const port = self.location.port;
+  return hostname === 'localhost' || 
+         hostname === '127.0.0.1' ||
+         port === '5173' || // Vite dev server
+         port === '8889' || // Netlify Dev
+         port === '8888' || // Alternative Netlify Dev port
+         hostname.includes('netlify.app');
 };
 
 // Install Event - Cache resurse statice critice
@@ -205,6 +211,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   
+  // IMPORTANT: În development, nu interceptăm NICIODATĂ request-urile
+  // Service Worker-ul ar trebui să fie dezactivat în development, dar dacă este activ,
+  // trebuie să lăsăm toate request-urile să treacă prin fără interceptare
+  if (isDevelopment()) {
+    return; // Don't intercept ANY requests in development - let them pass through
+  }
+  
   // Skip non-GET requests
   if (request.method !== 'GET') {
     return;
@@ -220,7 +233,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Skip Vite modules in development - must be served directly by Vite
+  // Skip Vite modules - must be served directly by Vite
   if (isViteModule(url.href)) {
     return; // Let Vite handle it directly
   }

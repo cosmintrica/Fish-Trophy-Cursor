@@ -22,7 +22,7 @@ import { usePhotoUpload } from '@/components/profile/hooks/usePhotoUpload';
 
 // Modals
 import FishingEntryModal from '@/components/FishingEntryModal';
-import { RecordDetailsModal } from '@/components/modals/RecordDetailsModal';
+import RecordDetailsModal from '@/components/RecordDetailsModal';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -194,7 +194,7 @@ const Profile = () => {
     loadUserRecords();
     setIsEditModalOpen(false);
     setEditingRecord(null);
-    toast.success('Record actualizat cu succes!');
+    // Notificarea este afișată deja în FishingEntryModal
   };
 
   if (!user) {
