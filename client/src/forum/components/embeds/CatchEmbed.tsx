@@ -8,17 +8,43 @@ import { Link } from 'react-router-dom';
 import { Fish, Scale, Ruler, MapPin, Calendar, User, ExternalLink } from 'lucide-react';
 import { fetchCatchEmbedData, type CatchEmbedData } from '../../services/embedDataService';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
-import { useTheme } from '../../contexts/ThemeContext';
-
 interface CatchEmbedProps {
   catchId: string;
 }
 
+// Helper to detect dark mode (works outside React context)
+const getIsDarkMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return document.documentElement.classList.contains('dark') ||
+         window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
 export default function CatchEmbed({ catchId }: CatchEmbedProps) {
-  const { isDarkMode } = useTheme();
+  const [isDarkMode, setIsDarkMode] = useState(getIsDarkMode());
   const [data, setData] = useState<CatchEmbedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Listen for theme changes
+  useEffect(() => {
+    const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
+    
+    // Check for class changes on document
+    const observer = new MutationObserver(updateDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also listen to media query changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', updateDarkMode);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', updateDarkMode);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

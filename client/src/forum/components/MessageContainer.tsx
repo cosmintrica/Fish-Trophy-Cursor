@@ -133,10 +133,11 @@ export default function MessageContainer({
   }, [post.content, postNumber, categorySlug, subcategorySlug, topicSlug, postNumberMap]);
 
   // Render embed components (records, catches, gear)
+  // Use WeakMap to persist roots across re-renders
+  const embedRootsRef = useRef(new WeakMap<HTMLElement, Root>());
+
   useEffect(() => {
     if (!contentRef.current) return;
-
-    const embedRoots = new Map<HTMLElement, Root>();
 
     // Use requestAnimationFrame + setTimeout to ensure DOM is fully updated after dangerouslySetInnerHTML
     const renderEmbeds = () => {
@@ -150,36 +151,45 @@ export default function MessageContainer({
       // Render record embeds
       recordEmbeds.forEach((container) => {
         const recordId = (container as HTMLElement).dataset.recordId;
-        if (recordId && !embedRoots.has(container as HTMLElement)) {
-          // Clear existing content
-          container.innerHTML = '';
-          const root = createRoot(container as HTMLElement);
+        if (recordId) {
+          let root = embedRootsRef.current.get(container as HTMLElement);
+          if (!root) {
+            // Clear existing content
+            container.innerHTML = '';
+            root = createRoot(container as HTMLElement);
+            embedRootsRef.current.set(container as HTMLElement, root);
+          }
           root.render(<RecordEmbed recordId={recordId} />);
-          embedRoots.set(container as HTMLElement, root);
         }
       });
 
       // Render catch embeds
       catchEmbeds.forEach((container) => {
         const catchId = (container as HTMLElement).dataset.catchId;
-        if (catchId && !embedRoots.has(container as HTMLElement)) {
-          // Clear existing content
-          container.innerHTML = '';
-          const root = createRoot(container as HTMLElement);
+        if (catchId) {
+          let root = embedRootsRef.current.get(container as HTMLElement);
+          if (!root) {
+            // Clear existing content
+            container.innerHTML = '';
+            root = createRoot(container as HTMLElement);
+            embedRootsRef.current.set(container as HTMLElement, root);
+          }
           root.render(<CatchEmbed catchId={catchId} />);
-          embedRoots.set(container as HTMLElement, root);
         }
       });
 
       // Render gear embeds
       gearEmbeds.forEach((container) => {
         const gearId = (container as HTMLElement).dataset.gearId;
-        if (gearId && !embedRoots.has(container as HTMLElement)) {
-          // Clear existing content
-          container.innerHTML = '';
-          const root = createRoot(container as HTMLElement);
+        if (gearId) {
+          let root = embedRootsRef.current.get(container as HTMLElement);
+          if (!root) {
+            // Clear existing content
+            container.innerHTML = '';
+            root = createRoot(container as HTMLElement);
+            embedRootsRef.current.set(container as HTMLElement, root);
+          }
           root.render(<GearEmbed gearId={gearId} />);
-          embedRoots.set(container as HTMLElement, root);
         }
       });
     };
@@ -188,14 +198,6 @@ export default function MessageContainer({
     requestAnimationFrame(() => {
       setTimeout(renderEmbeds, 150);
     });
-
-    // Cleanup on unmount
-    return () => {
-      embedRoots.forEach((root, container) => {
-        root.unmount();
-      });
-      embedRoots.clear();
-    };
   }, [parsedContent]);
 
   // Add click handlers for images to enable zoom
