@@ -48,6 +48,7 @@ export interface GearEmbedData {
   image_url?: string;
   description?: string;
   category?: string;
+  global_id?: number;
 }
 
 /**
