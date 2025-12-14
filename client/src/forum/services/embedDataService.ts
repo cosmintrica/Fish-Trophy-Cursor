@@ -16,6 +16,7 @@ export interface RecordEmbedData {
   date_caught?: string;
   image_url?: string;
   video_url?: string;
+  extra_images?: string[];
   user_display_name?: string;
   user_username?: string;
   user_photo_url?: string;
@@ -40,7 +41,6 @@ export interface CatchEmbedData {
 
 export interface GearEmbedData {
   id: string;
-  name: string;
   brand?: string;
   model?: string;
   price?: number;
@@ -68,6 +68,7 @@ export async function fetchRecordEmbedData(recordId: string): Promise<RecordEmbe
         date_caught,
         image_url,
         video_url,
+        extra_images,
         global_id,
         fish_species:species_id(name, scientific_name),
         fishing_locations:location_id(name, type, county),
@@ -106,6 +107,9 @@ export async function fetchRecordEmbedData(recordId: string): Promise<RecordEmbe
     const fishingLocation = Array.isArray(data.fishing_locations) ? data.fishing_locations[0] : data.fishing_locations;
     const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
 
+    // Process extra_images
+    const extraImages = (data.extra_images as string[] || []).map(img => getR2ImageUrlProxy(img));
+
     return {
       id: data.id,
       species_name: (fishSpecies as any)?.name || 'Necunoscut',
@@ -116,6 +120,7 @@ export async function fetchRecordEmbedData(recordId: string): Promise<RecordEmbe
       date_caught: data.date_caught,
       image_url: data.image_url ? getR2ImageUrlProxy(data.image_url) : undefined,
       video_url: data.video_url ? getR2ImageUrlProxy(data.video_url) : undefined,
+      extra_images: extraImages.length > 0 ? extraImages : undefined,
       user_display_name: (profile as any)?.display_name,
       user_username: (profile as any)?.username,
       user_photo_url: (profile as any)?.photo_url ? getR2ImageUrlProxy((profile as any).photo_url) : undefined,
@@ -214,7 +219,6 @@ export async function fetchGearEmbedData(gearId: string): Promise<GearEmbedData 
       .from('user_gear')
       .select(`
         id,
-        name,
         brand,
         model,
         purchase_price,
@@ -222,9 +226,9 @@ export async function fetchGearEmbedData(gearId: string): Promise<GearEmbedData 
         image_url,
         description,
         gear_type,
-        global_id
+        global_id,
+        user_id
       `)
-      .eq('is_public', true)
       .limit(1);
 
     if (isUUID) {
@@ -252,9 +256,20 @@ export async function fetchGearEmbedData(gearId: string): Promise<GearEmbedData 
       return null;
     }
 
+    // Check if gear is public by checking user's profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('show_gear_publicly')
+      .eq('id', (data as any).user_id)
+      .single();
+
+    // Only return gear if it's public
+    if (!profileData?.show_gear_publicly) {
+      return null;
+    }
+
     return {
       id: data.id,
-      name: data.name,
       brand: data.brand,
       model: data.model,
       price: (data as any).purchase_price || undefined,

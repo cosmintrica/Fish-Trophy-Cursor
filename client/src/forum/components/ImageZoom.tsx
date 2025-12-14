@@ -13,9 +13,10 @@ interface ImageZoomProps {
   onClose?: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  isVideo?: boolean;
 }
 
-export default function ImageZoom({ src, alt, className = '', style, onClose, onNext, onPrev }: ImageZoomProps) {
+export default function ImageZoom({ src, alt, className = '', style, onClose, onNext, onPrev, isVideo = false }: ImageZoomProps) {
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -261,17 +262,43 @@ export default function ImageZoom({ src, alt, className = '', style, onClose, on
         </button>
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows - Always visible when available */}
       {onPrev && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onPrev();
           }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[10000] p-4 outline-none"
-          aria-label="Previous Image"
+          style={{
+            position: 'absolute',
+            left: '1rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            cursor: 'pointer',
+            zIndex: 10000,
+            transition: 'all 0.2s',
+            opacity: 0.8
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '0.8';
+            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+          }}
+          aria-label="Previous"
         >
-          <ArrowLeft size={32} strokeWidth={2} />
+          <ArrowLeft size={24} strokeWidth={2.5} />
         </button>
       )}
 
@@ -281,31 +308,72 @@ export default function ImageZoom({ src, alt, className = '', style, onClose, on
             e.stopPropagation();
             onNext();
           }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[10000] p-4 outline-none"
-          aria-label="Next Image"
+          style={{
+            position: 'absolute',
+            right: '1rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            cursor: 'pointer',
+            zIndex: 10000,
+            transition: 'all 0.2s',
+            opacity: 0.8
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '0.8';
+            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+          }}
+          aria-label="Next"
         >
-          <ArrowRight size={32} strokeWidth={2} />
+          <ArrowRight size={24} strokeWidth={2.5} />
         </button>
       )}
 
-      {/* Image zoomed */}
-      <img
-        key={src} // Force re-render on src change to reset zoom
-        src={src}
-        alt={alt}
-        onMouseDown={handleMouseDown}
-        style={{
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
-          userSelect: 'none',
-          pointerEvents: 'auto'
-        }}
-        draggable={false}
-        onClick={(e) => e.stopPropagation()}
-      />
+      {/* Image or Video */}
+      {isVideo ? (
+        <video
+          key={src}
+          src={src}
+          controls
+          autoPlay
+          style={{
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            objectFit: 'contain'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <img
+          key={src}
+          src={src}
+          alt={alt}
+          onMouseDown={handleMouseDown}
+          style={{
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            userSelect: 'none',
+            pointerEvents: 'auto'
+          }}
+          draggable={false}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
     </div>
   );
 }

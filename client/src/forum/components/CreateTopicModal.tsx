@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import EditorToolbar from './EditorToolbar';
 import { parseBBCode } from '../../services/forum/bbcode';
+import PreviewContent from './PreviewContent';
 
 interface CreateTopicModalProps {
   isOpen: boolean;
@@ -265,7 +266,8 @@ export default function CreateTopicModal({
               </div>
 
               {showPreview ? (
-                <div
+                <PreviewContent
+                  content={content}
                   style={{
                     flex: 1,
                     minHeight: '200px',
@@ -277,7 +279,6 @@ export default function CreateTopicModal({
                     lineHeight: '1.5',
                     overflow: 'auto'
                   }}
-                  dangerouslySetInnerHTML={{ __html: parseBBCode(content).html }}
                 />
               ) : (
                 <>

@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import RecordEmbed from './embeds/RecordEmbed';
 import CatchEmbed from './embeds/CatchEmbed';
 import GearEmbed from './embeds/GearEmbed';
+import PreviewContent from './PreviewContent';
 import { parseBBCode } from '../../services/forum/bbcode';
 import { useUpdatePost } from '../hooks/usePosts';
 import { useToast } from '../contexts/ToastContext';
@@ -608,18 +609,12 @@ export default function MessageContainer({
                         marginTop: '0.5rem'
                       }}
                     >
-                      <div
+                      <PreviewContent
+                        content={editContent}
                         style={{
                           wordWrap: 'break-word',
                           overflowWrap: 'break-word',
                           maxWidth: '100%'
-                        }}
-                        dangerouslySetInnerHTML={{
-                          __html: parseBBCode(editContent, {
-                            subcategorySlug,
-                            topicSlug,
-                            postNumberMap
-                          }).html
                         }}
                       />
                     </div>

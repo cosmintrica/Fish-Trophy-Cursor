@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import EditorToolbar from './EditorToolbar';
 import { parseBBCode } from '../../services/forum/bbcode';
+import PreviewContent from './PreviewContent';
 
 interface CreateTopicEditorProps {
   isOpen: boolean;
@@ -348,7 +349,8 @@ export default function CreateTopicEditor({
             </div>
 
             {showPreview ? (
-              <div
+              <PreviewContent
+                content={content}
                 style={{
                   minHeight: '200px',
                   padding: '0.75rem',
@@ -360,7 +362,6 @@ export default function CreateTopicEditor({
                   overflow: 'auto',
                   color: theme.text
                 }}
-                dangerouslySetInnerHTML={{ __html: parseBBCode(content).html }}
               />
             ) : (
               <>

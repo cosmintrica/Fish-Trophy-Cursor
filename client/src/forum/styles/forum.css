@@ -608,11 +608,8 @@
 .bbcode-record-embed,
 .bbcode-catch-embed,
 .bbcode-gear-embed {
-  margin: 1rem 0;
-  padding: 0;
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 0.5rem;
+  margin: 0.25rem 0 !important;
+  padding: 0 !important;
 }
 
 /* Dark mode support */

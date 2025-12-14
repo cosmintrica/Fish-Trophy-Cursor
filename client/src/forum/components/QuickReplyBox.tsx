@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import EditorToolbar from './EditorToolbar';
 import EmojiPicker from './EmojiPicker';
 import { parseBBCode } from '../../services/forum/bbcode';
+import PreviewContent from './PreviewContent';
 
 interface QuickReplyBoxProps {
   topicId: string;
@@ -927,17 +928,20 @@ export default function QuickReplyBox({
                       overflowX: 'hidden'
                     }}
                   >
-                    <div style={{
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                      maxWidth: '100%'
-                    }}
-                      dangerouslySetInnerHTML={{
-                        __html: content.trim() 
-                          ? parseBBCode(content).html
-                          : `<span style="color: ${theme.textSecondary}; font-style: italic;">Preview-ul va apărea aici...</span>`
-                      }}
-                    />
+                    {content.trim() ? (
+                      <PreviewContent
+                        content={content}
+                        style={{
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          maxWidth: '100%'
+                        }}
+                      />
+                    ) : (
+                      <span style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
+                        Preview-ul va apărea aici...
+                      </span>
+                    )}
                   </div>
 
                   {/* Actions - Structură ca MessageActions */}

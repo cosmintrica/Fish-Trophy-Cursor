@@ -4,10 +4,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Trophy, Scale, Ruler, MapPin, Calendar, User, ExternalLink } from 'lucide-react';
+import { Trophy, Scale, Ruler, MapPin, Calendar, User, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchRecordEmbedData, type RecordEmbedData } from '../../services/embedDataService';
 import { getR2ImageUrlProxy } from '@/lib/supabase';
+import ImageZoom from '../ImageZoom';
+
 interface RecordEmbedProps {
   recordId: string;
 }
@@ -24,19 +25,19 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
   const [data, setData] = useState<RecordEmbedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zoomedMedia, setZoomedMedia] = useState<{ src: string; isVideo: boolean; index: number } | null>(null);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   // Listen for theme changes
   useEffect(() => {
     const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
     
-    // Check for class changes on document
     const observer = new MutationObserver(updateDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class']
     });
 
-    // Also listen to media query changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateDarkMode);
 
@@ -54,22 +55,13 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
         setLoading(true);
         setError(null);
         const recordData = await fetchRecordEmbedData(recordId);
-        
         if (isMounted) {
-          if (recordData) {
-            setData(recordData);
-          } else {
-            setError('Recordul nu a fost găsit');
-          }
+          setData(recordData);
+          setLoading(false);
         }
       } catch (err) {
         if (isMounted) {
           setError('Eroare la încărcarea recordului');
-          console.error('Error loading record embed:', err);
-          console.error('Record ID:', recordId);
-        }
-      } finally {
-        if (isMounted) {
           setLoading(false);
         }
       }
@@ -85,17 +77,15 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
   if (loading) {
     return (
       <div className="bbcode-record-embed" style={{
-        margin: '1rem 0',
-        padding: '1rem',
-        background: 'rgba(0, 0, 0, 0.02)',
-        border: '1px solid rgba(0, 0, 0, 0.1)',
+        margin: '0.25rem 0',
+        padding: '0.75rem',
+        background: isDarkMode ? '#1e293b' : '#f3f4f6',
+        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '120px'
+        fontSize: '0.875rem',
+        color: isDarkMode ? '#94a3b8' : '#6b7280'
       }}>
-        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Se încarcă recordul...</div>
+        Se încarcă recordul...
       </div>
     );
   }
@@ -103,8 +93,8 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
   if (error || !data) {
     return (
       <div className="bbcode-record-embed" style={{
-        margin: '1rem 0',
-        padding: '1rem',
+        margin: '0.25rem 0',
+        padding: '0.75rem',
         background: 'rgba(220, 38, 38, 0.1)',
         border: '1px solid rgba(220, 38, 38, 0.3)',
         borderRadius: '0.5rem',
@@ -116,204 +106,296 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
     );
   }
 
-  // Build URL to record on main site
+  // Build all media items
+  const allMedia: Array<{ type: 'image' | 'video'; url: string }> = [];
+  if (data.image_url) allMedia.push({ type: 'image', url: data.image_url });
+  if (data.extra_images) {
+    data.extra_images.forEach(url => allMedia.push({ type: 'image', url }));
+  }
+  if (data.video_url) allMedia.push({ type: 'video', url: data.video_url });
+
   const recordUrl = data.user_username 
     ? `/profile/${data.user_username}#record-${data.id}`
     : `/records#record-${data.id}`;
 
+  const currentMedia = allMedia[currentMediaIndex];
+  const hasMultipleMedia = allMedia.length > 1;
+
   return (
-    <div className="bbcode-record-embed" style={{
-      margin: '1rem 0',
-      padding: '0',
-      background: isDarkMode ? '#1e293b' : '#ffffff',
-      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-      borderRadius: '0.5rem',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '100%',
-      boxShadow: isDarkMode ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
-      {/* Image/Video Section */}
-      {data.image_url && (
-        <div style={{
-          width: '100%',
-          aspectRatio: '16/9',
-          overflow: 'hidden',
-          background: '#f3f4f6',
-          position: 'relative'
-        }}>
-          <img
-            src={data.image_url}
-            alt={data.species_name}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block'
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-          {data.video_url && (
-            <div style={{
-              position: 'absolute',
-              bottom: '0.5rem',
-              right: '0.5rem',
-              background: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              padding: '0.25rem 0.5rem',
-              borderRadius: '0.25rem',
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem'
-            }}>
-              <span>📹</span>
-              <span>Video</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Content Section */}
-      <div style={{
+    <>
+      <div className="bbcode-record-embed" style={{
+        margin: '0.25rem 0',
         padding: '0.75rem',
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+        borderRadius: '0.5rem',
+        overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem'
+        gap: '0.75rem',
+        maxWidth: '100%',
+        boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
       }}>
-        {/* Header with Trophy Icon */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '0.25rem'
-        }}>
-          <Trophy style={{ width: '1rem', height: '1rem', color: '#f59e0b', flexShrink: 0 }} />
-          <span style={{
-            fontWeight: '600',
-            fontSize: '0.875rem',
-            color: isDarkMode ? '#f1f5f9' : '#111827'
-          }}>
-            Record: {data.species_name}
-          </span>
-          {data.scientific_name && (
-            <span style={{
-              fontSize: '0.75rem',
-              color: isDarkMode ? '#94a3b8' : '#6b7280',
-              fontStyle: 'italic'
-            }}>
-              ({data.scientific_name})
-            </span>
-          )}
-        </div>
-
-        {/* Stats Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '0.5rem',
-          fontSize: '0.8125rem'
-        }}>
-          {data.weight && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              color: isDarkMode ? '#cbd5e1' : '#374151'
-            }}>
-              <Scale style={{ width: '0.875rem', height: '0.875rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-              <span><strong>{data.weight}</strong> kg</span>
-            </div>
-          )}
-          {data.length && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              color: isDarkMode ? '#cbd5e1' : '#374151'
-            }}>
-              <Ruler style={{ width: '0.875rem', height: '0.875rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-              <span><strong>{data.length}</strong> cm</span>
-            </div>
-          )}
-          {data.location_name && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              color: isDarkMode ? '#cbd5e1' : '#374151'
-            }}>
-              <MapPin style={{ width: '0.875rem', height: '0.875rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {data.location_name}
-              </span>
-            </div>
-          )}
-          {data.date_caught && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              color: isDarkMode ? '#cbd5e1' : '#374151'
-            }}>
-              <Calendar style={{ width: '0.875rem', height: '0.875rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-              <span>{new Date(data.date_caught).toLocaleDateString('ro-RO')}</span>
-            </div>
-          )}
-        </div>
-
-        {/* User Info */}
-        {data.user_display_name && (
+        {/* Media Gallery */}
+        {currentMedia && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            fontSize: '0.8125rem',
-            color: isDarkMode ? '#94a3b8' : '#6b7280',
-            marginTop: '0.25rem',
-            paddingTop: '0.5rem',
-            borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-          }}>
-            <User style={{ width: '0.875rem', height: '0.875rem' }} />
-            <span>{data.user_display_name}</span>
+            width: '140px',
+            height: '105px',
+            flexShrink: 0,
+            overflow: 'hidden',
+            background: '#f3f4f6',
+            position: 'relative',
+            borderRadius: '0.375rem',
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            setZoomedMedia({ src: currentMedia.url, isVideo: currentMedia.type === 'video', index: currentMediaIndex });
+          }}
+          >
+            {currentMedia.type === 'image' ? (
+              <img
+                src={currentMedia.url}
+                alt={data.species_name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <video
+                src={currentMedia.url}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+                muted
+                playsInline
+              />
+            )}
+            {currentMedia.type === 'video' && (
+              <div style={{
+                position: 'absolute',
+                bottom: '4px',
+                right: '4px',
+                background: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '0.6875rem',
+                fontWeight: '500'
+              }}>
+                📹
+              </div>
+            )}
+            {hasMultipleMedia && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentMediaIndex((prev) => (prev - 1 + allMedia.length) % allMedia.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: '4px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'white',
+                    zIndex: 10
+                  }}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentMediaIndex((prev) => (prev + 1) % allMedia.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '4px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'white',
+                    zIndex: 10
+                  }}
+                >
+                  <ChevronRight size={14} />
+                </button>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '4px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '0.625rem',
+                  fontWeight: '500'
+                }}>
+                  {currentMediaIndex + 1}/{allMedia.length}
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {/* Link to Full Record */}
-        <Link
-          to={recordUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
+        {/* Content Section */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.375rem',
+          minWidth: 0
+        }}>
+          {/* Header */}
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.375rem',
-            marginTop: '0.5rem',
-            padding: '0.5rem',
-            background: '#3b82f6',
-            color: 'white',
-            borderRadius: '0.375rem',
-            textDecoration: 'none',
+            gap: '0.5rem',
+            flexWrap: 'wrap'
+          }}>
+            <Trophy style={{ width: '0.875rem', height: '0.875rem', color: '#f59e0b', flexShrink: 0 }} />
+            <span style={{
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              color: isDarkMode ? '#f1f5f9' : '#111827'
+            }}>
+              {data.species_name}
+            </span>
+            {data.scientific_name && (
+              <span style={{
+                fontSize: '0.75rem',
+                color: isDarkMode ? '#94a3b8' : '#6b7280',
+                fontStyle: 'italic'
+              }}>
+                {data.scientific_name}
+              </span>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
             fontSize: '0.8125rem',
-            fontWeight: '500',
-            transition: 'background 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#2563eb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#3b82f6';
-          }}
-        >
-          <span>Vezi recordul complet</span>
-          <ExternalLink style={{ width: '0.875rem', height: '0.875rem' }} />
-        </Link>
+            color: isDarkMode ? '#cbd5e1' : '#374151'
+          }}>
+            {data.weight && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Scale style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span><strong>{data.weight}</strong> kg</span>
+              </div>
+            )}
+            {data.length && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Ruler style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span><strong>{data.length}</strong> cm</span>
+              </div>
+            )}
+            {data.location_name && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <MapPin style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span>{data.location_name}</span>
+              </div>
+            )}
+            {data.date_caught && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Calendar style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span>{new Date(data.date_caught).toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+              </div>
+            )}
+          </div>
+
+          {/* User & Link */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            marginTop: '0.125rem'
+          }}>
+            {data.user_display_name && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                fontSize: '0.8125rem',
+                color: isDarkMode ? '#94a3b8' : '#6b7280'
+              }}>
+                <User style={{ width: '0.75rem', height: '0.75rem' }} />
+                <span>{data.user_display_name}</span>
+              </div>
+            )}
+            <a
+              href={recordUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                fontSize: '0.8125rem',
+                color: '#3b82f6',
+                textDecoration: 'none',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = 'none';
+              }}
+            >
+              Vezi record
+              <ExternalLink style={{ width: '0.75rem', height: '0.75rem' }} />
+            </a>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Media Zoom Modal */}
+      {zoomedMedia && (
+        <ImageZoom
+          src={zoomedMedia.src}
+          alt={data.species_name}
+          isVideo={zoomedMedia.isVideo}
+          onClose={() => setZoomedMedia(null)}
+          onPrev={allMedia.length > 1 ? () => {
+            const newIndex = (zoomedMedia.index - 1 + allMedia.length) % allMedia.length;
+            setZoomedMedia({ src: allMedia[newIndex].url, isVideo: allMedia[newIndex].type === 'video', index: newIndex });
+          } : undefined}
+          onNext={allMedia.length > 1 ? () => {
+            const newIndex = (zoomedMedia.index + 1) % allMedia.length;
+            setZoomedMedia({ src: allMedia[newIndex].url, isVideo: allMedia[newIndex].type === 'video', index: newIndex });
+          } : undefined}
+        />
+      )}
+    </>
   );
 }
-
