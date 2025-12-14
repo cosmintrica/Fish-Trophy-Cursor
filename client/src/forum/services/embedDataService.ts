@@ -256,11 +256,12 @@ export async function fetchGearEmbedData(gearId: string): Promise<GearEmbedData 
       name: data.name,
       brand: data.brand,
       model: data.model,
-      price: data.price,
+      price: (data as any).purchase_price || undefined,
       purchase_date: data.purchase_date,
       image_url: data.image_url ? getR2ImageUrlProxy(data.image_url) : undefined,
       description: data.description,
-      category: data.category
+      category: (data as any).gear_type || undefined,
+      global_id: (data as any).global_id || undefined
     };
   } catch (error) {
     console.error('Error in fetchGearEmbedData:', error);
