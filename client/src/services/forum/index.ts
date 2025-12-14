@@ -66,6 +66,7 @@ export {
     updateTopic,
     toggleTopicPin,
     toggleTopicLock,
+    toggleTopicImportant,
     deleteTopic
 } from './topics'
 

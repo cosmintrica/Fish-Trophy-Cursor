@@ -39,9 +39,10 @@ export function useTopicReadStatus(topicId: string | null | undefined) {
       }
     },
     enabled: !!queryKey,
-    staleTime: 30 * 1000, // 30 secunde - status-ul se schimbă des
+    staleTime: 0, // 0 - forțează refetch la fiecare verificare pentru actualizări instant
     gcTime: 2 * 60 * 1000, // 2 minute
     refetchOnWindowFocus: false, // Dezactivat pentru a evita refresh-uri când schimbi tab-ul
+    refetchOnMount: true, // Forțează refetch când componenta se montează
   });
 
   return {
@@ -101,6 +102,24 @@ export function useMarkTopicAsRead() {
             queryKey: ['subcategories-read-status-batch', forumUser.id],
           });
         }
+
+        // 4. Obține subforum_id din topic pentru a invalida cache-ul subforum-ului
+        try {
+          const { data: topicDataSubforum } = await supabase
+            .from('forum_topics')
+            .select('subforum_id')
+            .eq('id', variables.topicId)
+            .single();
+
+          if (topicDataSubforum?.subforum_id) {
+            // Invalidează cache-ul pentru batch subforums read status
+            queryClient.invalidateQueries({
+              queryKey: ['subforums-read-status-batch', forumUser.id],
+            });
+          }
+        } catch (error) {
+          // Silent fail - nu blocăm procesul dacă nu putem obține subforum_id
+        }
       } catch (error) {
         // Silent fail - nu blocăm procesul dacă nu putem obține subcategory_id
       }
@@ -158,8 +177,9 @@ export function useMultipleTopicsReadStatus(topicIds: string[]) {
       }
     },
     enabled: !!forumUser && topicIds.length > 0,
-    staleTime: 30 * 1000, // 30 secunde
+    staleTime: 0, // 0 - forțează refetch pentru actualizări instant
     gcTime: 2 * 60 * 1000, // 2 minute
+    refetchOnMount: true, // Forțează refetch când componenta se montează
   });
 
   return {
@@ -201,9 +221,10 @@ export function useSubcategoryUnreadStatus(subcategoryId: string | null | undefi
       }
     },
     enabled: !!queryKey,
-    staleTime: 30 * 1000, // 30 secunde
+    staleTime: 0, // 0 - forțează refetch pentru actualizări instant
     gcTime: 2 * 60 * 1000, // 2 minute
     refetchOnWindowFocus: false, // Dezactivat pentru a evita refresh-uri când schimbi tab-ul
+    refetchOnMount: true, // Forțează refetch când componenta se montează
   });
 
   return {
@@ -272,8 +293,9 @@ export function useMultipleSubcategoriesUnreadStatus(subcategoryIds: string[]) {
       }
     },
     enabled: !!forumUser && subcategoryIds.length > 0,
-    staleTime: 30 * 1000, // 30 secunde
+    staleTime: 0, // 0 - forțează refetch pentru actualizări instant
     gcTime: 2 * 60 * 1000, // 2 minute
+    refetchOnMount: true, // Forțează refetch când componenta se montează
   });
 
   return {
@@ -342,8 +364,9 @@ export function useMultipleSubforumsUnreadStatus(subforumIds: string[]) {
       }
     },
     enabled: !!forumUser && subforumIds.length > 0,
-    staleTime: 30 * 1000,
+    staleTime: 0, // 0 - forțează refetch pentru actualizări instant
     gcTime: 2 * 60 * 1000,
+    refetchOnMount: true, // Forțează refetch când componenta se montează
   });
 
   return {

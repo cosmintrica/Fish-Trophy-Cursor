@@ -24,6 +24,7 @@ import MessageActions from './message/MessageActions';
 import GearModal from './message/GearModal';
 import EditInfo from './message/EditInfo';
 import { DeletePostModal } from './message/MessageModals';
+import NewBadge from './NewBadge';
 import type { MessagePost } from './message/types';
 
 interface MessageContainerProps {
@@ -95,9 +96,90 @@ export default function MessageContainer({
   const [showEditPreview, setShowEditPreview] = useState(false);
   const [userGear, setUserGear] = useState<any[]>([]);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
+  const [isPostUnread, setIsPostUnread] = useState(false);
+  const hasCheckedUnreadRef = useRef(false); // Flag pentru a verifica o singură dată
   const contentRef = useRef<HTMLDivElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { update, updating } = useUpdatePost();
+
+  // Verifică dacă postarea este necitită - O SINGURĂ DATĂ la mount, ÎNAINTE de marcarea ca citit
+  useEffect(() => {
+    // Verifică doar o singură dată, la mount-ul componentei
+    if (hasCheckedUnreadRef.current || !forumUser || !topicId || !post.id || !post.createdAt) {
+      return;
+    }
+
+    hasCheckedUnreadRef.current = true;
+
+    const checkIfUnread = async () => {
+      try {
+        // IMPORTANT: Verificăm statusul ÎNAINTE de marcarea ca citit
+        // Obține last_read_at și last_read_post_id pentru topic-ul respectiv
+        const { data: readData } = await supabase
+          .from('forum_topic_reads')
+          .select('last_read_at, last_read_post_id')
+          .eq('user_id', forumUser.id)
+          .eq('topic_id', topicId)
+          .maybeSingle();
+
+        if (!readData || !readData.last_read_at) {
+          // Nu există înregistrare - toate postările sunt necitite
+          setIsPostUnread(true);
+          return;
+        }
+
+        // Dacă avem last_read_post_id, verificăm dacă postarea curentă este după ultima citită
+        if (readData.last_read_post_id && post.id) {
+          // Dacă postarea curentă este exact ultima citită, nu este necitită
+          if (post.id === readData.last_read_post_id) {
+            setIsPostUnread(false);
+            return;
+          }
+
+          // Dacă avem post_number, folosim-l pentru comparație (mai precis)
+          if (postNumber) {
+            // Obținem post_number pentru ultima postare citită
+            const { data: lastReadPostData } = await supabase
+              .from('forum_posts')
+              .select('post_number')
+              .eq('id', readData.last_read_post_id)
+              .maybeSingle();
+
+            if (lastReadPostData?.post_number) {
+              // Dacă post_number-ul curent este mai mare decât ultimul citit, este necitită
+              setIsPostUnread(postNumber > lastReadPostData.post_number);
+              return;
+            }
+          }
+
+          // Fallback: compară data postării cu data ultimei postări citite
+          const { data: lastReadPostData } = await supabase
+            .from('forum_posts')
+            .select('created_at')
+            .eq('id', readData.last_read_post_id)
+            .maybeSingle();
+
+          if (lastReadPostData) {
+            const postDate = new Date(post.createdAt);
+            const lastReadDate = new Date(lastReadPostData.created_at);
+            setIsPostUnread(postDate > lastReadDate);
+            return;
+          }
+        }
+
+        // Fallback: Compară data postării cu last_read_at
+        const postDate = new Date(post.createdAt);
+        const lastReadDate = new Date(readData.last_read_at);
+        setIsPostUnread(postDate > lastReadDate);
+      } catch (error) {
+        console.error('Error checking if post is unread:', error);
+        setIsPostUnread(false);
+      }
+    };
+
+    // Rulează verificarea imediat, fără delay
+    checkIfUnread();
+  }, []); // Empty dependency array - rulează doar o singură dată la mount
   const { showToast } = useToast();
 
   // Parse BBCode content for display
@@ -416,7 +498,7 @@ export default function MessageContainer({
           border: isMobile ? `1px solid ${theme.border}` : `2px solid ${theme.border}`,
           borderRadius: isMobile ? '0.5rem' : '0.75rem',
           marginBottom: isMobile ? '0.5rem' : '0.75rem',
-          overflow: 'hidden',
+          overflow: 'visible', // Changed from 'hidden' to 'visible' to allow ribbon to show
           boxShadow: isMobile ? '0 1px 3px rgba(0, 0, 0, 0.05)' : '0 2px 8px rgba(0, 0, 0, 0.1)',
           transition: 'all 0.3s ease',
           position: 'relative'
@@ -424,45 +506,58 @@ export default function MessageContainer({
       >
         {/* Permalink simplu în colțul dreapta sus - #1, #2, etc. - ascuns în editare */}
         {postNumber && topicId && !isEditing && (
-          <a
-            href={`#${postAnchorId}`}
-            onClick={(e) => {
-              e.preventDefault();
-              const element = document.getElementById(postAnchorId);
-              if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                window.history.replaceState(null, '', `#${postAnchorId}`);
-              }
-            }}
+          <div
             style={{
               position: 'absolute',
               top: '0.5rem',
               right: '0.5rem',
-              fontSize: '0.75rem',
-              color: theme.textSecondary,
-              textDecoration: 'none',
-              padding: '0.25rem 0.5rem',
-              backgroundColor: theme.background,
-              borderRadius: '0.25rem',
-              border: `1px solid ${theme.border}`,
-              zIndex: 10,
-              transition: 'all 0.2s',
-              fontWeight: '500',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '0.25rem',
+              zIndex: 15,
               opacity: isEditing ? 0 : 1,
               pointerEvents: isEditing ? 'none' : 'auto'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = theme.primary;
-              e.currentTarget.style.borderColor = theme.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = theme.textSecondary;
-              e.currentTarget.style.borderColor = theme.border;
-            }}
-            title={`Post #${postNumber}`}
           >
-            #{postNumber}
-          </a>
+            <a
+              href={`#${postAnchorId}`}
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById(postAnchorId);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  window.history.replaceState(null, '', `#${postAnchorId}`);
+                }
+              }}
+              style={{
+                fontSize: '0.75rem',
+                color: theme.textSecondary,
+                textDecoration: 'none',
+                padding: '0.25rem 0.5rem',
+                backgroundColor: theme.background,
+                borderRadius: '0.25rem',
+                border: `1px solid ${theme.border}`,
+                transition: 'all 0.2s',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = theme.primary;
+                e.currentTarget.style.borderColor = theme.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = theme.textSecondary;
+                e.currentTarget.style.borderColor = theme.border;
+              }}
+              title={`Post #${postNumber}`}
+            >
+              #{postNumber}
+            </a>
+            {/* Badge "Nou" ca ribbon sub permalink, care vine din spatele cardului */}
+            {isPostUnread && forumUser && (
+              <NewBadge isMobile={isMobile} />
+            )}
+          </div>
         )}
 
         {/* Layout: Sidebar + Content - Optimizat pentru mobil */}

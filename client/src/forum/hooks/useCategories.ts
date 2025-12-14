@@ -21,17 +21,10 @@ export function useCategories() {
     const { data, error, isLoading, refetch } = useQuery<CategoryWithChildren[]>({
         queryKey: queryKeys.categories(),
         queryFn: async () => {
-            console.log('🔄 [useCategories] Fetching categories hierarchy...');
             const result = await getCategoriesWithHierarchy()
             if (result.error) {
                 console.error('❌ [useCategories] Error fetching:', result.error);
                 throw new Error(result.error.message)
-            }
-            console.log('✅ [useCategories] Fetched ' + (result.data?.length || 0) + ' categories');
-            if (result.data && result.data.length > 0) {
-                const firstCat = result.data[0];
-                const firstSub = firstCat.subcategories?.[0];
-                console.log('🧐 [useCategories] First subcategory last post:', firstSub?.lastPost);
             }
             return result.data || []
         },

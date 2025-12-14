@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, User, Bell, Settings, LogOut, MessageSquare, Home, Users, FileText, Moon, Sun, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import UnifiedAuthModal from '@/components/UnifiedAuthModal';
@@ -53,6 +53,7 @@ interface ForumLayoutProps {
 
 export default function ForumLayout({ children, user, onLogin, onLogout, showWelcomeBanner = false }: ForumLayoutProps & { showWelcomeBanner?: boolean }) {
   // useForumRealtime(); // Activează ascultarea evenimentelor realtime - Mutat în ForumRoutes
+  const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -325,8 +326,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                       </Link>
                     )}
 
-                    {/* Messages - Desktop only */}
-                    {!isMobile && userLoaded && user && (
+                    {/* Messages - Visible on all devices */}
+                    {userLoaded && user && (
                       <Link
                         to="/messages?context=forum"
                         style={{
@@ -352,7 +353,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                           e.currentTarget.style.color = theme.textSecondary;
                         }}
                       >
-                        <MessageSquare size={18} />
+                        <MessageSquare size={isMobile ? 18 : 18} />
                         {unreadMessagesCount > 0 && (
                           <span style={{
                             position: 'absolute',
@@ -497,19 +498,25 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
 
                       {/* Menu Items */}
                       <div style={{ padding: '0.25rem' }}>
-                        <Link
-                          to={`/forum/user/${user.username}`}
-                          onClick={() => setShowUserMenu(false)}
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            navigate(`/forum/user/${user.username}`);
+                          }}
                           style={{
+                            width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
                             padding: '0.75rem 1rem',
                             color: theme.text,
-                            textDecoration: 'none',
+                            backgroundColor: 'transparent',
+                            border: 'none',
                             borderRadius: '0.375rem',
+                            cursor: 'pointer',
                             transition: 'all 0.2s',
-                            fontSize: '0.875rem'
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = theme.surfaceHover;
@@ -520,23 +527,60 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                         >
                           <User size={18} />
                           <span>Profilul meu</span>
-                        </Link>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            navigate('/profile');
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: theme.text,
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <Settings size={18} />
+                          <span>Setări</span>
+                        </button>
 
                         {user.isAdmin && (
-                          <Link
-                            to="/forum/admin"
-                            onClick={() => setShowUserMenu(false)}
+                          <button
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              navigate('/forum/admin');
+                            }}
                             style={{
+                              width: '100%',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.75rem',
                               padding: '0.75rem 1rem',
                               color: '#dc2626',
-                              textDecoration: 'none',
+                              backgroundColor: 'transparent',
+                              border: 'none',
                               borderRadius: '0.375rem',
+                              cursor: 'pointer',
                               transition: 'all 0.2s',
                               fontSize: '0.875rem',
-                              fontWeight: '600'
+                              fontWeight: '600',
+                              textAlign: 'left'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.backgroundColor = theme.surfaceHover;
@@ -547,7 +591,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                           >
                             <Settings size={18} />
                             <span>Admin Panel</span>
-                          </Link>
+                          </button>
                         )}
 
                         <button

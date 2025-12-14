@@ -194,6 +194,7 @@ export interface ForumTopic {
     topic_type: TopicType
     is_locked: boolean
     is_pinned: boolean
+    is_important?: boolean  // Topic important - afișat cu tag distinctiv
     is_deleted: boolean
     view_count: number
     reply_count: number

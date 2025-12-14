@@ -15,9 +15,13 @@ import AdminRoles from '../components/admin/AdminRoles';
 import AdminMarketplace from '../components/admin/AdminMarketplace';
 
 export default function AdminForum() {
-  const { forumUser, loading: authLoading } = useAuth();
+  const { forumUser, loading: authLoading, signOut } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -87,7 +91,7 @@ export default function AdminForum() {
 
   if (checking) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
@@ -100,7 +104,7 @@ export default function AdminForum() {
 
   if (!isAdmin) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🚫</div>

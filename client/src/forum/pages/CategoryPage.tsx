@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Pin, Lock } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Pin, Lock, Star } from 'lucide-react';
 import { useTopics } from '../hooks/useTopics';
 import CreateTopicEditor from '../components/CreateTopicEditor';
 import ActiveViewers from '../components/ActiveViewers';
@@ -26,10 +26,14 @@ export default function CategoryPage() {
     subcategoryOrSubforumSlug?: string;
   }>();
 
-  const { forumUser } = useAuth();
+  const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   // Slug-ul din URL poate fi categorie, subcategorie sau subforum
   const slugToUse = subcategoryOrSubforumSlug || categoryIdFromParams;
@@ -180,6 +184,39 @@ export default function CategoryPage() {
   const topicIds = topics.map(topic => topic.id);
   const { unreadMap, hasUnread: hasUnreadPost } = useMultipleTopicsReadStatus(topicIds);
 
+  // Grupăm topicurile în sticky/important și normale
+  const { stickyTopics, importantTopics, normalTopics } = useMemo(() => {
+    const sticky: typeof topics = [];
+    const important: typeof topics = [];
+    const normal: typeof topics = [];
+
+    topics.forEach(topic => {
+      if (topic.is_pinned) {
+        sticky.push(topic);
+      } else if ((topic as any).is_important) {
+        important.push(topic);
+      } else {
+        normal.push(topic);
+      }
+    });
+
+    return {
+      stickyTopics: sticky,
+      importantTopics: important,
+      normalTopics: normal
+    };
+  }, [topics]);
+
+  // Verifică dacă user-ul este admin sau moderator
+  const isAdminOrModerator = useMemo(() => {
+    if (!forumUser) return false;
+    // Verifică dacă este admin (din profiles.role)
+    if (forumUser.isAdmin) return true;
+    // TODO: Verifică dacă este moderator (din forum_moderators sau profiles.role)
+    // Pentru moment, doar adminii pot face sticky/important
+    return false;
+  }, [forumUser]);
+
   // Folosim parentCategory pentru breadcrumbs (nu mai avem categorySlug în URL)
   const displayCategorySlug = parentCategory?.slug || categoryData?.slug || null;
   const displayCategoryName = parentCategory?.name || categoryName || categoryData?.name || '';
@@ -303,10 +340,182 @@ export default function CategoryPage() {
     setShowCreateModal(false);
   };
 
+  // Funcție pentru a renderiza un topic item
+  const renderTopicItem = (topic: typeof topics[0]) => {
+    const hasUnread = forumUser ? hasUnreadPost(topic.id) : false;
+    const isImportant = (topic as any).is_important;
+
+    return (
+      <div
+        key={topic.id}
+        className="topic-item"
+        style={{
+          padding: isMobile ? '0.5rem' : '0.75rem',
+          borderBottom: `1px solid ${theme.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? '0.5rem' : '0.75rem',
+          alignItems: 'flex-start',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          backgroundColor: isImportant ? '#fef2f2' : topic.is_pinned ? '#fef3c7' : 'transparent'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = theme.surfaceHover;
+          // Prefetch topic-ul când utilizatorul trece cu mouse-ul
+          const topicSlug = (topic as any).slug;
+          if (topicSlug) {
+            prefetchTopic(topicSlug, subforumId ? slugToUse : undefined);
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = isImportant ? '#fef2f2' : topic.is_pinned ? '#fef3c7' : 'transparent';
+        }}
+        onClick={() => handleTopicClick(topic)}
+      >
+        {/* Topic info - Layout diferit pe mobil */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.125rem', flexShrink: 0 }}>
+            {/* Read Status Marker - în stânga iconițelor, 90% din înălțimea row-ului */}
+            {forumUser && (
+              <ReadStatusMarker
+                hasUnread={hasUnread}
+                style={{ marginRight: '0.25rem', alignSelf: 'center' }}
+              />
+            )}
+            {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
+            {isImportant && <Star style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#ef4444', fill: '#ef4444' }} />}
+            {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: theme.textSecondary }} />}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: theme.text, lineHeight: '1.3', wordBreak: 'break-word', margin: 0 }}>
+                {topic.title}
+              </h3>
+              {/* Tag "Important" */}
+              {isImportant && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.125rem 0.375rem',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  fontSize: '0.625rem',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.025em',
+                  borderRadius: '0.25rem',
+                  border: '1px solid #dc2626',
+                  lineHeight: '1'
+                }}>
+                  Important
+                </span>
+              )}
+            </div>
+
+            {/* Author - Line 2 */}
+            <div style={{ fontSize: isMobile ? '0.75rem' : '0.8125rem', color: theme.textSecondary, marginBottom: '0.125rem' }}>
+              <span>de <span style={{ color: theme.primary, fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span></span>
+            </div>
+
+            {/* Full Date & Time - Line 3 */}
+            <div style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', color: theme.textSecondary, marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
+              <span>{new Date(topic.created_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'numeric', year: 'numeric' })} {new Date(topic.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Răspunsuri - Ascuns pe mobil */}
+        <div className="hidden sm:flex" style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          color: theme.success || '#059669',
+          minHeight: '2rem'
+        }}>
+          {topic.reply_count}
+        </div>
+
+        {/* Vizualizări - Ascuns pe mobil */}
+        <div className="hidden sm:flex" style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          color: theme.textSecondary,
+          minHeight: '2rem'
+        }}>
+          {topic.view_count.toLocaleString('ro-RO')}
+        </div>
+
+        {/* Ultima postare - Ascuns pe mobil */}
+        <div className="hidden sm:flex" style={{
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          textAlign: 'right',
+          fontSize: '0.75rem',
+          color: theme.textSecondary,
+          minHeight: '2rem',
+          paddingRight: '0.5rem'
+        }}>
+          {(topic as any).last_post_at ? (
+            <>
+              <div style={{ fontWeight: '600', marginBottom: '0.125rem', color: '#ef4444' }}>
+                {new Date((topic as any).last_post_at).toLocaleDateString('ro-RO')}
+                <span style={{ color: theme.textSecondary, marginLeft: '4px', fontWeight: '400' }}>
+                  {new Date((topic as any).last_post_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span>
+                  de <span style={{ color: theme.primary, fontWeight: '600' }}>{(topic as any).last_post_author || 'Unknown'}</span>
+                </span>
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTopicClick({ ...topic, slug: (topic as any).slug });
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: '2px'
+                  }}
+                  title="Mergi la ultima postare"
+                >
+                  <div style={{
+                    width: '14px',
+                    height: '14px',
+                    backgroundColor: 'white',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <span style={{ fontSize: '10px', lineHeight: 1, color: '#374151' }}>▶</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <span>-</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Verifică dacă slugToUse există (poate fi subcategorySlug sau categoryId)
   if (!slugToUse) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
@@ -325,7 +534,7 @@ export default function CategoryPage() {
   // Verificare doar dacă există o eroare explicită
   if (topicsError && topicsError.message.includes('not found')) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
@@ -344,7 +553,7 @@ export default function CategoryPage() {
 
   if (topicsError) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: theme.surface, borderRadius: '1rem', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
@@ -412,7 +621,7 @@ export default function CategoryPage() {
           return [websiteData, organizationData, createBreadcrumbData(breadcrumbItems)] as unknown as Record<string, unknown>[];
         })()}
       />
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
           {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie - Toate linkuri funcționale */}
           <nav style={{
@@ -811,149 +1020,67 @@ export default function CategoryPage() {
                             </button>
                           </div>
                         ) : (
-                          topics.map((topic) => (
-                            <div
-                              key={topic.id}
-                              className="topic-item"
-                              style={{
-                                padding: isMobile ? '0.5rem' : '0.75rem',
-                                borderBottom: `1px solid ${theme.border}`,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: isMobile ? '0.5rem' : '0.75rem',
-                                alignItems: 'flex-start',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.2s',
-                                width: '100%',
-                                maxWidth: '100%',
-                                boxSizing: 'border-box'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                                // Prefetch topic-ul când utilizatorul trece cu mouse-ul
-                                const topicSlug = (topic as any).slug;
-                                if (topicSlug) {
-                                  prefetchTopic(topicSlug, subforumId ? slugToUse : undefined);
-                                }
-                              }}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              onClick={() => handleTopicClick(topic)}
-                            >
-                              {/* Topic info - Layout diferit pe mobil */}
-                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0, width: '100%' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.125rem', flexShrink: 0 }}>
-                                  {/* Read Status Marker - în stânga iconițelor, 90% din înălțimea row-ului */}
-                                  {forumUser && (
-                                    <ReadStatusMarker
-                                      hasUnread={hasUnreadPost(topic.id)}
-                                      style={{ marginRight: '0.25rem', alignSelf: 'center' }}
-                                    />
-                                  )}
-                                  {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
-                                  {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: theme.textSecondary }} />}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '0.25rem', lineHeight: '1.3', wordBreak: 'break-word' }}>
-                                    {topic.title}
-                                  </h3>
-
-                                  {/* Author - Line 2 */}
-                                  <div style={{ fontSize: isMobile ? '0.75rem' : '0.8125rem', color: theme.textSecondary, marginBottom: '0.125rem' }}>
-                                    <span>de <span style={{ color: theme.primary, fontWeight: '600' }}>{topic.author_username || 'Unknown'}</span></span>
-                                  </div>
-
-                                  {/* Full Date & Time - Line 3 */}
-                                  <div style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', color: theme.textSecondary, marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
-                                    {/* Afisam data si ora complete pentru topic creation */}
-                                    <span>{new Date(topic.created_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'numeric', year: 'numeric' })} {new Date(topic.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <>
+                            {/* Sticky Topics - cu delimitare clară */}
+                            {stickyTopics.length > 0 && (
+                              <>
+                                {/* Delimitare pentru sticky topics */}
+                                <div style={{
+                                  backgroundColor: '#fef3c7',
+                                  borderTop: `2px solid #f59e0b`,
+                                  borderBottom: `2px solid #f59e0b`,
+                                  padding: '0.5rem 1rem',
+                                  marginTop: stickyTopics.length > 0 ? '0' : '0',
+                                  marginBottom: '0.5rem'
+                                }}>
+                                  <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Topicuri Fixate
                                   </div>
                                 </div>
-                              </div>
+                                {stickyTopics.map((topic) => renderTopicItem(topic))}
+                                {/* Delimitare după sticky topics */}
+                                {importantTopics.length > 0 || normalTopics.length > 0 ? (
+                                  <div style={{
+                                    height: '1px',
+                                    backgroundColor: theme.border,
+                                    margin: '0.75rem 0'
+                                  }} />
+                                ) : null}
+                              </>
+                            )}
 
-                              {/* Răspunsuri - Ascuns pe mobil */}
-                              <div className="hidden sm:flex" style={{
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                color: theme.success || '#059669',
-                                minHeight: '2rem'
-                              }}>
-                                {topic.reply_count}
-                              </div>
-
-                              {/* Vizualizări - Ascuns pe mobil */}
-                              <div className="hidden sm:flex" style={{
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                color: theme.textSecondary,
-                                minHeight: '2rem'
-                              }}>
-                                {topic.view_count.toLocaleString('ro-RO')}
-                              </div>
-
-                              {/* Ultima postare - Ascuns pe mobil */}
-                              <div className="hidden sm:flex" style={{
-                                flexDirection: 'column',
-                                alignItems: 'flex-end', // Aliniere dreapta
-                                justifyContent: 'center',
-                                textAlign: 'right',
-                                fontSize: '0.75rem',
-                                color: theme.textSecondary,
-                                minHeight: '2rem',
-                                paddingRight: '0.5rem'
-                              }}>
-                                {(topic as any).last_post_at ? (
-                                  <>
-                                    <div style={{ fontWeight: '600', marginBottom: '0.125rem', color: '#ef4444' }}>
-                                      {/* Format Dată + Oră - Afișăm mereu data completă */}
-                                      {new Date((topic as any).last_post_at).toLocaleDateString('ro-RO')}
-                                      <span style={{ color: theme.textSecondary, marginLeft: '4px', fontWeight: '400' }}>
-                                        {new Date((topic as any).last_post_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
+                            {/* Important Topics - cu delimitare clară */}
+                            {importantTopics.length > 0 && (
+                              <>
+                                {stickyTopics.length === 0 && (
+                                  <div style={{
+                                    backgroundColor: '#fef2f2',
+                                    borderTop: `2px solid #ef4444`,
+                                    borderBottom: `2px solid #ef4444`,
+                                    padding: '0.5rem 1rem',
+                                    marginTop: '0',
+                                    marginBottom: '0.5rem'
+                                  }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      Topicuri Importante
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      <span>
-                                        de <span style={{ color: theme.primary, fontWeight: '600' }}>{(topic as any).last_post_author || 'Unknown'}</span>
-                                      </span>
-                                      <div
-                                        onClick={(e) => {
-                                          e.stopPropagation(); // Previne navigarea la topic general
-                                          handleTopicClick({ ...topic, slug: (topic as any).slug });
-                                          // Permalink navigation could be enhanced here to specific post anchor
-                                        }}
-                                        style={{
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          marginLeft: '2px'
-                                        }}
-                                        title="Mergi la ultima postare"
-                                      >
-                                        <div style={{
-                                          width: '14px',
-                                          height: '14px',
-                                          backgroundColor: 'white', // Sau culoare deschisă
-                                          border: '1px solid #d1d5db',
-                                          borderRadius: '2px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center'
-                                        }}>
-                                          <span style={{ fontSize: '10px', lineHeight: 1, color: '#374151' }}>▶</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <span>-</span>
+                                  </div>
                                 )}
-                              </div>
-                            </div>
-                          ))
+                                {importantTopics.map((topic) => renderTopicItem(topic))}
+                                {/* Delimitare după important topics */}
+                                {normalTopics.length > 0 ? (
+                                  <div style={{
+                                    height: '1px',
+                                    backgroundColor: theme.border,
+                                    margin: '0.75rem 0'
+                                  }} />
+                                ) : null}
+                              </>
+                            )}
+
+                            {/* Normal Topics */}
+                            {normalTopics.map((topic) => renderTopicItem(topic))}
+                          </>
                         )}
                       </div>
 

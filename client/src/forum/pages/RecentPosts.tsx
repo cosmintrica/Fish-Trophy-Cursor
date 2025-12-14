@@ -11,10 +11,14 @@ import SEOHead from '../../components/SEOHead';
 import { RecentPostListSkeleton } from '../../components/skeletons/RecentPostSkeleton';
 
 export default function RecentPosts() {
-  const { forumUser } = useAuth();
+  const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
   const { prefetchTopic } = usePrefetch();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
   const postsContainerRef = useRef<HTMLDivElement>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
@@ -290,7 +294,7 @@ export default function RecentPosts() {
   };
 
   return (
-    <ForumLayout onLogin={() => { }} onLogout={() => { }} user={forumUserToLayoutUser(forumUser)}>
+    <ForumLayout onLogin={() => { }} onLogout={handleLogout} user={forumUserToLayoutUser(forumUser)}>
       <div className="max-w-6xl mx-auto px-0 md:px-0 scroll-mt-20" style={{ paddingTop: '1.5rem' }}>
         <SEOHead
           title="Postări Recente | Fish Trophy"

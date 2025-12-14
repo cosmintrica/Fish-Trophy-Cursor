@@ -33,9 +33,13 @@ export default function TopicPage() {
   // Determinăm slug-ul real (subcategorie sau subforum)
   const actualSubcategoryOrSubforumSlug = potentialSlug;
   const navigate = useNavigate();
-  const { forumUser } = useAuth();
+  const { forumUser, signOut } = useAuth();
   const { showToast } = useToast();
   const { theme } = useTheme();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   // Paginare - salvat în localStorage pentru preferințe utilizator
   const [page, setPage] = useState(() => {
@@ -177,18 +181,24 @@ export default function TopicPage() {
   }, [topicError, topic, topicLoading]);
 
   // Marchează topicul ca citit când user-ul intră pe pagină
+  // IMPORTANT: Delay mic pentru a permite verificarea statusului unread în MessageContainer
   useEffect(() => {
     // topic?.id este deja UUID valid
     if (topic?.id && forumUser && posts.length > 0) {
-      // Marchează topicul ca citit cu ultimul post
-      const lastPost = posts[posts.length - 1];
-      markAsRead({
-        topicId: topic.id,
-        postId: lastPost?.id
-      }).catch(error => {
-        // Silent fail - nu afișăm eroare dacă marcarea nu reușește
-        console.error('Error marking topic as read:', error);
-      });
+      // Delay de 500ms pentru a permite verificarea statusului unread în MessageContainer
+      const timeoutId = setTimeout(() => {
+        // Marchează topicul ca citit cu ultimul post
+        const lastPost = posts[posts.length - 1];
+        markAsRead({
+          topicId: topic.id,
+          postId: lastPost?.id
+        }).catch(error => {
+          // Silent fail - nu afișăm eroare dacă marcarea nu reușește
+          console.error('Error marking topic as read:', error);
+        });
+      }, 500); // Delay de 500ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [topic?.id, forumUser, posts.length, markAsRead]);
 
@@ -223,7 +233,7 @@ export default function TopicPage() {
   // Error state - DUPĂ toate hooks-urile
   if (topicError || postsError) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
@@ -243,7 +253,7 @@ export default function TopicPage() {
   // Topic not found
   if (showNotFound) {
     return (
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
           <div style={{ textAlign: 'center', padding: '4rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid #e5e7eb' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
@@ -330,7 +340,7 @@ export default function TopicPage() {
           structuredData={articleStructuredData ? [websiteData, organizationData, articleStructuredData] as unknown as Record<string, unknown>[] : [websiteData, organizationData] as unknown as Record<string, unknown>[]}
         />
       )}
-      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+      <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
         <div style={{
           maxWidth: '1200px',
           margin: '0 auto',

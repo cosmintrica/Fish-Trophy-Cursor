@@ -7,8 +7,6 @@ export function useSubscribeToForumUpdates() {
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        console.log('🔌 Subscribing to Forum Realtime Updates...');
-
         const channel = supabase
             .channel('forum-global-updates')
             .on(
@@ -19,7 +17,6 @@ export function useSubscribeToForumUpdates() {
                     table: 'forum_posts'
                 },
                 (payload) => {
-                    console.log('🔔 [Forum Realtime] New Post Detected!', payload);
                     const newPost = payload.new as any;
 
                     // 1. Invalidate Topics Lists (to show new last post)
@@ -35,7 +32,6 @@ export function useSubscribeToForumUpdates() {
                     queryClient.invalidateQueries({ queryKey: ['subcategories'] });
 
                     // 4. Invalidate Unread Status checks (Comprehensive)
-                    console.log('🔄 [Forum Realtime] Invalidating unread status queries...');
                     queryClient.invalidateQueries({ queryKey: ['topic-read-status'] });
                     queryClient.invalidateQueries({ queryKey: ['topics-read-status-batch'] });
                     queryClient.invalidateQueries({ queryKey: ['subcategory-read-status'] });
@@ -48,7 +44,6 @@ export function useSubscribeToForumUpdates() {
 
                     // 6. Invalidate specific topic cache if we are inside it
                     if (newPost.topic_id) {
-                        console.log(`🔄 [Forum Realtime] Invalidating topic ${newPost.topic_id}`);
                         queryClient.invalidateQueries({ queryKey: ['topic', newPost.topic_id] });
                         queryClient.invalidateQueries({ queryKey: ['posts', newPost.topic_id] });
                     }
@@ -62,7 +57,6 @@ export function useSubscribeToForumUpdates() {
                     table: 'forum_topics'
                 },
                 (payload) => {
-                    console.log('🔔 [Forum Realtime] New Topic Detected!', payload);
                     queryClient.invalidateQueries({ queryKey: ['topics'] });
                     queryClient.invalidateQueries({ queryKey: ['forum-stats'] });
                     queryClient.invalidateQueries({ queryKey: queryKeys.categories() }); // Update Homepage Hierarchy
@@ -70,12 +64,41 @@ export function useSubscribeToForumUpdates() {
                     queryClient.invalidateQueries({ queryKey: ['subforums-read-status-batch'] });
                 }
             )
-            .subscribe((status) => {
-                console.log(`🔌 [Forum Realtime] Subscription status: ${status}`);
-            });
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'forum_topic_reads'
+                },
+                (payload) => {
+                    // Invalidează cache-ul pentru toate query-urile de read status
+                    queryClient.invalidateQueries({ queryKey: ['topic-read-status'] });
+                    queryClient.invalidateQueries({ queryKey: ['topics-read-status-batch'] });
+                    queryClient.invalidateQueries({ queryKey: ['subcategory-read-status'] });
+                    queryClient.invalidateQueries({ queryKey: ['subcategories-read-status-batch'] });
+                    queryClient.invalidateQueries({ queryKey: ['subforums-read-status-batch'] });
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'forum_topic_reads'
+                },
+                (payload) => {
+                    // Invalidează cache-ul pentru toate query-urile de read status
+                    queryClient.invalidateQueries({ queryKey: ['topic-read-status'] });
+                    queryClient.invalidateQueries({ queryKey: ['topics-read-status-batch'] });
+                    queryClient.invalidateQueries({ queryKey: ['subcategory-read-status'] });
+                    queryClient.invalidateQueries({ queryKey: ['subcategories-read-status-batch'] });
+                    queryClient.invalidateQueries({ queryKey: ['subforums-read-status-batch'] });
+                }
+            )
+            .subscribe();
 
         return () => {
-            console.log('🔌 [Forum Realtime] Unsubscribing...');
             supabase.removeChannel(channel);
         };
     }, [queryClient]);

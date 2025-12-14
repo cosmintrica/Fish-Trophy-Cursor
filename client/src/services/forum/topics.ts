@@ -85,6 +85,7 @@ async function getTopicsFallback(
 
     const { data, error, count } = await query
         .order('is_pinned', { ascending: false })
+        .order('is_important', { ascending: false })
         .order('last_post_at', { ascending: false, nullsFirst: false })
         .range(offset, offset + pageSize - 1)
 
@@ -511,6 +512,28 @@ export async function toggleTopicLock(topicId: string, isLocked: boolean): Promi
         const { data, error } = await supabase
             .from('forum_topics')
             .update({ is_locked: isLocked })
+            .eq('id', topicId)
+            .select()
+            .single()
+
+        if (error) {
+            return { error: { message: error.message, code: error.code } }
+        }
+
+        return { data }
+    } catch (error) {
+        return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } }
+    }
+}
+
+/**
+ * Toggle topic important status (moderator/admin only)
+ */
+export async function toggleTopicImportant(topicId: string, isImportant: boolean): Promise<ApiResponse<ForumTopic>> {
+    try {
+        const { data, error } = await supabase
+            .from('forum_topics')
+            .update({ is_important: isImportant })
             .eq('id', topicId)
             .select()
             .single()

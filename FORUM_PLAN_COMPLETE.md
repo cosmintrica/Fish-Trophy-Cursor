@@ -136,7 +136,9 @@ Un subforum poate conține topicuri direct, iar o subcategorie poate avea atât 
 
 ### Tipuri de Topicuri
 - **Normal**: Topic standard
-- **Sticky/Pinned**: Fixat în top (pentru anunțuri importante)
+- **Sticky/Pinned**: Fixat în top (pentru anunțuri importante) - ✅ IMPLEMENTAT cu delimitare clară și design distinctiv
+- **Important Topics**: Topicuri importante cu tag "Important" și design distinctiv - ✅ IMPLEMENTAT (câmp `is_important` în `forum_topics`, migrație 84)
+- **Badge "Nou"**: Badge portocaliu "Nou" pentru mesajele necitite, afișat la postări în dreapta sub permalink - ✅ IMPLEMENTAT
 - **Locked**: Închis (nu mai pot fi adăugate răspunsuri)
 - **Sondaj**: Include un poll cu votare
 - **Anunț**: Highlight special (culoare diferită)
@@ -868,23 +870,26 @@ Aici e textul pe care vreau să-l citez, nu tot postul.
 - [ ] Verificare vânzători piață.
 
 ### Faza 4: Frontend User (Prioritate 4) 🎨
-- [ ] **Inline Admin Editing**: Butoane "Edit"/"Delete" vizibile în UI când admin detectat.
-- [ ] Rich text editor cu @mentions.
-- [ ] Quick Reply box (sticky bottom) + Advanced Editor.
+- [x] **Inline Admin Editing**: Butoane "Edit"/"Delete" vizibile în UI când admin detectat.
+- [x] Rich text editor cu @mentions.
+- [x] Quick Reply box (sticky bottom) + Advanced Editor.
 - [ ] Sistem review vânzări (rating 1-5 stele + text).
-- [ ] **Profil Forum Simplificat**:
+- [x] **Profil Forum Simplificat**:
   - Header cu avatar, rang, reputație, putere, badge-uri.
   - Tab Informații Generale.
   - Tab Istoric Postări.
   - Tab Istoric Reputație (OBLIGATORIU PUBLIC cu grafic).
   - Tab Sancțiuni.
   - Tab Activitate Piață.
-- [ ] Card-uri embed pentru `[record]` și `[gear]` (fetch API din Fish Trophy DB).
-- [ ] Quote parțial cu selectare text (highlight + click "Quote").
-- [ ] **Sistem Căutare Inteligent**:
+- [x] Card-uri embed pentru `[record]` și `[gear]` (fetch API din Fish Trophy DB).
+- [x] Quote parțial cu selectare text (highlight + click "Quote").
+- [x] **Sistem Căutare Inteligent**:
   - Search bar în header cu auto-complete.
   - Pagină căutare avansată cu filtre multiple.
   - Full-text search cu highlighting.
+- [x] **Badge "Nou" pentru mesaje necitite**: Badge portocaliu afișat la postări în dreapta sub permalink.
+- [x] **Topicuri Sticky**: Delimitare clară și design distinctiv pentru topicuri fixate.
+- [x] **Topicuri Importante**: Tag "Important" și design distinctiv pentru topicuri importante.
 
 ### Faza 5: Advanced Features (Prioritate 5) 🚀
 - [ ] Sistem sondaje (polls) cu multiple opțiuni și grafice rezultate.
@@ -1052,3 +1057,37 @@ si la inceput/final, salveaza si mesajele mele cu instructiuni
 ---
 
 **Documentul FORUM_PLAN_COMPLETE.md reflectă integral toate cerințele din mesajele de mai sus.**
+
+---
+
+## ✅ FUNCȚIONALITĂȚI RECENT IMPLEMENTATE (Decembrie 2025)
+
+### 1. Badge "Nou" pentru Mesaje Necitite
+- **Locație**: Afișat la postări/mesaje, în dreapta, sub permalink (#1, #2, etc.)
+- **Design**: Badge portocaliu cu text "Nou" (similar cu screenshot-ul)
+- **Logică**: Verifică dacă `post.createdAt > last_read_at` din `forum_topic_reads`
+- **Componentă**: `NewBadge.tsx`
+- **Integrare**: `MessageContainer.tsx`
+- **Status**: ✅ COMPLETAT
+
+### 2. Topicuri Sticky (Fixate)
+- **Delimitare**: Bară galbenă deasupra topicurilor sticky cu text "Topicuri Fixate"
+- **Design**: Background galben deschis (`#fef3c7`) cu border portocaliu (`#f59e0b`)
+- **Sortare**: Topicurile sticky apar întotdeauna deasupra celor normale
+- **UI**: Icon Pin portocaliu lângă titlul topicului
+- **Status**: ✅ COMPLETAT
+
+### 3. Topicuri Importante
+- **Câmp Database**: `is_important` BOOLEAN în `forum_topics` (migrație 84)
+- **Delimitare**: Bară roșie deasupra topicurilor importante cu text "Topicuri Importante"
+- **Design**: Background roșu deschis (`#fef2f2`) cu border roșu (`#ef4444`)
+- **Tag**: Badge roșu "Important" lângă titlul topicului
+- **Sortare**: Topicurile importante apar după sticky, dar înainte de normale
+- **UI**: Icon Star roșu lângă titlul topicului
+- **Status**: ✅ COMPLETAT
+
+### 4. Funcționalități în Dezvoltare
+- [ ] Butoane admin/moderator pentru toggle sticky/important în topicuri
+- [ ] Redesign MessageSidebar cu locație, posturi, putere rep, reputație cu progress bar
+- [ ] Buton raportează în sidebar (mic, roșu) care trimite în admin panel forum
+- [ ] Panou admin forum pentru raportări (similar cu admin site)

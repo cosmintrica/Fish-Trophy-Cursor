@@ -1,6 +1,6 @@
-import { useState, useEffect, ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, Sun, Moon } from 'lucide-react';
+import { useState, useEffect, ReactNode, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, Sun, Moon, Settings, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -18,11 +18,14 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
   const { trackUserAction } = useAnalytics();
   const { prefetchProfile, prefetchRecords, prefetchSpecies } = usePrefetch();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [userUsername, setUserUsername] = useState<string | null>(null);
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
 
@@ -147,6 +150,20 @@ export default function Layout({ children }: { children: ReactNode }) {
     document.body.classList.remove('mobile-menu-open');
   };
 
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!showUserMenu) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
   const openMobileMenu = () => {
     setIsMobileMenuOpen(true);
     // Disable body scroll when menu is open
@@ -174,7 +191,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 bg-fixed transition-colors duration-200">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-b border-blue-200/50 dark:border-slate-700/50 shadow-lg transition-colors duration-200" role="banner">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
             <Link
@@ -244,14 +261,6 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 🎣 Forum
               </Link>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  Admin
-                </Link>
-              )}
             </nav>
 
             {/* User Section */}
@@ -272,38 +281,144 @@ export default function Layout({ children }: { children: ReactNode }) {
 
               {user ? (
                 <>
-                  <div className="hidden sm:flex items-center space-x-3">
-                    {userUsername ? (
-                      <Link
-                        to={`/profile/${userUsername}`}
-                        className={`relative px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer`}
-                        onMouseEnter={() => prefetchProfile(userUsername)}
-                      >
-                        {getUserDisplayName()}
-                        {unreadMessagesCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white shadow-lg">
-                            {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                          </span>
-                        )}
-                      </Link>
-                    ) : (
-                      <div className={`relative px-3 py-1.5 rounded-lg bg-gradient-to-r ${generateUserColor(getUserDisplayName())} text-white text-sm font-medium shadow-sm`}>
-                        {getUserDisplayName()}
-                        {unreadMessagesCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white shadow-lg">
-                            {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* Messages Button - Visible on all devices */}
                   <Link
-                    to="/profile"
-                    className="hidden sm:inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    to="/messages?context=site"
+                    className="relative p-2 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-all duration-200"
+                    title="Mesaje private"
                   >
-                    <User className="w-4 h-4 mr-2" />
-                    Setări
+                    <MessageSquare className="w-5 h-5" />
+                    {unreadMessagesCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 border-2 border-white dark:border-slate-900 shadow-lg">
+                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                      </span>
+                    )}
                   </Link>
+
+                  <div className="hidden sm:flex items-center relative" ref={userMenuRef}>
+                    {/* User Avatar - Clickable for menu */}
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold border-2 transition-all ${
+                        isAdmin ? 'border-yellow-400' : 'border-gray-300 dark:border-slate-600'
+                      } ${generateUserColor(getUserDisplayName()).replace('from-', 'bg-gradient-to-r from-').replace('to-', ' to-')}`}
+                      style={{
+                        backgroundImage: user.user_metadata?.avatar_url
+                          ? `url(${user.user_metadata.avatar_url})`
+                          : undefined,
+                        backgroundSize: user.user_metadata?.avatar_url ? 'cover' : undefined,
+                        backgroundPosition: user.user_metadata?.avatar_url ? 'center' : undefined
+                      }}
+                      onError={(e) => {
+                        // Fallback dacă avatar-ul nu se încarcă (ex: 429 rate limit)
+                        const target = e.target as HTMLElement;
+                        target.style.backgroundImage = 'none';
+                      }}
+                    >
+                      {!user.user_metadata?.avatar_url && getUserDisplayName().charAt(0).toUpperCase()}
+                    </button>
+
+                    {/* User Dropdown Menu */}
+                  {showUserMenu && (
+                    <div
+                      className="absolute top-full right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 min-w-[200px] overflow-hidden"
+                      style={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+                      }}
+                    >
+                      {/* User Info */}
+                      <div
+                        className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center gap-3"
+                        style={{
+                          borderBottomColor: isDarkMode ? '#334155' : '#e5e7eb'
+                        }}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-semibold flex-shrink-0 ${
+                            generateUserColor(getUserDisplayName()).replace('from-', 'bg-gradient-to-r from-').replace('to-', ' to-')
+                          }`}
+                          style={{
+                            backgroundImage: user.user_metadata?.avatar_url
+                              ? `url(${user.user_metadata.avatar_url})`
+                              : undefined,
+                            backgroundSize: user.user_metadata?.avatar_url ? 'cover' : undefined,
+                            backgroundPosition: user.user_metadata?.avatar_url ? 'center' : undefined
+                          }}
+                          onError={(e) => {
+                            // Fallback dacă avatar-ul nu se încarcă (ex: 429 rate limit)
+                            const target = e.target as HTMLElement;
+                            target.style.backgroundImage = 'none';
+                          }}
+                        >
+                          {!user.user_metadata?.avatar_url && getUserDisplayName().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {getUserDisplayName()}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                            {user.email || 'Utilizator'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="p-1">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            navigate(userUsername ? `/profile/${userUsername}` : '/profile');
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>Profilul meu</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            navigate('/profile');
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>Setări</span>
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              navigate('/admin');
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm font-semibold text-left"
+                          >
+                            <Settings className="w-4 h-4" />
+                            <span>Admin Panel</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={async () => {
+                            setShowUserMenu(false);
+                            trackUserAction('logout', { method: 'email' });
+                            const result = await logout();
+                            if (result?.error) {
+                              console.error('Logout error:', result.error);
+                            }
+                            window.location.replace('/');
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Deconectare</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  </div>
                 </>
               ) : (
                 <button

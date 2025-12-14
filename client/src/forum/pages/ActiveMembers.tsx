@@ -9,8 +9,12 @@ import SEOHead from '../../components/SEOHead';
 import { MemberListSkeleton } from '../../components/skeletons/MemberSkeleton';
 
 export default function ActiveMembers() {
-  const { forumUser } = useAuth();
+  const { forumUser, signOut } = useAuth();
   const { theme } = useTheme();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
   const [members, setMembers] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -183,7 +187,7 @@ export default function ActiveMembers() {
   };
 
   return (
-    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+    <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',

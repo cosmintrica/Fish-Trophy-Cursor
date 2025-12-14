@@ -392,7 +392,8 @@ export default function ForumUserProfile() {
                   title={profileTitle}
                   description={profileDescription}
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-slate-100 text-xs md:text-sm font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
                 />
               </div>
             </div>

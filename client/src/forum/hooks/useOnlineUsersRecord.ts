@@ -54,15 +54,10 @@ export function useOnlineUsersRecord() {
         },
         async (payload) => {
           // Când se schimbă recordul, refetch datele instant
-          console.log('[Realtime] Online users record changed:', payload.eventType);
           await refetch();
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] Subscribed to forum_online_users_record changes');
-        }
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

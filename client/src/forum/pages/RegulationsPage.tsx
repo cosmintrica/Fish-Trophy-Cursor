@@ -4,11 +4,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function RegulationsPage() {
-    const { forumUser } = useAuth();
+    const { forumUser, signOut } = useAuth();
     const { theme } = useTheme();
 
+    const handleLogout = async () => {
+        await signOut();
+    };
+
     return (
-        <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={() => { }}>
+        <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
                 {/* Breadcrumbs */}
                 <nav style={{ marginBottom: '2rem', fontSize: '0.75rem', color: '#6b7280' }}>
