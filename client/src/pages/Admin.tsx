@@ -404,7 +404,7 @@ const Admin: React.FC = () => {
         .select(`
           *,
           fish_species!inner(name, scientific_name),
-          profiles!records_user_id_fkey(display_name, email),
+          profiles!records_user_id_fkey(display_name, email, username),
           fishing_locations!inner(name, type, county)
         `)
         .eq('status', 'pending')
@@ -413,7 +413,27 @@ const Admin: React.FC = () => {
       if (pendingError) {
         // console.error('Error loading pending records:', pendingError);
       } else {
-        setPendingRecords(pendingData || []);
+        // Load verified_by profiles separately
+        const recordsWithVerifiedBy = await Promise.all(
+          (pendingData || []).map(async (record: any) => {
+            if (record.verified_by) {
+              try {
+                const { data: verifiedByProfile } = await supabase
+                  .from('profiles')
+                  .select('id, display_name, username')
+                  .eq('id', record.verified_by)
+                  .single();
+                if (verifiedByProfile) {
+                  record.verified_by_profile = verifiedByProfile;
+                }
+              } catch (err) {
+                // Ignore errors
+              }
+            }
+            return record;
+          })
+        );
+        setPendingRecords(recordsWithVerifiedBy);
       }
 
       // Load rejected records
@@ -422,11 +442,37 @@ const Admin: React.FC = () => {
         .select(`
           *,
           fish_species!inner(name, scientific_name),
-          profiles!records_user_id_fkey(display_name, email),
+          profiles!records_user_id_fkey(display_name, email, username),
           fishing_locations!inner(name, type, county)
         `)
         .eq('status', 'rejected')
         .order('created_at', { ascending: false });
+
+      if (rejectedError) {
+        // console.error('Error loading rejected records:', rejectedError);
+      } else {
+        // Load verified_by profiles separately
+        const recordsWithVerifiedBy = await Promise.all(
+          (rejectedData || []).map(async (record: any) => {
+            if (record.verified_by) {
+              try {
+                const { data: verifiedByProfile } = await supabase
+                  .from('profiles')
+                  .select('id, display_name, username')
+                  .eq('id', record.verified_by)
+                  .single();
+                if (verifiedByProfile) {
+                  record.verified_by_profile = verifiedByProfile;
+                }
+              } catch (err) {
+                // Ignore errors
+              }
+            }
+            return record;
+          })
+        );
+        setRejectedRecords(recordsWithVerifiedBy);
+      }
 
       if (rejectedError) {
         // console.error('Error loading rejected records:', rejectedError);

@@ -52,6 +52,37 @@ interface FishRecord {
   };
 }
 
+// Helper component for Member Avatar with "Accordion" animation
+const MemberAvatar = ({ member, index }: { member: any, index: number }) => {
+  const [imgError, setImgError] = useState(false);
+
+  // We rely on the parent group-hover state for the accordion effect
+  return (
+    <a
+      href={`/profile/${member.username || member.id}`}
+      className="relative block w-10 h-10 rounded-full ring-2 ring-white dark:ring-slate-800 transition-all duration-200 ease-out origin-center transform hover:scale-110 hover:z-30 shadow-sm hover:shadow-md hover:ring-blue-400 dark:hover:ring-blue-500 will-change-transform"
+      style={{
+        zIndex: 20 - index, // Stack order
+      }}
+      title={member.displayName}
+    >
+      {!imgError && member.avatarUrl ? (
+        <img
+          src={getR2ImageUrlProxy(member.avatarUrl)}
+          alt={member.displayName}
+          className="w-full h-full rounded-full object-cover bg-slate-200 dark:bg-slate-700 pointer-events-none"
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+          {member.displayName.charAt(0).toUpperCase()}
+        </div>
+      )}
+    </a>
+  );
+};
+
 const Records = () => {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
@@ -68,57 +99,57 @@ const Records = () => {
   const [records, setRecords] = useState<FishRecord[]>([]);
   const loading = recordsLoading || speciesLoading || locationsLoading;
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Initialize filters from URL params (support both slug and ID)
   const getInitialSpecies = () => {
     const speciesParam = searchParams.get('species');
     if (!speciesParam) return 'all';
-    
+
     // Try to find by slug first (when species data is loaded)
     if (species.length > 0) {
       const found = findSpeciesBySlug(species, speciesParam);
       if (found) return found.id;
     }
-    
+
     // Fallback to ID if slug not found (for backward compatibility)
     return speciesParam;
   };
-  
+
   const getInitialLocation = () => {
     const locationParam = searchParams.get('location') || searchParams.get('location_id');
     if (!locationParam) return 'all';
-    
+
     // Try to find by slug first (when locations data is loaded)
     if (locations.length > 0) {
       const found = findLocationBySlug(locations, locationParam);
       if (found) return found.id;
     }
-    
+
     // Fallback to ID if slug not found (for backward compatibility)
     return locationParam;
   };
-  
+
   const getInitialUser = () => {
     const userParam = searchParams.get('user');
     if (!userParam) return 'all';
     return userParam; // Username or user ID
   };
-  
+
   const [selectedSpecies, setSelectedSpecies] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedUser, setSelectedUser] = useState('all');
-  
+
   // Track if we're initializing from URL to prevent loops
   const isInitializingRef = useRef(true);
-  
+
   // Sync filters with URL params when data loads (only once on mount)
   useEffect(() => {
     if (!loading && species.length > 0 && locations.length > 0 && isInitializingRef.current) {
       const speciesFromUrl = getInitialSpecies();
       const locationFromUrl = getInitialLocation();
       const userFromUrl = getInitialUser();
-      
+
       if (speciesFromUrl !== 'all') {
         setSelectedSpecies(speciesFromUrl);
         const foundSpecies = species.find(s => s.id === speciesFromUrl);
@@ -126,7 +157,7 @@ const Records = () => {
           setSpeciesSearchTerm(foundSpecies.name);
         }
       }
-      
+
       if (locationFromUrl !== 'all') {
         setSelectedLocation(locationFromUrl);
         const foundLocation = locations.find(l => l.id === locationFromUrl);
@@ -134,46 +165,46 @@ const Records = () => {
           setLocationSearchTerm(foundLocation.name);
         }
       }
-      
+
       if (userFromUrl !== 'all') {
         setSelectedUser(userFromUrl);
       }
-      
+
       isInitializingRef.current = false;
     }
   }, [loading, species, locations]);
-  
+
   // Update URL when filters change manually (use slugs, not IDs)
   useEffect(() => {
     // Skip if we're still initializing
     if (isInitializingRef.current || loading || species.length === 0 || locations.length === 0) {
       return;
     }
-    
+
     const params = new URLSearchParams();
-    
+
     if (selectedSpecies !== 'all') {
       const foundSpecies = species.find(s => s.id === selectedSpecies);
       if (foundSpecies) {
         params.set('species', createSlug(foundSpecies.name));
       }
     }
-    
+
     if (selectedLocation !== 'all') {
       const foundLocation = locations.find(l => l.id === selectedLocation);
       if (foundLocation) {
         params.set('location', createSlug(foundLocation.name));
       }
     }
-    
+
     if (selectedUser !== 'all') {
       params.set('user', selectedUser);
     }
-    
+
     // Only update URL if params changed
     const currentParams = searchParams.toString();
     const newParams = params.toString();
-    
+
     if (currentParams !== newParams) {
       setSearchParams(params, { replace: true });
     }
@@ -186,8 +217,8 @@ const Records = () => {
       county: string;
       totalWeight: number;
       totalRecords: number;
-      members: string[];
-      species: string[];
+      members: { id: string; username: string; displayName: string; avatarUrl: string | null }[];
+      species: { id: string; name: string }[];
       memberCount: number;
       speciesCount: number;
       records: any[];
@@ -199,7 +230,7 @@ const Records = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FishRecord | null>(null);
-  
+
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [minWeight, setMinWeight] = useState('');
@@ -226,6 +257,9 @@ const Records = () => {
     }
   }, [allRecords, records]);
 
+
+
+
   const loadTeamStats = async () => {
     try {
       // Get team statistics for each location - include all records, not just verified
@@ -238,7 +272,7 @@ const Records = () => {
           weight,
           status,
           fishing_locations:location_id(name, type, county),
-          profiles!records_user_id_fkey(id, display_name, username),
+          profiles!records_user_id_fkey(id, display_name, username, photo_url),
           fish_species:species_id(name)
         `)
         .eq('status', 'verified');
@@ -257,8 +291,8 @@ const Records = () => {
           county: string;
           totalWeight: number;
           totalRecords: number;
-          members: Set<string>;
-          species: Set<string>;
+          members: Map<string, { id: string; username: string; displayName: string; avatarUrl: string | null }>;
+          species: Map<string, { id: string; name: string }>;
           records: any[];
         }
       } = {};
@@ -266,7 +300,14 @@ const Records = () => {
       teamData?.forEach(record => {
         const locationId = record.location_id;
         const locationName = (record.fishing_locations as any)?.name;
-        const userName = (record.profiles as any)?.display_name;
+
+        // User data
+        const userId = record.user_id;
+        const userName = (record.profiles as any)?.username;
+        const displayName = (record.profiles as any)?.display_name;
+
+        // Species data
+        const speciesId = record.species_id;
         const speciesName = (record.fish_species as any)?.name;
 
         if (!stats[locationId]) {
@@ -276,20 +317,42 @@ const Records = () => {
             county: (record.fishing_locations as any)?.county || 'Unknown',
             totalWeight: 0,
             totalRecords: 0,
-            members: new Set(),
-            species: new Set(),
+            members: new Map(),
+            species: new Map(),
             records: []
           };
         }
 
         stats[locationId].totalWeight += record.weight || 0;
         stats[locationId].totalRecords += 1;
-        if (userName) stats[locationId].members.add(userName);
-        if (speciesName) stats[locationId].species.add(speciesName);
+
+        // Add member if we have display name
+        if (displayName) {
+          const key = userName || userId;
+          if (!stats[locationId].members.has(key)) {
+            stats[locationId].members.set(key, {
+              id: userId,
+              username: userName,
+              displayName: displayName,
+              avatarUrl: (record.profiles as any)?.photo_url
+            });
+          }
+        }
+
+        // Add species if present
+        if (speciesName) {
+          if (!stats[locationId].species.has(speciesId)) {
+            stats[locationId].species.set(speciesId, {
+              id: speciesId,
+              name: speciesName
+            });
+          }
+        }
+
         stats[locationId].records.push(record);
       });
 
-      // Convert Sets to Arrays and add counts
+      // Convert Maps to Arrays and add counts
       const finalStats: {
         [key: string]: {
           locationName: string;
@@ -297,8 +360,8 @@ const Records = () => {
           county: string;
           totalWeight: number;
           totalRecords: number;
-          members: string[];
-          species: string[];
+          members: { id: string; username: string; displayName: string; avatarUrl: string | null }[];
+          species: { id: string; name: string }[];
           memberCount: number;
           speciesCount: number;
           records: any[];
@@ -309,8 +372,8 @@ const Records = () => {
         const stat = stats[locationId];
         finalStats[locationId] = {
           ...stat,
-          members: Array.from(stat.members),
-          species: Array.from(stat.species),
+          members: Array.from(stat.members.values()),
+          species: Array.from(stat.species.values()),
           memberCount: stat.members.size,
           speciesCount: stat.species.size
         };
@@ -490,7 +553,7 @@ const Records = () => {
         }
       }
     });
-    return Array.from(userMap.values()).sort((a, b) => 
+    return Array.from(userMap.values()).sort((a, b) =>
       a.display_name.localeCompare(b.display_name)
     );
   };
@@ -498,11 +561,12 @@ const Records = () => {
   const getFilteredUsers = () => {
     const users = getUniqueUsers();
     if (!userSearchTerm.trim()) return users;
-    const term = userSearchTerm.toLowerCase();
-    return users.filter(u =>
-      u.display_name.toLowerCase().includes(term) ||
-      (u.username && u.username.toLowerCase().includes(term))
-    );
+    const normalizedTerm = removeDiacritics(userSearchTerm.toLowerCase());
+    return users.filter(u => {
+      const normalizedDisplayName = removeDiacritics((u.display_name || '').toLowerCase());
+      const normalizedUsername = u.username ? removeDiacritics(u.username.toLowerCase()) : '';
+      return normalizedDisplayName.includes(normalizedTerm) || normalizedUsername.includes(normalizedTerm);
+    });
   };
 
   const selectUser = (userId: string, username: string | undefined, displayName: string) => {
@@ -564,12 +628,12 @@ const Records = () => {
     const handleHashChange = () => {
       // Only run if we have records loaded and not loading
       if (loading || allRecords.length === 0) return;
-      
+
       const hash = window.location.hash;
       if (hash && hash.startsWith('#record-')) {
         const recordId = hash.replace('#record-', '');
         // Try to find record by global_id first, then by id
-        const record = allRecords.find(r => 
+        const record = allRecords.find(r =>
           (r as any).global_id?.toString() === recordId || r.id === recordId
         );
         if (record && !isModalOpen) {
@@ -958,115 +1022,153 @@ const Records = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid gap-6">
+                    <div className="grid gap-5 sm:gap-6">
                       {Object.values(teamStats)
                         .sort((a, b) => b.totalWeight - a.totalWeight)
                         .map((team, index: number) => (
-                          <div key={team.locationName} className="group bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-300 transform hover:-translate-y-1">
-                            {/* Header with rank and location info */}
-                            <div className="flex items-start justify-between mb-6">
-                              <div className="flex items-center space-x-4">
-                                <div className="relative">
-                                  <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl text-white font-bold text-lg shadow-lg">
-                                    {index + 1}
-                                  </div>
-                                  {index === 0 && (
-                                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
-                                      <Trophy className="w-3 h-3 text-yellow-800" />
+                          <div
+                            key={team.locationName}
+                            className="group relative bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 rounded-xl overflow-hidden hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300 ease-out hover:shadow-lg dark:hover:shadow-blue-900/20"
+                          >
+                            <div className="relative p-4 sm:p-5 flex flex-col md:flex-row md:items-center gap-6">
+
+                              {/* Left: Rank & Location */}
+                              <div className="flex items-center gap-4 min-w-[240px]">
+                                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center">
+                                  {index === 0 ? (
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full"></div>
+                                      <Trophy className="w-8 h-8 text-yellow-500 drop-shadow-[0_2px_4px_rgba(234,179,8,0.5)]" />
+                                    </div>
+                                  ) : index === 1 ? (
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-slate-400/20 blur-xl rounded-full"></div>
+                                      <Trophy className="w-7 h-7 text-slate-400 drop-shadow-[0_2px_4px_rgba(148,163,184,0.5)]" />
+                                    </div>
+                                  ) : index === 2 ? (
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-orange-700/20 blur-xl rounded-full"></div>
+                                      <Trophy className="w-7 h-7 text-orange-600 drop-shadow-[0_2px_4px_rgba(194,65,12,0.5)]" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-sm">
+                                      {index + 1}
                                     </div>
                                   )}
                                 </div>
-                                <div>
-                                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+
+                                <div className="min-w-0">
+                                  <h3
+                                    onClick={() => selectLocation(team.records[0]?.location_id, team.locationName)}
+                                    className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-tight hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer truncate transition-colors"
+                                  >
                                     {team.locationName?.replace(/_/g, ' ')}
                                   </h3>
-                                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-slate-400">
-                                    <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium capitalize">
-                                      {team.locationType?.replace(/_/g, ' ')}
-                                    </span>
-                                    <span className="text-gray-400">•</span>
+                                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-slate-400">
+                                    <span className="capitalize px-2 py-0.5 bg-gray-100 dark:bg-slate-700 rounded-md text-xs font-medium">{team.locationType?.replace(/_/g, ' ')}</span>
+                                    <span className="opacity-50">•</span>
                                     <span>{team.county}</span>
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                                  {team.totalWeight.toFixed(1)} kg
-                                </div>
-                                <div className="text-sm text-gray-500 dark:text-slate-400 font-medium">
-                                  {team.totalRecords} recorduri
-                                </div>
-                              </div>
-                            </div>
 
-                            {/* Statistics Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{team.memberCount}</div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Membri</div>
-                              </div>
-                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{team.speciesCount}</div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Specii</div>
-                              </div>
-                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
-                                  {(team.totalWeight / team.memberCount).toFixed(1)}
+                              {/* Middle: Stats Row */}
+                              <div className="flex items-center justify-between md:justify-center gap-8 flex-1 border-t md:border-t-0 md:border-l border-gray-100 dark:border-slate-700/50 pt-4 md:pt-0 md:pl-6">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400 tabular-nums">
+                                    {team.totalWeight.toFixed(1)}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Kg Total</span>
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">kg/membru</div>
-                              </div>
-                              <div className="bg-white dark:bg-slate-700/50 rounded-xl p-4 text-center border border-gray-100 dark:border-slate-600 hover:shadow-md transition-shadow">
-                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                                  {(team.totalRecords / team.memberCount).toFixed(1)}
+
+                                <div className="flex flex-col items-center hidden sm:flex">
+                                  <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                    {(team.totalWeight / team.memberCount).toFixed(1)}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Kg/Pescar</span>
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">recorduri/membru</div>
-                              </div>
-                            </div>
 
-                            {/* Members Section */}
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
-                              <div className="flex items-center mb-3">
-                                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
-                                <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">Membrii echipei</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {team.members.slice(0, 6).map((member: string, idx: number) => (
-                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 text-blue-800 dark:text-blue-200 text-sm rounded-full border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors">
-                                    {member}
+                                <div className="flex flex-col items-center">
+                                  <span className="text-lg font-bold text-purple-600 dark:text-purple-400 tabular-nums">
+                                    {team.totalRecords}
                                   </span>
-                                ))}
-                                {team.members.length > 6 && (
-                                  <span className="inline-flex items-center px-3 py-1.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-sm rounded-full font-medium">
-                                    +{team.members.length - 6} alții
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                                  <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Capturi</span>
+                                </div>
 
-                            {/* Species Section */}
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 mt-3">
-                              <div className="flex items-center mb-3">
-                                <Fish className="w-4 h-4 text-green-600 dark:text-green-400 mr-2" />
-                                <span className="text-sm font-semibold text-green-900 dark:text-green-200">Specii pescuite</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {team.species.slice(0, 6).map((species: string, idx: number) => (
-                                  <span key={idx} className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 text-green-800 dark:text-green-200 text-sm rounded-full border border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-800 transition-colors">
-                                    {species}
+                                <div className="flex flex-col items-center">
+                                  <span className="text-lg font-bold text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {team.memberCount}
                                   </span>
-                                ))}
-                                {team.species.length > 6 && (
-                                  <span className="inline-flex items-center px-3 py-1.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 text-sm rounded-full font-medium">
-                                    +{team.species.length - 6} altele
-                                  </span>
-                                )}
+                                  <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Membri</span>
+                                </div>
                               </div>
+
+                              {/* Right: Members & Species */}
+                              <div className="flex flex-row items-center justify-between md:justify-end gap-3 flex-1 md:border-l border-gray-100 dark:border-slate-700/50 md:pl-6 pt-2 md:pt-0 min-w-0">
+
+                                {/* Avatar Stack - Accordion Style */}
+                                <div className="flex items-center pl-2 group/avatars">
+                                  {team.members.slice(0, 5).map((member, mIndex) => (
+                                    <div
+                                      key={member.id}
+                                      className="transition-transform duration-300 ease-out group-hover/avatars:translate-x-1 hover:!translate-x-0 !ml-0 first:!ml-0"
+                                      style={{
+                                        marginLeft: mIndex === 0 ? 0 : '-12px'
+                                      }}
+                                    >
+                                      <MemberAvatar member={member} index={mIndex} />
+                                    </div>
+                                  ))}
+                                  {team.members.length > 5 && (
+                                    <div
+                                      className="relative z-10 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-white dark:ring-slate-800 text-[10px] font-bold text-slate-500 dark:text-slate-400 shadow-sm ml-2 transition-transform duration-300 group-hover/avatars:translate-x-2"
+                                    >
+                                      +{team.members.length - 5}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Species Scroll - Clean List Style */}
+                                <div className="relative w-auto min-w-[100px] h-11 overflow-hidden">
+                                  {/* Top Fade */}
+                                  <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-b from-white dark:from-slate-800 to-transparent z-10 pointer-events-none" />
+
+                                  {/* Scrollable List */}
+                                  <div className="h-full overflow-y-auto hide-scrollbar scroll-smooth py-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                    {team.species.map((specie) => (
+                                      <div
+                                        key={specie.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          selectSpecies(specie.id, specie.name);
+                                        }}
+                                        className="h-6 flex items-center justify-end px-1 cursor-pointer group/specie active:opacity-70 transition-opacity"
+                                      >
+                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 group-hover/specie:text-blue-500 dark:group-hover/specie:text-blue-400 transition-colors text-right w-full">
+                                          {specie.name}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {team.species.length === 0 && (
+                                      <div className="h-full flex items-center justify-center text-[10px] text-slate-400 italic">
+                                        -
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Bottom Fade */}
+                                  <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-t from-white dark:from-slate-800 to-transparent z-10 pointer-events-none" />
+                                </div>
+
+                              </div>
+
                             </div>
                           </div>
                         ))}
                     </div>
                   )}
                 </div>
+
               ) : getFilteredRecords().length === 0 ? (
                 <div className="text-center py-12">
                   <Trophy className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
@@ -1088,7 +1190,7 @@ const Records = () => {
                   {getFilteredRecords().slice(0, 15).map((record, index) => {
                     const imageUrl = record.photo_url || record.image_url;
                     const videoUrl = record.video_url;
-                    
+
                     return (
                       <div key={record.id} className="group bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-300">
                         <div className="flex flex-col sm:flex-row">
@@ -1125,7 +1227,7 @@ const Records = () => {
                               </div>
                             </div>
                           )}
-                          
+
                           {/* Content Section */}
                           <div className="flex-1 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             {/* Left side - Info */}
@@ -1166,7 +1268,7 @@ const Records = () => {
                               >
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                                 <span className="truncate">
-                                  {record.fishing_locations?.county && record.fishing_locations?.name 
+                                  {record.fishing_locations?.county && record.fishing_locations?.name
                                     ? `${record.fishing_locations.county} - ${record.fishing_locations.name}`
                                     : record.fishing_locations?.name || 'Locație necunoscută'}
                                 </span>
@@ -1247,9 +1349,9 @@ const Records = () => {
                     .from('records')
                     .delete()
                     .eq('id', recordId);
-                  
+
                   if (error) throw error;
-                  
+
                   toast.success('Record șters cu succes');
                   closeRecordModal();
                   // Refresh records
@@ -1282,8 +1384,8 @@ const Records = () => {
             />
           )}
 
-        </div>
-      </div>
+        </div >
+      </div >
     </>
   );
 };

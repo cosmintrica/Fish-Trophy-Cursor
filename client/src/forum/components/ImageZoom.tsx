@@ -164,6 +164,8 @@ export default function ImageZoom({ src, alt, className = '', style, onClose }: 
       onTouchEnd={handleTouchEnd}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
+          e.stopPropagation();
+          e.preventDefault();
           onClose?.();
         }
       }}

@@ -44,6 +44,7 @@ interface ShareButtonProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'outline' | 'ghost';
   showLabel?: boolean;
+  className?: string; // Allow custom className for matching other buttons
 }
 
 export default function ShareButton({
@@ -53,7 +54,8 @@ export default function ShareButton({
   image = 'https://fishtrophy.ro/social-media-banner-v2.jpg',
   size = 'md',
   variant = 'default',
-  showLabel = false
+  showLabel = false,
+  className = ''
 }: ShareButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -173,9 +175,9 @@ export default function ShareButton({
   ];
 
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12'
+    sm: className ? '' : 'w-8 h-8', // Use className if provided, otherwise use default sizes
+    md: className ? '' : 'w-10 h-10',
+    lg: className ? '' : 'w-12 h-12'
   };
 
   const iconSizes = {
@@ -240,10 +242,11 @@ export default function ShareButton({
       <button
         onClick={() => setShowMenu(!showMenu)}
         className={`
-          ${sizeClasses[size]}
+          ${className || sizeClasses[size]}
           ${variantClasses[variant]}
           rounded-lg flex items-center justify-center transition-colors
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+          ${className ? '' : 'shadow-sm'}
         `}
         aria-label="Share"
       >

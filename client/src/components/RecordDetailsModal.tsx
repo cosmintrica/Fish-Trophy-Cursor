@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
 import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Hash, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,6 +48,11 @@ interface FishRecord {
     username?: string;
     email: string;
   };
+  verified_by_profile?: {
+    id: string;
+    display_name: string;
+    username?: string;
+  };
 }
 
 interface RecordDetailsModalProps {
@@ -70,6 +75,18 @@ const RecordDetailsModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const { createVideoObjectData } = useStructuredData();
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen || !record) return null;
 
@@ -212,10 +229,10 @@ const RecordDetailsModal = ({
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden"
+        className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[95vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl h-full flex flex-col">
+        <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl h-full flex flex-col overflow-hidden">
           <CardContent className="p-0 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 p-4 sm:p-6 text-white rounded-t-lg">
@@ -248,7 +265,7 @@ const RecordDetailsModal = ({
             </div>
 
             {/* Content */}
-            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1 overscroll-contain bg-white dark:bg-slate-800">
+            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 overscroll-contain bg-white dark:bg-slate-800" style={{ WebkitOverflowScrolling: 'touch' }}>
               {/* Status Badge */}
               <div className="flex items-center justify-between">
                 <Badge className={`${statusInfo.color} border`}>
@@ -311,7 +328,20 @@ const RecordDetailsModal = ({
                     <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Pescar</p>
-                      <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">{record.profiles?.display_name || 'Utilizator'}</p>
+                      {record.profiles?.username || record.user_id ? (
+                        <a
+                          href={record.profiles?.username ? `/records?user=${record.profiles.username}` : `/records?user=${record.user_id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                          }}
+                          className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block"
+                        >
+                          {record.profiles?.display_name || 'Utilizator'}
+                        </a>
+                      ) : (
+                        <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">{record.profiles?.display_name || 'Utilizator'}</p>
+                      )}
                     </div>
                   </div>
 
@@ -319,7 +349,20 @@ const RecordDetailsModal = ({
                     <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-slate-300 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300">Locație</p>
-                      <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">{record.fishing_locations?.name || 'Necunoscută'}</p>
+                      {record.fishing_locations?.name ? (
+                        <a
+                          href={`/records?location=${createSlug(record.fishing_locations.name)}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                          }}
+                          className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block"
+                        >
+                          {record.fishing_locations.name}
+                        </a>
+                      ) : (
+                        <p className="font-medium text-sm sm:text-base truncate text-gray-900 dark:text-white">Necunoscută</p>
+                      )}
                       <p className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 capitalize truncate">
                         {record.fishing_locations?.type} • {record.fishing_locations?.county}
                       </p>
@@ -405,10 +448,10 @@ const RecordDetailsModal = ({
 
               {/* Admin Info */}
               {isAdmin && record.verified_by && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">Informații Admin</h4>
-                  <p className="text-blue-700 dark:text-blue-400">
-                    Verificat de: {record.verified_by} la {record.verified_at ? formatDate(record.verified_at) : 'N/A'}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-3 sm:p-4">
+                  <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2 text-sm sm:text-base">Informații Admin</h4>
+                  <p className="text-blue-700 dark:text-blue-400 text-xs sm:text-sm">
+                    Verificat de: {record.verified_by_profile?.display_name || record.verified_by_profile?.username || record.verified_by} la {record.verified_at ? formatDate(record.verified_at) : 'N/A'}
                   </p>
                 </div>
               )}
@@ -446,35 +489,44 @@ const RecordDetailsModal = ({
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
                     <span className="text-gray-400 dark:text-slate-500">Vezi și alte recorduri:</span>
                     {record.profiles?.username && (
-                      <Link
-                        to={`/records?user=${record.profiles.username}`}
+                      <a
+                        href={`/records?user=${record.profiles.username}`}
                         className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose();
+                        }}
                       >
                         de {record.profiles.display_name || 'utilizator'}
                         <ExternalLink className="w-2.5 h-2.5" />
-                      </Link>
+                      </a>
                     )}
                     {record.fish_species && (
                       <>
                         {record.profiles?.username && <span className="text-gray-300 dark:text-slate-600">•</span>}
-                        <Link
-                          to={`/records?species=${createSlug(record.fish_species.name)}`}
+                        <a
+                          href={`/records?species=${createSlug(record.fish_species.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                          }}
                         >
                           de {record.fish_species.name}
                           <ExternalLink className="w-2.5 h-2.5" />
-                        </Link>
+                        </a>
                       </>
                     )}
                     {record.fishing_locations && (
                       <>
                         {(record.profiles?.username || record.fish_species) && <span className="text-gray-300 dark:text-slate-600">•</span>}
-                        <Link
-                          to={`/records?location=${createSlug(record.fishing_locations.name)}`}
+                        <a
+                          href={`/records?location=${createSlug(record.fishing_locations.name)}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                          }}
                         >
                           {(() => {
                             const type = record.fishing_locations?.type || '';
@@ -486,7 +538,7 @@ const RecordDetailsModal = ({
                             return `de la ${name}`;
                           })()}
                           <ExternalLink className="w-2.5 h-2.5" />
-                        </Link>
+                        </a>
                       </>
                     )}
                   </div>
@@ -497,13 +549,14 @@ const RecordDetailsModal = ({
         </Card>
       </div>
 
-      {/* Image Zoom */}
-      {isZoomOpen && getImageUrl() && (
+      {/* Image Zoom - Using Portal to prevent click propagation to modal */}
+      {isZoomOpen && getImageUrl() && typeof document !== 'undefined' && createPortal(
         <ImageZoom
           src={getR2ImageUrlProxy(getImageUrl()!)}
           alt={`Poza record ${record.fish_species?.name}`}
           onClose={() => setIsZoomOpen(false)}
-        />
+        />,
+        document.body
       )}
     </div>
     </>

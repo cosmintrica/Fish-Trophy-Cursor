@@ -312,23 +312,39 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     }
   };
 
+  // Helper function to remove diacritics for search
+  const removeDiacritics = (str: string): string => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ă/g, 'a')
+      .replace(/â/g, 'a')
+      .replace(/î/g, 'i')
+      .replace(/ș/g, 's')
+      .replace(/ț/g, 't');
+  };
+
   const getFilteredSpecies = () => {
     if (!speciesSearchTerm.trim()) return species.slice(0, showAllSpecies ? undefined : 10);
-    const term = speciesSearchTerm.toLowerCase();
-    return species.filter(s => 
-      s.name.toLowerCase().includes(term) || 
-      (s.scientific_name && s.scientific_name.toLowerCase().includes(term))
-    );
+    const normalizedTerm = removeDiacritics(speciesSearchTerm.toLowerCase());
+    return species.filter(s => {
+      const normalizedName = removeDiacritics(s.name.toLowerCase());
+      const normalizedScientific = s.scientific_name ? removeDiacritics(s.scientific_name.toLowerCase()) : '';
+      return normalizedName.includes(normalizedTerm) || normalizedScientific.includes(normalizedTerm);
+    });
   };
 
   const getFilteredLocations = () => {
     if (!locationSearchTerm.trim()) return locations.slice(0, showAllLocations ? undefined : 10);
-    const term = locationSearchTerm.toLowerCase();
-    return locations.filter(l => 
-      l.name.toLowerCase().includes(term) || 
-      l.county.toLowerCase().includes(term) ||
-      l.type.toLowerCase().includes(term)
-    );
+    const normalizedTerm = removeDiacritics(locationSearchTerm.toLowerCase());
+    return locations.filter(l => {
+      const normalizedName = removeDiacritics(l.name.toLowerCase());
+      const normalizedCounty = removeDiacritics(l.county.toLowerCase());
+      const normalizedType = removeDiacritics(l.type.toLowerCase());
+      return normalizedName.includes(normalizedTerm) || 
+             normalizedCounty.includes(normalizedTerm) ||
+             normalizedType.includes(normalizedTerm);
+    });
   };
 
   const handleInputChange = (field: string, value: any) => {

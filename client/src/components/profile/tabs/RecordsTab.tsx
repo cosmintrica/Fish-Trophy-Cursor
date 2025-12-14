@@ -66,9 +66,9 @@ export const RecordsTab = ({
             ) : records.length === 0 ? (
                 <Card>
                     <CardContent className="text-center py-12">
-                        <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Nu ai încă recorduri</h3>
-                        <p className="text-gray-600 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
+                        <Trophy className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-2">Nu ai încă recorduri</h3>
+                        <p className="text-gray-600 dark:text-slate-400 mb-4">Începe să adaugi recordurile tale de pescuit!</p>
                         <Button onClick={onShowRecordModal}>
                             Adaugă primul record
                         </Button>

@@ -902,7 +902,7 @@ const PublicProfile = () => {
                 >
                   {userProfile?.photo_url && userProfile.photo_url.trim() !== '' ? (
                     <img
-                      src={userProfile.photo_url}
+                      src={getR2ImageUrlProxy(userProfile.photo_url)}
                       alt={userProfile?.display_name || 'Avatar'}
                       className="w-full h-full object-cover"
                       style={{ borderRadius: '50%' }}
@@ -910,6 +910,10 @@ const PublicProfile = () => {
                       onError={(e) => {
                         // Hide image on error, show fallback
                         e.currentTarget.style.display = 'none';
+                      }}
+                      onLoad={(e) => {
+                        // Ensure image is visible after successful load
+                        e.currentTarget.style.display = 'block';
                       }}
                     />
                   ) : (
@@ -1050,6 +1054,7 @@ const PublicProfile = () => {
                           image={profileImage}
                           size="sm"
                           variant="outline"
+                          className="px-3 py-1.5"
                         />
                       </div>
                     )}
@@ -1065,6 +1070,7 @@ const PublicProfile = () => {
                           image={profileImage}
                           size="sm"
                           variant="outline"
+                          className="px-3 py-1.5"
                         />
                       </div>
                     )}
