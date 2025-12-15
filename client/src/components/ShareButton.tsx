@@ -162,13 +162,54 @@ export default function ShareButton({
       color: 'text-gray-600 hover:bg-gray-50',
       onClick: async () => {
         try {
-          await navigator.clipboard.writeText(fullUrl);
-          setCopied(true);
-          toast.success('Link copiat în clipboard!');
-          setTimeout(() => setCopied(false), 2000);
-          setShowMenu(false);
+          // Încearcă navigator.clipboard (nu funcționează pe toate mobile browsers)
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(fullUrl);
+            setCopied(true);
+            toast.success('Link copiat în clipboard!');
+            setTimeout(() => setCopied(false), 2000);
+            setShowMenu(false);
+          } else {
+            // Fallback pentru mobile - creează input temporar
+            const textArea = document.createElement('textarea');
+            textArea.value = fullUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+              document.execCommand('copy');
+              setCopied(true);
+              toast.success('Link copiat în clipboard!');
+              setTimeout(() => setCopied(false), 2000);
+              setShowMenu(false);
+            } catch (err) {
+              toast.error('Nu s-a putut copia link-ul.');
+            }
+            document.body.removeChild(textArea);
+          }
         } catch (err) {
-          toast.error('Nu s-a putut copia link-ul.');
+          // Fallback pentru mobile
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = fullUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            setCopied(true);
+            toast.success('Link copiat în clipboard!');
+            setTimeout(() => setCopied(false), 2000);
+            setShowMenu(false);
+          } catch (fallbackErr) {
+            toast.error('Nu s-a putut copia link-ul.');
+          }
         }
       }
     }
@@ -189,7 +230,7 @@ export default function ShareButton({
   const variantClasses = {
     default: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
     outline: 'border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700',
-    ghost: 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700',
+    ghost: 'text-white hover:text-white bg-transparent border-none',
     full: 'w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 shadow-lg hover:shadow-xl transition-all font-bold gap-2' // Premium full width button
   };
 

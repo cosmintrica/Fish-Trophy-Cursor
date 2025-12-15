@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, Sun, Moon, Settings, LogOut, MessageSquare } from 'lucide-react';
+import { Fish, Menu, X, Home, User, Trophy, FileText, Mail, Sun, Moon, Settings, LogOut, MessageSquare, Anchor } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -25,6 +25,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [userUsername, setUserUsername] = useState<string | null>(null);
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  const [isExtremelyNarrow, setIsExtremelyNarrow] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   // PWA Install Prompt - folosim hook-ul
   const location = useLocation();
@@ -141,8 +143,20 @@ export default function Layout({ children }: { children: ReactNode }) {
     };
   }, [user?.id]);
 
-
-
+  // Detect scrollbar width and extremely narrow viewport
+  useEffect(() => {
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      setIsExtremelyNarrow(width < 250);
+      
+      // Calculate scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      setScrollbarWidth(scrollbarWidth);
+    };
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
@@ -155,13 +169,18 @@ export default function Layout({ children }: { children: ReactNode }) {
     if (!showUserMenu) return;
 
     const handleClickOutside = (e: MouseEvent) => {
+      // Check if click is outside the menu
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
+        // Small delay to allow button clicks to process first
+        setTimeout(() => {
+          setShowUserMenu(false);
+        }, 100);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Use click instead of mousedown to allow button clicks to process
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
   }, [showUserMenu]);
 
   const openMobileMenu = () => {
@@ -194,27 +213,29 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Title */}
-            <Link
-              to="/"
-              className="flex items-center space-x-3 group"
-              aria-label="Acasă"
-              onClick={(e) => {
-                // If already on homepage, refresh the page
-                if (location.pathname === '/') {
-                  e.preventDefault();
-                  window.location.reload();
-                }
-              }}
-            >
-              <img
-                src="/icon_free.png"
-                alt="Fish Trophy"
-                className="w-12 h-12 rounded-xl group-hover:scale-110 transition-transform duration-300"
-              />
-              <span className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:via-indigo-700 group-hover:to-purple-700 transition-all duration-300">
-                Fish Trophy
-              </span>
-            </Link>
+            {!isExtremelyNarrow && (
+              <Link
+                to="/"
+                className="flex items-center space-x-3 group"
+                aria-label="Acasă"
+                onClick={(e) => {
+                  // If already on homepage, refresh the page
+                  if (location.pathname === '/') {
+                    e.preventDefault();
+                    window.location.reload();
+                  }
+                }}
+              >
+                <img
+                  src="/icon_free.png"
+                  alt="Fish Trophy"
+                  className="w-12 h-12 rounded-xl group-hover:scale-110 transition-transform duration-300"
+                />
+                <span className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:via-indigo-700 group-hover:to-purple-700 transition-all duration-300">
+                  Fish Trophy
+                </span>
+              </Link>
+            )}
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-8" role="navigation" aria-label="Navigația principală">
@@ -259,12 +280,12 @@ export default function Layout({ children }: { children: ReactNode }) {
                 to="/forum"
                 className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                🎣 Forum
+                Forum
               </Link>
             </nav>
 
             {/* User Section */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4" style={{ marginLeft: isExtremelyNarrow ? 'auto' : undefined }}>
               {/* Theme Toggle Button */}
               <button
                 type="button"
@@ -273,7 +294,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                   e.stopPropagation();
                   toggleDarkMode();
                 }}
-                className="p-2 transition-transform hover:scale-110 active:scale-95"
+                className="p-2 transition-transform hover:scale-110 active:scale-95 bg-transparent border-none"
+                style={{ backgroundColor: 'transparent', border: 'none' }}
                 aria-label={isDarkMode ? "Activează modul lumină" : "Activează modul întunecat"}
               >
                 {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-slate-600 dark:text-slate-300" />}
@@ -321,87 +343,173 @@ export default function Layout({ children }: { children: ReactNode }) {
                     {/* User Dropdown Menu */}
                   {showUserMenu && (
                     <div
-                      className="absolute top-full right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 min-w-[200px] overflow-hidden"
                       style={{
-                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-                        borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        marginTop: '0.5rem',
+                        backgroundColor: theme.surface,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        zIndex: 100,
+                        minWidth: '200px',
+                        overflow: 'hidden'
                       }}
                     >
                       {/* User Info */}
-                      <div
-                        className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center gap-3"
-                        style={{
-                          borderBottomColor: isDarkMode ? '#334155' : '#e5e7eb'
-                        }}
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-semibold flex-shrink-0 ${
-                            generateUserColor(getUserDisplayName()).replace('from-', 'bg-gradient-to-r from-').replace('to-', ' to-')
-                          }`}
-                          style={{
-                            backgroundImage: user.user_metadata?.avatar_url
-                              ? `url(${user.user_metadata.avatar_url})`
-                              : undefined,
-                            backgroundSize: user.user_metadata?.avatar_url ? 'cover' : undefined,
-                            backgroundPosition: user.user_metadata?.avatar_url ? 'center' : undefined
-                          }}
-                          onError={(e) => {
-                            // Fallback dacă avatar-ul nu se încarcă (ex: 429 rate limit)
-                            const target = e.target as HTMLElement;
-                            target.style.backgroundImage = 'none';
-                          }}
-                        >
+                      <div style={{
+                        padding: '0.75rem 1rem',
+                        borderBottom: `1px solid ${theme.border}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{
+                          width: '2.5rem',
+                          height: '2.5rem',
+                          borderRadius: '50%',
+                          background: user.user_metadata?.avatar_url
+                            ? `url(${user.user_metadata.avatar_url}) center/cover`
+                            : (isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(getUserDisplayName())),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
                           {!user.user_metadata?.avatar_url && getUserDisplayName().charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: theme.text,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
                             {getUserDisplayName()}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: theme.textSecondary
+                          }}>
                             {user.email || 'Utilizator'}
                           </div>
                         </div>
                       </div>
 
                       {/* Menu Items */}
-                      <div className="p-1">
+                      <div style={{ padding: '0.25rem' }}>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setShowUserMenu(false);
                             navigate(userUsername ? `/profile/${userUsername}` : '/profile');
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: theme.text,
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
-                          <User className="w-4 h-4" />
+                          <User size={18} />
                           <span>Profilul meu</span>
                         </button>
 
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setShowUserMenu(false);
                             navigate('/profile');
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: theme.text,
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
-                          <Settings className="w-4 h-4" />
+                          <Settings size={18} />
                           <span>Setări</span>
                         </button>
 
                         {isAdmin && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               setShowUserMenu(false);
                               navigate('/admin');
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm font-semibold text-left"
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem 1rem',
+                              color: '#dc2626',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
                           >
-                            <Settings className="w-4 h-4" />
+                            <Settings size={18} />
                             <span>Admin Panel</span>
                           </button>
                         )}
 
                         <button
-                          onClick={async () => {
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setShowUserMenu(false);
                             trackUserAction('logout', { method: 'email' });
                             const result = await logout();
@@ -410,9 +518,29 @@ export default function Layout({ children }: { children: ReactNode }) {
                             }
                             window.location.replace('/');
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md transition-colors text-sm text-left"
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            color: '#ef4444',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.875rem',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut size={18} />
                           <span>Deconectare</span>
                         </button>
                       </div>
@@ -421,26 +549,288 @@ export default function Layout({ children }: { children: ReactNode }) {
                   </div>
                 </>
               ) : (
-                <button
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="hidden sm:inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Autentificare
-                </button>
+                <>
+                  {/* Desktop: Autentificare button */}
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="hidden sm:inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Autentificare
+                  </button>
+                  
+                  {/* Mobile: Conectare button */}
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="lg:hidden inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg"
+                    style={{
+                      marginRight: `${Math.max(0, scrollbarWidth)}px`
+                    }}
+                  >
+                    <User size={16} />
+                    <span>Conectare</span>
+                  </button>
+                </>
+              )}
+
+              {/* Mobile: Avatar with dropdown (before hamburger) */}
+              {user && (
+                <div className="lg:hidden flex items-center space-x-2">
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-blue-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-500 transition-colors"
+                    >
+                      {user.user_metadata?.avatar_url ? (
+                        <img
+                          src={user.user_metadata.avatar_url}
+                          alt={getUserDisplayName()}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement('div');
+                              fallback.className = "w-full h-full bg-blue-600 rounded-full flex items-center justify-center";
+                              fallback.innerHTML = `<span class="text-white font-semibold text-sm">${getUserDisplayName().charAt(0).toUpperCase()}</span>`;
+                              parent.appendChild(fallback);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-blue-600 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">{getUserDisplayName().charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                    </button>
+                    {/* User Dropdown Menu - Mobile - Identic cu forum */}
+                    {showUserMenu && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          marginTop: '0.5rem',
+                          backgroundColor: theme.surface,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.5rem',
+                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                          zIndex: 100,
+                          minWidth: '200px',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* User Info */}
+                        <div style={{
+                          padding: '0.75rem 1rem',
+                          borderBottom: `1px solid ${theme.border}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{
+                            width: '2.5rem',
+                            height: '2.5rem',
+                            borderRadius: '50%',
+                            background: user.user_metadata?.avatar_url
+                              ? `url(${user.user_metadata.avatar_url}) center/cover`
+                              : (isAdmin ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : generateUserColor(getUserDisplayName())),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            flexShrink: 0
+                          }}>
+                            {!user.user_metadata?.avatar_url && getUserDisplayName().charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              color: theme.text,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {getUserDisplayName()}
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: theme.textSecondary
+                            }}>
+                              {user.email || 'Utilizator'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Menu Items */}
+                        <div style={{ padding: '0.25rem' }}>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowUserMenu(false);
+                              navigate(userUsername ? `/profile/${userUsername}` : '/profile');
+                            }}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem 1rem',
+                              color: theme.text,
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.875rem',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <User size={18} />
+                            <span>Profilul meu</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowUserMenu(false);
+                              navigate('/profile');
+                            }}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem 1rem',
+                              color: theme.text,
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.875rem',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <Settings size={18} />
+                            <span>Setări</span>
+                          </button>
+
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowUserMenu(false);
+                                navigate('/admin');
+                              }}
+                              style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '0.75rem 1rem',
+                                color: '#dc2626',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <Settings size={18} />
+                              <span>Admin Panel</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowUserMenu(false);
+                              trackUserAction('logout', { method: 'email' });
+                              const result = await logout();
+                              if (result?.error) {
+                                console.error('Logout error:', result.error);
+                              }
+                              window.location.replace('/');
+                            }}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem 1rem',
+                              color: '#ef4444',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.875rem',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <LogOut size={18} />
+                            <span>Deconectare</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Mobile Menu Button */}
               <button
                 onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
-                className={`lg:hidden inline-flex items-center justify-center p-3 rounded-xl text-gray-700 dark:text-slate-200 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all duration-300 active:scale-95 ${isMobileMenuOpen ? 'rotate-90' : 'rotate-0'
-                  }`}
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-gray-700 dark:text-slate-200 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all duration-200"
+                style={{
+                  marginRight: `${Math.max(0, scrollbarWidth)}px`,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
                 aria-label={isMobileMenuOpen ? 'Închide meniul' : 'Deschide meniul'}
               >
                 {isMobileMenuOpen ? (
-                  <X className="w-6 h-6 transition-transform duration-300" />
+                  <X size={20} />
                 ) : (
-                  <Menu className="w-6 h-6 transition-transform duration-300" />
+                  <Menu size={20} />
                 )}
               </button>
             </div>
@@ -448,7 +838,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay - Sidebar */}
       <div className={`lg:hidden fixed inset-0 z-[60] transition-all duration-300 ease-out ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}>
         {/* Backdrop */}
@@ -503,7 +893,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
-              <Fish className="w-5 h-5" />
+              <Anchor className="w-5 h-5" />
               <span className="font-medium text-base">Specii</span>
             </Link>
 
@@ -530,10 +920,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={closeMobileMenu}
             >
-              <Fish className="w-5 h-5" />
-              <span className="font-medium text-base">🎣 Forum</span>
+              <MessageSquare className="w-5 h-5" />
+              <span className="font-medium text-base">Forum</span>
             </Link>
-
 
             {isAdmin && (
               <Link
@@ -552,106 +941,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleDarkMode();
-                // Don't close menu, user might want to see changes
               }}
               className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full text-left bg-transparent"
             >
               {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5" />}
-              <span className="font-medium text-base">{isDarkMode ? 'Mod Lumină' : 'Mod Întunecat'}</span>
+              <span className="font-medium text-base">{isDarkMode ? 'Light mode' : 'Dark mode'}</span>
             </button>
           </nav>
-
-          {/* User Section in Mobile Menu */}
-          {user ? (
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800 space-y-1">
-              <Link
-                to={userUsername ? `/profile/${userUsername}` : '/profile'}
-                className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                  {user.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt={getUserDisplayName()}
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => {
-                        // Fallback to default icon if image fails to load
-                        // Prevent infinite loop by removing the src
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null; // Prevent infinite loop
-                        target.style.display = 'none';
-                        // Show fallback avatar by un-hiding a sibling or just letting the parent background show
-                        // Since we have a complex structure, safer to just hide the image and let the container style handle it
-                        // or show a default SVG if possible.
-                        // Here we just hide the image, assuming the parent has a fallback color/content? 
-                        // Actually the parent is just a wrapper.
-                        // Let's replace the parent content safer:
-                        const parent = target.parentElement;
-                        if (parent) {
-                          // Create a fallback element
-                          const fallback = document.createElement('div');
-                          fallback.className = "w-full h-full bg-blue-600 rounded-full flex items-center justify-center";
-                          fallback.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
-                          parent.appendChild(fallback);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-semibold">
-                        {getUserDisplayName().charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {getUserDisplayName()}
-                  </p>
-                </div>
-              </Link>
-
-              <Link
-                to="/profile"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                onClick={closeMobileMenu}
-              >
-                <User className="w-5 h-5" />
-                <span className="font-medium text-base">Setări</span>
-              </Link>
-
-              <button
-                onClick={async () => {
-                  trackUserAction('logout', { method: 'email' });
-                  closeMobileMenu();
-                  const result = await logout();
-                  if (result?.error) {
-                    console.error('Logout error:', result.error);
-                  }
-                  // Use replace instead of href to avoid showing blank page
-                  window.location.replace('/');
-                }}
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-red-600 transition-colors w-full text-left"
-              >
-                <X className="w-5 h-5" />
-                <span className="font-medium text-base">Ieșire</span>
-              </button>
-            </div>
-          ) : (
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800">
-              <button
-                onClick={() => {
-                  setIsAuthModalOpen(true);
-                  closeMobileMenu();
-                }}
-                className="flex items-center space-x-3 px-4 py-3 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full text-left"
-              >
-                <User className="w-5 h-5" />
-                <span className="font-medium text-base">Autentificare</span>
-              </button>
-            </div>
-          )}
 
           {/* Footer - Fixed at bottom */}
           <div className="mt-auto p-4 border-t border-gray-100 dark:border-slate-800">
@@ -676,30 +972,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </a>
               </div>
             </div>
-
-            {/* Textul "Făcut cu ❤️ în România" */}
-            <div className="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-slate-400">
-              <span>Făcut cu</span>
-              <span className="text-red-500">❤️</span>
-              <span>în România</span>
-            </div>
+            <p className="text-xs text-center text-gray-500 dark:text-slate-400">Făcut cu ❤️ în România</p>
           </div>
-
-          {/* PWA Install Button in Mobile Menu - temporarily disabled */}
-          {/* {showPWAInstallPrompt && (
-            <div className="p-6 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  handleInstallPWA();
-                  closeMobileMenu();
-                }}
-                className="flex items-center justify-center w-full px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adauga pe ecranul principal
-              </button>
-            </div>
-          )} */}
         </div>
       </div>
 

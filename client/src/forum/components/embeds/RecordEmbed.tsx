@@ -27,10 +27,12 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
   const [error, setError] = useState<string | null>(null);
   const [zoomedMedia, setZoomedMedia] = useState<{ src: string; isVideo: boolean; index: number } | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
-  // Listen for theme changes
+  // Listen for theme changes and mobile detection
   useEffect(() => {
     const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     
     const observer = new MutationObserver(updateDarkMode);
     observer.observe(document.documentElement, {
@@ -40,10 +42,14 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateDarkMode);
+    
+    window.addEventListener('resize', checkMobile);
+    checkMobile();
 
     return () => {
       observer.disconnect();
       mediaQuery.removeEventListener('change', updateDarkMode);
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
@@ -78,11 +84,11 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
     return (
       <div className="bbcode-record-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#f3f4f6',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
-        fontSize: '0.875rem',
+        fontSize: isMobile ? '0.75rem' : '0.875rem',
         color: isDarkMode ? '#94a3b8' : '#6b7280'
       }}>
         Se încarcă recordul...
@@ -94,12 +100,12 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
     return (
       <div className="bbcode-record-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: 'rgba(220, 38, 38, 0.1)',
         border: '1px solid rgba(220, 38, 38, 0.3)',
         borderRadius: '0.5rem',
         color: '#dc2626',
-        fontSize: '0.875rem'
+        fontSize: isMobile ? '0.75rem' : '0.875rem'
       }}>
         {error || 'Recordul nu a fost găsit'}
       </div>
@@ -125,21 +131,23 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
     <>
       <div className="bbcode-record-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#ffffff',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
         overflow: 'hidden',
         display: 'flex',
-        gap: '0.75rem',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '0.5rem' : '0.75rem',
         maxWidth: '100%',
         boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Media Gallery */}
         {currentMedia && (
           <div style={{
-            width: '140px',
-            height: '105px',
+            width: isMobile ? '100%' : '140px',
+            height: isMobile ? 'auto' : '105px',
+            aspectRatio: isMobile ? '16/9' : undefined,
             flexShrink: 0,
             overflow: 'hidden',
             background: '#f3f4f6',
@@ -148,12 +156,12 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
             cursor: 'pointer'
           }}
           onClick={() => {
-            setZoomedMedia({ src: currentMedia.url, isVideo: currentMedia.type === 'video', index: currentMediaIndex });
+            setZoomedMedia({ src: getR2ImageUrlProxy(currentMedia.url), isVideo: currentMedia.type === 'video', index: currentMediaIndex });
           }}
           >
             {currentMedia.type === 'image' ? (
               <img
-                src={currentMedia.url}
+                src={getR2ImageUrlProxy(currentMedia.url)}
                 alt={data.species_name}
                 style={{
                   width: '100%',
@@ -167,7 +175,7 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
               />
             ) : (
               <video
-                src={currentMedia.url}
+                src={getR2ImageUrlProxy(currentMedia.url)}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -279,17 +287,17 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
             gap: '0.5rem',
             flexWrap: 'wrap'
           }}>
-            <Trophy style={{ width: '0.875rem', height: '0.875rem', color: '#f59e0b', flexShrink: 0 }} />
+            <Trophy style={{ width: isMobile ? '0.75rem' : '0.875rem', height: isMobile ? '0.75rem' : '0.875rem', color: '#f59e0b', flexShrink: 0 }} />
             <span style={{
               fontWeight: '600',
-              fontSize: '0.875rem',
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
               color: isDarkMode ? '#f1f5f9' : '#111827'
             }}>
               {data.species_name}
             </span>
             {data.scientific_name && (
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: isMobile ? '0.625rem' : '0.75rem',
                 color: isDarkMode ? '#94a3b8' : '#6b7280',
                 fontStyle: 'italic'
               }}>
@@ -302,32 +310,32 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
+            gap: isMobile ? '0.5rem' : '0.75rem',
             flexWrap: 'wrap',
-            fontSize: '0.8125rem',
+            fontSize: isMobile ? '0.6875rem' : '0.8125rem',
             color: isDarkMode ? '#cbd5e1' : '#374151'
           }}>
             {data.weight && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Scale style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Scale style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span><strong>{data.weight}</strong> kg</span>
               </div>
             )}
             {data.length && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Ruler style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Ruler style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span><strong>{data.length}</strong> cm</span>
               </div>
             )}
             {data.location_name && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <MapPin style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-                <span>{data.location_name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <MapPin style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span style={{ maxWidth: isMobile ? '120px' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.location_name}</span>
               </div>
             )}
             {data.date_caught && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Calendar style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Calendar style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span>{new Date(data.date_caught).toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
               </div>
             )}
@@ -337,18 +345,19 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
-            marginTop: '0.125rem'
+            gap: isMobile ? '0.5rem' : '0.75rem',
+            marginTop: '0.125rem',
+            flexWrap: 'wrap'
           }}>
             {data.user_display_name && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                fontSize: '0.8125rem',
+                gap: '0.25rem',
+                fontSize: isMobile ? '0.6875rem' : '0.8125rem',
                 color: isDarkMode ? '#94a3b8' : '#6b7280'
               }}>
-                <User style={{ width: '0.75rem', height: '0.75rem' }} />
+                <User style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem' }} />
                 <span>{data.user_display_name}</span>
               </div>
             )}
@@ -359,8 +368,8 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                fontSize: '0.8125rem',
+                gap: '0.25rem',
+                fontSize: isMobile ? '0.6875rem' : '0.8125rem',
                 color: '#3b82f6',
                 textDecoration: 'none',
                 fontWeight: '500'
@@ -373,7 +382,7 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
               }}
             >
               Vezi record
-              <ExternalLink style={{ width: '0.75rem', height: '0.75rem' }} />
+              <ExternalLink style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem' }} />
             </a>
           </div>
         </div>
@@ -388,11 +397,11 @@ export default function RecordEmbed({ recordId }: RecordEmbedProps) {
           onClose={() => setZoomedMedia(null)}
           onPrev={allMedia.length > 1 ? () => {
             const newIndex = (zoomedMedia.index - 1 + allMedia.length) % allMedia.length;
-            setZoomedMedia({ src: allMedia[newIndex].url, isVideo: allMedia[newIndex].type === 'video', index: newIndex });
+            setZoomedMedia({ src: getR2ImageUrlProxy(allMedia[newIndex].url), isVideo: allMedia[newIndex].type === 'video', index: newIndex });
           } : undefined}
           onNext={allMedia.length > 1 ? () => {
             const newIndex = (zoomedMedia.index + 1) % allMedia.length;
-            setZoomedMedia({ src: allMedia[newIndex].url, isVideo: allMedia[newIndex].type === 'video', index: newIndex });
+            setZoomedMedia({ src: getR2ImageUrlProxy(allMedia[newIndex].url), isVideo: allMedia[newIndex].type === 'video', index: newIndex });
           } : undefined}
         />
       )}

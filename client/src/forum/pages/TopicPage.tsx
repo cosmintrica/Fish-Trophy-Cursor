@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Send, User } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Send, User, Pin, Star } from 'lucide-react';
 import { useTopic } from '../hooks/useTopics';
 import { usePosts, useCreatePost } from '../hooks/usePosts';
 import ForumLayout, { forumUserToLayoutUser } from '../components/ForumLayout';
@@ -17,6 +17,8 @@ import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
 import SEOHead from '../../components/SEOHead';
 import { useStructuredData } from '../../hooks/useStructuredData';
 import ShareButton from '../../components/ShareButton';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toggleTopicPin, toggleTopicImportant } from '../../services/forum/topics';
 
 export default function TopicPage() {
   // Acceptă:
@@ -36,6 +38,10 @@ export default function TopicPage() {
   const { forumUser, signOut } = useAuth();
   const { showToast } = useToast();
   const { theme } = useTheme();
+  const queryClient = useQueryClient();
+  
+  // Check if user is admin or moderator
+  const isAdmin = forumUser?.isAdmin || false;
 
   const handleLogout = async () => {
     await signOut();
@@ -94,6 +100,33 @@ export default function TopicPage() {
   // Hook pentru marcarea topicului ca citit
   const { markAsRead } = useMarkTopicAsRead();
 
+  // Mutations pentru toggle sticky și important
+  const togglePinMutation = useMutation({
+    mutationFn: ({ topicId, isPinned }: { topicId: string; isPinned: boolean }) =>
+      toggleTopicPin(topicId, isPinned),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic', topicIdentifier] });
+      queryClient.invalidateQueries({ queryKey: ['topics'] });
+      showToast('Status sticky actualizat!', 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'Eroare la actualizarea status-ului sticky', 'error');
+    },
+  });
+
+  const toggleImportantMutation = useMutation({
+    mutationFn: ({ topicId, isImportant }: { topicId: string; isImportant: boolean }) =>
+      toggleTopicImportant(topicId, isImportant),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic', topicIdentifier] });
+      queryClient.invalidateQueries({ queryKey: ['topics'] });
+      showToast('Status important actualizat!', 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'Eroare la actualizarea status-ului important', 'error');
+    },
+  });
+
   // IMPORTANT: TOȚI hooks-ii trebuie declarați ÎNAINTE de orice early return
   // Topic not found state
   const [showNotFound, setShowNotFound] = useState(false);
@@ -103,6 +136,7 @@ export default function TopicPage() {
   // Asta elimină flickering-ul cauzat de useEffect-uri care actualizează state-uri
   const categoryName = subcategoryOrSubforumData?.parentCategory?.name || '';
   const categoryId = subcategoryOrSubforumData?.parentCategory?.id || null;
+  const categorySlug = subcategoryOrSubforumData?.parentCategory?.slug || '';
   const subcategoryName = subcategoryOrSubforumData?.subcategory?.name || subcategoryOrSubforumData?.subforum?.name || '';
   const subcategorySlug = actualSubcategoryOrSubforumSlug || subcategoryOrSubforumData?.subcategory?.slug || subcategoryOrSubforumData?.subforum?.slug || '';
 
@@ -366,7 +400,7 @@ export default function TopicPage() {
                   <>
                     <span style={{ margin: '0 0.375rem', color: '#9ca3af' }}>›</span>
                     <Link
-                      to="/forum"
+                      to={categorySlug ? `/forum/${categorySlug}` : '/forum'}
                       style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}
                     >
                       {categoryName}
@@ -458,14 +492,108 @@ export default function TopicPage() {
               )}
             </div>
             {topic && (
-              <div style={{ flexShrink: 0 }}>
-                <ShareButton
-                  url={topicUrl}
-                  title={topicTitle}
-                  description={topicDescription}
-                  size="sm"
-                  variant="ghost"
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                {/* Admin/Moderator Buttons */}
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (topic.id) {
+                          togglePinMutation.mutate({
+                            topicId: topic.id,
+                            isPinned: !topic.is_pinned
+                          });
+                        }
+                      }}
+                      title={topic.is_pinned ? 'Elimină sticky' : 'Marchează ca sticky'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '1.75rem',
+                        height: '1.75rem',
+                        backgroundColor: topic.is_pinned ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                        border: topic.is_pinned ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid transparent',
+                        borderRadius: '0.25rem',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = topic.is_pinned ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+                      }}
+                    >
+                      <Pin size={14} style={{ fill: topic.is_pinned ? 'white' : 'none' }} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (topic.id) {
+                          toggleImportantMutation.mutate({
+                            topicId: topic.id,
+                            isImportant: !(topic.is_important || false)
+                          });
+                        }
+                      }}
+                      title={topic.is_important ? 'Elimină important' : 'Marchează ca important'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '1.75rem',
+                        height: '1.75rem',
+                        backgroundColor: topic.is_important ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                        border: topic.is_important ? '1px solid rgba(255, 215, 0, 0.5)' : '1px solid transparent',
+                        borderRadius: '0.25rem',
+                        color: topic.is_important ? '#ffd700' : 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 215, 0, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = topic.is_important ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+                      }}
+                    >
+                      <Star size={14} style={{ fill: topic.is_important ? '#ffd700' : 'none' }} />
+                    </button>
+                  </>
+                )}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '1.75rem',
+                    height: '1.75rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    border: '1px solid transparent',
+                    borderRadius: '0.25rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                  }}
+                >
+                  <ShareButton
+                    url={topicUrl}
+                    title={topicTitle}
+                    description={topicDescription}
+                    size="sm"
+                    variant="ghost"
+                    className="w-full h-full flex items-center justify-center"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -488,7 +616,10 @@ export default function TopicPage() {
                 editReason: post.edit_reason || undefined,
                 likes: post.like_count || 0,
                 dislikes: 0,
-                respect: (post as any).author_respect || 0 // Respect real din forum_users.reputation_points
+                respect: (post as any).author_respect || 0, // Respect real din forum_users.reputation_points
+                authorLocation: (post as any).author_location || undefined,
+                authorPostCount: (post as any).author_post_count || 0,
+                authorReputationPower: (post as any).author_reputation_power || 0
               }}
               isOriginalPost={index === 0 && page === 1}
               postNumber={(post as any).post_number || null} // Post number REAL din database

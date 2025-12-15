@@ -14,6 +14,7 @@ export type AdminTab =
   | 'moderare' 
   | 'reputatie' 
   | 'badges' 
+  | 'raportari'
   | 'braconaj' 
   | 'roluri' 
   | 'marketplace';
@@ -34,6 +35,7 @@ export default function AdminPanelTabs({ activeTab, onTabChange }: AdminPanelTab
     { id: 'moderare', label: 'Moderare', icon: '🛡️' },
     { id: 'reputatie', label: 'Reputație', icon: '⭐' },
     { id: 'badges', label: 'Badge-uri', icon: '🏆' },
+    { id: 'raportari', label: 'Raportări', icon: '🚩' },
     { id: 'braconaj', label: 'Rapoarte Braconaj', icon: '🚨' },
     { id: 'roluri', label: 'Roluri', icon: '👥' },
     { id: 'marketplace', label: 'Marketplace', icon: '🛒' },

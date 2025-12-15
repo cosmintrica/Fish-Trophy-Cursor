@@ -79,6 +79,7 @@ export interface ForumCategory {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean // Per item: show/hide icon (overrides global setting)
     sort_order: number
     is_active: boolean
     created_at: string
@@ -94,6 +95,7 @@ export interface ForumSubforum {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean // Per item: show/hide icon (overrides global setting)
     slug?: string
     sort_order: number
     is_active: boolean
@@ -221,6 +223,14 @@ export interface ForumPost {
     like_count: number
     created_at: string
     post_number?: number // Numărul postului în topic
+    // Author fields (from RPC get_posts_with_authors)
+    author_username?: string
+    author_avatar?: string
+    author_respect?: number
+    author_rank?: string
+    author_post_count?: number
+    author_reputation_power?: number
+    author_location?: string
 }
 
 export interface ForumReputationLog {
@@ -351,6 +361,7 @@ export interface CategoryCreateParams {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean
     sort_order?: number
 }
 

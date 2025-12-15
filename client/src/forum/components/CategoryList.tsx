@@ -7,6 +7,23 @@ interface CategoryListProps {
 }
 
 export default function CategoryList({ categories, loading }: CategoryListProps) {
+  // Load setting from database (global for all users)
+  const [showIcons, setShowIcons] = useState(false);
+
+  useEffect(() => {
+    const loadSetting = async () => {
+      const { getForumSetting } = await import('../../services/forum/categories');
+      const result = await getForumSetting('show_subcategory_icons');
+      if (result.data !== null) {
+        setShowIcons(result.data === 'true');
+      }
+    };
+    loadSetting();
+    
+    // Poll for changes every 30 seconds (or use React Query for real-time updates)
+    const interval = setInterval(loadSetting, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const formatNumber = (num: number) => {
     return num.toLocaleString('ro-RO');
   };
@@ -51,10 +68,11 @@ export default function CategoryList({ categories, loading }: CategoryListProps)
                   <a href={`/forum/${category.slug || category.id}/${subcategory.slug || subcategory.id}`} className="block p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {/* Icon subcategorie */}
-                        <div className="category-icon bg-secondary-500 text-sm">
-                          <span>{subcategory.icon || '📋'}</span>
-                        </div>
+                        {showIcons && (
+                          <div className="category-icon bg-secondary-500 text-sm">
+                            <span>{subcategory.icon || '📋'}</span>
+                          </div>
+                        )}
                         
                         {/* Info subcategorie */}
                         <div className="flex-1 min-w-0">

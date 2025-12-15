@@ -58,6 +58,8 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  const [isExtremelyNarrow, setIsExtremelyNarrow] = useState(false);
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
   const location = useLocation();
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -109,9 +111,17 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
     };
   }, [authForumUser?.id]);
 
-  // Detect mobile
+  // Detect mobile, scrollbar width, and extremely narrow viewport
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 1024);
+      setIsExtremelyNarrow(width < 250);
+      
+      // Calculate scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      setScrollbarWidth(scrollbarWidth);
+    };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -192,47 +202,49 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
             minHeight: isMobile ? '3rem' : '3.5rem'
           }}>
             {/* Logo + Text - COMPLET VIZIBIL PE MOBIL */}
-            <Link
-              to="/forum"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? '0.5rem' : '0.75rem',
-                textDecoration: 'none',
-                minWidth: 0,
-                flex: '0 0 auto',
-                flexShrink: 0
-              }}
-            >
-              <img
-                src="/icon_free.png"
-                alt="Fish Trophy Forum"
+            {!isExtremelyNarrow && (
+              <Link
+                to="/forum"
                 style={{
-                  width: isMobile ? '2rem' : '2.5rem',
-                  height: isMobile ? '2rem' : '2.5rem',
-                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? '0.5rem' : '0.75rem',
+                  textDecoration: 'none',
+                  minWidth: 0,
+                  flex: '0 0 auto',
                   flexShrink: 0
                 }}
-              />
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                <div style={{
-                  fontSize: isMobile ? 'clamp(0.875rem, 3vw, 1rem)' : '1.125rem',
-                  fontWeight: '700',
-                  color: theme.text,
-                  whiteSpace: 'nowrap',
-                  lineHeight: '1.2'
-                }}>
-                  Fish Trophy Forum
+              >
+                <img
+                  src="/icon_free.png"
+                  alt="Fish Trophy Forum"
+                  style={{
+                    width: isMobile ? '2rem' : '2.5rem',
+                    height: isMobile ? '2rem' : '2.5rem',
+                    borderRadius: '0.5rem',
+                    flexShrink: 0
+                  }}
+                />
+                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                  <div style={{
+                    fontSize: isMobile ? 'clamp(0.875rem, 3vw, 1rem)' : '1.125rem',
+                    fontWeight: '700',
+                    color: theme.text,
+                    whiteSpace: 'nowrap',
+                    lineHeight: '1.2'
+                  }}>
+                    Fish Trophy Forum
+                  </div>
+                  <div style={{
+                    fontSize: isMobile ? 'clamp(0.5rem, 1.5vw, 0.625rem)' : '0.625rem',
+                    color: theme.textSecondary,
+                    lineHeight: '1.2'
+                  }}>
+                    Comunitatea pescarilor
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: isMobile ? 'clamp(0.5rem, 1.5vw, 0.625rem)' : '0.625rem',
-                  color: theme.textSecondary,
-                  lineHeight: '1.2'
-                }}>
-                  Comunitatea pescarilor
-                </div>
-              </div>
-            </Link>
+              </Link>
+            )}
 
             {/* Right Side - Actions */}
             <div style={{
@@ -241,7 +253,7 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
               gap: isMobile ? '0.5rem' : '0.75rem',
               flexShrink: 0,
               marginLeft: 'auto',
-              marginRight: isMobile ? '-5px' : '0'
+              marginRight: isMobile ? `${Math.max(0, scrollbarWidth - 5)}px` : '0'
             }}>
               {/* Search - Desktop only */}
               {!isMobile && (
@@ -267,14 +279,6 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                   flexShrink: 0
                 }}
                 title={isDarkMode ? "Comută la modul luminos" : "Comută la modul întunecat"}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.surfaceHover;
-                  e.currentTarget.style.color = theme.text;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = theme.textSecondary;
-                }}
               >
                 {isDarkMode ? <Sun size={isMobile ? 18 : 20} /> : <Moon size={isMobile ? 18 : 20} />}
               </button>
@@ -740,6 +744,31 @@ export default function ForumLayout({ children, user, onLogin, onLogout, showWel
                 >
                   <Home size={18} />
                   <span>Acasă Forum</span>
+                </Link>
+
+                <Link
+                  to="/"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: theme.text,
+                    textDecoration: 'none',
+                    padding: '0.75rem',
+                    fontWeight: '500',
+                    borderRadius: '0.375rem',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <MessageSquare size={18} />
+                  <span>Forum</span>
                 </Link>
 
                 <Link

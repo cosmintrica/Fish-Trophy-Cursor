@@ -1589,11 +1589,17 @@ function ReputationHistoryTab({
   theme: any;
   isMobile: boolean;
 }) {
-  // Fetch reputation logs (RLS will limit to last 10 for non-admins)
+  // Get current user to check if admin
+  const { forumUser } = useAuth();
+  const isAdmin = forumUser?.isAdmin || false;
+
+  // Fetch reputation logs (RLS will limit to last 10 for non-admins, all for admins)
   const { data: reputationData, isLoading } = useQuery({
-    queryKey: ['user-reputation-logs', userId],
+    queryKey: ['user-reputation-logs', userId, isAdmin],
     queryFn: async () => {
-      const result = await getUserReputationLogs(userId, 10);
+      // For admins, get all logs; for regular users, get last 10
+      const limit = isAdmin ? 1000 : 10;
+      const result = await getUserReputationLogs(userId, limit);
       if (result.error) {
         throw new Error(result.error.message);
       }
@@ -1605,25 +1611,50 @@ function ReputationHistoryTab({
 
   const logs = reputationData || [];
 
+  // Get current user profile to get starting reputation
+  const { data: userProfile } = useQuery<ForumUserProfileData>({
+    queryKey: ['forum-user-profile', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('forum_users')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
   // Calculate cumulative reputation over time for chart
   const chartData = useMemo(() => {
-    if (logs.length === 0) return [];
+    if (logs.length === 0 || !userProfile) return [];
 
-    // Sort by date ascending for cumulative calculation
+    // Sort by date ascending (oldest first) to calculate forward from initial reputation
     const sortedLogs = [...logs].sort((a, b) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-    let cumulative = 0;
-    return sortedLogs.map(log => {
-      cumulative += log.points;
+    // Start from initial reputation (current - sum of all changes)
+    const currentReputation = userProfile.reputation_points;
+    const totalChange = sortedLogs.reduce((sum, log) => sum + log.points, 0);
+    let cumulative = currentReputation - totalChange;
+
+    // Build data points showing reputation after each change
+    const dataPoints = sortedLogs.map(log => {
+      const reputationBefore = cumulative;
+      cumulative += log.points; // Reputation after this change
       return {
         date: new Date(log.created_at),
         points: log.points,
-        cumulative
+        cumulative: cumulative, // Reputation after this change
+        reputationBefore: reputationBefore // Reputation before this change
       };
     });
-  }, [logs]);
+
+    return dataPoints;
+  }, [logs, userProfile?.reputation_points]);
 
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
@@ -1678,7 +1709,7 @@ function ReputationHistoryTab({
         paddingBottom: '0.75rem',
         borderBottom: `1px solid ${theme.border}`
       }}>
-        Istoric Reputație (Ultimele 10)
+        Istoric Reputație {isAdmin ? '(Toate)' : '(Ultimele 10)'}
       </h2>
 
       {/* Chart - Recharts Line Chart */}
@@ -1687,7 +1718,8 @@ function ReputationHistoryTab({
           padding: isMobile ? '0.75rem' : '1rem',
           backgroundColor: theme.background,
           borderRadius: '0.5rem',
-          border: `1px solid ${theme.border}`
+          border: `1px solid ${theme.border}`,
+          minHeight: isMobile ? 250 : 300
         }}>
           <div style={{
             fontSize: isMobile ? '0.75rem' : '0.875rem',
@@ -1697,13 +1729,22 @@ function ReputationHistoryTab({
           }}>
             Evoluție Reputație
           </div>
-          <div style={{ width: '100%', height: isMobile ? 200 : 250 }}>
+          <div style={{ 
+            width: '100%', 
+            height: isMobile ? 200 : 250, 
+            minWidth: '100%',
+            minHeight: 200,
+            position: 'relative'
+          }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData.map(d => ({
                 date: d.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }),
                 time: d.date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+                fullDate: d.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                fullTime: d.date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
                 cumulative: d.cumulative,
-                points: d.points
+                points: d.points,
+                reputationBefore: d.reputationBefore
               }))} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
                 <XAxis
@@ -1751,7 +1792,7 @@ function ReputationHistoryTab({
                           borderBottom: `1px solid ${theme.border}`,
                           paddingBottom: '0.5rem'
                         }}>
-                          {data.date} {data.time}
+                          {data.fullDate || data.date} {data.fullTime || data.time}
                         </div>
                         <div style={{
                           fontSize: '0.8125rem',
@@ -1766,7 +1807,7 @@ function ReputationHistoryTab({
                             color: data.cumulative >= 0 ? '#10b981' : '#ef4444',
                             fontSize: '0.875rem'
                           }}>
-                            {data.cumulative >= 0 ? '+' : ''}{data.cumulative.toLocaleString('ro-RO')}
+                            {data.cumulative.toLocaleString('ro-RO')}
                           </span>
                         </div>
                         <div style={{

@@ -161,8 +161,8 @@ export async function createReport(
             .from('forum_reports')
             .insert({
                 reported_user_id: reportedUserId,
-                reported_by: user.id,
-                report_type: reportType,
+                reporter_id: user.id,
+                reason: reportType,
                 description,
                 post_id: postId
             })
@@ -192,11 +192,7 @@ export async function getReports(
 
         let query = supabase
             .from('forum_reports')
-            .select(`
-        *,
-        reporter:forum_users!reported_by(username),
-        reported:forum_users!reported_user_id(username)
-      `, { count: 'exact' })
+            .select('*', { count: 'exact' })
 
         if (status) {
             query = query.eq('status', status)
@@ -210,10 +206,32 @@ export async function getReports(
             return { error: { message: error.message, code: error.code } }
         }
 
+        // Obține username-urile pentru reporter, reported_user, reviewer
+        const userIds = [
+            ...new Set([
+                ...(data || []).map(r => r.reporter_id),
+                ...(data || []).map(r => r.reported_user_id).filter(Boolean) as string[],
+                ...(data || []).map(r => r.reviewed_by).filter(Boolean) as string[],
+            ])
+        ]
+
+        let usersMap = new Map<string, string>()
+        if (userIds.length > 0) {
+            const { data: usersData } = await supabase
+                .from('forum_users')
+                .select('user_id, username')
+                .in('user_id', userIds)
+
+            if (usersData) {
+                usersMap = new Map(usersData.map(u => [u.user_id, u.username]))
+            }
+        }
+
         const reportsWithUsernames = (data || []).map(r => ({
             ...r,
-            reporter_username: r.reporter?.username,
-            reported_username: r.reported?.username
+            reporter_username: usersMap.get(r.reporter_id) || 'Unknown',
+            reported_username: r.reported_user_id ? usersMap.get(r.reported_user_id) : undefined,
+            reviewer_username: r.reviewed_by ? usersMap.get(r.reviewed_by) : undefined,
         }))
 
         return {
@@ -249,9 +267,8 @@ export async function updateReportStatus(
             .from('forum_reports')
             .update({
                 status,
-                moderator_notes: moderatorNotes,
-                resolved_by: status !== 'pending' ? user.id : null,
-                resolved_at: status !== 'pending' ? new Date().toISOString() : null
+                reviewed_by: status !== 'pending' ? user.id : null,
+                reviewed_at: status !== 'pending' ? new Date().toISOString() : null
             })
             .eq('id', reportId)
             .select()

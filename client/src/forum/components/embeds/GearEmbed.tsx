@@ -26,10 +26,12 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
-  // Listen for theme changes
+  // Listen for theme changes and mobile detection
   useEffect(() => {
     const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     
     const observer = new MutationObserver(updateDarkMode);
     observer.observe(document.documentElement, {
@@ -39,10 +41,14 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateDarkMode);
+    
+    window.addEventListener('resize', checkMobile);
+    checkMobile();
 
     return () => {
       observer.disconnect();
       mediaQuery.removeEventListener('change', updateDarkMode);
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
@@ -77,11 +83,11 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
     return (
       <div className="bbcode-gear-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#f3f4f6',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
-        fontSize: '0.875rem',
+        fontSize: isMobile ? '0.75rem' : '0.875rem',
         color: isDarkMode ? '#94a3b8' : '#6b7280'
       }}>
         Se încarcă echipamentul...
@@ -93,12 +99,12 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
     return (
       <div className="bbcode-gear-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: 'rgba(220, 38, 38, 0.1)',
         border: '1px solid rgba(220, 38, 38, 0.3)',
         borderRadius: '0.5rem',
         color: '#dc2626',
-        fontSize: '0.875rem'
+        fontSize: isMobile ? '0.75rem' : '0.875rem'
       }}>
         {error || 'Echipamentul nu a fost găsit'}
       </div>
@@ -128,22 +134,24 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
     <>
       <div className="bbcode-gear-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#ffffff',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
         overflow: 'hidden',
         display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? '0.5rem' : '0.75rem',
         maxWidth: '100%',
         boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Thumbnail Image */}
         {data.image_url && (
           <div style={{
-            width: '100px',
-            height: '75px',
+            width: isMobile ? '100%' : '100px',
+            height: isMobile ? 'auto' : '75px',
+            aspectRatio: isMobile ? '16/9' : undefined,
             flexShrink: 0,
             overflow: 'hidden',
             background: '#f3f4f6',
@@ -151,10 +159,10 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
             borderRadius: '0.375rem',
             cursor: 'pointer'
           }}
-          onClick={() => setZoomedImage(data.image_url!)}
+          onClick={() => setZoomedImage(getR2ImageUrlProxy(data.image_url!))}
           >
             <img
-              src={data.image_url}
+              src={getR2ImageUrlProxy(data.image_url)}
               alt={gearName}
               style={{
                 width: '100%',
@@ -169,28 +177,30 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
           </div>
         )}
 
-        {/* Content Section - Horizontal Layout */}
+        {/* Content Section - Responsive Layout */}
         <div style={{
           flex: 1,
           display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? '0.5rem' : '0.75rem',
           flexWrap: 'wrap',
           minWidth: 0
         }}>
           {/* Category Tag */}
           {categoryName && (
             <div style={{
-              padding: '0.25rem 0.5rem',
+              padding: isMobile ? '0.125rem 0.375rem' : '0.25rem 0.5rem',
               background: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
               border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
               borderRadius: '0.25rem',
-              fontSize: '0.6875rem',
+              fontSize: isMobile ? '0.625rem' : '0.6875rem',
               fontWeight: '600',
               color: isDarkMode ? '#93c5fd' : '#2563eb',
               textTransform: 'uppercase',
               letterSpacing: '0.025em',
-              flexShrink: 0
+              flexShrink: 0,
+              alignSelf: isMobile ? 'flex-start' : 'center'
             }}>
               {categoryName}
             </div>
@@ -200,27 +210,28 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.25rem',
             flexShrink: 0
           }}>
-            <Wrench style={{ width: '0.875rem', height: '0.875rem', color: '#8b5cf6', flexShrink: 0 }} />
+            <Wrench style={{ width: isMobile ? '0.75rem' : '0.875rem', height: isMobile ? '0.75rem' : '0.875rem', color: '#8b5cf6', flexShrink: 0 }} />
             <span style={{
               fontWeight: '600',
-              fontSize: '0.875rem',
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
               color: isDarkMode ? '#f1f5f9' : '#111827'
             }}>
               {gearName}
             </span>
           </div>
 
-          {/* Details - All on one line */}
+          {/* Details */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
+            gap: isMobile ? '0.5rem' : '0.75rem',
             flexWrap: 'wrap',
-            fontSize: '0.8125rem',
-            color: isDarkMode ? '#cbd5e1' : '#374151'
+            fontSize: isMobile ? '0.6875rem' : '0.8125rem',
+            color: isDarkMode ? '#cbd5e1' : '#374151',
+            flex: isMobile ? '1' : undefined
           }}>
             {data.price && (
               <span>
@@ -228,50 +239,25 @@ export default function GearEmbed({ gearId }: GearEmbedProps) {
               </span>
             )}
             {data.purchase_date && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Calendar style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Calendar style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span>{new Date(data.purchase_date).toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
               </div>
             )}
             {data.description && (
               <span style={{ 
                 color: isDarkMode ? '#94a3b8' : '#6b7280',
-                maxWidth: '200px',
+                maxWidth: isMobile ? '100%' : '200px',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+                whiteSpace: isMobile ? 'normal' : 'nowrap',
+                display: isMobile ? 'block' : 'inline'
               }}>
                 {data.description}
               </span>
             )}
           </div>
 
-          {/* Link */}
-          <a
-            href={`/profile#gear-${data.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              fontSize: '0.8125rem',
-              color: '#3b82f6',
-              textDecoration: 'none',
-              fontWeight: '500',
-              marginLeft: 'auto',
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.textDecoration = 'underline';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.textDecoration = 'none';
-            }}
-          >
-            Vezi echipament
-            <ExternalLink style={{ width: '0.75rem', height: '0.75rem' }} />
-          </a>
         </div>
       </div>
 

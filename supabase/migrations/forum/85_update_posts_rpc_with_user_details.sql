@@ -1,11 +1,11 @@
 -- =============================================
--- Migration 70: Optimized Posts with Authors (FIXED)
+-- Migration 85: Update get_posts_with_authors RPC to include user details
 -- =============================================
--- Replaces N+1 query pattern (60+ queries) with single optimized query
--- Returns posts with full author data using JOINs
+-- Descriere: Adăugare câmpuri suplimentare pentru sidebar (location, post_count, reputation_power)
+-- Dependințe: 70_optimized_posts_with_authors.sql
 -- =============================================
 
--- Create optimized RPC function
+-- Update RPC function to include additional user details
 CREATE OR REPLACE FUNCTION get_posts_with_authors(
   p_topic_id UUID,
   p_page INT DEFAULT 1,
@@ -105,14 +105,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_posts_with_authors(UUID, INT, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_posts_with_authors(UUID, INT, INT) TO anon;
 
--- Create indexes for optimal query performance (if not exist)
-CREATE INDEX IF NOT EXISTS idx_forum_posts_topic_id_created 
-  ON forum_posts(topic_id, created_at) 
-  WHERE is_deleted = false;
-
-CREATE INDEX IF NOT EXISTS idx_forum_users_user_id 
-  ON forum_users(user_id);
-
 -- Comment
 COMMENT ON FUNCTION get_posts_with_authors IS 
-'Optimized RPC: Returns paginated posts with full author data (username, avatar, rank, reputation) in a single query. Replaces N+1 pattern of 60+ queries with 1 query.';
+'Optimized RPC: Returns paginated posts with full author data (username, avatar, rank, reputation, post_count, reputation_power, location) in a single query.';
+

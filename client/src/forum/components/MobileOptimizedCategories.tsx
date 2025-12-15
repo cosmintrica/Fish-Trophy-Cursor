@@ -8,6 +8,7 @@ import ReadStatusMarker from './ReadStatusMarker';
 import { useMultipleSubcategoriesUnreadStatus, useMultipleSubforumsUnreadStatus } from '../hooks/useTopicReadStatus';
 import { useAuth } from '../hooks/useAuth';
 import { usePrefetch } from '../hooks/usePrefetch';
+import { getForumSetting } from '../../services/forum/categories';
 
 interface MobileOptimizedCategoriesProps {
   onSubcategoryClick: (subcategoryId: string, categorySlug?: string, subcategorySlug?: string) => void;
@@ -47,6 +48,23 @@ const getLatestPost = (
 };
 
 export default function MobileOptimizedCategories({ onSubcategoryClick }: MobileOptimizedCategoriesProps) {
+  // Load setting from database (global for all users)
+  const [showIcons, setShowIcons] = useState(false);
+
+  useEffect(() => {
+    const loadSetting = async () => {
+      const { getForumSetting } = await import('../../services/forum/categories');
+      const result = await getForumSetting('show_subcategory_icons');
+      if (result.data !== null) {
+        setShowIcons(result.data === 'true');
+      }
+    };
+    loadSetting();
+    
+    // Poll for changes every 30 seconds (or use React Query for real-time updates)
+    const interval = setInterval(loadSetting, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const { theme } = useTheme();
 
   // Try Supabase first
@@ -213,9 +231,11 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                             style={{ marginRight: '0.25rem', alignSelf: 'center' }}
                           />
                         )}
-                        <div style={{ fontSize: '1rem' }}>
-                          {subcategory.icon || '📝'}
-                        </div>
+                        {showIcons && subcategory.icon && (
+                          <div style={{ fontSize: '1rem' }}>
+                            {subcategory.icon}
+                          </div>
+                        )}
                         <div style={{ fontSize: '0.75rem', fontWeight: '500', color: theme.text, flex: 1, lineHeight: '1.2' }}>
                           {subcategory.name}
                         </div>

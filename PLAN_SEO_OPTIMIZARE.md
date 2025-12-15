@@ -53,19 +53,39 @@
 
 ### ⚠️ CRITIC: Fiecare pagină trebuie să aibă OG tags unice
 
+### ⚠️ PROBLEMĂ IDENTIFICATĂ: og:description static
+**Toate linkurile de share au același text de sub banner (og:description) - "Fish Trophy - Platforma pentru recorduri de pescuit din România. Urmărește recordurile, concurează cu alții"**
+
+**Observații:**
+- Textul de sub banner (og:description) este mereu identic pentru toate paginile
+- Doar textul deasupra link-ului (în aplicația de mesagerie) este dinamic
+- Acest lucru face ca toate linkurile să arate la fel pe social media, indiferent de conținut
+
+**Soluție necesară:**
+- og:description trebuie să fie dinamic pentru fiecare pagină:
+  - Record Details: "Record [specie] - [greutate]kg prins de [nume pescar] la [locație]"
+  - Catch Details: "Captură [specie] - [greutate]kg prins de [nume pescar]"
+  - User Profile: "Profil pescar [username] - [statistici] recorduri, [statistici] capturi"
+  - Forum Topic: "[titlu topic] - [preview conținut] - Forum Fish Trophy"
+  - Category Page: "[nume categorie] - [descriere] - Forum Fish Trophy"
+  - Subcategory/Subforum: "[nume] - [descriere] - Forum Fish Trophy"
+
 ### Pagini care necesită OG tags dinamice:
-- [ ] Record Details: imagine record, specie, greutate, pescar, locație
-- [ ] Catch Details: imagine captură, specie, data, pescar
-- [ ] Species Details: imagine specie, nume, descriere
-- [ ] User Profile: avatar user, nume, statistici
-- [ ] Forum Topic: titlu topic, autor, preview conținut, imagine (dacă există)
-- [ ] Forum Post: autor, conținut preview, data
-- [ ] Category Page: nume categorie, descriere, număr topicuri
+- [ ] Record Details: imagine record, specie, greutate, pescar, locație, **og:description dinamic**
+- [ ] Catch Details: imagine captură, specie, data, pescar, **og:description dinamic**
+- [ ] Species Details: imagine specie, nume, descriere, **og:description dinamic**
+- [ ] User Profile: avatar user, nume, statistici, **og:description dinamic**
+- [ ] Forum Topic: titlu topic, autor, preview conținut, imagine (dacă există), **og:description dinamic**
+- [ ] Forum Post: autor, conținut preview, data, **og:description dinamic**
+- [ ] Category Page: nume categorie, descriere, număr topicuri, **og:description dinamic**
+- [ ] Subcategory/Subforum Page: nume, descriere, **og:description dinamic**
 
 ### Implementare:
-- [ ] Extind SEOHead să accepte props dinamice
+- [ ] Extind SEOHead să accepte props dinamice pentru og:description
+- [ ] Actualizează toate paginile să paseze og:description specific conținutului
 - [ ] Generare automată OG image pentru recorduri/capturi (dacă nu există)
 - [ ] Fallback la imagine default dacă nu există imagine specifică
+- [ ] Testare cu Facebook Sharing Debugger, Twitter Card Validator, LinkedIn Post Inspector
 
 ## 4. Structured Data (Schema.org) - TODO
 

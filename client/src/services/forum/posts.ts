@@ -119,28 +119,34 @@ async function getPostsFallback(
         let respect = 0;
         let rank = 'pescar';
         let editedByUsername: string | undefined = undefined;
+        let location: string | undefined = undefined;
+        let postCount = 0;
+        let reputationPower = 0;
 
         if (p.user_id) {
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('display_name, username, email, photo_url')
+                .select('display_name, username, email, photo_url, location')
                 .eq('id', p.user_id)
                 .maybeSingle();
 
             if (profile) {
                 username = profile.display_name || profile.username || profile.email?.split('@')[0] || 'Unknown';
                 avatar = profile.photo_url || null;
+                location = (profile as any).location || undefined;
             }
 
             const { data: forumUser } = await supabase
                 .from('forum_users')
-                .select('reputation_points, rank')
+                .select('reputation_points, reputation_power, post_count, rank')
                 .eq('user_id', p.user_id)
                 .maybeSingle();
 
             if (forumUser) {
                 respect = forumUser.reputation_points || 0;
                 rank = forumUser.rank || 'pescar';
+                postCount = forumUser.post_count || 0;
+                reputationPower = forumUser.reputation_power || 0;
             }
         }
 
@@ -162,6 +168,9 @@ async function getPostsFallback(
             author_avatar: avatar,
             author_respect: respect,
             author_rank: rank,
+            author_post_count: postCount,
+            author_reputation_power: reputationPower,
+            author_location: location,
             post_number: p.post_number || null,
             edited_by_username: editedByUsername
         };

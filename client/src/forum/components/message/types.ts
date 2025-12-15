@@ -17,6 +17,10 @@ export interface MessagePost {
   likes: number;
   dislikes: number;
   respect?: number;
+  // Additional user details for sidebar
+  authorLocation?: string;
+  authorPostCount?: number;
+  authorReputationPower?: number;
 }
 
 export interface MessageContainerProps {

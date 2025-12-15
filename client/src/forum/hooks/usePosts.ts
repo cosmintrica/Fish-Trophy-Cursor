@@ -36,8 +36,8 @@ export function usePosts(topicId: string | null | undefined, page = 1, pageSize 
             return result.data!
         },
         enabled: !!queryKey, // Nu rulează query-ul dacă nu avem topicId
-        staleTime: 30 * 1000, // 30 secunde
-        gcTime: 2 * 60 * 1000, // 2 minute
+        staleTime: 5 * 60 * 1000, // 5 minute - cache mai lung pentru performanță
+        gcTime: 10 * 60 * 1000, // 10 minute - cache mai lung
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,

@@ -41,6 +41,7 @@ interface SubforumsWithStats {
   icon: string | null;
   slug: string;
   sort_order: number;
+  show_icon?: boolean | null;
   topicCount: number;
   postCount: number;
 }
@@ -162,7 +163,7 @@ export function useSubcategoryOrSubforum(
           const [subforumsResult] = await Promise.all([
             supabase
               .from('forum_subforums')
-              .select('id, name, description, icon, slug, sort_order, subcategory_id')
+              .select('id, name, description, icon, slug, sort_order, subcategory_id, show_icon')
               .eq('subcategory_id', subcategory.id)
               .eq('is_active', true)
               .order('sort_order', { ascending: true }),
@@ -227,8 +228,8 @@ export function useSubcategoryOrSubforum(
       };
     },
     enabled: !!potentialSlug, // Nu mai necesităm categorySlug
-    staleTime: 30 * 1000, // 30 secunde
-    gcTime: 2 * 60 * 1000, // 2 minute
+    staleTime: 5 * 60 * 1000, // 5 minute - cache mai lung pentru performanță
+    gcTime: 10 * 60 * 1000, // 10 minute - cache mai lung
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });

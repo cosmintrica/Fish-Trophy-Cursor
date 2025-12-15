@@ -88,8 +88,6 @@ if ('serviceWorker' in navigator && typeof window !== 'undefined') {
         scope: '/'
       })
         .then((registration) => {
-          console.log('[SW] Registered:', registration.scope);
-          
           // Verifică pentru update-uri
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
@@ -97,7 +95,6 @@ if ('serviceWorker' in navigator && typeof window !== 'undefined') {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   // New service worker available - notify user
-                  console.log('[SW] New version available');
                   // Poți adăuga aici o notificare pentru utilizator
                 }
               });

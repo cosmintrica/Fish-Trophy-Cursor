@@ -59,6 +59,7 @@ export interface ForumSubcategory {
   topicCount: number;
   postCount: number;
   icon?: string;
+  show_icon?: boolean | null;
   moderator_only?: boolean;
   stats?: {
     totalTopics: number;

@@ -21,7 +21,6 @@ import ImageZoom from './ImageZoom';
 import EditorToolbar from './EditorToolbar';
 import MessageSidebar from './message/MessageSidebar';
 import MessageActions from './message/MessageActions';
-import GearModal from './message/GearModal';
 import EditInfo from './message/EditInfo';
 import { DeletePostModal } from './message/MessageModals';
 import NewBadge from './NewBadge';
@@ -43,6 +42,9 @@ interface MessageContainerProps {
     likes: number;
     dislikes: number;
     respect?: number;
+    authorLocation?: string;
+    authorPostCount?: number;
+    authorReputationPower?: number;
   };
   isOriginalPost?: boolean;
   postNumber?: number;
@@ -88,7 +90,6 @@ export default function MessageContainer({
   const { forumUser } = useAuth();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
-  const [showGearModal, setShowGearModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -386,7 +387,6 @@ export default function MessageContainer({
   const handleGearClick = async () => {
     if (!post.authorId) return;
 
-    setShowGearModal(true);
     setIsLoadingGear(true);
     try {
       const { data, error } = await supabase
@@ -486,7 +486,10 @@ export default function MessageContainer({
     editReason: post.editReason,
     likes: post.likes,
     dislikes: post.dislikes,
-    respect: post.respect
+    respect: post.respect,
+    authorLocation: post.authorLocation,
+    authorPostCount: post.authorPostCount,
+    authorReputationPower: post.authorReputationPower
   };
 
   return (
@@ -522,12 +525,57 @@ export default function MessageContainer({
           >
             <a
               href={`#${postAnchorId}`}
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
+                // Navigare la post
                 const element = document.getElementById(postAnchorId);
                 if (element) {
                   element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   window.history.replaceState(null, '', `#${postAnchorId}`);
+                }
+                // Copy to clipboard - cu fallback pentru mobile
+                const fullUrl = `${window.location.origin}${window.location.pathname}#${postAnchorId}`;
+                try {
+                  // Încearcă navigator.clipboard (nu funcționează pe toate mobile browsers)
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(fullUrl);
+                    showToast('Link copiat în clipboard!', 'success');
+                  } else {
+                    // Fallback pentru mobile - creează input temporar
+                    const textArea = document.createElement('textarea');
+                    textArea.value = fullUrl;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                      document.execCommand('copy');
+                      showToast('Link copiat în clipboard!', 'success');
+                    } catch (err) {
+                      showToast('Eroare la copierea link-ului', 'error');
+                    }
+                    document.body.removeChild(textArea);
+                  }
+                } catch (err) {
+                  console.error('Error copying to clipboard:', err);
+                  // Fallback pentru mobile
+                  try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = fullUrl;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('Link copiat în clipboard!', 'success');
+                  } catch (fallbackErr) {
+                    showToast('Eroare la copierea link-ului', 'error');
+                  }
                 }
               }}
               style={{
@@ -549,7 +597,7 @@ export default function MessageContainer({
                 e.currentTarget.style.color = theme.textSecondary;
                 e.currentTarget.style.borderColor = theme.border;
               }}
-              title={`Post #${postNumber}`}
+              title={`Post #${postNumber} - Click pentru a naviga și copia link-ul`}
             >
               #{postNumber}
             </a>
@@ -575,6 +623,8 @@ export default function MessageContainer({
             isOriginalPost={isOriginalPost}
             isMobile={isMobile}
             onGearClick={handleGearClick}
+            userGear={userGear}
+            isLoadingGear={isLoadingGear}
           />
 
           {/* Content area - Flex pentru a nu ieși din lățime */}
@@ -863,16 +913,6 @@ export default function MessageContainer({
       </div>
 
       {/* Modals */}
-      {showGearModal && (
-        <GearModal
-          authorName={post.author}
-          gear={userGear}
-          isLoading={isLoadingGear}
-          isMobile={isMobile}
-          onClose={() => setShowGearModal(false)}
-        />
-      )}
-
       {showDeleteModal && (
         <DeletePostModal
           postId={post.id}

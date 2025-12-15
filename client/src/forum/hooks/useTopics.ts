@@ -36,8 +36,8 @@ export function useTopics(subcategoryId?: string, page = 1, pageSize = 20, subfo
             return result.data!
         },
         enabled: !!queryKey,
-        staleTime: 30 * 1000, // 30 secunde - cache scurt
-        gcTime: 2 * 60 * 1000, // 2 minute - cache scurt
+        staleTime: 5 * 60 * 1000, // 5 minute - cache mai lung pentru performanță
+        gcTime: 10 * 60 * 1000, // 10 minute - cache mai lung
         refetchOnMount: false, // Nu refetch - folosește cache
         refetchOnWindowFocus: false,
     })
@@ -82,8 +82,8 @@ export function useTopic(
             return result.data!
         },
         enabled: !!queryKey, // Nu rulează query-ul dacă nu avem topicId
-        staleTime: 30 * 1000, // 30 secunde
-        gcTime: 2 * 60 * 1000, // 2 minute
+        staleTime: 5 * 60 * 1000, // 5 minute - cache mai lung pentru performanță
+        gcTime: 10 * 60 * 1000, // 10 minute - cache mai lung
         refetchOnMount: false,
         refetchOnWindowFocus: false,
     })

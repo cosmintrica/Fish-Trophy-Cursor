@@ -68,12 +68,16 @@ async function getCategoriesWithHierarchyFallback(): Promise<ApiResponse<Categor
                 const subcategories = await Promise.all(
                     (subcategoriesRaw || []).map(async (subcat) => {
                         // Get subforums for this subcategory (NEW STRUCTURE: subforums are under subcategories)
-                        const { data: subforums } = await supabase
+                        const { data: subforums, error: subforumsError } = await supabase
                             .from('forum_subforums')
                             .select('*')
                             .eq('subcategory_id', subcat.id)
                             .eq('is_active', true)
-                            .order('sort_order', { ascending: true })
+                            .order('sort_order', { ascending: true });
+                        
+                        if (subforumsError) {
+                            console.error(`[getCategoriesWithHierarchy] Error fetching subforums for subcategory ${subcat.name}:`, subforumsError);
+                        }
                         // Count topics
                         const { count: topicCount } = await supabase
                             .from('forum_topics')
@@ -256,6 +260,7 @@ export async function createCategory(params: CategoryCreateParams): Promise<ApiR
                 name: params.name,
                 description: params.description,
                 icon: params.icon,
+                show_icon: params.show_icon ?? true,
                 sort_order: params.sort_order ?? 0,
                 is_active: true
             })
@@ -352,6 +357,7 @@ export async function createSubforum(params: {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean
     sort_order?: number
 }): Promise<ApiResponse<ForumSubforum>> {
     try {
@@ -370,6 +376,7 @@ export async function createSubforum(params: {
                 name: params.name,
                 description: params.description,
                 icon: params.icon,
+                show_icon: params.show_icon ?? true,
                 sort_order: params.sort_order ?? 0,
                 is_active: true
             })
@@ -395,6 +402,7 @@ export async function updateSubforum(
         name?: string
         description?: string
         icon?: string
+        show_icon?: boolean
         sort_order?: number
         is_active?: boolean
         subcategory_id?: string
@@ -421,6 +429,56 @@ export async function updateSubforum(
 /**
  * Delete subforum (soft delete - set is_active = false)
  */
+// =============================================
+// Forum Settings
+// =============================================
+
+/**
+ * Obține o setare globală a forumului
+ */
+export async function getForumSetting(key: string): Promise<ApiResponse<string | null>> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_settings')
+      .select('setting_value')
+      .eq('setting_key', key)
+      .maybeSingle();
+
+    if (error) {
+      return { error: { message: error.message, code: error.code || 'UNKNOWN_ERROR' } };
+    }
+
+    return { data: data?.setting_value || null };
+  } catch (error) {
+    return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } };
+  }
+}
+
+/**
+ * Setează o setare globală a forumului (doar pentru admini)
+ */
+export async function setForumSetting(key: string, value: string): Promise<ApiResponse<void>> {
+  try {
+    const { error } = await supabase
+      .from('forum_settings')
+      .upsert({
+        setting_key: key,
+        setting_value: value,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'setting_key'
+      });
+
+    if (error) {
+      return { error: { message: error.message, code: error.code || 'UNKNOWN_ERROR' } };
+    }
+
+    return { data: undefined };
+  } catch (error) {
+    return { error: { message: (error as Error).message, code: 'UNKNOWN_ERROR' } };
+  }
+}
+
 export async function deleteSubforum(subforumId: string): Promise<ApiResponse<void>> {
     try {
         const { error } = await supabase
@@ -483,6 +541,7 @@ export async function updateSubcategory(
         name?: string
         description?: string
         icon?: string
+        show_icon?: boolean
         moderator_only?: boolean
         sort_order?: number
         is_active?: boolean
@@ -535,6 +594,7 @@ export async function createSubcategory(params: {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean
     moderator_only?: boolean
     sort_order?: number
 }): Promise<ApiResponse<ForumSubcategory>> {
@@ -552,6 +612,7 @@ export async function createSubcategory(params: {
                 name: params.name,
                 description: params.description,
                 icon: params.icon,
+                show_icon: params.show_icon ?? true,
                 moderator_only: params.moderator_only ?? false,
                 sort_order: params.sort_order ?? 0,
                 is_active: true

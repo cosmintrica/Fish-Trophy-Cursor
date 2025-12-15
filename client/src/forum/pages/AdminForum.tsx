@@ -10,6 +10,7 @@ import AdminCategories from '../components/admin/AdminCategories';
 import AdminModeration from '../components/admin/AdminModeration';
 import AdminReputation from '../components/admin/AdminReputation';
 import AdminBadges from '../components/admin/AdminBadges';
+import AdminReports from '../components/admin/AdminReports';
 import AdminBraconajReports from '../components/admin/AdminBraconajReports';
 import AdminRoles from '../components/admin/AdminRoles';
 import AdminMarketplace from '../components/admin/AdminMarketplace';
@@ -129,6 +130,8 @@ export default function AdminForum() {
         return <AdminReputation />;
       case 'badges':
         return <AdminBadges />;
+      case 'raportari':
+        return <AdminReports />;
       case 'braconaj':
         return <AdminBraconajReports />;
       case 'roluri':

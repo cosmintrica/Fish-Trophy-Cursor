@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical, ExternalLink, AlertCircle, Video, User, Play } from 'lucide-react';
@@ -121,9 +122,57 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   // Zoom state
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   
-  // Report modal state
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  // Report state
+  const [showReportInput, setShowReportInput] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [isAuthRequiredModalOpen, setIsAuthRequiredModalOpen] = useState(false);
+  const reportButtonRef = useRef<HTMLButtonElement>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobil
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Calculează poziția popup-ului când se deschide - jos, magnetic legat de buton
+  useEffect(() => {
+    if (showReportInput && reportButtonRef.current) {
+      const rect = reportButtonRef.current.getBoundingClientRect();
+      setPopupPosition({
+        top: rect.bottom + 8, // 8px sub buton
+        left: rect.left
+      });
+    } else {
+      setPopupPosition(null);
+    }
+  }, [showReportInput, isMobile]);
+
+  // Închide popup-ul când se dă click în afara lui
+  useEffect(() => {
+    if (!showReportInput) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        reportButtonRef.current &&
+        !reportButtonRef.current.contains(target) &&
+        !target.closest(`[id^="report-popup-catch-"]`)
+      ) {
+        setShowReportInput(false);
+        setReportReason('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReportInput]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -616,7 +665,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
   // SEO Meta Tags for Catch
   const catchTitle = `Captură ${catchData.fish_species?.name || 'Pescuit'} - ${catchData.weight || 'N/A'}kg - Fish Trophy`;
-  const catchDescription = `Captură de pescuit: ${catchData.fish_species?.name || 'Specie necunoscută'}${catchData.weight ? ` de ${catchData.weight}kg` : ''}, capturat la ${catchData.fishing_locations?.name || 'locație necunoscută'}.`;
+  const catchDescription = `Captură de pescuit: ${catchData.fish_species?.name || 'Specie necunoscută'}${catchData.weight ? ` de ${catchData.weight}kg` : ''}${catchData.length_cm ? `, ${catchData.length_cm}cm` : ''}, capturat la ${catchData.fishing_locations?.name || 'locație necunoscută'}${catchData.fishing_locations?.county ? `, ${catchData.fishing_locations.county}` : ''}${username ? ` de ${username}` : ''}. ${catchData.notes ? `${catchData.notes.substring(0, 100)}${catchData.notes.length > 100 ? '...' : ''}` : ''}`;
   // Use username if available, otherwise fallback to user_id
   const profileIdentifier = username || catchData.user_id;
   const catchUrl = `https://fishtrophy.ro/profile/${profileIdentifier}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`;
@@ -836,29 +885,29 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="p-4 md:p-4 space-y-4">
+          <div className="p-3 md:p-4 space-y-3 md:space-y-4">
             {/* Stats Cards */}
             {(catchData.weight || catchData.length_cm) && (
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2 md:gap-2.5">
                 {catchData.weight && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
-                      <Scale className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase">Greutate</span>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center gap-1 md:gap-1.5 text-blue-600 dark:text-blue-400 mb-0.5 md:mb-1">
+                      <Scale className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      <span className="text-[9px] md:text-[10px] font-bold uppercase">Greutate</span>
                     </div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white">
-                      {catchData.weight} <span className="text-xs text-slate-400 font-medium">kg</span>
+                    <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                      {catchData.weight} <span className="text-[10px] md:text-xs text-slate-400 font-medium">kg</span>
                     </div>
                   </div>
                 )}
                 {catchData.length_cm && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-1">
-                      <Ruler className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase">Lungime</span>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center gap-1 md:gap-1.5 text-emerald-600 dark:text-emerald-400 mb-0.5 md:mb-1">
+                      <Ruler className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      <span className="text-[9px] md:text-[10px] font-bold uppercase">Lungime</span>
                     </div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white">
-                      {catchData.length_cm} <span className="text-xs text-slate-400 font-medium">cm</span>
+                    <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                      {catchData.length_cm} <span className="text-[10px] md:text-xs text-slate-400 font-medium">cm</span>
                     </div>
                   </div>
                 )}
@@ -866,25 +915,25 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
             )}
 
             {/* Date */}
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
-              <Calendar className="w-4 h-4 text-blue-500" />
-              {formattedDate}
+            <div className="flex items-center gap-1.5 md:gap-2 text-slate-500 dark:text-slate-400 text-xs md:text-sm font-medium">
+              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+              <span className="break-words">{formattedDate}</span>
             </div>
 
             {/* Notes */}
             {catchData.notes && (
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Note</div>
-                <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{catchData.notes}</p>
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 md:p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="text-[9px] md:text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5 md:mb-2">Note</div>
+                <p className="text-xs md:text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed break-words">{catchData.notes}</p>
               </div>
             )}
 
             {/* Like/Comment buttons */}
-            <div className="flex items-center gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div className="flex items-center gap-2 md:gap-3 pt-2 md:pt-3 border-t border-gray-200 dark:border-slate-700">
               <button
                 onClick={handleLike}
                 disabled={isLiking && !!user}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] ${catchData.is_liked_by_current_user && user
+                className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 ${catchData.is_liked_by_current_user && user
                   ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
                   : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
                   }`}
@@ -894,14 +943,14 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                 }}
               >
                 <Heart
-                  className={`w-5 h-5 ${catchData.is_liked_by_current_user && user ? 'fill-current text-red-600' : ''}`}
+                  className={`w-4 h-4 md:w-5 md:h-5 ${catchData.is_liked_by_current_user && user ? 'fill-current text-red-600' : ''}`}
                   style={{
                     transform: likeAnimation ? 'translateZ(0) scale(1.2)' : 'translateZ(0) scale(1)',
                     willChange: 'transform',
                     transition: 'transform 0.2s ease-out'
                   }}
                 />
-                <span className="text-sm font-semibold">{catchData.like_count || 0}</span>
+                <span className="text-xs md:text-sm font-semibold">{catchData.like_count || 0}</span>
               </button>
 
               <button
@@ -912,21 +961,21 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                   }
                   setShowCommentForm(!showCommentForm);
                 }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500"
+                className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500"
                 style={{
                   transform: 'translateZ(0)',
                   willChange: 'transform, background-color'
                 }}
               >
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-sm font-semibold">{catchData.comment_count || 0}</span>
+                <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-xs md:text-sm font-semibold">{catchData.comment_count || 0}</span>
               </button>
             </div>
           </div>
 
           {/* Comments Section */}
-          <div className="p-4 md:p-4 pt-0 border-t border-gray-200 dark:border-slate-700">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-50 mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
+          <div className="p-3 md:p-4 pt-0 border-t border-gray-200 dark:border-slate-700">
+            <h4 className="text-xs md:text-sm font-semibold text-gray-900 dark:text-slate-50 mb-2 md:mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
 
             {/* Comment Form - available for authenticated users when showCommentForm is true */}
             {showCommentForm && user && (
@@ -1034,20 +1083,106 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                 <div></div>
               )}
               {!isCatchOwner && (
-                <button 
-                  className="flex items-center gap-1 text-[10px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors flex-shrink-0"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (user) {
-                      setIsReportModalOpen(true);
-                    } else {
-                      setIsAuthRequiredModalOpen(true);
-                    }
-                  }}
-                >
-                  <AlertCircle className="w-3 h-3" />
-                  Raportează
-                </button>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0 relative">
+                  <button 
+                    ref={reportButtonRef}
+                    className="flex items-center gap-1 text-[9px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors opacity-70 hover:opacity-100"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (!user) {
+                        setIsAuthRequiredModalOpen(true);
+                        return;
+                      }
+                      setShowReportInput(!showReportInput);
+                    }}
+                  >
+                    <AlertCircle className="w-2.5 h-2.5" />
+                    Raportează
+                  </button>
+                  
+                  {/* Popup motiv - jos, magnetic legat de buton, fără overlay */}
+                  {showReportInput && popupPosition && typeof document !== 'undefined' && createPortal(
+                    <div
+                      id={`report-popup-catch-${catchData.id}`}
+                      className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg p-3 flex flex-col gap-2"
+                      style={{
+                        position: 'fixed',
+                        top: `${popupPosition.top}px`,
+                        left: `${popupPosition.left}px`,
+                        zIndex: 1000,
+                        width: isMobile ? '280px' : '320px'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <textarea
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        placeholder="Motivul raportării (min. 10 caractere)..."
+                        className="text-xs p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded text-gray-900 dark:text-slate-50 resize-none"
+                        style={{ minHeight: '80px', fontSize: '0.6875rem' }}
+                        maxLength={500}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-slate-400">
+                        <span className={reportReason.trim().length < 10 ? 'text-red-500' : ''}>
+                          {reportReason.trim().length < 10 
+                            ? `Mai sunt necesare ${10 - reportReason.trim().length} caractere`
+                            : `${500 - reportReason.length} caractere rămase`}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setShowReportInput(false);
+                            setReportReason('');
+                          }}
+                          className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 underline text-[10px]"
+                        >
+                          Anulează
+                        </button>
+                      </div>
+                      {/* Buton separat pentru trimitere */}
+                      <button
+                        onClick={async () => {
+                          if (!user) {
+                            setIsAuthRequiredModalOpen(true);
+                            return;
+                          }
+                          if (reportReason.trim().length < 10) {
+                            toast.error('Motivul trebuie să aibă minim 10 caractere');
+                            return;
+                          }
+                          setIsSubmittingReport(true);
+                          try {
+                            const { error } = await supabase
+                              .from('reports')
+                              .insert({
+                                report_type: 'catch',
+                                item_id: catchData.id,
+                                item_url: username ? `${window.location.origin}/profile/${username}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}` : `${window.location.origin}/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`,
+                                message: reportReason.trim(),
+                                reporter_id: user.id,
+                                status: 'pending',
+                                created_at: new Date().toISOString()
+                              });
+                            if (error) throw error;
+                            toast.success('Raportare trimisă cu succes!');
+                            setShowReportInput(false);
+                            setReportReason('');
+                          } catch (error: any) {
+                            console.error('Error submitting report:', error);
+                            toast.error('Eroare la trimiterea raportării');
+                          } finally {
+                            setIsSubmittingReport(false);
+                          }
+                        }}
+                        disabled={isSubmittingReport || reportReason.trim().length < 10}
+                        className="text-xs px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSubmittingReport ? '⏳ Se trimite...' : 'Trimite raport'}
+                      </button>
+                    </div>,
+                    document.body
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -1063,17 +1198,6 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
         />
       )}
 
-      {/* Report Modal */}
-      {catchData && (
-        <ReportModal
-          isOpen={isReportModalOpen}
-          onClose={() => setIsReportModalOpen(false)}
-          reportType="catch"
-          itemId={catchData.id}
-          itemUrl={username ? `${window.location.origin}/profile/${username}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}` : `${window.location.origin}/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`}
-          reporterId={user?.id}
-        />
-      )}
 
       <AuthRequiredModal
         isOpen={isAuthRequiredModalOpen}

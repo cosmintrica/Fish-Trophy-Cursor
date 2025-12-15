@@ -197,17 +197,39 @@ export async function getUserReputationLogs(
     limit = 10
 ): Promise<ApiResponse<PaginatedResponse<ReputationLogWithUsers>>> {
     try {
+        // Get current user to check if admin
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        // Get current user's forum profile to check admin status
+        let isAdmin = false;
+        if (currentUser) {
+            const { data: forumUser } = await supabase
+                .from('forum_users')
+                .select('is_admin')
+                .eq('user_id', currentUser.id)
+                .single();
+            isAdmin = forumUser?.is_admin || false;
+        }
+
         // RLS will automatically enforce visibility rules:
         // - Regular users see last 10
         // - Admins see all (via get_visible_reputation_log_ids function)
         // Pentru admini, nu aplicăm limit în query - funcția RLS va returna toate ID-urile
+        // Pentru useri, aplicăm limit manual pentru siguranță
 
         // Query fără join-uri pentru că forum_reputation_logs face referință la auth.users, nu forum_users
-        const { data, error, count } = await supabase
+        let query = supabase
             .from('forum_reputation_logs')
             .select('*', { count: 'exact' })
             .eq('receiver_user_id', userId)
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        // Apply limit only for non-admins
+        if (!isAdmin && limit > 0) {
+            query = query.limit(limit);
+        }
+
+        const { data, error, count } = await query;
 
         if (error) {
             return { error: { message: error.message, code: error.code } }

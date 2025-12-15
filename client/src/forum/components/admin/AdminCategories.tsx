@@ -17,12 +17,13 @@ import {
     updateSubforum,
     deleteSubforum
 } from '../../../services/forum/categories';
+import { getForumSetting, setForumSetting } from '../../../services/forum/categories';
 import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function AdminCategories() {
-    const { theme } = useTheme();
+    const { theme, isDarkMode } = useTheme();
     const { categories, loading, refetch } = useCategories();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
@@ -31,6 +32,96 @@ export default function AdminCategories() {
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [editingItem, setEditingItem] = useState<{ type: 'category' | 'subcategory' | 'subforum'; id: string } | null>(null);
     const [showCreateModal, setShowCreateModal] = useState<{ type: 'category' | 'subcategory' | 'subforum'; parentId?: string } | null>(null);
+    // Load from database (global settings for all users)
+    const [showCategoryIcons, setShowCategoryIcons] = useState(true);
+    const [showSubcategoryIcons, setShowSubcategoryIcons] = useState(true);
+    const [showSubforumIcons, setShowSubforumIcons] = useState(true);
+    const [loadingSetting, setLoadingSetting] = useState(true);
+    
+    // Load all settings from database on mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            setLoadingSetting(true);
+            const [catResult, subcatResult, subforumResult] = await Promise.all([
+                getForumSetting('show_category_icons'),
+                getForumSetting('show_subcategory_icons'),
+                getForumSetting('show_subforum_icons')
+            ]);
+            if (catResult.data !== null) {
+                setShowCategoryIcons(catResult.data === 'true');
+            }
+            if (subcatResult.data !== null) {
+                setShowSubcategoryIcons(subcatResult.data === 'true');
+            }
+            if (subforumResult.data !== null) {
+                setShowSubforumIcons(subforumResult.data === 'true');
+            }
+            setLoadingSetting(false);
+        };
+        loadSettings();
+    }, []);
+    
+    // Save to database when changed (global for all users)
+    const handleToggleCategoryIcons = async (newValue: boolean) => {
+        const previousValue = showCategoryIcons;
+        setShowCategoryIcons(newValue);
+        try {
+            const result = await setForumSetting('show_category_icons', newValue.toString());
+            if (result?.error) {
+                setShowCategoryIcons(previousValue);
+                showToast('Eroare la salvare', 'error');
+            } else {
+                showToast(`Iconurile categoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
+                queryClient.invalidateQueries({ queryKey: ['categories'] });
+            }
+        } catch (error) {
+            setShowCategoryIcons(previousValue);
+            showToast('Eroare la salvare', 'error');
+        }
+    };
+    
+    const handleToggleSubcategoryIcons = async (newValue: boolean) => {
+        const previousValue = showSubcategoryIcons;
+        setShowSubcategoryIcons(newValue);
+        try {
+            console.log('[AdminCategories] Toggling subcategory icons to:', newValue);
+            const result = await setForumSetting('show_subcategory_icons', newValue.toString());
+            console.log('[AdminCategories] setForumSetting result:', result);
+            if (result?.error) {
+                console.error('[AdminCategories] Error setting subcategory icons:', result.error);
+                // Revert on error
+                setShowSubcategoryIcons(previousValue);
+                showToast('Eroare la salvare: ' + result.error.message, 'error');
+            } else {
+                console.log('[AdminCategories] Successfully set subcategory icons');
+                showToast(`Iconurile subcategoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
+                queryClient.invalidateQueries({ queryKey: ['categories'] });
+            }
+        } catch (error) {
+            console.error('[AdminCategories] Exception setting subcategory icons:', error);
+            // Revert on error
+            setShowSubcategoryIcons(previousValue);
+            showToast('Eroare la salvare: ' + (error instanceof Error ? error.message : 'Eroare necunoscută'), 'error');
+        }
+    };
+    
+    const handleToggleSubforumIcons = async (newValue: boolean) => {
+        const previousValue = showSubforumIcons;
+        setShowSubforumIcons(newValue);
+        try {
+            const result = await setForumSetting('show_subforum_icons', newValue.toString());
+            if (result?.error) {
+                setShowSubforumIcons(previousValue);
+                showToast('Eroare la salvare', 'error');
+            } else {
+                showToast(`Iconurile subforumurilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
+                queryClient.invalidateQueries({ queryKey: ['categories'] });
+            }
+        } catch (error) {
+            setShowSubforumIcons(previousValue);
+            showToast('Eroare la salvare', 'error');
+        }
+    };
     
     // Form states
     const [formData, setFormData] = useState({
@@ -39,7 +130,8 @@ export default function AdminCategories() {
         icon: '',
         sort_order: 0,
         moderator_only: false,
-        subcategory_id: '' // For subforums
+        subcategory_id: '', // For subforums
+        show_icon: true // Per item: show/hide icon
     });
 
     // Toggle expand
@@ -116,6 +208,7 @@ export default function AdminCategories() {
                 name: formData.name,
                 description: formData.description,
                 icon: formData.icon,
+                show_icon: formData.show_icon,
                 sort_order: formData.sort_order
             };
 
@@ -182,7 +275,8 @@ export default function AdminCategories() {
             icon: item.icon || '',
             sort_order: item.sort_order || 0,
             moderator_only: item.moderator_only || false,
-            subcategory_id: item.subcategory_id || ''
+            subcategory_id: item.subcategory_id || '',
+            show_icon: item.show_icon !== undefined ? item.show_icon : (item.icon ? true : false) // Default: true if icon exists
         });
     };
 
@@ -203,7 +297,8 @@ export default function AdminCategories() {
             icon: '',
             sort_order: 0,
             moderator_only: false,
-            subcategory_id: ''
+            subcategory_id: '',
+            show_icon: true
         });
     };
 
@@ -352,6 +447,49 @@ export default function AdminCategories() {
                                 />
                             </div>
 
+                            {/* Show Icon Checkbox */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.5rem'
+                            }}>
+                                <label style={{ fontSize: '0.875rem', color: theme.text, cursor: 'pointer', userSelect: 'none' }}>
+                                    Afișează icon
+                                </label>
+                                <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="show_icon"
+                                        checked={formData.show_icon}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, show_icon: e.target.checked }))}
+                                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                                    />
+                                    <div style={{
+                                        width: '44px',
+                                        height: '24px',
+                                        backgroundColor: formData.show_icon ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                                        borderRadius: '9999px',
+                                        position: 'relative',
+                                        transition: 'background-color 0.2s',
+                                        outline: 'none',
+                                        boxShadow: formData.show_icon ? `0 0 0 3px ${theme.primary}20` : 'none'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '2px',
+                                            left: formData.show_icon ? '22px' : '2px',
+                                            width: '20px',
+                                            height: '20px',
+                                            backgroundColor: 'white',
+                                            borderRadius: '50%',
+                                            transition: 'left 0.2s',
+                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                                        }} />
+                                    </div>
+                                </label>
+                            </div>
+
                             {/* Sort Order */}
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.5rem' }}>
@@ -375,15 +513,39 @@ export default function AdminCategories() {
 
                             {/* Moderator Only (for subcategories) */}
                             {(showCreateModal?.type === 'subcategory' || editingItem?.type === 'subcategory') && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.moderator_only}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, moderator_only: e.target.checked }))}
-                                        style={{ cursor: 'pointer' }}
-                                    />
-                                    <label style={{ fontSize: '0.875rem', color: theme.text, cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.875rem', color: theme.text, cursor: 'pointer', userSelect: 'none' }}>
                                         Doar pentru moderatori
+                                    </label>
+                                    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.moderator_only}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, moderator_only: e.target.checked }))}
+                                            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                                        />
+                                        <div style={{
+                                            width: '44px',
+                                            height: '24px',
+                                            backgroundColor: formData.moderator_only ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                                            borderRadius: '9999px',
+                                            position: 'relative',
+                                            transition: 'background-color 0.2s',
+                                            outline: 'none',
+                                            boxShadow: formData.moderator_only ? `0 0 0 3px ${theme.primary}20` : 'none'
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '2px',
+                                                left: formData.moderator_only ? '22px' : '2px',
+                                                width: '20px',
+                                                height: '20px',
+                                                backgroundColor: 'white',
+                                                borderRadius: '50%',
+                                                transition: 'left 0.2s',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                                            }} />
+                                        </div>
                                     </label>
                                 </div>
                             )}
@@ -457,6 +619,53 @@ export default function AdminCategories() {
                 </div>
             )}
 
+            {/* Toggle pentru iconuri subcategorii */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                backgroundColor: theme.surface,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '0.5rem',
+                marginBottom: '1rem'
+            }}>
+                <span style={{ fontSize: '0.875rem', color: theme.text, fontWeight: '500' }}>
+                    Afișează iconuri subcategorii
+                </span>
+                <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                        type="checkbox"
+                        checked={showSubcategoryIcons}
+                        onChange={(e) => handleToggleSubcategoryIcons(e.target.checked)}
+                        disabled={loadingSetting}
+                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                    />
+                    <div style={{
+                        width: '44px',
+                        height: '24px',
+                        backgroundColor: showSubcategoryIcons ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                        borderRadius: '9999px',
+                        position: 'relative',
+                        transition: 'background-color 0.2s',
+                        outline: 'none',
+                        boxShadow: showSubcategoryIcons ? `0 0 0 3px ${theme.primary}20` : 'none'
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: '2px',
+                            left: showSubcategoryIcons ? '22px' : '2px',
+                            width: '20px',
+                            height: '20px',
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            transition: 'left 0.2s',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                        }} />
+                    </div>
+                </label>
+            </div>
+
             {/* Categories List */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: theme.textSecondary }}>
@@ -491,7 +700,9 @@ export default function AdminCategories() {
                                     ) : (
                                         <ChevronRight size={20} color={theme.textSecondary} />
                                     )}
-                                    <span style={{ fontSize: '1.5rem' }}>{category.icon || '📁'}</span>
+                                    {(category.show_icon !== false) && (
+                                        <span style={{ fontSize: '1.5rem' }}>{category.icon || '📁'}</span>
+                                    )}
                                     <div>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text }}>
                                             {category.name}
@@ -599,7 +810,9 @@ export default function AdminCategories() {
                                                     ) : (
                                                         <ChevronRight size={16} color={theme.textSecondary} />
                                                     )}
-                                                    <span style={{ fontSize: '1.25rem' }}>{subcategory.icon || '📝'}</span>
+                                                    {showSubcategoryIcons && ((subcategory as any).show_icon !== false) && (
+                                                        <span style={{ fontSize: '1.25rem' }}>{subcategory.icon || '📝'}</span>
+                                                    )}
                                                     <div>
                                                         <div style={{ fontSize: '0.8125rem', fontWeight: '500', color: theme.text }}>
                                                             {subcategory.name}
@@ -684,70 +897,72 @@ export default function AdminCategories() {
                                                         </button>
                                                     </div>
 
-                                                    {subcategory.subforums?.map((subforum) => (
-                                                        <div
-                                                            key={subforum.id}
-                                                            style={{
-                                                                backgroundColor: theme.surface,
-                                                                border: `1px solid ${theme.border}`,
-                                                                borderRadius: '0.375rem',
-                                                                padding: '0.5rem 0.75rem',
-                                                                marginBottom: '0.375rem',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'space-between'
-                                                            }}
-                                                        >
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                                                                <span style={{ fontSize: '1rem' }}>{subforum.icon || '📁'}</span>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.75rem', fontWeight: '500', color: theme.text }}>
-                                                                        {subforum.name}
-                                                                    </div>
-                                                                    {subforum.description && (
-                                                                        <div style={{ fontSize: '0.625rem', color: theme.textSecondary }}>
-                                                                            {subforum.description}
-                                                                        </div>
+                                                    {subcategory.subforums && subcategory.subforums.length > 0 ? (
+                                                            subcategory.subforums.map((subforum) => (
+                                                            <div
+                                                                key={subforum.id}
+                                                                style={{
+                                                                    backgroundColor: theme.surface,
+                                                                    border: `1px solid ${theme.border}`,
+                                                                    borderRadius: '0.375rem',
+                                                                    padding: '0.5rem 0.75rem',
+                                                                    marginBottom: '0.375rem',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'space-between'
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                                                                    {(subforum.show_icon !== false) && (
+                                                                        <span style={{ fontSize: '1rem' }}>{subforum.icon || '📁'}</span>
                                                                     )}
+                                                                    <div>
+                                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: theme.text }}>
+                                                                            {subforum.name}
+                                                                        </div>
+                                                                        {subforum.description && (
+                                                                            <div style={{ fontSize: '0.625rem', color: theme.textSecondary }}>
+                                                                                {subforum.description}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '0.375rem' }}>
+                                                                    <button
+                                                                        onClick={() => startEdit('subforum', subforum)}
+                                                                        style={{
+                                                                            padding: '0.25rem 0.5rem',
+                                                                            backgroundColor: theme.background,
+                                                                            border: `1px solid ${theme.border}`,
+                                                                            borderRadius: '0.375rem',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '0.25rem'
+                                                                        }}
+                                                                    >
+                                                                        <Edit size={10} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete('subforum', subforum.id, subforum.name)}
+                                                                        style={{
+                                                                            padding: '0.25rem 0.5rem',
+                                                                            backgroundColor: '#dc2626',
+                                                                            border: 'none',
+                                                                            borderRadius: '0.375rem',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '0.25rem',
+                                                                            color: 'white'
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 size={10} />
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                            <div style={{ display: 'flex', gap: '0.375rem' }}>
-                                                                <button
-                                                                    onClick={() => startEdit('subforum', subforum)}
-                                                                    style={{
-                                                                        padding: '0.25rem 0.5rem',
-                                                                        backgroundColor: theme.background,
-                                                                        border: `1px solid ${theme.border}`,
-                                                                        borderRadius: '0.375rem',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '0.25rem'
-                                                                    }}
-                                                                >
-                                                                    <Edit size={10} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDelete('subforum', subforum.id, subforum.name)}
-                                                                    style={{
-                                                                        padding: '0.25rem 0.5rem',
-                                                                        backgroundColor: '#dc2626',
-                                                                        border: 'none',
-                                                                        borderRadius: '0.375rem',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '0.25rem',
-                                                                        color: 'white'
-                                                                    }}
-                                                                >
-                                                                    <Trash2 size={10} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-
-                                                    {(!subcategory.subforums || subcategory.subforums.length === 0) && (
+                                                        ))
+                                                    ) : (
                                                         <div style={{ fontSize: '0.6875rem', color: theme.textSecondary, fontStyle: 'italic', padding: '0.5rem' }}>
                                                             Nu există sub-forumuri
                                                         </div>

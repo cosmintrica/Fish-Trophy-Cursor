@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Video, ExternalLink, Share2, Info, ArrowLeft, ArrowRight, Play } from 'lucide-react';
@@ -6,12 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { getR2ImageUrlProxy } from '@/lib/supabase';
+import { getR2ImageUrlProxy, supabase } from '@/lib/supabase';
 import ShareButton from '@/components/ShareButton';
 import ImageZoom from '@/forum/components/ImageZoom';
 import { useStructuredData } from '@/hooks/useStructuredData';
 import { createSlug } from '@/utils/slug';
-import { ReportModal } from '@/components/ReportModal';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthRequiredModal } from '@/components/AuthRequiredModal';
 import AuthModal from '@/components/AuthModal';
@@ -118,7 +117,11 @@ const RecordDetailsModal = ({
 }: RecordDetailsModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [showReportInput, setShowReportInput] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const reportButtonRef = useRef<HTMLButtonElement>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const [isAuthRequiredModalOpen, setIsAuthRequiredModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
@@ -208,7 +211,7 @@ const RecordDetailsModal = ({
     }
   };
 
-  const recordDescription = `Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}.`;
+  const recordDescription = `Record de pescuit: ${record.fish_species?.name || 'Specie necunoscută'} de ${record.weight}kg${getLength() ? `, ${getLength()}cm` : ''}, capturat la ${record.fishing_locations?.name || 'locație necunoscută'}${record.fishing_locations?.county ? `, ${record.fishing_locations.county}` : ''}${record.profiles?.display_name ? ` de ${record.profiles.display_name}` : ''}. ${record.status === 'verified' ? 'Record verificat.' : ''}${record.notes ? ` ${record.notes.substring(0, 100)}${record.notes.length > 100 ? '...' : ''}` : ''}`;
   const recordUrl = `https://fishtrophy.ro/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`;
   const recordImage = getImageUrl() ? getR2ImageUrlProxy(getImageUrl()!) : 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
@@ -398,25 +401,25 @@ const RecordDetailsModal = ({
               </div>
             </div>
 
-            <div className="p-4 md:p-4 space-y-4">
+            <div className="p-3 md:p-4 space-y-3 md:space-y-4">
               {/* Stats Cards */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
-                    <Scale className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase">Greutate</span>
+              <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1 md:gap-1.5 text-blue-600 dark:text-blue-400 mb-0.5 md:mb-1">
+                    <Scale className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[9px] md:text-[10px] font-bold uppercase">Greutate</span>
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {record.weight} <span className="text-xs text-slate-400 font-medium">kg</span>
+                  <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                    {record.weight} <span className="text-[10px] md:text-xs text-slate-400 font-medium">kg</span>
                   </div>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-1">
-                    <Ruler className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase">Lungime</span>
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1 md:gap-1.5 text-emerald-600 dark:text-emerald-400 mb-0.5 md:mb-1">
+                    <Ruler className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[9px] md:text-[10px] font-bold uppercase">Lungime</span>
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {getLength() || '-'} <span className="text-xs text-slate-400 font-medium">cm</span>
+                  <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                    {getLength() || '-'} <span className="text-[10px] md:text-xs text-slate-400 font-medium">cm</span>
                   </div>
                 </div>
               </div>
@@ -425,17 +428,17 @@ const RecordDetailsModal = ({
 
 
               {/* User Info */}
-              <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/50">
+              <div className="flex items-center gap-2 md:gap-2.5 p-2 md:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/50">
                 {record.profiles?.photo_url ? (
-                  <img src={getR2ImageUrlProxy(record.profiles.photo_url)} className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" alt="User" />
+                  <img src={getR2ImageUrlProxy(record.profiles.photo_url)} className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" alt="User" />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                    <User className="w-4 h-4 text-slate-400" />
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                   </div>
                 )}
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Capturat de</p>
-                  <a href={`/profile/${record.profiles?.username || record.user_id}`} className="text-sm font-bold text-slate-900 dark:text-white hover:text-blue-500 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] md:text-[10px] text-slate-500 uppercase font-bold tracking-wider">Capturat de</p>
+                  <a href={`/profile/${record.profiles?.username || record.user_id}`} className="text-xs md:text-sm font-bold text-slate-900 dark:text-white hover:text-blue-500 transition-colors block truncate">
                     {record.profiles?.display_name || 'Utilizator Anonim'}
                   </a>
                 </div>
@@ -460,40 +463,40 @@ const RecordDetailsModal = ({
               )}
 
               {/* Meta Info */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Capturat pe: <span className="font-medium text-slate-900 dark:text-slate-200">{formatDate(getCapturedAt())}</span></span>
+              <div className="space-y-2 md:space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[10px] md:text-xs text-slate-600 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1 md:gap-1.5">
+                    <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
+                    <span className="break-words">Capturat pe: <span className="font-medium text-slate-900 dark:text-slate-200">{formatDate(getCapturedAt())}</span></span>
                   </div>
 
                   {/* Share - Compact & Right Aligned */}
                   <ShareButton
-                    url={`https://fishtrophy.ro/records?record=${record.id}`}
+                    url={recordUrl}
                     title={shareTitle}
-                    description={`Vezi captura de ${record.weight}kg!`}
-                    image={currentImageUrl || ''}
+                    description={recordDescription}
+                    image={recordImage}
                     variant="ghost"
                     size="sm"
                     showLabel={true}
-                    className="text-[10px] h-6 px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="text-[9px] md:text-[10px] h-7 md:h-6 px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                   />
                 </div>
 
                 {record.notes && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-100 dark:border-yellow-900/20">
-                    <h4 className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase mb-1">Povestea capturii</h4>
-                    <p className="text-xs text-yellow-800 dark:text-yellow-200 italic">"{record.notes}"</p>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/10 p-2.5 md:p-3 rounded-lg border border-yellow-100 dark:border-yellow-900/20">
+                    <h4 className="text-[9px] md:text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase mb-1">Povestea capturii</h4>
+                    <p className="text-[11px] md:text-xs text-yellow-800 dark:text-yellow-200 italic break-words">"{record.notes}"</p>
                   </div>
                 )}
               </div>
 
               {/* Admin Actions */}
               {(isOwner || isAdmin) && (
-                <div className="grid grid-cols-2 gap-2.5 pt-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-2.5 pt-3 md:pt-4">
                   <Button
                     variant="outline"
-                    className="w-full gap-1.5 text-xs h-9 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                    className="w-full gap-1 md:gap-1.5 text-[11px] md:text-xs h-8 md:h-9 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 touch-manipulation"
                     onClick={() => {
                       if (onEdit && record) onEdit(record);
                     }}
@@ -503,12 +506,12 @@ const RecordDetailsModal = ({
                   </Button>
                   <Button
                     variant="destructive"
-                    className="w-full gap-1.5 text-xs h-9 bg-red-500 hover:bg-red-600 text-white border-none"
+                    className="w-full gap-1 md:gap-1.5 text-[11px] md:text-xs h-8 md:h-9 bg-red-500 hover:bg-red-600 text-white border-none touch-manipulation"
                     onClick={() => {
                       if (onDelete && record) onDelete(record.id);
                     }}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
                     Șterge
                   </Button>
                 </div>
@@ -568,20 +571,106 @@ const RecordDetailsModal = ({
                   </div>
                 )}
                 {!isOwner && (
-                  <button 
-                    className="flex items-center gap-1 text-[10px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors flex-shrink-0"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (user) {
-                        setIsReportModalOpen(true);
-                      } else {
-                        setIsAuthRequiredModalOpen(true);
-                      }
-                    }}
-                  >
-                    <AlertCircle className="w-3 h-3" />
-                    Raportează
-                  </button>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0 relative">
+                    <button 
+                      ref={reportButtonRef}
+                      className="flex items-center gap-1 text-[9px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors opacity-70 hover:opacity-100"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (!user) {
+                          setIsAuthRequiredModalOpen(true);
+                          return;
+                        }
+                        setShowReportInput(!showReportInput);
+                      }}
+                    >
+                      <AlertCircle className="w-2.5 h-2.5" />
+                      Raportează
+                    </button>
+                    
+                    {/* Popup motiv - jos, magnetic legat de buton, fără overlay */}
+                    {showReportInput && popupPosition && typeof document !== 'undefined' && createPortal(
+                      <div
+                        id={`report-popup-record-${record.id}`}
+                        className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg p-3 flex flex-col gap-2"
+                        style={{
+                          position: 'fixed',
+                          top: `${popupPosition.top}px`,
+                          left: `${popupPosition.left}px`,
+                          zIndex: 1000,
+                          width: isMobile ? '280px' : '320px'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <textarea
+                          value={reportReason}
+                          onChange={(e) => setReportReason(e.target.value)}
+                          placeholder="Motivul raportării (min. 10 caractere)..."
+                          className="text-xs p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded text-gray-900 dark:text-slate-50 resize-none"
+                          style={{ minHeight: '80px', fontSize: '0.6875rem' }}
+                          maxLength={500}
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-slate-400">
+                          <span className={reportReason.trim().length < 10 ? 'text-red-500' : ''}>
+                            {reportReason.trim().length < 10 
+                              ? `Mai sunt necesare ${10 - reportReason.trim().length} caractere`
+                              : `${500 - reportReason.length} caractere rămase`}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setShowReportInput(false);
+                              setReportReason('');
+                            }}
+                            className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 underline text-[10px]"
+                          >
+                            Anulează
+                          </button>
+                        </div>
+                        {/* Buton separat pentru trimitere */}
+                        <button
+                          onClick={async () => {
+                            if (!user) {
+                              setIsAuthRequiredModalOpen(true);
+                              return;
+                            }
+                            if (reportReason.trim().length < 10) {
+                              toast.error('Motivul trebuie să aibă minim 10 caractere');
+                              return;
+                            }
+                            setIsSubmittingReport(true);
+                            try {
+                              const { error } = await supabase
+                                .from('reports')
+                                .insert({
+                                  report_type: 'record',
+                                  item_id: record.id,
+                                  item_url: `${window.location.origin}/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`,
+                                  message: reportReason.trim(),
+                                  reporter_id: user.id,
+                                  status: 'pending',
+                                  created_at: new Date().toISOString()
+                                });
+                              if (error) throw error;
+                              toast.success('Raportare trimisă cu succes!');
+                              setShowReportInput(false);
+                              setReportReason('');
+                            } catch (error: any) {
+                              console.error('Error submitting report:', error);
+                              toast.error('Eroare la trimiterea raportării');
+                            } finally {
+                              setIsSubmittingReport(false);
+                            }
+                          }}
+                          disabled={isSubmittingReport || reportReason.trim().length < 10}
+                          className="text-xs px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isSubmittingReport ? '⏳ Se trimite...' : 'Trimite raport'}
+                        </button>
+                      </div>,
+                      document.body
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -600,14 +689,6 @@ const RecordDetailsModal = ({
         document.body
       )}
 
-      <ReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        reportType="record"
-        itemId={record.id}
-        itemUrl={`${window.location.origin}/records${record.global_id ? `#record-${record.global_id}` : `?record=${record.id}`}`}
-        reporterId={user?.id}
-      />
 
       <AuthRequiredModal
         isOpen={isAuthRequiredModalOpen}

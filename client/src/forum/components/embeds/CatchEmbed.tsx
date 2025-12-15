@@ -26,10 +26,12 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoomedMedia, setZoomedMedia] = useState<{ src: string; isVideo: boolean } | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
-  // Listen for theme changes
+  // Listen for theme changes and mobile detection
   useEffect(() => {
     const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     
     const observer = new MutationObserver(updateDarkMode);
     observer.observe(document.documentElement, {
@@ -39,10 +41,14 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateDarkMode);
+    
+    window.addEventListener('resize', checkMobile);
+    checkMobile();
 
     return () => {
       observer.disconnect();
       mediaQuery.removeEventListener('change', updateDarkMode);
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
@@ -77,11 +83,11 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
     return (
       <div className="bbcode-catch-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#f3f4f6',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
-        fontSize: '0.875rem',
+        fontSize: isMobile ? '0.75rem' : '0.875rem',
         color: isDarkMode ? '#94a3b8' : '#6b7280'
       }}>
         Se încarcă captura...
@@ -93,12 +99,12 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
     return (
       <div className="bbcode-catch-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: 'rgba(220, 38, 38, 0.1)',
         border: '1px solid rgba(220, 38, 38, 0.3)',
         borderRadius: '0.5rem',
         color: '#dc2626',
-        fontSize: '0.875rem'
+        fontSize: isMobile ? '0.75rem' : '0.875rem'
       }}>
         {error || 'Captura nu a fost găsită'}
       </div>
@@ -113,21 +119,23 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
     <>
       <div className="bbcode-catch-embed" style={{
         margin: '0.25rem 0',
-        padding: '0.75rem',
+        padding: isMobile ? '0.5rem' : '0.75rem',
         background: isDarkMode ? '#1e293b' : '#ffffff',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
         borderRadius: '0.5rem',
         overflow: 'hidden',
         display: 'flex',
-        gap: '0.75rem',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '0.5rem' : '0.75rem',
         maxWidth: '100%',
         boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Thumbnail Image/Video */}
         {(data.photo_url || data.video_url) && (
           <div style={{
-            width: '140px',
-            height: '105px',
+            width: isMobile ? '100%' : '140px',
+            height: isMobile ? 'auto' : '105px',
+            aspectRatio: isMobile ? '16/9' : undefined,
             flexShrink: 0,
             overflow: 'hidden',
             background: '#f3f4f6',
@@ -136,13 +144,13 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
             cursor: 'pointer'
           }}
           onClick={() => {
-            if (data.photo_url) setZoomedMedia({ src: data.photo_url, isVideo: false });
-            else if (data.video_url) setZoomedMedia({ src: data.video_url, isVideo: true });
+            if (data.photo_url) setZoomedMedia({ src: getR2ImageUrlProxy(data.photo_url), isVideo: false });
+            else if (data.video_url) setZoomedMedia({ src: getR2ImageUrlProxy(data.video_url), isVideo: true });
           }}
           >
             {data.photo_url ? (
               <img
-                src={data.photo_url}
+                src={getR2ImageUrlProxy(data.photo_url)}
                 alt={data.species_name || 'Captură'}
                 style={{
                   width: '100%',
@@ -156,7 +164,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
               />
             ) : data.video_url ? (
               <video
-                src={data.video_url}
+                src={getR2ImageUrlProxy(data.video_url)}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -200,17 +208,17 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
             gap: '0.5rem',
             flexWrap: 'wrap'
           }}>
-            <Fish style={{ width: '0.875rem', height: '0.875rem', color: '#3b82f6', flexShrink: 0 }} />
+            <Fish style={{ width: isMobile ? '0.75rem' : '0.875rem', height: isMobile ? '0.75rem' : '0.875rem', color: '#3b82f6', flexShrink: 0 }} />
             <span style={{
               fontWeight: '600',
-              fontSize: '0.875rem',
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
               color: isDarkMode ? '#f1f5f9' : '#111827'
             }}>
               {data.species_name || 'Necunoscut'}
             </span>
             {data.scientific_name && (
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: isMobile ? '0.625rem' : '0.75rem',
                 color: isDarkMode ? '#94a3b8' : '#6b7280',
                 fontStyle: 'italic'
               }}>
@@ -223,32 +231,32 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
+            gap: isMobile ? '0.5rem' : '0.75rem',
             flexWrap: 'wrap',
-            fontSize: '0.8125rem',
+            fontSize: isMobile ? '0.6875rem' : '0.8125rem',
             color: isDarkMode ? '#cbd5e1' : '#374151'
           }}>
             {data.weight && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Scale style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Scale style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span><strong>{data.weight}</strong> kg</span>
               </div>
             )}
             {data.length_cm && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Ruler style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Ruler style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span><strong>{data.length_cm}</strong> cm</span>
               </div>
             )}
             {data.location_name && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <MapPin style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
-                <span>{data.location_name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <MapPin style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+                <span style={{ maxWidth: isMobile ? '120px' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.location_name}</span>
               </div>
             )}
             {data.captured_at && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Calendar style={{ width: '0.75rem', height: '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Calendar style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem', color: isDarkMode ? '#94a3b8' : '#6b7280' }} />
                 <span>{new Date(data.captured_at).toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
               </div>
             )}
@@ -258,18 +266,19 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
-            marginTop: '0.125rem'
+            gap: isMobile ? '0.5rem' : '0.75rem',
+            marginTop: '0.125rem',
+            flexWrap: 'wrap'
           }}>
             {data.user_display_name && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                fontSize: '0.8125rem',
+                gap: '0.25rem',
+                fontSize: isMobile ? '0.6875rem' : '0.8125rem',
                 color: isDarkMode ? '#94a3b8' : '#6b7280'
               }}>
-                <User style={{ width: '0.75rem', height: '0.75rem' }} />
+                <User style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem' }} />
                 <span>{data.user_display_name}</span>
               </div>
             )}
@@ -280,8 +289,8 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                fontSize: '0.8125rem',
+                gap: '0.25rem',
+                fontSize: isMobile ? '0.6875rem' : '0.8125rem',
                 color: '#3b82f6',
                 textDecoration: 'none',
                 fontWeight: '500'
@@ -294,7 +303,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
               }}
             >
               Vezi captură
-              <ExternalLink style={{ width: '0.75rem', height: '0.75rem' }} />
+              <ExternalLink style={{ width: isMobile ? '0.625rem' : '0.75rem', height: isMobile ? '0.625rem' : '0.75rem' }} />
             </a>
           </div>
         </div>

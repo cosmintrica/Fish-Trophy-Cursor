@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Pin, Lock, Star } from 'lucide-react';
+import ShareButton from '../../components/ShareButton';
 import { useTopics } from '../hooks/useTopics';
 import CreateTopicEditor from '../components/CreateTopicEditor';
 import ActiveViewers from '../components/ActiveViewers';
@@ -15,6 +16,7 @@ import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
 import SEOHead from '../../components/SEOHead';
 import { useStructuredData } from '../../hooks/useStructuredData';
 import NotFound404 from '../../components/NotFound404';
+import { getForumSetting } from '../../services/forum/categories';
 
 export default function CategoryPage() {
   // Acceptă:
@@ -57,32 +59,40 @@ export default function CategoryPage() {
   useEffect(() => {
     // 1. Dacă avem deja date despre subcategorie/subforum (găsit de hook)
     if (subcategoryOrSubforumData && subcategoryOrSubforumData.type) {
-      if (checkingCategory) setCheckingCategory(false);
-      if (isCategory) setIsCategory(false);
-      if (categoryData) setCategoryData(null);
+      setCheckingCategory(false);
+      setIsCategory(false);
+      setCategoryData(null);
       return;
     }
 
     // 2. Dacă hook-ul încă încarcă
     if (loadingSubcategoryOrSubforum) {
-      if (!checkingCategory) setCheckingCategory(true);
+      setCheckingCategory(true);
       return;
     }
 
     // 3. Dacă hook-ul a terminat și nu a găsit nimic → Verificăm manual dacă e categorie
     const checkIfCategory = async () => {
-      // Notă: Nu setăm checkingCategory(true) aici pt a evita bucle, presupunem că e deja true din starea inițială sau pasul anterior
-      // Dar dacă cumva e false, îl setăm doar dacă e necesar
+      if (!slugToUse) {
+        setCheckingCategory(false);
+        setIsCategory(false);
+        setCategoryData(null);
+        return;
+      }
 
       try {
-        const { data: category } = await supabase
+        const { data: category, error } = await supabase
           .from('forum_categories')
           .select('id, name, slug')
           .eq('slug', slugToUse)
           .eq('is_active', true)
           .maybeSingle();
 
-        if (category) {
+        if (error) {
+          console.error('Error checking category:', error);
+          setIsCategory(false);
+          setCategoryData(null);
+        } else if (category) {
           setIsCategory(true);
           setCategoryData(category);
         } else {
@@ -244,6 +254,10 @@ export default function CategoryPage() {
   );
 
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Settings pentru afișarea icon-urilor
+  const [showSubcategoryIcons, setShowSubcategoryIcons] = useState(false);
+  const [showSubforumIcons, setShowSubforumIcons] = useState(false);
 
   // Detect mobil
   useEffect(() => {
@@ -251,6 +265,40 @@ export default function CategoryPage() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Load icon display settings - cu polling pentru a detecta schimbări
+  useEffect(() => {
+    const loadIconSettings = async () => {
+      try {
+        const [subcatResult, subforumResult] = await Promise.all([
+          getForumSetting('show_subcategory_icons'),
+          getForumSetting('show_subforum_icons')
+        ]);
+        
+        if (subcatResult.data !== null && !subcatResult.error) {
+          const shouldShow = String(subcatResult.data) === 'true';
+          setShowSubcategoryIcons(shouldShow);
+        } else {
+          setShowSubcategoryIcons(false);
+        }
+        if (subforumResult.data !== null && !subforumResult.error) {
+          const shouldShow = String(subforumResult.data) === 'true';
+          setShowSubforumIcons(shouldShow);
+        } else {
+          setShowSubforumIcons(false);
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    };
+    
+    // Încarcă imediat
+    loadIconSettings();
+    
+    // Poll pentru schimbări la fiecare 5 secunde
+    const interval = setInterval(loadIconSettings, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Scroll la top când se încarcă pagina (previne scroll-ul automat jos)
@@ -328,9 +376,35 @@ export default function CategoryPage() {
 
   const handleTopicClick = (topic: { id: string; slug?: string }) => {
     const topicSlug = topic.slug || topic.id;
-    // URL clean: FĂRĂ categorySlug - doar subcategorySlug/topicSlug
-    // Format: subcategorySlug/topicSlug (sau subforumSlug/topicSlug)
-    const subcategorySlugToUse = slugToUse || 'unknown';
+    // IMPORTANT: Folosim slug-ul exact din subcategoryOrSubforumData pentru a evita erorile
+    // Verificăm mai întâi dacă avem date despre subcategorie/subforum
+    let subcategorySlugToUse: string | undefined = undefined;
+    
+    // Folosim datele din hook dacă sunt disponibile
+    if (subcategoryOrSubforumData) {
+      if (subcategoryOrSubforumData.type === 'subcategory' && subcategoryOrSubforumData.subcategory?.slug) {
+        subcategorySlugToUse = subcategoryOrSubforumData.subcategory.slug;
+      } else if (subcategoryOrSubforumData.type === 'subforum' && subcategoryOrSubforumData.subforum?.slug) {
+        subcategorySlugToUse = subcategoryOrSubforumData.subforum.slug;
+      }
+    }
+    
+    // Fallback: folosim slug-ul din URL sau din useMemo
+    if (!subcategorySlugToUse) {
+      // Încercăm să folosim slug-ul din parentCategory sau din datele extrase
+      if (parentCategory?.slug) {
+        subcategorySlugToUse = parentCategory.slug;
+      } else {
+        subcategorySlugToUse = slugToUse;
+      }
+    }
+    
+    // Dacă tot nu avem slug, folosim slug-ul din URL ca fallback final
+    if (!subcategorySlugToUse) {
+      console.error('No subcategory/subforum slug found for topic navigation');
+      return;
+    }
+    
     navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
   };
 
@@ -345,6 +419,9 @@ export default function CategoryPage() {
     const hasUnread = forumUser ? hasUnreadPost(topic.id) : false;
     const isImportant = (topic as any).is_important;
 
+    // Overlay color pentru pinned/important topics
+    const overlayColor = topic.is_pinned ? '#f59e0b' : isImportant ? '#ef4444' : null;
+    
     return (
       <div
         key={topic.id}
@@ -352,19 +429,26 @@ export default function CategoryPage() {
         style={{
           padding: isMobile ? '0.5rem' : '0.75rem',
           borderBottom: `1px solid ${theme.border}`,
-          display: 'flex',
-          flexDirection: 'column',
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 50px 80px 80px 180px',
           gap: isMobile ? '0.5rem' : '0.75rem',
-          alignItems: 'flex-start',
+          alignItems: isMobile ? 'flex-start' : 'stretch',
           cursor: 'pointer',
           transition: 'background-color 0.2s',
           width: '100%',
           maxWidth: '100%',
           boxSizing: 'border-box',
-          backgroundColor: isImportant ? '#fef2f2' : topic.is_pinned ? '#fef3c7' : 'transparent'
+          backgroundColor: overlayColor ? `${overlayColor}0D` : 'transparent', // 5% opacity (0D = ~5% in hex)
+          position: 'relative'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = theme.surfaceHover;
+          // Păstrăm overlay-ul dacă există, altfel folosim hover normal
+          if (overlayColor) {
+            e.currentTarget.style.backgroundColor = `${overlayColor}1A`; // ~10% opacity la hover
+          } else {
+            e.currentTarget.style.backgroundColor = theme.surfaceHover;
+          }
           // Prefetch topic-ul când utilizatorul trece cu mouse-ul
           const topicSlug = (topic as any).slug;
           if (topicSlug) {
@@ -372,30 +456,34 @@ export default function CategoryPage() {
           }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = isImportant ? '#fef2f2' : topic.is_pinned ? '#fef3c7' : 'transparent';
+          // Revenim la overlay-ul inițial sau transparent
+          e.currentTarget.style.backgroundColor = overlayColor ? `${overlayColor}0D` : 'transparent';
         }}
         onClick={() => handleTopicClick(topic)}
       >
-        {/* Topic info - Layout diferit pe mobil */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0, width: '100%' }}>
+        {/* Topic info - Layout diferit pe mobil - Coloana 1 */}
+        <div 
+          style={{ 
+            gridColumn: isMobile ? undefined : '1',
+            display: 'flex', 
+            alignItems: 'flex-start', 
+            gap: '0.75rem', 
+            minWidth: 0 
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.125rem', flexShrink: 0 }}>
-            {/* Read Status Marker - în stânga iconițelor, 90% din înălțimea row-ului */}
+            {/* Read Status Marker - în stânga iconițelor */}
             {forumUser && (
               <ReadStatusMarker
                 hasUnread={hasUnread}
                 style={{ marginRight: '0.25rem', alignSelf: 'center' }}
               />
             )}
-            {topic.is_pinned && <Pin style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#f59e0b' }} />}
-            {isImportant && <Star style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: '#ef4444', fill: '#ef4444' }} />}
             {topic.is_locked && <Lock style={{ width: isMobile ? '0.875rem' : '1rem', height: isMobile ? '0.875rem' : '1rem', color: theme.textSecondary }} />}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '600', color: theme.text, lineHeight: '1.3', wordBreak: 'break-word', margin: 0 }}>
-                {topic.title}
-              </h3>
-              {/* Tag "Important" */}
+              {/* Tag "Important" - înainte de titlu */}
               {isImportant && (
                 <span style={{
                   display: 'inline-flex',
@@ -414,6 +502,9 @@ export default function CategoryPage() {
                   Important
                 </span>
               )}
+              <h3 style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', fontWeight: '400', color: theme.text, lineHeight: '1.5', wordBreak: 'break-word', margin: 0 }}>
+                {topic.title}
+              </h3>
             </div>
 
             {/* Author - Line 2 */}
@@ -428,41 +519,86 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        {/* Răspunsuri - Ascuns pe mobil */}
-        <div className="hidden sm:flex" style={{
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.875rem',
-          fontWeight: '600',
-          color: theme.success || '#059669',
-          minHeight: '2rem'
-        }}>
+        {/* Iconuri Important/Pinned - coloană separată, înainte de Răspunsuri - Coloana 2 - Ascuns pe mobil */}
+        <div 
+          className="hidden sm:flex"
+          style={{
+            gridColumn: '2',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            minHeight: '2rem'
+          }}
+        >
+          {isImportant && (
+            <Star style={{ 
+              width: '1rem', 
+              height: '1rem', 
+              color: '#ef4444', 
+              fill: '#ef4444',
+              flexShrink: 0
+            }} />
+          )}
+          {topic.is_pinned && (
+            <Pin style={{ 
+              width: '1rem', 
+              height: '1rem', 
+              color: '#f59e0b',
+              flexShrink: 0
+            }} />
+          )}
+        </div>
+
+        {/* Răspunsuri - Coloana 3 - Ascuns pe mobil */}
+        <div 
+          className="hidden sm:flex"
+          style={{
+            gridColumn: '3',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: theme.success || '#059669',
+            width: '100%',
+            minWidth: 0
+          }}
+        >
           {topic.reply_count}
         </div>
 
-        {/* Vizualizări - Ascuns pe mobil */}
-        <div className="hidden sm:flex" style={{
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.875rem',
-          fontWeight: '600',
-          color: theme.textSecondary,
-          minHeight: '2rem'
-        }}>
+        {/* Vizualizări - Coloana 4 - Ascuns pe mobil */}
+        <div 
+          className="hidden sm:flex"
+          style={{
+            gridColumn: '4',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: theme.textSecondary,
+            width: '100%',
+            minWidth: 0
+          }}
+        >
           {topic.view_count.toLocaleString('ro-RO')}
         </div>
 
-        {/* Ultima postare - Ascuns pe mobil */}
-        <div className="hidden sm:flex" style={{
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          textAlign: 'right',
-          fontSize: '0.75rem',
-          color: theme.textSecondary,
-          minHeight: '2rem',
-          paddingRight: '0.5rem'
-        }}>
+        {/* Ultima postare - Coloana 5 - Ascuns pe mobil */}
+        <div 
+          className="hidden sm:flex"
+          style={{
+            gridColumn: '5',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            textAlign: 'right',
+            fontSize: '0.75rem',
+            color: theme.textSecondary,
+            paddingRight: '0.5rem',
+            width: '100%',
+            minWidth: 0
+          }}
+        >
           {(topic as any).last_post_at ? (
             <>
               <div style={{ fontWeight: '600', marginBottom: '0.125rem', color: '#ef4444' }}>
@@ -511,6 +647,21 @@ export default function CategoryPage() {
       </div>
     );
   };
+
+  // SEO Data for Category/Subcategory - MUTAT ÎNAINTE DE EARLY RETURNS
+  const { websiteData, organizationData, createBreadcrumbData } = useStructuredData();
+  const currentUrl = slugToUse ? `https://fishtrophy.ro/forum/${slugToUse}` : 'https://fishtrophy.ro/forum';
+  const pageTitle = subcategoryName || subforumName || categoryName || 'Categorii Forum';
+  const pageDescription = subcategoryDescription || subforumDescription || categoryDescription || 'Discuții despre pescuit, tehnici, echipament și locații în România.';
+  const pageKeywords = [
+    pageTitle,
+    'forum pescuit',
+    'discuții pescuit',
+    'comunitate pescari',
+    'Fish Trophy',
+    'pescuit romania'
+  ].filter(Boolean).join(', ');
+  const pageImage = 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
   // Verifică dacă slugToUse există (poate fi subcategorySlug sau categoryId)
   if (!slugToUse) {
@@ -578,21 +729,6 @@ export default function CategoryPage() {
       </ForumLayout>
     );
   }
-
-  // SEO Data for Category/Subcategory
-  const { websiteData, organizationData, createBreadcrumbData } = useStructuredData();
-  const currentUrl = `https://fishtrophy.ro/forum/${slugToUse}`;
-  const pageTitle = subcategoryName || subforumName || categoryName || 'Categorii Forum';
-  const pageDescription = subcategoryDescription || subforumDescription || categoryDescription || 'Discuții despre pescuit, tehnici, echipament și locații în România.';
-  const pageKeywords = [
-    pageTitle,
-    'forum pescuit',
-    'discuții pescuit',
-    'comunitate pescari',
-    'Fish Trophy',
-    'pescuit romania'
-  ].filter(Boolean).join(', ');
-  const pageImage = 'https://fishtrophy.ro/social-media-banner-v2.jpg';
 
   return (
     <>
@@ -675,8 +811,16 @@ export default function CategoryPage() {
               gap: '0.5rem'
             }}
           >
-            <Link
-              to="/forum"
+            <button
+              onClick={() => {
+                // Dacă avem categorie părinte, mergem acolo
+                if (parentCategory?.slug) {
+                  navigate(`/forum/${parentCategory.slug}`);
+                } else {
+                  // Altfel mergem înapoi în istoric sau la forum
+                  navigate(-1);
+                }
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -687,11 +831,14 @@ export default function CategoryPage() {
                 borderRadius: '0.25rem',
                 color: 'white',
                 textDecoration: 'none',
-                flexShrink: 0
+                flexShrink: 0,
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
               }}
             >
               <ArrowLeft style={{ width: '1rem', height: '1rem' }} />
-            </Link>
+            </button>
             <h1 style={{
               fontSize: isMobile ? '0.875rem' : '1rem',
               fontWeight: '600',
@@ -699,11 +846,22 @@ export default function CategoryPage() {
               margin: 0,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              textOverflow: 'ellipsis',
+              flex: 1,
+              minWidth: 0
             }}>
               {/* Nu afișăm slug-ul - așteptăm până avem numele real */}
               {subforumName || subcategoryName || categoryName || (isCategory && categoryData?.name) || '\u00A0'}
             </h1>
+            <div style={{ flexShrink: 0 }}>
+              <ShareButton
+                url={typeof window !== 'undefined' ? window.location.href : ''}
+                title={subforumName || subcategoryName || categoryName || (isCategory && categoryData?.name) || 'Forum'}
+                description={`${subforumName || subcategoryName || categoryName || (isCategory && categoryData?.name) || 'Forum'} - Fish Trophy Forum`}
+                size="sm"
+                variant="ghost"
+              />
+            </div>
           </div>
 
           {/* Loading state - afișăm skeleton când se încarcă datele pentru subcategorie/subforum */}
@@ -773,7 +931,7 @@ export default function CategoryPage() {
                                   style={{ marginRight: '0.25rem', alignSelf: 'center', flexShrink: 0 }}
                                 />
                               )}
-                              {subcat.icon && (
+                              {showSubcategoryIcons && subcat.icon && (
                                 <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>{subcat.icon}</div>
                               )}
                               <div style={{ flex: 1, minWidth: 0 }}>
@@ -886,9 +1044,12 @@ export default function CategoryPage() {
                                 style={{ alignSelf: 'center', flexShrink: 0 }}
                               />
                             )}
-                            <div style={{ fontSize: '1.25rem' }}>
-                              {subforum.icon || '📁'}
-                            </div>
+                            {/* Verifică atât setarea globală, cât și setarea individuală show_icon */}
+                            {showSubforumIcons && (subforum.show_icon !== false) && (
+                              <div style={{ fontSize: '1.25rem' }}>
+                                {subforum.icon || '📁'}
+                              </div>
+                            )}
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
                                 {subforum.name}
@@ -913,8 +1074,7 @@ export default function CategoryPage() {
                   {(subcategoryId || subforumId) && (
                     <div style={{ marginTop: subforums.length > 0 ? '1.5rem' : '0' }}>
                       {/* Create Topic Button - Always visible if logged in */}
-                      {/* Create Topic Button - Top Left - Doar dacă sunt topicuri */}
-                      {forumUser && topics.length > 0 && (
+                      {forumUser && (
                         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1rem' }}>
                           <button
                             onClick={() => setShowCreateModal(true)}
@@ -939,152 +1099,105 @@ export default function CategoryPage() {
                         </div>
                       )}
 
-                      <div style={{
-                        backgroundColor: theme.surface,
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: '0.75rem',
-                        overflow: 'hidden'
-                      }}>
-                        {/* Header pentru topicuri directe */}
-                        <div className="hidden sm:grid" style={{
-                          backgroundColor: theme.background,
-                          borderBottom: `1px solid ${theme.border}`,
-                          padding: '0.75rem 1rem',
-                          gridTemplateColumns: '1fr 80px 80px 180px',
-                          gap: '0.75rem',
-                          alignItems: 'center',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: theme.textSecondary,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.025em'
-                        }}>
-                          <div>Topic</div>
-                          <div style={{ textAlign: 'center' }}>Răspunsuri</div>
-                          <div style={{ textAlign: 'center' }}>Vizualizări</div>
-                          <div style={{ textAlign: 'center' }}>Ultima postare</div>
-                        </div>
-
-                        {/* Fără skeleton - afișăm direct datele când sunt gata */}
-                        {topics.length === 0 && !topicsIsLoading ? (
+                      {/* Sticky Topics - COMPLET SEPARAT, sub butonul "Topic nou", deasupra topicurilor normale */}
+                      {stickyTopics.length > 0 && (
+                        <div style={{ marginBottom: '1.5rem' }}>
                           <div style={{
-                            padding: '3rem 2rem',
-                            textAlign: 'center',
-                            color: theme.textSecondary,
                             backgroundColor: theme.surface,
+                            border: `1px solid ${theme.border}`,
                             borderRadius: '0.75rem',
-                            margin: '1rem',
-                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                            overflow: 'hidden'
                           }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📭</div>
-                            <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.375rem', color: theme.text }}>
-                              Niciun topic încă în această {subforumId ? 'secțiune' : 'categorie'}
+                            {/* Header pentru sticky topics - Mobil */}
+                            <div className="sm:hidden" style={{
+                              backgroundColor: theme.background,
+                              borderBottom: `1px solid ${theme.border}`,
+                              padding: '0.5rem 0.75rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: theme.textSecondary,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em'
+                            }}>
+                              Topicuri Fixate
                             </div>
-                            <div style={{ fontSize: '0.8rem', marginBottom: '1.25rem', color: theme.textSecondary }}>
-                              Fii primul care creează un topic și pornește o discuție!
+                            {/* Header pentru sticky topics */}
+                            <div className="hidden sm:grid" style={{
+                              backgroundColor: theme.background,
+                              borderBottom: `1px solid ${theme.border}`,
+                              padding: '0.75rem',
+                              gridTemplateColumns: '1fr 50px 80px 80px 180px',
+                              gap: '0.75rem',
+                              alignItems: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: theme.textSecondary,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em'
+                            }}>
+                              <div style={{ gridColumn: '1' }}>Topicuri Fixate</div>
+                              <div style={{ gridColumn: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
+                              <div style={{ gridColumn: '3', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Răspunsuri</div>
+                              <div style={{ gridColumn: '4', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Vizualizări</div>
+                              <div style={{ gridColumn: '5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', width: '100%', minWidth: 0 }}>Ultima postare</div>
                             </div>
-                            <button
-                              onClick={() => {
-                                if (forumUser) {
-                                  setShowCreateModal(true);
-                                } else {
-                                  alert('Te rog să te conectezi pentru a crea un topic!');
-                                }
-                              }}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.625rem 1.25rem',
-                                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
-                                color: 'white',
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                borderRadius: '0.5rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '0.9';
-                                e.currentTarget.style.boxShadow = '0 6px 10px rgba(0, 0, 0, 0.15)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                              }}
-                            >
-                              <MessageSquare style={{ width: '1rem', height: '1rem' }} />
-                              Creează primul topic
-                            </button>
+                            {/* Lista sticky topics */}
+                            {stickyTopics.map((topic) => renderTopicItem(topic))}
                           </div>
-                        ) : (
-                          <>
-                            {/* Sticky Topics - cu delimitare clară */}
-                            {stickyTopics.length > 0 && (
-                              <>
-                                {/* Delimitare pentru sticky topics */}
-                                <div style={{
-                                  backgroundColor: '#fef3c7',
-                                  borderTop: `2px solid #f59e0b`,
-                                  borderBottom: `2px solid #f59e0b`,
-                                  padding: '0.5rem 1rem',
-                                  marginTop: stickyTopics.length > 0 ? '0' : '0',
-                                  marginBottom: '0.5rem'
-                                }}>
-                                  <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    Topicuri Fixate
-                                  </div>
-                                </div>
-                                {stickyTopics.map((topic) => renderTopicItem(topic))}
-                                {/* Delimitare după sticky topics */}
-                                {importantTopics.length > 0 || normalTopics.length > 0 ? (
-                                  <div style={{
-                                    height: '1px',
-                                    backgroundColor: theme.border,
-                                    margin: '0.75rem 0'
-                                  }} />
-                                ) : null}
-                              </>
-                            )}
+                        </div>
+                      )}
 
-                            {/* Important Topics - cu delimitare clară */}
-                            {importantTopics.length > 0 && (
-                              <>
-                                {stickyTopics.length === 0 && (
-                                  <div style={{
-                                    backgroundColor: '#fef2f2',
-                                    borderTop: `2px solid #ef4444`,
-                                    borderBottom: `2px solid #ef4444`,
-                                    padding: '0.5rem 1rem',
-                                    marginTop: '0',
-                                    marginBottom: '0.5rem'
-                                  }}>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                      Topicuri Importante
-                                    </div>
-                                  </div>
-                                )}
-                                {importantTopics.map((topic) => renderTopicItem(topic))}
-                                {/* Delimitare după important topics */}
-                                {normalTopics.length > 0 ? (
-                                  <div style={{
-                                    height: '1px',
-                                    backgroundColor: theme.border,
-                                    margin: '0.75rem 0'
-                                  }} />
-                                ) : null}
-                              </>
-                            )}
+                      {/* Normal Topics (inclusiv important) - chenar separat */}
+                      {(importantTopics.length > 0 || normalTopics.length > 0) && (
+                        <div style={{
+                          backgroundColor: theme.surface,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '0.75rem',
+                          overflow: 'hidden'
+                        }}>
+                          {/* Header pentru topicuri normale - Mobil */}
+                          <div className="sm:hidden" style={{
+                            backgroundColor: theme.background,
+                            borderBottom: `1px solid ${theme.border}`,
+                            padding: '0.5rem 0.75rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: theme.textSecondary,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.025em'
+                          }}>
+                            Topic
+                          </div>
+                          {/* Header pentru topicuri normale */}
+                          <div className="hidden sm:grid" style={{
+                            backgroundColor: theme.background,
+                            borderBottom: `1px solid ${theme.border}`,
+                            padding: '0.75rem',
+                            gridTemplateColumns: '1fr 50px 80px 80px 180px',
+                            gap: '0.75rem',
+                            alignItems: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: theme.textSecondary,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.025em'
+                          }}>
+                            <div style={{ gridColumn: '1' }}>Topic</div>
+                            <div style={{ gridColumn: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
+                            <div style={{ gridColumn: '3', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Răspunsuri</div>
+                            <div style={{ gridColumn: '4', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Vizualizări</div>
+                            <div style={{ gridColumn: '5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', width: '100%', minWidth: 0 }}>Ultima postare</div>
+                          </div>
 
-                            {/* Normal Topics */}
-                            {normalTopics.map((topic) => renderTopicItem(topic))}
-                          </>
-                        )}
-                      </div>
+                          {/* Important Topics - doar badge, fără chenar separat, apar primele în listă */}
+                          {importantTopics.map((topic) => renderTopicItem(topic))}
 
-                      {/* Create Topic Button - Bottom Left - Doar dacă sunt topicuri */}
+                          {/* Normal Topics */}
+                          {normalTopics.map((topic) => renderTopicItem(topic))}
+                        </div>
+                      )}
+
+                      {/* Create Topic Button - Bottom (dupa topicuri) */}
                       {forumUser && topics.length > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                           <button
@@ -1106,6 +1219,62 @@ export default function CategoryPage() {
                           >
                             <MessageSquare style={{ width: '1rem', height: '1rem' }} />
                             Topic nou
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Fără topicuri */}
+                      {topics.length === 0 && !topicsIsLoading && (
+                        <div style={{
+                          padding: '3rem 2rem',
+                          textAlign: 'center',
+                          color: theme.textSecondary,
+                          backgroundColor: theme.surface,
+                          borderRadius: '0.75rem',
+                          margin: '1rem',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                        }}>
+                          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📭</div>
+                          <div style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.375rem', color: theme.text }}>
+                            Niciun topic încă în această {subforumId ? 'secțiune' : 'categorie'}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', marginBottom: '1.25rem', color: theme.textSecondary }}>
+                            Fii primul care creează un topic și pornește o discuție!
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (forumUser) {
+                                setShowCreateModal(true);
+                              } else {
+                                alert('Te rog să te conectezi pentru a crea un topic!');
+                              }
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.625rem 1.25rem',
+                              background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary || theme.primary})`,
+                              color: 'white',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              borderRadius: '0.5rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.opacity = '0.9';
+                              e.currentTarget.style.boxShadow = '0 6px 10px rgba(0, 0, 0, 0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.opacity = '1';
+                              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                            }}
+                          >
+                            <MessageSquare style={{ width: '1rem', height: '1rem' }} />
+                            Creează primul topic
                           </button>
                         </div>
                       )}

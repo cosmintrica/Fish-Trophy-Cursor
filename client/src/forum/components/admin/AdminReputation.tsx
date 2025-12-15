@@ -4,14 +4,16 @@
  * Mobile-first design optimizat
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useAuth as useMainAuth } from '../../../hooks/useAuth';
 import { supabase } from '../../../lib/supabase';
 import { queryKeys } from '../../../lib/query-client';
 import { adminAwardReputation, getUserReputationLogs } from '../../../services/forum/reputation';
-import { Search, Award, TrendingUp, TrendingDown, History, X, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, Award, TrendingUp, TrendingDown, History, X, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface ForumUser {
   user_id: string;
@@ -42,6 +44,8 @@ interface ReputationLog {
 export default function AdminReputation() {
   const { theme } = useTheme();
   const { showToast } = useToast();
+  const { forumUser } = useAuth();
+  const { user } = useMainAuth();
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +54,27 @@ export default function AdminReputation() {
   const [awardType, setAwardType] = useState<'award' | 'remove'>('award');
   const [points, setPoints] = useState<number>(1);
   const [comment, setComment] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Verifică dacă utilizatorul este founder (doar email-ul tău)
+  // Verifică atât user?.email cât și forumUser?.email pentru siguranță
+  // IMPORTANT: Verifică și pentru outlook.com (email-ul actual)
+  const isFounder = 
+    user?.email === 'cosmin.trica@gmail.com' || 
+    user?.email === 'cosmin.trica@outlook.com' ||
+    forumUser?.email === 'cosmin.trica@gmail.com' ||
+    forumUser?.email === 'cosmin.trica@outlook.com';
+  
+  // Debug: verifică email-urile
+  useEffect(() => {
+    if (user?.email || forumUser?.email) {
+      console.log('[AdminReputation] Email check:', {
+        userEmail: user?.email,
+        forumUserEmail: forumUser?.email,
+        isFounder
+      });
+    }
+  }, [user?.email, forumUser?.email, isFounder]);
 
   // Căutare utilizatori
   const { data: searchResults = [], isLoading: searching } = useQuery<ForumUser[]>({
@@ -68,6 +93,79 @@ export default function AdminReputation() {
     },
     enabled: searchQuery.length >= 2,
     staleTime: 30 * 1000,
+  });
+
+  // Ultimii 20 useri care au primit reputație de la admin (grupate după user, ultima valoare pentru fiecare)
+  const { data: recentAdminAwards = [], isLoading: loadingRecentAwards } = useQuery<Array<{
+    receiver_user_id: string;
+    receiver_username: string;
+    receiver_avatar_url?: string | null;
+    points: number;
+    created_at: string;
+    comment?: string | null;
+  }>>({
+    queryKey: ['admin-recent-reputation-awards'],
+    queryFn: async () => {
+      // Obține toate log-urile de admin, ordonate descrescător
+      const { data, error } = await supabase
+        .from('forum_reputation_logs')
+        .select('receiver_user_id, points, created_at, comment')
+        .eq('is_admin_award', true)
+        .order('created_at', { ascending: false })
+        .limit(1000); // Luăm mai multe pentru a găsi ultimii 20 useri unici
+
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+
+      // Grupează după user_id și ia ultima valoare pentru fiecare
+      const userLogsMap = new Map<string, {
+        receiver_user_id: string;
+        points: number;
+        created_at: string;
+        comment?: string | null;
+      }>();
+
+      for (const log of data) {
+        if (!userLogsMap.has(log.receiver_user_id)) {
+          userLogsMap.set(log.receiver_user_id, {
+            receiver_user_id: log.receiver_user_id,
+            points: log.points,
+            created_at: log.created_at,
+            comment: log.comment
+          });
+        }
+        // Dacă avem deja 20 useri, oprim
+        if (userLogsMap.size >= 20) break;
+      }
+
+      // Obține userii cu username și avatar
+      const userIds = Array.from(userLogsMap.keys());
+      if (userIds.length === 0) return [];
+
+      const { data: usersData } = await supabase
+        .from('forum_users')
+        .select('user_id, username, avatar_url')
+        .in('user_id', userIds);
+
+      const usersInfoMap = new Map((usersData || []).map(u => [u.user_id, { username: u.username, avatar_url: u.avatar_url }]));
+
+      // Construiește rezultatul final
+      return Array.from(userLogsMap.entries())
+        .map(([userId, logData]) => {
+          const userInfo = usersInfoMap.get(userId);
+          return {
+            receiver_user_id: userId,
+            receiver_username: userInfo?.username || 'Unknown',
+            receiver_avatar_url: userInfo?.avatar_url || null,
+            points: logData.points,
+            created_at: logData.created_at,
+            comment: logData.comment || null
+          };
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000
   });
 
   // Log-uri reputație pentru utilizatorul selectat
@@ -235,6 +333,47 @@ export default function AdminReputation() {
     });
   };
 
+  // Mutation pentru ștergerea tuturor log-urilor (doar founder)
+  const deleteAllLogsMutation = useMutation({
+    mutationFn: async () => {
+      if (!isFounder) {
+        throw new Error('Doar founder-ul poate șterge istoricul');
+      }
+
+      if (!selectedUser) {
+        throw new Error('Trebuie să selectezi un utilizator');
+      }
+
+      // Șterge doar log-urile pentru user-ul selectat
+      const { data, error } = await supabase.rpc('delete_user_reputation_logs', {
+        receiver_user_id_param: selectedUser.user_id
+      });
+      
+      if (error) throw error;
+      
+      // Verifică răspunsul
+      if (data && !data.success) {
+        throw new Error(data.error || 'Eroare la ștergerea istoricului');
+      }
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      const deletedCount = data?.deleted_count || 0;
+      showToast(`Istoricul utilizatorului a fost șters cu succes (${deletedCount} log-uri șterse)`, 'success');
+      setShowDeleteConfirm(false);
+      // Invalidate all reputation queries
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reputation'] });
+      if (selectedUser) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.adminUserReputationLogs(selectedUser.user_id) });
+        queryClient.invalidateQueries({ queryKey: ['admin-recent-reputation-awards'] });
+      }
+    },
+    onError: (error: any) => {
+      showToast(error.message || 'Eroare la ștergerea istoricului', 'error');
+    },
+  });
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('ro-RO', {
@@ -248,14 +387,16 @@ export default function AdminReputation() {
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <h2 style={{ 
-        fontSize: 'clamp(1.5rem, 3vw, 2rem)', 
-        fontWeight: '700', 
-        color: theme.text, 
-        marginBottom: '1.5rem' 
-      }}>
-        Gestionare Reputație
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h2 style={{ 
+          fontSize: 'clamp(1.5rem, 3vw, 2rem)', 
+          fontWeight: '700', 
+          color: theme.text, 
+          margin: 0
+        }}>
+          Gestionare Reputație
+        </h2>
+      </div>
 
       {/* Căutare utilizator */}
       <div style={{ marginBottom: '2rem' }}>
@@ -377,6 +518,160 @@ export default function AdminReputation() {
         )}
       </div>
 
+      {/* Ultimii 20 useri care au primit reputație de la admin - DUPĂ search */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{
+          fontSize: '1.125rem',
+          fontWeight: '600',
+          color: theme.text,
+          marginBottom: '1rem'
+        }}>
+          Ultimii 20 Useri cu Reputație Acordată de Admin
+        </h3>
+        {loadingRecentAwards ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: theme.textSecondary }}>
+            Se încarcă...
+          </div>
+        ) : recentAdminAwards.length === 0 ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: theme.textSecondary }}>
+            Nu există acordări recente de reputație
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            {recentAdminAwards.map((award) => (
+              <div
+                key={award.receiver_user_id}
+                onClick={() => {
+                  // Find user in search results or fetch it
+                  const user = searchResults.find(u => u.user_id === award.receiver_user_id);
+                  if (user) {
+                    handleUserSelect(user);
+                  } else {
+                    // Fetch user details
+                    supabase
+                      .from('forum_users')
+                      .select('user_id, username, avatar_url, rank, reputation_points, reputation_power, post_count, topic_count')
+                      .eq('user_id', award.receiver_user_id)
+                      .single()
+                      .then(({ data, error }) => {
+                        if (!error && data) {
+                          handleUserSelect(data);
+                        }
+                      });
+                  }
+                }}
+                style={{
+                  padding: '1rem',
+                  backgroundColor: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  borderColor: selectedUser?.user_id === award.receiver_user_id ? theme.primary : theme.border,
+                  boxShadow: selectedUser?.user_id === award.receiver_user_id ? `0 0 0 2px ${theme.primary}40` : 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedUser?.user_id !== award.receiver_user_id) {
+                    e.currentTarget.style.backgroundColor = theme.surfaceHover;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedUser?.user_id !== award.receiver_user_id) {
+                    e.currentTarget.style.backgroundColor = theme.surface;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  {/* Avatar */}
+                  {award.receiver_avatar_url ? (
+                    <img
+                      src={award.receiver_avatar_url}
+                      alt={award.receiver_username}
+                      style={{
+                        width: '3.5rem',
+                        height: '3.5rem',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: `2px solid ${theme.border}`
+                      }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.style.cssText = `
+                            width: 3.5rem;
+                            height: 3.5rem;
+                            border-radius: 50%;
+                            background: ${theme.primary};
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: 600;
+                            font-size: 1.25rem;
+                          `;
+                          fallback.textContent = award.receiver_username.charAt(0).toUpperCase();
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '3.5rem',
+                      height: '3.5rem',
+                      borderRadius: '50%',
+                      backgroundColor: theme.primary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '1.25rem',
+                      border: `2px solid ${theme.border}`
+                    }}>
+                      {award.receiver_username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  
+                  {/* Username */}
+                  <div style={{
+                    fontWeight: '600',
+                    color: theme.text,
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    width: '100%'
+                  }}>
+                    {award.receiver_username}
+                  </div>
+                  
+                  {/* Points */}
+                  <div style={{
+                    fontWeight: '700',
+                    color: award.points >= 0 ? '#10b981' : '#ef4444',
+                    fontSize: '1rem'
+                  }}>
+                    {award.points >= 0 ? '+' : ''}{award.points}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Utilizator selectat */}
       {selectedUser && (
         <div style={{
@@ -424,7 +719,7 @@ export default function AdminReputation() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 onClick={() => handleAwardClick('award')}
                 style={{
@@ -469,6 +764,35 @@ export default function AdminReputation() {
                 <TrendingDown size={18} />
                 Retrage
               </button>
+              {/* Buton Șterge Tot Istoricul - DOAR când user este selectat */}
+              {isFounder && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#b91c1c';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                  }}
+                >
+                  <Trash2 size={18} />
+                  Șterge Tot Istoricul
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -646,16 +970,23 @@ export default function AdminReputation() {
                 Puncte {awardType === 'award' ? '(pozitiv)' : '(va fi scăzut)'}
               </label>
               <input
-                type="number"
+                type="text"
                 value={points}
                 onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (value >= 1 && value <= 1000) {
-                    setPoints(value);
+                  const value = e.target.value.trim();
+                  if (value === '') {
+                    setPoints(0);
+                    return;
+                  }
+                  // Allow negative numbers
+                  const numValue = parseInt(value.replace(/[^-\d]/g, ''), 10);
+                  if (!isNaN(numValue)) {
+                    setPoints(numValue);
                   }
                 }}
-                min={1}
-                max={1000}
+                onDoubleClick={(e) => {
+                  (e.target as HTMLInputElement).select();
+                }}
                 style={{
                   width: '100%',
                   padding: '0.75rem',
@@ -668,7 +999,7 @@ export default function AdminReputation() {
                 }}
               />
               <div style={{ fontSize: '0.875rem', color: theme.textSecondary, marginTop: '0.25rem' }}>
-                Valoare între 1 și 1000 puncte
+                Introdu numărul de puncte (poate fi 0 sau orice valoare)
               </div>
             </div>
 
@@ -722,17 +1053,17 @@ export default function AdminReputation() {
               </button>
               <button
                 onClick={handleAwardSubmit}
-                disabled={awardReputationMutation.isPending || points <= 0}
+                disabled={awardReputationMutation.isPending || points === 0}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  backgroundColor: points <= 0 ? theme.border : (awardType === 'award' ? '#10b981' : '#ef4444'),
+                  backgroundColor: points === 0 ? theme.border : (awardType === 'award' ? '#10b981' : '#ef4444'),
                   color: 'white',
                   border: 'none',
                   borderRadius: '0.5rem',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  cursor: points <= 0 ? 'not-allowed' : 'pointer',
-                  opacity: points <= 0 ? 0.5 : 1,
+                  cursor: points === 0 ? 'not-allowed' : 'pointer',
+                  opacity: points === 0 ? 0.5 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem'
@@ -746,6 +1077,79 @@ export default function AdminReputation() {
                     {awardType === 'award' ? 'Acordă' : 'Retrage'} Reputație
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmare ștergere istoric */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}
+        onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            style={{
+              backgroundColor: theme.surface,
+              borderRadius: '0.75rem',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              border: `1px solid ${theme.border}`,
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: theme.text, marginBottom: '1rem' }}>
+              Confirmă ștergerea istoricului
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: theme.textSecondary, marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Ești sigur că vrei să ștergi TOATE log-urile de reputație din baza de date? Această acțiune este ireversibilă și va șterge toate intrările din istoric.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: theme.surfaceHover,
+                  color: theme.text,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={() => deleteAllLogsMutation.mutate()}
+                disabled={deleteAllLogsMutation.isPending}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: deleteAllLogsMutation.isPending ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  opacity: deleteAllLogsMutation.isPending ? 0.5 : 1
+                }}
+              >
+                {deleteAllLogsMutation.isPending ? 'Șterge...' : 'Șterge Tot'}
               </button>
             </div>
           </div>
