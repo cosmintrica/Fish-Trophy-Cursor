@@ -125,6 +125,7 @@ const RecordDetailsModal = ({
   const [isAuthRequiredModalOpen, setIsAuthRequiredModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [isMobile, setIsMobile] = useState(false);
   const { createVideoObjectData } = useStructuredData();
   const { user } = useAuth();
 
@@ -145,6 +146,14 @@ const RecordDetailsModal = ({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Reset gallery index when record changes
   useEffect(() => {

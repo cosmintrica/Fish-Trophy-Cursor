@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { MessageSquare, Users, Clock, Pin } from 'lucide-react';
 import type { ForumCategory } from '../types/forum';
 

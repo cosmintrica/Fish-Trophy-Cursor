@@ -304,8 +304,8 @@ export default function AdminReports() {
               <span>{status.label}</span>
               {statusFilter === 'all' && count > 0 && (
                 <span style={{
-                  backgroundColor: statusFilter === status.value ? 'rgba(255,255,255,0.3)' : status.color,
-                  color: statusFilter === status.value ? '#ffffff' : '#ffffff',
+                  backgroundColor: status.color,
+                  color: '#ffffff',
                   padding: '0.125rem 0.375rem',
                   borderRadius: '0.25rem',
                   fontSize: '0.75rem',
