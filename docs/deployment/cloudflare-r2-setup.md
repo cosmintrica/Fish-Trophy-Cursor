@@ -38,41 +38,84 @@ VITE_R2_SECRET_ACCESS_KEY=your_secret_key
 VITE_R2_PUBLIC_URL=https://pub-1234567890abcdef.r2.dev
 ```
 
+### **5. Configurează CORS (Critic pentru Upload)**
+Pentru ca browserul să poată face upload direct (fără a trece prin server), trebuie să permiți originile site-ului tău.
+
+1. Mergi la **Settings** în bucket-ul tău R2.
+2. Scroll la secțiunea **CORS Policy**.
+3. Adaugă următorul JSON:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:8888",
+      "https://fishtrophy.ro",
+      "https://www.fishtrophy.ro",
+      "https://fishtrophy-cursor.netlify.app"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "PUT",
+      "POST",
+      "DELETE",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [
+      "ETag"
+    ],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+> **Notă:** Asigură-te că `AllowedOrigins` conține TOATE domeniile de pe care accesezi aplicația (local și producție).
+
 ## 📁 **Structura bucket-ului**
 
 ```
 fishtrophy-content/
-├── submission-images/
-│   ├── user123/
-│   │   ├── record456.jpg
-│   │   └── record789.jpg
-│   └── user456/
-│       └── record123.jpg
-├── submission-videos/
-│   ├── user123/
-│   │   ├── record456.mp4
-│   │   └── record789.mov
-│   └── user456/
-│       └── record123.mp4
-├── fish-species/
+├── {username}/                 # Folder per utilizator pentru conținut generat
+│   ├── records/                # Record-uri (Trofee)
+│   │   ├── images/
+│   │   │   ├── record-123_timestamp.jpg
+│   │   │   └── ...
+│   │   └── videos/
+│   │       ├── record-123_timestamp.mp4
+│   │       └── ...
+│   ├── journal/                # Capturi (Jurnal)
+│   │   ├── images/
+│   │   │   ├── catch-456_timestamp.jpg
+│   │   │   └── ...
+│   │   └── videos/
+│   │       ├── catch-456_timestamp.mp4
+│   │       └── ...
+│   └── forum/                  # Postări Forum
+│       ├── posts/
+│       │   └── ...
+│       └── ...
+├── fish-species/               # Static: Imagini specii
 │   ├── crap-main.jpg
 │   ├── crap-detail.jpg
 │   ├── crap-habitat.jpg
 │   ├── salau-main.jpg
 │   └── ...
-├── locations/
+├── locations/                  # Static: Imagini locații
 │   ├── lacul-snagov-main.jpg
 │   ├── lacul-snagov-aerial.jpg
 │   ├── lacul-snagov-fishing-spot.jpg
 │   └── ...
-├── shops/
+├── shops/                      # Static: Magazine
 │   ├── magazin-pescuit-1-logo.jpg
 │   ├── magazin-pescuit-1-exterior.jpg
 │   └── ...
-├── parking/
+├── parking/                    # Static: Parcare
 │   ├── lacul-snagov-parking.jpg
 │   └── ...
-└── educational/
+└── educational/                # Static: Educațional
     ├── tehnici-pescuit-1.jpg
     └── ...
 ```

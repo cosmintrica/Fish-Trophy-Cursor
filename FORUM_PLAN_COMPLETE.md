@@ -1091,3 +1091,111 @@ si la inceput/final, salveaza si mesajele mele cu instructiuni
 - [ ] Redesign MessageSidebar cu locație, posturi, putere rep, reputație cu progress bar
 - [ ] Buton raportează în sidebar (mic, roșu) care trimite în admin panel forum
 - [ ] Panou admin forum pentru raportări (similar cu admin site)
+
+---
+
+## 📊 STATUS ACTUALIZAT IMPLEMENTARE (2025-12-15)
+
+### 🎯 PROGRES GENERAL: ~75% COMPLET
+
+**Breakdown pe faze:**
+- Faza 1 (Baza de Date): ✅ **~95%** - Structură completă, trigger-uri, full-text search, subforums
+- Faza 2 (Backend & API): ✅ **~80%** - Funcții SQL există, API-uri UI EXISTĂ
+- Faza 3 (Admin Panel): ✅ **~85%** - Dashboard, CRUD, Moderare COMPLETE
+- Faza 4 (Frontend User): ✅ **~70%** - Editor avansat, Profil, BBCode EXISTĂ
+- Faza 5 (Advanced): ⚠️ **~20%** - Dark mode, lipsă features avansate
+
+### ✅ COMPLETAT (Verificat și Confirmat)
+
+#### 1. **Sistem Reputație - COMPLET IMPLEMENTAT** ✅
+- ✅ **RPC-uri Database:** `give_reputation`, `get_post_reputation`, `remove_reputation`, `admin_award_reputation`
+- ✅ **Client-side API:** `useReputation` hook, `awardReputation`, `adminAwardReputation`, `getUserReputationLogs`
+- ✅ **UI Components:** `ReputationButtons` component integrat în `MessageActions`, modal pentru comentariu, validare putere pentru dislike (50+ reputație)
+
+#### 2. **Profil Forum UI - COMPLET IMPLEMENTAT** ✅
+- ✅ **Componenta:** `ForumUserProfile.tsx` cu toate tab-urile:
+  - Tab Informații Generale (data înregistrării, activitate, postări, topicuri, echipamente, recorduri)
+  - Tab Istoric Postări (filtre, listă cu linkuri)
+  - Tab Istoric Reputație (grafic evoluție, listă ultimele 10 loguri publice)
+  - Tab Sancțiuni (restricții active și istoric)
+  - Tab Piață (status vânzător, feedback)
+
+#### 3. **Editor Avansat - COMPLET IMPLEMENTAT** ✅
+- ✅ **QuickReplyBox:** Sticky bottom box, mod simplu/avansat, draft-uri localStorage, preview BBCode, Undo/Redo
+- ✅ **EditorToolbar:** Formatare text, headings, liste, code blocks, link/image/video, emoji picker
+- ✅ **EditorInputModal:** Modal pentru inserare link/image/video cu validare
+
+#### 4. **BBCode Parser - COMPLET IMPLEMENTAT** ✅
+- ✅ **Tag-uri:** `[record]ID[/record]`, `[gear]ID[/gear]`, `[quote]`, `[video]`, `[img]`, `[url]`, formatare text, headings, liste, code blocks
+
+#### 5. **Admin Panel - COMPLET IMPLEMENTAT** ✅
+- ✅ **AdminDashboard:** Statistici live, grafice, KPI-uri
+- ✅ **AdminCategories:** CRUD complet pentru Categorii, Subcategorii, Subforums (drag & drop reorder)
+- ✅ **AdminModeration:** Căutare utilizatori, aplicare restricții (Mute, View Ban, Shadow Ban, Temp/Permanent Ban), istoric
+- ✅ **AdminReputation:** Acordare/eliminare reputație manuală, istoric loguri
+- ✅ **AdminPanelTabs, AdminBadges, AdminBraconajReports, AdminRoles, AdminMarketplace**
+
+#### 6. **Subforums - COMPLET IMPLEMENTAT** ✅
+- ✅ Tabel, RPC-uri, Hook `useSubcategoryOrSubforum`, UI complet în `CategoryPage.tsx`, routing corect, separare vizuală
+
+### ⚠️ PARȚIAL IMPLEMENTAT
+
+#### 1. **Căutare Avansată** ⚠️
+- ✅ Backend full-text search există
+- ⚠️ UI căutare avansată (filtre, sortare) - Parțial
+- ⚠️ Auto-complete - Parțial
+- ⚠️ Highlighting rezultate - Parțial
+
+#### 2. **Embed-uri Record/Gear** ⚠️
+- ✅ BBCode parsing există (generează HTML placeholder)
+- ⚠️ Rendering efectiv - Trebuie verificat dacă componentele React funcționează complet
+
+#### 3. **Mentiuni @username** ⚠️
+- ⚠️ Parser BBCode - Nu există tag `[mention]`
+- ⚠️ UI pentru @mentions - Nu există autocomplete în editor
+- ⚠️ Notificări - Nu există sistem notificări pentru mentions
+
+### ❌ NEIMPLEMENTAT (Priorități)
+
+#### Faza 5: Advanced Features (Prioritate 5) 🚀
+- [ ] Sistem sondaje (polls)
+- [ ] Calendar evenimente
+- [ ] Notificări push
+- [ ] Sistem achievement-uri
+- [ ] Mobile app (PWA)
+- [ ] Statistici personale utilizator
+
+#### Marketplace Features:
+- [ ] Sistem review vânzări complet - Parțial există
+- [ ] Badge "Vânzător Verificat" - Logică există, UI lipsă
+- [ ] Ascundere contacte pentru vizitatori - Logică există, UI lipsă
+
+#### Secțiuni Speciale:
+- [ ] Feedback Forum - NU EXISTĂ
+- [ ] Raportare Braconaj UI - Parțial în AdminBraconajReports
+- [ ] Ghid Permise de Pescuit - NU EXISTĂ
+
+#### Proiecte Comunitare:
+- [ ] Curățarea Malurilor, Acțiuni de Conservare, Însămânțări de Puiet, Popularea Apelor - NU EXISTĂ
+
+#### Zona Comercială:
+- [ ] Verificare firme (CUI, documente) - NU EXISTĂ
+- [ ] Badge firme verificate - NU EXISTĂ
+
+### 🎯 URMĂTORII PAȘI RECOMANDAȚI
+
+#### Prioritate 1 (Critic - Finalizare):
+1. Verificare și finalizare embed-uri record/gear
+2. Finalizare căutare avansată (UI complet, auto-complete, highlighting)
+
+#### Prioritate 2 (Important):
+3. Implementare @mentions (parser BBCode, autocomplete, notificări)
+4. Finalizare Marketplace Features (UI pentru badge "Vânzător Verificat", ascundere contacte)
+
+#### Prioritate 3 (Nice to Have):
+5. Secțiuni Speciale (Feedback Forum, Ghid Permise, Proiecte Comunitare)
+6. Advanced Features (Sondaje, Calendar, Notificări push, Achievement-uri)
+
+---
+
+**Ultima actualizare status**: 2025-12-15

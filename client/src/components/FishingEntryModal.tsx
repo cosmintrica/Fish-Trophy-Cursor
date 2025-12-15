@@ -580,9 +580,25 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         }
 
         return presignedData.publicUrl;
+        return presignedData.publicUrl;
       } catch (error: any) {
-        console.error('Presigned URL upload failed, falling back to regular upload:', error);
-        // Fall back to regular upload if presigned URL fails
+        console.error('Presigned URL upload failed:', error);
+
+        // If it's a large file, do NOT fall back to Netlify Functions (6MB limit)
+        // because it will fail with a confusing 500 Internal Server Error
+        if (isLargeFile) {
+          // Check for CORS or network errors
+          if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+            throw new Error(
+              'Upload blocat de browser. Cel mai probabil configurarea CORS lipsește de pe bucket-ul R2. ' +
+              'Te rog verifică consola pentru detalii (Access-Control-Allow-Origin).'
+            );
+          }
+          throw error;
+        }
+
+        console.warn('Falling back to regular upload for small file...');
+        // Fall back to regular upload if presigned URL fails (only for small files)
       }
     }
 
