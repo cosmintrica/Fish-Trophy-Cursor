@@ -6,9 +6,9 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCategories } from '../../hooks/useCategories';
-import { 
-    createCategory, 
-    updateCategory, 
+import {
+    createCategory,
+    updateCategory,
     deleteCategory,
     createSubcategory,
     updateSubcategory,
@@ -17,116 +17,70 @@ import {
     updateSubforum,
     deleteSubforum
 } from '../../../services/forum/categories';
-import { getForumSetting, setForumSetting } from '../../../services/forum/categories';
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
+
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useForumSetting } from '../../hooks/useForumSetting';
 
 export default function AdminCategories() {
     const { theme, isDarkMode } = useTheme();
     const { categories, loading, refetch } = useCategories();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
-    
+
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
     const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
     const [editingItem, setEditingItem] = useState<{ type: 'category' | 'subcategory' | 'subforum'; id: string } | null>(null);
     const [showCreateModal, setShowCreateModal] = useState<{ type: 'category' | 'subcategory' | 'subforum'; parentId?: string } | null>(null);
     // Load from database (global settings for all users)
-    const [showCategoryIcons, setShowCategoryIcons] = useState(true);
-    const [showSubcategoryIcons, setShowSubcategoryIcons] = useState(true);
-    const [showSubforumIcons, setShowSubforumIcons] = useState(true);
-    const [loadingSetting, setLoadingSetting] = useState(true);
-    
-    // Load all settings from database on mount
-    useEffect(() => {
-        const loadSettings = async () => {
-            setLoadingSetting(true);
-            const [catResult, subcatResult, subforumResult] = await Promise.all([
-                getForumSetting('show_category_icons'),
-                getForumSetting('show_subcategory_icons'),
-                getForumSetting('show_subforum_icons')
-            ]);
-            if (catResult.data !== null) {
-                setShowCategoryIcons(catResult.data === 'true');
-            }
-            if (subcatResult.data !== null) {
-                setShowSubcategoryIcons(subcatResult.data === 'true');
-            }
-            if (subforumResult.data !== null) {
-                setShowSubforumIcons(subforumResult.data === 'true');
-            }
-            setLoadingSetting(false);
-        };
-        loadSettings();
-    }, []);
-    
-    // Save to database when changed (global for all users)
+    // Global Settings Hooks
+    const {
+        value: showCategoryIconsValue,
+        update: updateCategoryIcons,
+        isUpdating: isUpdatingCategoryIcons
+    } = useForumSetting('show_category_icons');
+
+    const {
+        value: showSubcategoryIconsValue,
+        update: updateSubcategoryIcons,
+        isUpdating: isUpdatingSubcategoryIcons
+    } = useForumSetting('show_subcategory_icons');
+
+    const {
+        value: showSubforumIconsValue,
+        update: updateSubforumIcons,
+        isUpdating: isUpdatingSubforumIcons
+    } = useForumSetting('show_subforum_icons');
+
+    // Handlers
     const handleToggleCategoryIcons = async (newValue: boolean) => {
-        const previousValue = showCategoryIcons;
-        setShowCategoryIcons(newValue);
         try {
-            const result = await setForumSetting('show_category_icons', newValue.toString());
-            if (result?.error) {
-                setShowCategoryIcons(previousValue);
-                showToast('Eroare la salvare', 'error');
-            } else {
-                showToast(`Iconurile categoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
-                queryClient.invalidateQueries({ queryKey: ['categories'] });
-                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
-            }
+            await updateCategoryIcons(newValue);
+            showToast(`Iconurile categoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
         } catch (error) {
-            setShowCategoryIcons(previousValue);
             showToast('Eroare la salvare', 'error');
         }
     };
-    
+
     const handleToggleSubcategoryIcons = async (newValue: boolean) => {
-        const previousValue = showSubcategoryIcons;
-        setShowSubcategoryIcons(newValue);
         try {
-            console.log('[AdminCategories] Toggling subcategory icons to:', newValue);
-            const result = await setForumSetting('show_subcategory_icons', newValue.toString());
-            console.log('[AdminCategories] setForumSetting result:', result);
-            if (result?.error) {
-                console.error('[AdminCategories] Error setting subcategory icons:', result.error);
-                // Revert on error
-                setShowSubcategoryIcons(previousValue);
-                showToast('Eroare la salvare: ' + result.error.message, 'error');
-            } else {
-                console.log('[AdminCategories] Successfully set subcategory icons');
-                showToast(`Iconurile subcategoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
-                queryClient.invalidateQueries({ queryKey: ['categories'] });
-                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
-            }
+            await updateSubcategoryIcons(newValue);
+            showToast(`Iconurile subcategoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
         } catch (error) {
-            console.error('[AdminCategories] Exception setting subcategory icons:', error);
-            // Revert on error
-            setShowSubcategoryIcons(previousValue);
-            showToast('Eroare la salvare: ' + (error instanceof Error ? error.message : 'Eroare necunoscută'), 'error');
-        }
-    };
-    
-    const handleToggleSubforumIcons = async (newValue: boolean) => {
-        const previousValue = showSubforumIcons;
-        setShowSubforumIcons(newValue);
-        try {
-            const result = await setForumSetting('show_subforum_icons', newValue.toString());
-            if (result?.error) {
-                setShowSubforumIcons(previousValue);
-                showToast('Eroare la salvare', 'error');
-            } else {
-                showToast(`Iconurile subforumurilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
-                // Invalidează atât categoriile, cât și query-urile pentru subcategory/subforum
-                queryClient.invalidateQueries({ queryKey: ['categories'] });
-                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
-            }
-        } catch (error) {
-            setShowSubforumIcons(previousValue);
             showToast('Eroare la salvare', 'error');
         }
     };
-    
+
+    const handleToggleSubforumIcons = async (newValue: boolean) => {
+        try {
+            await updateSubforumIcons(newValue);
+            showToast(`Iconurile subforumurilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
+        } catch (error) {
+            showToast('Eroare la salvare', 'error');
+        }
+    };
+
     // Form states
     const [formData, setFormData] = useState({
         name: '',
@@ -150,10 +104,10 @@ export default function AdminCategories() {
     // Handle create
     const handleCreate = async () => {
         if (!showCreateModal) return;
-        
+
         try {
             let result;
-            
+
             if (showCreateModal.type === 'category') {
                 result = await createCategory({
                     name: formData.name,
@@ -205,7 +159,7 @@ export default function AdminCategories() {
     // Handle update
     const handleUpdate = async () => {
         if (!editingItem) return;
-        
+
         try {
             let result;
             const updateParams: any = {
@@ -315,9 +269,9 @@ export default function AdminCategories() {
 
     return (
         <div style={{ padding: '1.5rem' }}>
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '1.5rem'
             }}>
@@ -362,7 +316,7 @@ export default function AdminCategories() {
                     justifyContent: 'center',
                     zIndex: 1000
                 }}
-                onClick={cancelEdit}
+                    onClick={cancelEdit}
                 >
                     <div
                         style={{
@@ -377,7 +331,7 @@ export default function AdminCategories() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: theme.text, marginBottom: '1rem' }}>
-                            {editingItem 
+                            {editingItem
                                 ? `Editează ${editingItem.type === 'category' ? 'Categoria' : editingItem.type === 'subcategory' ? 'Subcategoria' : 'Subforum-ul'}`
                                 : `Creează ${showCreateModal?.type === 'category' ? 'Categorie' : showCreateModal?.type === 'subcategory' ? 'Subcategorie' : 'Subforum'}`
                             }
@@ -574,7 +528,7 @@ export default function AdminCategories() {
                                         }}
                                     >
                                         <option value="">Selectează subcategorie</option>
-                                        {categories?.map(category => 
+                                        {categories?.map(category =>
                                             category.subcategories?.map(subcat => (
                                                 <option key={subcat.id} value={subcat.id}>
                                                     {category.name} › {subcat.name}
@@ -623,51 +577,157 @@ export default function AdminCategories() {
                 </div>
             )}
 
-            {/* Toggle pentru iconuri subcategorii */}
+            {/* Toggles Globali pentru Iconuri */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.75rem 1rem',
-                backgroundColor: theme.surface,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '0.5rem',
+                gap: '1rem',
+                flexWrap: 'wrap',
                 marginBottom: '1rem'
             }}>
-                <span style={{ fontSize: '0.875rem', color: theme.text, fontWeight: '500' }}>
-                    Afișează iconuri subcategorii
-                </span>
-                <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={showSubcategoryIcons}
-                        onChange={(e) => handleToggleSubcategoryIcons(e.target.checked)}
-                        disabled={loadingSetting}
-                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-                    />
-                    <div style={{
-                        width: '44px',
-                        height: '24px',
-                        backgroundColor: showSubcategoryIcons ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
-                        borderRadius: '9999px',
-                        position: 'relative',
-                        transition: 'background-color 0.2s',
-                        outline: 'none',
-                        boxShadow: showSubcategoryIcons ? `0 0 0 3px ${theme.primary}20` : 'none'
-                    }}>
+                {/* Toggle Categorii */}
+                <div style={{
+                    flex: 1,
+                    minWidth: '250px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.5rem',
+                }}>
+                    <span style={{ fontSize: '0.875rem', color: theme.text, fontWeight: '500' }}>
+                        Afișează iconuri categorii
+                    </span>
+                    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={showCategoryIconsValue}
+                            onChange={(e) => handleToggleCategoryIcons(e.target.checked)}
+                            disabled={isUpdatingCategoryIcons}
+                            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                        />
                         <div style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: showSubcategoryIcons ? '22px' : '2px',
-                            width: '20px',
-                            height: '20px',
-                            backgroundColor: 'white',
-                            borderRadius: '50%',
-                            transition: 'left 0.2s',
-                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
-                        }} />
-                    </div>
-                </label>
+                            width: '44px',
+                            height: '24px',
+                            backgroundColor: showCategoryIconsValue ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                            borderRadius: '9999px',
+                            position: 'relative',
+                            transition: 'background-color 0.2s',
+                            outline: 'none',
+                            boxShadow: showCategoryIconsValue ? `0 0 0 3px ${theme.primary}20` : 'none'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: showCategoryIconsValue ? '22px' : '2px',
+                                width: '20px',
+                                height: '20px',
+                                backgroundColor: 'white',
+                                borderRadius: '50%',
+                                transition: 'left 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }} />
+                        </div>
+                    </label>
+                </div>
+
+                {/* Toggle Subcategorii */}
+                <div style={{
+                    flex: 1,
+                    minWidth: '250px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.5rem',
+                }}>
+                    <span style={{ fontSize: '0.875rem', color: theme.text, fontWeight: '500' }}>
+                        Afișează iconuri subcategorii
+                    </span>
+                    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={showSubcategoryIconsValue}
+                            onChange={(e) => handleToggleSubcategoryIcons(e.target.checked)}
+                            disabled={isUpdatingSubcategoryIcons}
+                            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                        />
+                        <div style={{
+                            width: '44px',
+                            height: '24px',
+                            backgroundColor: showSubcategoryIconsValue ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                            borderRadius: '9999px',
+                            position: 'relative',
+                            transition: 'background-color 0.2s',
+                            outline: 'none',
+                            boxShadow: showSubcategoryIconsValue ? `0 0 0 3px ${theme.primary}20` : 'none'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: showSubcategoryIconsValue ? '22px' : '2px',
+                                width: '20px',
+                                height: '20px',
+                                backgroundColor: 'white',
+                                borderRadius: '50%',
+                                transition: 'left 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }} />
+                        </div>
+                    </label>
+                </div>
+
+                {/* Toggle Subforumuri */}
+                <div style={{
+                    flex: 1,
+                    minWidth: '250px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '0.5rem',
+                }}>
+                    <span style={{ fontSize: '0.875rem', color: theme.text, fontWeight: '500' }}>
+                        Afișează iconuri subforumuri
+                    </span>
+                    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={showSubforumIconsValue}
+                            onChange={(e) => handleToggleSubforumIcons(e.target.checked)}
+                            disabled={isUpdatingSubforumIcons}
+                            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                        />
+                        <div style={{
+                            width: '44px',
+                            height: '24px',
+                            backgroundColor: showSubforumIconsValue ? theme.primary : (isDarkMode ? '#4b5563' : '#d1d5db'),
+                            borderRadius: '9999px',
+                            position: 'relative',
+                            transition: 'background-color 0.2s',
+                            outline: 'none',
+                            boxShadow: showSubforumIconsValue ? `0 0 0 3px ${theme.primary}20` : 'none'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: showSubforumIconsValue ? '22px' : '2px',
+                                width: '20px',
+                                height: '20px',
+                                backgroundColor: 'white',
+                                borderRadius: '50%',
+                                transition: 'left 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }} />
+                        </div>
+                    </label>
+                </div>
             </div>
 
             {/* Categories List */}
@@ -704,7 +764,7 @@ export default function AdminCategories() {
                                     ) : (
                                         <ChevronRight size={20} color={theme.textSecondary} />
                                     )}
-                                    {(category.show_icon !== false) && (
+                                    {showCategoryIconsValue && (category.show_icon !== false) && (
                                         <span style={{ fontSize: '1.5rem' }}>{category.icon || '📁'}</span>
                                     )}
                                     <div>
@@ -814,7 +874,7 @@ export default function AdminCategories() {
                                                     ) : (
                                                         <ChevronRight size={16} color={theme.textSecondary} />
                                                     )}
-                                                    {showSubcategoryIcons && ((subcategory as any).show_icon !== false) && (
+                                                    {showSubcategoryIconsValue && ((subcategory as any).show_icon !== false) && (
                                                         <span style={{ fontSize: '1.25rem' }}>{subcategory.icon || '📝'}</span>
                                                     )}
                                                     <div>
@@ -902,7 +962,7 @@ export default function AdminCategories() {
                                                     </div>
 
                                                     {subcategory.subforums && subcategory.subforums.length > 0 ? (
-                                                            subcategory.subforums.map((subforum) => (
+                                                        subcategory.subforums.map((subforum) => (
                                                             <div
                                                                 key={subforum.id}
                                                                 style={{
@@ -917,7 +977,7 @@ export default function AdminCategories() {
                                                                 }}
                                                             >
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                                                                    {showSubforumIcons && (subforum.show_icon !== false) && (
+                                                                    {showSubforumIconsValue && (subforum.show_icon !== false) && (
                                                                         <span style={{ fontSize: '1rem' }}>{subforum.icon || '📁'}</span>
                                                                     )}
                                                                     <div>

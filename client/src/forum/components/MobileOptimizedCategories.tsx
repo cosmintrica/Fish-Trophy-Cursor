@@ -8,7 +8,7 @@ import ReadStatusMarker from './ReadStatusMarker';
 import { useMultipleSubcategoriesUnreadStatus, useMultipleSubforumsUnreadStatus } from '../hooks/useTopicReadStatus';
 import { useAuth } from '../hooks/useAuth';
 import { usePrefetch } from '../hooks/usePrefetch';
-import { getForumSetting } from '../../services/forum/categories';
+import { useForumSetting } from '../hooks/useForumSetting';
 
 interface MobileOptimizedCategoriesProps {
   onSubcategoryClick: (subcategoryId: string, categorySlug?: string, subcategorySlug?: string) => void;
@@ -48,23 +48,9 @@ const getLatestPost = (
 };
 
 export default function MobileOptimizedCategories({ onSubcategoryClick }: MobileOptimizedCategoriesProps) {
-  // Load setting from database (global for all users)
-  const [showIcons, setShowIcons] = useState(false);
-
-  useEffect(() => {
-    const loadSetting = async () => {
-      const { getForumSetting } = await import('../../services/forum/categories');
-      const result = await getForumSetting('show_subcategory_icons');
-      if (result.data !== null) {
-        setShowIcons(result.data === 'true');
-      }
-    };
-    loadSetting();
-    
-    // Poll for changes every 30 seconds (or use React Query for real-time updates)
-    const interval = setInterval(loadSetting, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Load settings from database (global for all users) using React Query
+  const { value: showCategoryIcons } = useForumSetting('show_category_icons', false);
+  const { value: showSubcategoryIcons } = useForumSetting('show_subcategory_icons', false);
   const { theme } = useTheme();
 
   // Try Supabase first
@@ -231,7 +217,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                             style={{ marginRight: '0.25rem', alignSelf: 'center' }}
                           />
                         )}
-                        {showIcons && subcategory.icon && (
+                        {showSubcategoryIcons && subcategory.icon && (
                           <div style={{ fontSize: '1rem' }}>
                             {subcategory.icon}
                           </div>
@@ -325,6 +311,12 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                 <ChevronDown style={{ width: '1rem', height: '1rem', color: theme.textSecondary }} />
               )}
 
+              {showCategoryIcons && (category.show_icon !== false) && (
+                <div style={{ fontSize: '1.25rem' }}>
+                  {category.icon || '📁'}
+                </div>
+              )}
+
               <div>
                 <div style={{ fontSize: '0.875rem', fontWeight: '600', color: theme.text, marginBottom: '0.125rem' }}>
                   {category.name}
@@ -383,7 +375,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                           style={{ marginRight: '0.25rem' }}
                         />
                       )}
-                      {showIcons && (
+                      {showSubcategoryIcons && (subcategory.show_icon !== false) && (
                         <div style={{ fontSize: '0.875rem' }}>
                           {subcategory.icon || '📝'}
                         </div>
@@ -412,7 +404,7 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '100%', gap: '0.25rem' }}>
 
                             {/* 1. Link Topic Title */}
-                            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px', textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: '400', color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px', textAlign: 'right' }}>
                               {effectiveLastPost.topicTitle && (
                                 <Link
                                   to={`/forum/${effectiveLastPost.subforumSlug || effectiveLastPost.subcategorySlug || ''}/${effectiveLastPost.topicSlug}${effectiveLastPost.postNumber ? `#post${effectiveLastPost.postNumber}` : ''}`}

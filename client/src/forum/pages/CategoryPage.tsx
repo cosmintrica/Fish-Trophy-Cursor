@@ -16,7 +16,7 @@ import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
 import SEOHead from '../../components/SEOHead';
 import { useStructuredData } from '../../hooks/useStructuredData';
 import NotFound404 from '../../components/NotFound404';
-import { getForumSetting } from '../../services/forum/categories';
+import { useForumSetting } from '../hooks/useForumSetting';
 
 export default function CategoryPage() {
   // Acceptă:
@@ -255,9 +255,9 @@ export default function CategoryPage() {
 
   const [isMobile, setIsMobile] = useState(false);
   
-  // Settings pentru afișarea icon-urilor
-  const [showSubcategoryIcons, setShowSubcategoryIcons] = useState(false);
-  const [showSubforumIcons, setShowSubforumIcons] = useState(false);
+  // Settings pentru afișarea icon-urilor - folosim React Query pentru actualizări imediate
+  const { value: showSubcategoryIcons } = useForumSetting('show_subcategory_icons', false);
+  const { value: showSubforumIcons } = useForumSetting('show_subforum_icons', false);
 
   // Detect mobil
   useEffect(() => {
@@ -265,40 +265,6 @@ export default function CategoryPage() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Load icon display settings - cu polling pentru a detecta schimbări
-  useEffect(() => {
-    const loadIconSettings = async () => {
-      try {
-        const [subcatResult, subforumResult] = await Promise.all([
-          getForumSetting('show_subcategory_icons'),
-          getForumSetting('show_subforum_icons')
-        ]);
-        
-        if (subcatResult.data !== null && !subcatResult.error) {
-          const shouldShow = String(subcatResult.data) === 'true';
-          setShowSubcategoryIcons(shouldShow);
-        } else {
-          setShowSubcategoryIcons(false);
-        }
-        if (subforumResult.data !== null && !subforumResult.error) {
-          const shouldShow = String(subforumResult.data) === 'true';
-          setShowSubforumIcons(shouldShow);
-        } else {
-          setShowSubforumIcons(false);
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    };
-    
-    // Încarcă imediat
-    loadIconSettings();
-    
-    // Poll pentru schimbări la fiecare 5 secunde
-    const interval = setInterval(loadIconSettings, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // Scroll la top când se încarcă pagina (previne scroll-ul automat jos)
@@ -1046,7 +1012,14 @@ export default function CategoryPage() {
                             )}
                             {/* Verifică atât setarea globală, cât și setarea individuală show_icon */}
                             {showSubforumIcons && (subforum.show_icon !== false) && (
-                              <div style={{ fontSize: '1.25rem' }}>
+                              <div style={{ 
+                                fontSize: '1.25rem',
+                                alignSelf: 'center',
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
                                 {subforum.icon || '📁'}
                               </div>
                             )}

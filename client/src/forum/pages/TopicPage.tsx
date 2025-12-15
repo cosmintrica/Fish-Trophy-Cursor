@@ -844,7 +844,7 @@ export default function TopicPage() {
                   color: 'white',
                   borderRadius: '0.375rem',
                   fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  fontWeight: '600',
+                  fontWeight: '400',
                   minWidth: '3rem',
                   textAlign: 'center'
                 }}>

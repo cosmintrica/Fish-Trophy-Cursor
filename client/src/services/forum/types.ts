@@ -130,6 +130,7 @@ export interface ForumSubcategory {
     name: string
     description?: string
     icon?: string
+    show_icon?: boolean | null
     sort_order: number
     is_active: boolean
     moderator_only: boolean
