@@ -1173,7 +1173,13 @@ const PublicProfile = () => {
                     <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       {topThree.map((record, index) => {
                         const medals = ['🥇', '🥈', '🥉'];
-                        const bgs = ['bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800', 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800', 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800'];
+                        // Aur, Argint, Bronz - design subtil și elegant
+                        // Border subtil colorat doar pe partea de sus, restul neutru
+                        const bgs = [
+                          'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 border-t-2 border-t-yellow-500 dark:border-t-yellow-400',
+                          'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 border-t-2 border-t-slate-400 dark:border-t-slate-300',
+                          'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 border-t-2 border-t-orange-500 dark:border-t-orange-400'
+                        ];
 
                         return (
                           <div

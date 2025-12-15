@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
-import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Video, ExternalLink, Share2, Info, ArrowLeft, ArrowRight, Play } from 'lucide-react';
+import { X, Fish, MapPin, Calendar, Scale, Ruler, User, Clock, CheckCircle, AlertCircle, Edit, Trash2, Video, ExternalLink, Share2, Info, ArrowLeft, ArrowRight, Play, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ interface FishRecord {
   extra_images?: string[]; // Added support for multiple images
   photo_url?: string;
   video_url?: string;
+  youtube_url?: string; // Added new field
   status: string;
   created_at: string;
   updated_at: string;
@@ -426,8 +427,53 @@ const RecordDetailsModal = ({
                   )}
                 </div>
 
-                {/* Header Actions: Close Button (Correctly positioned) */}
+                {/* Header Actions: YouTube, Share, Edit, Delete, Close */}
                 <div className="flex items-center gap-1">
+
+                  {/* YouTube Button */}
+                  {(record.youtube_url || (record.video_url && (record.video_url.includes('youtube.com') || record.video_url.includes('youtu.be')))) && (
+                    <a
+                      href={record.youtube_url || record.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      title="Vezi pe YouTube"
+                    >
+                      <Youtube className="w-5 h-5" />
+                    </a>
+                  )}
+
+                  <ShareButton
+                    url={recordUrl}
+                    title={shareTitle}
+                    description={recordDescription}
+                    image={recordImage}
+                    size="sm"
+                    variant="ghost"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  />
+
+                  {(isOwner || isAdmin) && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (onEdit && record) onEdit(record);
+                        }}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        title="Editează"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete()}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        title="Șterge"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+
                   <button
                     onClick={onClose}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -443,7 +489,6 @@ const RecordDetailsModal = ({
                   <MapPin className="w-4 h-4 text-blue-500" />
                   {record.fishing_locations?.name || 'Locație necunoscută'}
                 </div>
-
               </div>
             </div>
 
@@ -516,17 +561,6 @@ const RecordDetailsModal = ({
                     <span className="break-words">Capturat pe: <span className="font-medium text-slate-900 dark:text-slate-200">{formatDate(getCapturedAt())}</span></span>
                   </div>
 
-                  {/* Share - Compact & Right Aligned */}
-                  <ShareButton
-                    url={recordUrl}
-                    title={shareTitle}
-                    description={recordDescription}
-                    image={recordImage}
-                    variant="ghost"
-                    size="sm"
-                    showLabel={true}
-                    className="text-[9px] md:text-[10px] h-7 md:h-6 px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  />
                 </div>
 
                 {record.notes && (
@@ -537,31 +571,7 @@ const RecordDetailsModal = ({
                 )}
               </div>
 
-              {/* Admin Actions */}
-              {(isOwner || isAdmin) && (
-                <div className="grid grid-cols-2 gap-2 md:gap-2.5 pt-3 md:pt-4">
-                  <Button
-                    variant="outline"
-                    className="w-full gap-1 md:gap-1.5 text-[11px] md:text-xs h-8 md:h-9 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 touch-manipulation"
-                    onClick={() => {
-                      if (onEdit && record) onEdit(record);
-                    }}
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                    Editează
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full gap-1 md:gap-1.5 text-[11px] md:text-xs h-8 md:h-9 bg-red-500 hover:bg-red-600 text-white border-none touch-manipulation"
-                    onClick={() => {
-                      if (onDelete && record) onDelete(record.id);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                    Șterge
-                  </Button>
-                </div>
-              )}
+
 
               {/* Internal Links + Report Button - All on one row */}
               <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">

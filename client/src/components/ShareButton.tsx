@@ -234,6 +234,11 @@ export default function ShareButton({
     full: 'w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 shadow-lg hover:shadow-xl transition-all font-bold gap-2' // Premium full width button
   };
 
+  // When className is provided, use it fully and ignore variant styles
+  const buttonClassName = className 
+    ? className 
+    : `${sizeClasses[size]} ${variantClasses[variant]} rounded-lg shadow-sm`;
+
   // No position calculation needed - using absolute positioning relative to container
 
   // Close menu when clicking outside
@@ -284,15 +289,13 @@ export default function ShareButton({
       <button
         onClick={() => setShowMenu(!showMenu)}
         className={`
-          ${className || sizeClasses[size]}
-          ${variantClasses[variant]}
-          rounded-lg flex items-center justify-center transition-colors
+          ${buttonClassName}
+          flex items-center justify-center transition-colors
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-          ${className ? '' : 'shadow-sm'}
         `}
         aria-label="Share"
       >
-        <Share2 size={iconSizes[size]} />
+        <Share2 size={className ? 20 : iconSizes[size]} />
         {/* Always show label for full variant, or if showLabel is true */}
         {(variant === 'full' || showLabel) && (
           <span className={variant === 'full' ? 'text-sm' : 'ml-2 text-sm font-medium'}>

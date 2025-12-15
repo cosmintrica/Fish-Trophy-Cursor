@@ -75,13 +75,14 @@ export const STORAGE_BUCKETS = {
 } as const
 
 // Cloudflare R2 configuration (env-only)
+// Cloudflare R2 configuration (env-only)
 export const R2_CONFIG = {
-  BUCKET_NAME: import.meta.env.R2_BUCKET_NAME || '',
-  ACCOUNT_ID: import.meta.env.R2_ACCOUNT_ID || '',
-  ACCESS_KEY_ID: import.meta.env.R2_ACCESS_KEY_ID || '',
-  SECRET_ACCESS_KEY: import.meta.env.R2_SECRET_ACCESS_KEY || '',
-  S3_ENDPOINT: import.meta.env.R2_S3_ENDPOINT || '',
-  PUBLIC_URL: import.meta.env.R2_PUBLIC_URL || ''
+  BUCKET_NAME: import.meta.env.VITE_R2_BUCKET_NAME || import.meta.env.R2_BUCKET_NAME || '',
+  ACCOUNT_ID: import.meta.env.VITE_R2_ACCOUNT_ID || import.meta.env.R2_ACCOUNT_ID || '',
+  ACCESS_KEY_ID: import.meta.env.VITE_R2_ACCESS_KEY_ID || import.meta.env.R2_ACCESS_KEY_ID || '',
+  SECRET_ACCESS_KEY: import.meta.env.VITE_R2_SECRET_ACCESS_KEY || import.meta.env.R2_SECRET_ACCESS_KEY || '',
+  S3_ENDPOINT: import.meta.env.VITE_R2_S3_ENDPOINT || import.meta.env.R2_S3_ENDPOINT || '',
+  PUBLIC_URL: import.meta.env.VITE_R2_PUBLIC_URL || import.meta.env.R2_PUBLIC_URL || ''
 } as const
 
 // R2 content categories
@@ -214,6 +215,26 @@ export const getR2ImageUrlProxy = (imageUrl: string): string => {
   const isYouTube = imageUrl.includes('youtube.com') || imageUrl.includes('youtu.be');
 
   if (isVideo || isYouTube || import.meta.env.DEV) {
+    // If we have a public URL configured, rewrite any private keys to use it
+    if (R2_CONFIG.PUBLIC_URL && imageUrl.includes('r2.cloudflarestorage.com')) {
+      // Extract the path after the domain
+      // Extract the path after the domain
+      // const path = imageUrl.split('r2.cloudflarestorage.com')[1];
+      // Some paths might include the bucket name if not careful, but usually it's /bucket/key or /key
+      // Our PUBLIC_URL should ideally be the base.
+      // Let's safe-guard: if PUBLIC_URL is r2.dev, we just want to replace the domain part.
+
+      // Strategy: Remove the known private domain and prepend the public one.
+      // Private: https://uid.r2.cloudflarestorage.com/bucket/path/to/file
+      // Public: https://pub-uid.r2.dev/path/to/file  (Note: public usually doesn't need bucket name if mapped to custom domain, but r2.dev might need careful handling depending on user setup)
+
+      // Simpler approach: If the PUBLIC_URL is set, use it as the base for the file structure.
+      // However, we need to know the 'key'.
+      // Assumption: The stored URL structure is .../bucketName/path... or .../path...
+
+      // Let's try to just replace the domain root if it matches the private pattern
+      return imageUrl.replace(/https:\/\/.*\.r2\.cloudflarestorage\.com(\/[^/]+)?/, R2_CONFIG.PUBLIC_URL);
+    }
     return imageUrl;
   }
 

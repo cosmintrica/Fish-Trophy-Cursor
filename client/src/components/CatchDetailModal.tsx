@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from '
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical, ExternalLink, AlertCircle, Video, User, Play } from 'lucide-react';
+import { X, Heart, MessageCircle, Send, Calendar, MapPin, Scale, Ruler, Fish, Hash, Edit, Trash2, Reply, MoreVertical, ExternalLink, AlertCircle, Video, User, Play, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -874,6 +874,18 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
                 {/* Header Actions */}
                 <div className="flex items-center gap-1">
+                  {/* YouTube Button */}
+                  {catchData?.video_url && (catchData.video_url.includes('youtube.com') || catchData.video_url.includes('youtu.be')) && (
+                    <a
+                      href={catchData.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      title="Vezi pe YouTube"
+                    >
+                      <Youtube className="w-5 h-5" />
+                    </a>
+                  )}
                   {catchData && (
                     <ShareButton
                       url={catchUrl}
@@ -882,6 +894,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
                       image={catchImage}
                       size="sm"
                       variant="ghost"
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                     />
                   )}
                   {isCatchOwner && onEdit && (
