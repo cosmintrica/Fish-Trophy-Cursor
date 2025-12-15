@@ -17,7 +17,7 @@ interface CatchEmbedProps {
 const getIsDarkMode = (): boolean => {
   if (typeof window === 'undefined') return false;
   return document.documentElement.classList.contains('dark') ||
-         window.matchMedia('(prefers-color-scheme: dark)').matches;
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
 export default function CatchEmbed({ catchId }: CatchEmbedProps) {
@@ -32,7 +32,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
   useEffect(() => {
     const updateDarkMode = () => setIsDarkMode(getIsDarkMode());
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    
+
     const observer = new MutationObserver(updateDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -41,7 +41,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateDarkMode);
-    
+
     window.addEventListener('resize', checkMobile);
     checkMobile();
 
@@ -111,7 +111,7 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
     );
   }
 
-  const catchUrl = data.user_username 
+  const catchUrl = data.user_username
     ? `/profile/${data.user_username}#catch-${data.id}`
     : `/profile/${data.id}#catch-${data.id}`;
 
@@ -143,10 +143,15 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
             borderRadius: '0.375rem',
             cursor: 'pointer'
           }}
-          onClick={() => {
-            if (data.photo_url) setZoomedMedia({ src: getR2ImageUrlProxy(data.photo_url), isVideo: false });
-            else if (data.video_url) setZoomedMedia({ src: getR2ImageUrlProxy(data.video_url), isVideo: true });
-          }}
+            onClick={() => {
+              if (data.photo_url) {
+                setZoomedMedia({ src: getR2ImageUrlProxy(data.photo_url), isVideo: false });
+              } else if (data.video_url) {
+                const isYouTube = data.video_url.includes('youtube.com') || data.video_url.includes('youtu.be');
+                setZoomedMedia({ src: getR2ImageUrlProxy(data.video_url), isVideo: true }); // We'll handle youtube in ImageZoom or similar if needed, but for now just pass as video. 
+                // Actually, ImageZoom treats isVideo as HTML5 video. We might need to handle YouTube there too.
+              }
+            }}
           >
             {data.photo_url ? (
               <img
@@ -163,17 +168,36 @@ export default function CatchEmbed({ catchId }: CatchEmbedProps) {
                 }}
               />
             ) : data.video_url ? (
-              <video
-                src={getR2ImageUrlProxy(data.video_url)}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-                muted
-                playsInline
-              />
+              (data.video_url.includes('youtube.com') || data.video_url.includes('youtu.be')) ? (
+                <div className="w-full h-full bg-slate-900 relative">
+                  <img
+                    src={`https://img.youtube.com/vi/${(() => {
+                      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                      const match = data.video_url?.match(regExp);
+                      return (match && match[2].length === 11) ? match[2] : '';
+                    })()}/hqdefault.jpg`}
+                    alt="YouTube thumbnail"
+                    className="w-full h-full object-cover opacity-80"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                      <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  src={getR2ImageUrlProxy(data.video_url)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                  muted
+                  playsInline
+                />
+              )
             ) : null}
             {data.video_url && (
               <div style={{

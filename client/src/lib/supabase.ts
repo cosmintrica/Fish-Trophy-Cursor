@@ -190,29 +190,38 @@ export const getNetlifyFunctionsBaseUrl = (): string => {
 // Get R2 image URL through proxy to avoid CORS issues
 export const getR2ImageUrlProxy = (imageUrl: string): string => {
   if (!imageUrl) return imageUrl;
-  
+
   // If it's already a proxy URL or not an R2 URL, return as is
   if (imageUrl.includes('/.netlify/functions/r2-proxy') || !imageUrl.includes('r2.cloudflarestorage.com')) {
     return imageUrl;
   }
-  
+
   // In production, always use proxy (relative path)
   if (import.meta.env.PROD) {
     return `/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
   }
-  
+
   // In development:
   // 1. Try to use Netlify Dev proxy if available (port 8889)
   // 2. Fallback to direct R2 URL (R2 allows CORS for public buckets, so this should work)
   // R2 public buckets allow CORS, so direct URLs work in development
   // The proxy is mainly needed for production to ensure consistent behavior
   const baseUrl = getNetlifyFunctionsBaseUrl();
-  
+
+  // Check if it's a video file or YouTube URL
+  // If so, BYPASS PROXY to avoid 6MB limit (videos) and 502 errors
+  const isVideo = /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(imageUrl);
+  const isYouTube = imageUrl.includes('youtube.com') || imageUrl.includes('youtu.be');
+
+  if (isVideo || isYouTube || import.meta.env.DEV) {
+    return imageUrl;
+  }
+
   // If Netlify Dev is running (baseUrl is set), use proxy
   if (baseUrl) {
     return `${baseUrl}/.netlify/functions/r2-proxy?url=${encodeURIComponent(imageUrl)}`;
   }
-  
+
   // Fallback: Use direct R2 URL (works because R2 public buckets allow CORS)
   // This ensures images work even if Netlify Dev is not running
   return imageUrl;

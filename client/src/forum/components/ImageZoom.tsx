@@ -343,18 +343,44 @@ export default function ImageZoom({ src, alt, className = '', style, onClose, on
 
       {/* Image or Video */}
       {isVideo ? (
-        <video
-          key={src}
-          src={src}
-          controls
-          autoPlay
-          style={{
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            objectFit: 'contain'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
+        (src.includes('youtube.com') || src.includes('youtu.be')) ? (
+          <div
+            style={{
+              width: '80vw',
+              height: '80vh',
+              maxWidth: '1200px',
+              backgroundColor: 'black',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={`https://www.youtube.com/embed/${(() => {
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                const match = src.match(regExp);
+                return (match && match[2].length === 11) ? match[2] : '';
+              })()}?autoplay=1`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="YouTube Video"
+              style={{ border: 'none' }}
+            />
+          </div>
+        ) : (
+          <video
+            key={src}
+            src={src}
+            controls
+            autoPlay
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              objectFit: 'contain'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )
       ) : (
         <img
           key={src}

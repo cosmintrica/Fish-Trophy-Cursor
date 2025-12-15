@@ -74,17 +74,35 @@ interface RecordDetailsModalProps {
 const VideoPlayer = ({ url, poster }: { url: string, poster?: string }) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Helper to extract YouTube ID
+  const extractYouTubeId = (url: string): string | null => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const youtubeId = extractYouTubeId(url);
+
   if (!isPlaying) {
     return (
       <div
-        className="w-full h-full relative cursor-pointer group"
+        className="w-full h-full relative cursor-pointer group bg-black"
         onClick={() => setIsPlaying(true)}
       >
         {poster ? (
-          <img src={poster} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt="Video thumbnail" />
+          <img src={poster} className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" alt="Video thumbnail" />
         ) : (
           <div className="w-full h-full bg-slate-900 flex items-center justify-center">
-            <Video className="w-12 h-12 text-slate-700" />
+            {youtubeId ? (
+              <img
+                src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+                className="w-full h-full object-cover opacity-80"
+                alt="YouTube thumbnail"
+              />
+            ) : (
+              <Video className="w-12 h-12 text-slate-700" />
+            )}
           </div>
         )}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -92,6 +110,25 @@ const VideoPlayer = ({ url, poster }: { url: string, poster?: string }) => {
             <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-1 fill-white" />
           </div>
         </div>
+        {youtubeId && (
+          <div className="absolute bottom-4 right-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+            YouTube
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (youtubeId) {
+    return (
+      <div className="w-full h-full bg-black">
+        <iframe
+          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="YouTube Video"
+        />
       </div>
     );
   }
@@ -581,11 +618,11 @@ const RecordDetailsModal = ({
                 )}
                 {!isOwner && (
                   <div className="flex flex-col items-end gap-1 flex-shrink-0 relative">
-                    <button 
+                    <button
                       ref={reportButtonRef}
                       className="flex items-center gap-1 text-[9px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors opacity-70 hover:opacity-100"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (!user) {
                           setIsAuthRequiredModalOpen(true);
                           return;
@@ -596,7 +633,7 @@ const RecordDetailsModal = ({
                       <AlertCircle className="w-2.5 h-2.5" />
                       Raportează
                     </button>
-                    
+
                     {/* Popup motiv - jos, magnetic legat de buton, fără overlay */}
                     {showReportInput && popupPosition && typeof document !== 'undefined' && createPortal(
                       <div
@@ -622,7 +659,7 @@ const RecordDetailsModal = ({
                         />
                         <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-slate-400">
                           <span className={reportReason.trim().length < 10 ? 'text-red-500' : ''}>
-                            {reportReason.trim().length < 10 
+                            {reportReason.trim().length < 10
                               ? `Mai sunt necesare ${10 - reportReason.trim().length} caractere`
                               : `${500 - reportReason.length} caractere rămase`}
                           </span>

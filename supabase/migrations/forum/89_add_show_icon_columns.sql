@@ -27,3 +27,4 @@ COMMENT ON COLUMN forum_subforums.show_icon IS
 'Dacă true, iconul subforumului va fi afișat (dacă toggle-ul global este activat)';
 
 
+

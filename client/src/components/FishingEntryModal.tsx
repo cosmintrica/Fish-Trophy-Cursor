@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Calendar, Scale, Ruler, Fish, Camera, Video, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Upload, Calendar, Scale, Ruler, Fish, Camera, Video, FileText, Trash2, AlertTriangle, Link as LinkIcon, Youtube } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -115,6 +116,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     video_file: null as File | null,
     photo_urls: [] as string[],
     video_url: '',
+    video_source: 'youtube' as 'youtube' | 'upload', // New field to track source
     is_public: true, // only for catches
     global_id: null as number | null
   });
@@ -234,10 +236,10 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           length_cm: lengthValue?.toString() || '',
           captured_at: capturedAt.slice(0, 16), // Ensure format is YYYY-MM-DDTHH:MM
           notes: entry.notes || '',
-          photo_files: [],
           video_file: null,
           photo_urls: existingPhotoUrls,
           video_url: entry.video_url || '',
+          video_source: (entry.video_url && (entry.video_url.includes('youtube.com') || entry.video_url.includes('youtu.be'))) ? 'youtube' : 'upload',
           is_public: entry.is_public ?? true,
           global_id: data?.global_id || entry.global_id || null
         }));
@@ -267,6 +269,7 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         video_file: null,
         photo_urls: [],
         video_url: '',
+        video_source: 'youtube', // Default to YouTube for new entries
         is_public: true,
         global_id: null
       });
@@ -350,6 +353,19 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Helper to extract YouTube ID (also validates URL)
+  const extractYouTubeId = (url: string): string | null => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const handleYouTubeUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setFormData(prev => ({ ...prev, video_url: url }));
   };
 
   const handleFileSelect = (files: FileList | null, fileType: 'photo' | 'video') => {
@@ -696,8 +712,18 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
           return;
         }
 
-        if (!formData.video_file && !formData.video_url) {
+        if (formData.video_source === 'upload' && !formData.video_file && !formData.video_url) {
           toast.error('Videoclipul este obligatoriu pentru record');
+          return;
+        }
+
+        if (formData.video_source === 'youtube' && !formData.video_url) {
+          toast.error('Link-ul YouTube este obligatoriu pentru record');
+          return;
+        }
+
+        if (formData.video_source === 'youtube' && formData.video_url && !extractYouTubeId(formData.video_url)) {
+          toast.error('Link-ul YouTube nu este valid');
           return;
         }
       }
@@ -735,6 +761,12 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
       let videoUrl = formData.video_url;
       if (formData.video_file) {
         videoUrl = await uploadFileToR2(formData.video_file, 'video', entry?.id);
+      } else if (formData.video_source === 'youtube') {
+        // Use the YouTube URL directly
+        videoUrl = formData.video_url;
+      } else {
+        // Keep existing URL if uploading but no new file selected (editing)
+        videoUrl = formData.video_url;
       }
 
       setIsUploading(false);
@@ -1311,53 +1343,118 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
                   )}
                 </div>
 
-                {/* Video Upload */}
+                {/* Video Section - Tabs for YouTube vs Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
+                  <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
                     <Video className="w-4 h-4 text-green-500 dark:text-green-400" />
-                    Videoclip {videoRequired && <span className="text-red-500">*</span>}
+                    Video {videoRequired && <span className="text-red-500">*</span>}
                     {!videoRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                   </Label>
-                  <div className="border-2 border-dashed border-green-300 dark:border-green-700 rounded-xl p-4 text-center hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-all duration-200 group">
-                    <input
-                      type="file"
-                      id="video"
-                      accept="video/*,.mov,.mp4,.avi,.m4v"
-                      onChange={(e) => {
-                        handleFileSelect(e.target.files, 'video');
-                        e.target.value = '';
-                      }}
-                      className="hidden"
-                    />
-                    <label htmlFor="video" className="cursor-pointer block">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
-                        <Video className="w-6 h-6 text-green-500 dark:text-green-400" />
-                      </div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Selectează videoclip</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">MP4, MOV, AVI până la 100MB</p>
-                      {(formData.video_file || formData.video_url) && (
-                        <div className="mt-3">
-                          {previewUrls.video && (
-                            <video
-                              src={previewUrls.video}
-                              controls
-                              className="w-full max-w-xs h-48 object-contain rounded mx-auto bg-black"
-                              preload="metadata"
+
+                  <Tabs
+                    defaultValue={formData.video_source}
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, video_source: val as 'youtube' | 'upload' }))}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-2 mb-4 bg-slate-100 dark:bg-slate-800">
+                      <TabsTrigger value="youtube" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+                        <Youtube className="w-4 h-4 text-red-600" />
+                        Link YouTube
+                      </TabsTrigger>
+                      <TabsTrigger value="upload" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+                        <Upload className="w-4 h-4 text-blue-600" />
+                        Încărcare Video
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="youtube" className="mt-0 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="youtube-url" className="text-xs text-gray-500 font-normal">
+                          Lipește link-ul clipului de pe YouTube
+                        </Label>
+                        <div className="relative">
+                          <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <Input
+                            id="youtube-url"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            value={formData.video_url}
+                            onChange={handleYouTubeUrlChange}
+                            className="pl-9"
+                          />
+                        </div>
+                        {formData.video_url && (
+                          <div className={`text-xs flex items-center gap-1.5 ${extractYouTubeId(formData.video_url) ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                            {extractYouTubeId(formData.video_url) ? (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                Link YouTube valid
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="w-3 h-3" />
+                                Link YouTube nevalid
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* YouTube Preview */}
+                        {formData.video_url && extractYouTubeId(formData.video_url) && (
+                          <div className="mt-2 relative aspect-video rounded-lg overflow-hidden bg-black border border-gray-200 dark:border-slate-600 shadow-sm">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${extractYouTubeId(formData.video_url)}`}
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="YouTube Preview"
                             />
-                          )}
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="upload" className="mt-0 space-y-3">
+                      <div className="space-y-2">
+                        <div className="border-2 border-dashed border-green-300 dark:border-green-700 rounded-xl p-4 text-center hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-all duration-200 group">
+                          <input
+                            type="file"
+                            id="video"
+                            accept="video/*,.mov,.mp4,.avi,.m4v"
+                            onChange={(e) => {
+                              handleFileSelect(e.target.files, 'video');
+                              e.target.value = '';
+                            }}
+                            className="hidden"
+                          />
+                          <label htmlFor="video" className="cursor-pointer block">
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
+                              <Video className="w-6 h-6 text-green-500 dark:text-green-400" />
+                            </div>
+                            <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Încarcă videoclip</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">MP4, MOV, AVI până la 100MB</p>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Video Upload Preview */}
+                      {(formData.video_file || (formData.video_url && formData.video_source === 'upload')) && previewUrls.video && (
+                        <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 bg-black">
+                          <video
+                            src={previewUrls.video}
+                            className="w-full h-full object-contain"
+                            controls
+                          />
+                          <button
+                            type="button"
+                            onClick={removeVideo}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 z-10"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       )}
-                    </label>
-                    {(formData.video_file || formData.video_url) && (
-                      <button
-                        type="button"
-                        onClick={removeVideo}
-                        className="mt-2 text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                      >
-                        Șterge videoclip
-                      </button>
-                    )}
-                  </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </div>
             </div>

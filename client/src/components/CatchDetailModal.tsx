@@ -118,10 +118,10 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   const [deleteCommentModalOpen, setDeleteCommentModalOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<{ id: string, isOwnerDelete: boolean } | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
-  
+
   // Zoom state
   const [isZoomOpen, setIsZoomOpen] = useState(false);
-  
+
   // Report state
   const [showReportInput, setShowReportInput] = useState(false);
   const [reportReason, setReportReason] = useState('');
@@ -180,17 +180,35 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
   const VideoPlayer = ({ url, poster }: { url: string, poster?: string }) => {
     const [isPlaying, setIsPlaying] = useState(false);
 
+    // Helper to extract YouTube ID
+    const extractYouTubeId = (url: string): string | null => {
+      if (!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const youtubeId = extractYouTubeId(url);
+
     if (!isPlaying) {
       return (
         <div
-          className="w-full h-full relative cursor-pointer group"
+          className="w-full h-full relative cursor-pointer group bg-black"
           onClick={() => setIsPlaying(true)}
         >
           {poster ? (
-            <img src={poster} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt="Video thumbnail" />
+            <img src={poster} className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" alt="Video thumbnail" />
           ) : (
             <div className="w-full h-full bg-slate-900 flex items-center justify-center">
-              <Video className="w-12 h-12 text-slate-700" />
+              {youtubeId ? (
+                <img
+                  src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+                  className="w-full h-full object-cover opacity-80"
+                  alt="YouTube thumbnail"
+                />
+              ) : (
+                <Video className="w-12 h-12 text-slate-700" />
+              )}
             </div>
           )}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -198,6 +216,25 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
               <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-1 fill-white" />
             </div>
           </div>
+          {youtubeId && (
+            <div className="absolute bottom-4 right-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+              YouTube
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (youtubeId) {
+      return (
+        <div className="w-full h-full bg-black">
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="YouTube Video"
+          />
         </div>
       );
     }
@@ -387,7 +424,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
   const handleLike = useCallback(async () => {
     if (!catchData) return;
-    
+
     // If user is not authenticated, show auth modal
     if (!user) {
       onAuthRequired?.();
@@ -599,7 +636,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
 
   const confirmDeleteComment = useCallback(async () => {
     if (!commentToDelete) return;
-    
+
     // For owner deletes, reason is mandatory (minim 3 caractere)
     if (commentToDelete.isOwnerDelete && (!deleteReason || deleteReason.trim().length < 3)) {
       toast.error('Motivul este obligatoriu (minim 3 caractere)');
@@ -612,7 +649,7 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
         .from('catch_comments')
         .delete()
         .eq('id', commentToDelete.id);
-      
+
       // If not owner delete, also check user_id
       if (!commentToDelete.isOwnerDelete) {
         deleteQuery.eq('user_id', user?.id);
@@ -707,601 +744,601 @@ export const CatchDetailModal: React.FC<CatchDetailModalProps> = ({
           )}
         </Helmet>
       )}
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/60 dark:bg-black/70 transition-opacity duration-300"
-      onClick={onClose}
-    >
       <div
-        id="catch-modal-content"
-        className="bg-white dark:bg-slate-800 w-full sm:max-w-4xl md:max-w-[1000px] h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/60 dark:bg-black/70 transition-opacity duration-300"
+        onClick={onClose}
       >
-        {/* Close Button Mobile */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors md:hidden touch-manipulation"
+        <div
+          id="catch-modal-content"
+          className="bg-white dark:bg-slate-800 w-full sm:max-w-4xl md:max-w-[1000px] h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in-95 duration-200"
+          onClick={(e) => e.stopPropagation()}
         >
-          <X className="w-5 h-5" />
-        </button>
+          {/* Close Button Mobile */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors md:hidden touch-manipulation"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-        {/* Left Side - Media (Hero) */}
-        <div className="w-full md:w-[45%] flex-1 min-h-0 relative bg-slate-100 dark:bg-slate-900 flex items-center justify-center group overflow-hidden flex-shrink-0">
-          {catchData.video_url ? (
-            <div className="w-full h-full bg-black">
-              <VideoPlayer url={getR2ImageUrlProxy(catchData.video_url)} poster={catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : undefined} />
-            </div>
-          ) : catchData.photo_url ? (
-            <div
-              className="relative w-full h-full cursor-zoom-in group/image"
-              onClick={() => setIsZoomOpen(true)}
-            >
-              <img
-                src={getR2ImageUrlProxy(catchData.photo_url)}
-                alt={catchData.fish_species?.name || 'Captură'}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 will-change-transform"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none" />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-slate-400 p-8 min-h-[200px]">
-              <Fish className="w-16 h-16 mb-2 opacity-50" />
-              <span className="text-sm">Fără imagine</span>
-            </div>
-          )}
-        </div>
-
-        {/* Right Side - Details */}
-        <div className="w-full md:w-[55%] flex flex-col md:h-full bg-white dark:bg-slate-900 overflow-y-auto overscroll-contain custom-scrollbar min-h-0">
-          {/* Mobile Header - Show on mobile */}
-          <div className="md:hidden p-4 pb-3 border-b border-gray-100 dark:border-slate-800">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1 -ml-0.5">
-                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                    Captură
-                  </span>
-                  {catchData.global_id && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await navigator.clipboard.writeText(catchData.global_id!.toString());
-                          toast.success(`ID ${catchData.global_id} copiat!`);
-                        } catch (err) {
-                          toast.error('Eroare la copierea ID-ului');
-                        }
-                      }}
-                      className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
-                      title="Click pentru a copia ID-ul"
-                    >
-                      #{catchData.global_id}
-                    </button>
-                  )}
-                </div>
-                <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {catchData.fish_species?.name || 'Specie necunoscută'}
-                </h2>
-                {catchData.fish_species?.scientific_name && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1">
-                    {catchData.fish_species.scientific_name}
-                  </p>
-                )}
+          {/* Left Side - Media (Hero) */}
+          <div className="w-full md:w-[45%] flex-1 min-h-0 relative bg-slate-100 dark:bg-slate-900 flex items-center justify-center group overflow-hidden flex-shrink-0">
+            {catchData.video_url ? (
+              <div className="w-full h-full bg-black">
+                <VideoPlayer url={getR2ImageUrlProxy(catchData.video_url)} poster={catchData.photo_url ? getR2ImageUrlProxy(catchData.photo_url) : undefined} />
               </div>
-            </div>
-            {catchData.fishing_locations && (
-              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
-                <MapPin className="w-4 h-4 text-blue-500" />
-                {catchData.fishing_locations.county && catchData.fishing_locations.name 
-                  ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
-                  : catchData.fishing_locations.name}
+            ) : catchData.photo_url ? (
+              <div
+                className="relative w-full h-full cursor-zoom-in group/image"
+                onClick={() => setIsZoomOpen(true)}
+              >
+                <img
+                  src={getR2ImageUrlProxy(catchData.photo_url)}
+                  alt={catchData.fish_species?.name || 'Captură'}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 will-change-transform"
+                  loading="eager"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none" />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-slate-400 p-8 min-h-[200px]">
+                <Fish className="w-16 h-16 mb-2 opacity-50" />
+                <span className="text-sm">Fără imagine</span>
               </div>
             )}
           </div>
 
-          {/* Desktop Header */}
-          <div className="hidden md:block p-5 pb-3 border-b border-gray-100 dark:border-slate-800">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1 -ml-0.5">
-                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                    Captură
-                  </span>
-                  {catchData.global_id && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await navigator.clipboard.writeText(catchData.global_id!.toString());
-                          toast.success(`ID ${catchData.global_id} copiat!`);
-                        } catch (err) {
-                          toast.error('Eroare la copierea ID-ului');
-                        }
-                      }}
-                      className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
-                      title="Click pentru a copia ID-ul"
-                    >
-                      #{catchData.global_id}
-                    </button>
+          {/* Right Side - Details */}
+          <div className="w-full md:w-[55%] flex flex-col md:h-full bg-white dark:bg-slate-900 overflow-y-auto overscroll-contain custom-scrollbar min-h-0">
+            {/* Mobile Header - Show on mobile */}
+            <div className="md:hidden p-4 pb-3 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 -ml-0.5">
+                    <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      Captură
+                    </span>
+                    {catchData.global_id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(catchData.global_id!.toString());
+                            toast.success(`ID ${catchData.global_id} copiat!`);
+                          } catch (err) {
+                            toast.error('Eroare la copierea ID-ului');
+                          }
+                        }}
+                        className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
+                        title="Click pentru a copia ID-ul"
+                      >
+                        #{catchData.global_id}
+                      </button>
+                    )}
+                  </div>
+                  <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
+                    {catchData.fish_species?.name || 'Specie necunoscută'}
+                  </h2>
+                  {catchData.fish_species?.scientific_name && (
+                    <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1">
+                      {catchData.fish_species.scientific_name}
+                    </p>
                   )}
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mt-0">
-                  {catchData.fish_species?.name || 'Specie necunoscută'}
-                </h2>
-                {catchData.fish_species?.scientific_name && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1">
-                    {catchData.fish_species.scientific_name}
-                  </p>
-                )}
+              </div>
+              {catchData.fishing_locations && (
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
+                  <MapPin className="w-4 h-4 text-blue-500" />
+                  {catchData.fishing_locations.county && catchData.fishing_locations.name
+                    ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
+                    : catchData.fishing_locations.name}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Header */}
+            <div className="hidden md:block p-5 pb-3 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 -ml-0.5">
+                    <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      Captură
+                    </span>
+                    {catchData.global_id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(catchData.global_id!.toString());
+                            toast.success(`ID ${catchData.global_id} copiat!`);
+                          } catch (err) {
+                            toast.error('Eroare la copierea ID-ului');
+                          }
+                        }}
+                        className="text-[10px] text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 px-1.5 py-0.5 rounded bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors font-mono shrink-0"
+                        title="Click pentru a copia ID-ul"
+                      >
+                        #{catchData.global_id}
+                      </button>
+                    )}
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mt-0">
+                    {catchData.fish_species?.name || 'Specie necunoscută'}
+                  </h2>
+                  {catchData.fish_species?.scientific_name && (
+                    <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1">
+                      {catchData.fish_species.scientific_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Header Actions */}
+                <div className="flex items-center gap-1">
+                  {catchData && (
+                    <ShareButton
+                      url={catchUrl}
+                      title={catchTitle}
+                      description={catchDescription}
+                      image={catchImage}
+                      size="sm"
+                      variant="ghost"
+                    />
+                  )}
+                  {isCatchOwner && onEdit && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit();
+                      }}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      title="Editează captura"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
-              {/* Header Actions */}
-              <div className="flex items-center gap-1">
-                {catchData && (
-                  <ShareButton
-                    url={catchUrl}
-                    title={catchTitle}
-                    description={catchDescription}
-                    image={catchImage}
-                    size="sm"
-                    variant="ghost"
-                  />
-                )}
-                {isCatchOwner && onEdit && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    title="Editează captura"
+              {/* Location & Meta Row */}
+              <div className="flex flex-col gap-3 mb-0.5 mt-1.5">
+                {catchData.fishing_locations && (
+                  <Link
+                    to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
+                    className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Edit className="w-5 h-5" />
-                  </button>
+                    <MapPin className="w-4 h-4 text-blue-500" />
+                    {catchData.fishing_locations.county && catchData.fishing_locations.name
+                      ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
+                      : catchData.fishing_locations.name}
+                  </Link>
                 )}
+              </div>
+            </div>
+
+            <div className="p-3 md:p-4 space-y-3 md:space-y-4">
+              {/* Stats Cards */}
+              {(catchData.weight || catchData.length_cm) && (
+                <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                  {catchData.weight && (
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-1 md:gap-1.5 text-blue-600 dark:text-blue-400 mb-0.5 md:mb-1">
+                        <Scale className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[9px] md:text-[10px] font-bold uppercase">Greutate</span>
+                      </div>
+                      <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                        {catchData.weight} <span className="text-[10px] md:text-xs text-slate-400 font-medium">kg</span>
+                      </div>
+                    </div>
+                  )}
+                  {catchData.length_cm && (
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-1 md:gap-1.5 text-emerald-600 dark:text-emerald-400 mb-0.5 md:mb-1">
+                        <Ruler className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[9px] md:text-[10px] font-bold uppercase">Lungime</span>
+                      </div>
+                      <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
+                        {catchData.length_cm} <span className="text-[10px] md:text-xs text-slate-400 font-medium">cm</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Date */}
+              <div className="flex items-center gap-1.5 md:gap-2 text-slate-500 dark:text-slate-400 text-xs md:text-sm font-medium">
+                <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                <span className="break-words">{formattedDate}</span>
+              </div>
+
+              {/* Notes */}
+              {catchData.notes && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 md:p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <div className="text-[9px] md:text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5 md:mb-2">Note</div>
+                  <p className="text-xs md:text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed break-words">{catchData.notes}</p>
+                </div>
+              )}
+
+              {/* Like/Comment buttons */}
+              <div className="flex items-center gap-2 md:gap-3 pt-2 md:pt-3 border-t border-gray-200 dark:border-slate-700">
                 <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  onClick={handleLike}
+                  disabled={isLiking && !!user}
+                  className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 ${catchData.is_liked_by_current_user && user
+                    ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
+                    : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
+                    }`}
+                  style={{
+                    transform: 'translateZ(0)',
+                    willChange: 'transform, background-color'
+                  }}
                 >
-                  <X className="w-6 h-6" />
+                  <Heart
+                    className={`w-4 h-4 md:w-5 md:h-5 ${catchData.is_liked_by_current_user && user ? 'fill-current text-red-600' : ''}`}
+                    style={{
+                      transform: likeAnimation ? 'translateZ(0) scale(1.2)' : 'translateZ(0) scale(1)',
+                      willChange: 'transform',
+                      transition: 'transform 0.2s ease-out'
+                    }}
+                  />
+                  <span className="text-xs md:text-sm font-semibold">{catchData.like_count || 0}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      onAuthRequired?.();
+                      return;
+                    }
+                    setShowCommentForm(!showCommentForm);
+                  }}
+                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500"
+                  style={{
+                    transform: 'translateZ(0)',
+                    willChange: 'transform, background-color'
+                  }}
+                >
+                  <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="text-xs md:text-sm font-semibold">{catchData.comment_count || 0}</span>
                 </button>
               </div>
             </div>
 
-            {/* Location & Meta Row */}
-            <div className="flex flex-col gap-3 mb-0.5 mt-1.5">
-              {catchData.fishing_locations && (
-                <Link
-                  to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
-                  className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MapPin className="w-4 h-4 text-blue-500" />
-                  {catchData.fishing_locations.county && catchData.fishing_locations.name 
-                    ? `${catchData.fishing_locations.county} - ${catchData.fishing_locations.name}`
-                    : catchData.fishing_locations.name}
-                </Link>
-              )}
-            </div>
-          </div>
+            {/* Comments Section */}
+            <div className="p-3 md:p-4 pt-0 border-t border-gray-200 dark:border-slate-700">
+              <h4 className="text-xs md:text-sm font-semibold text-gray-900 dark:text-slate-50 mb-2 md:mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
 
-          <div className="p-3 md:p-4 space-y-3 md:space-y-4">
-            {/* Stats Cards */}
-            {(catchData.weight || catchData.length_cm) && (
-              <div className="grid grid-cols-2 gap-2 md:gap-2.5">
-                {catchData.weight && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-1 md:gap-1.5 text-blue-600 dark:text-blue-400 mb-0.5 md:mb-1">
-                      <Scale className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                      <span className="text-[9px] md:text-[10px] font-bold uppercase">Greutate</span>
-                    </div>
-                    <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-                      {catchData.weight} <span className="text-[10px] md:text-xs text-slate-400 font-medium">kg</span>
-                    </div>
-                  </div>
-                )}
-                {catchData.length_cm && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-2 md:p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-1 md:gap-1.5 text-emerald-600 dark:text-emerald-400 mb-0.5 md:mb-1">
-                      <Ruler className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                      <span className="text-[9px] md:text-[10px] font-bold uppercase">Lungime</span>
-                    </div>
-                    <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-                      {catchData.length_cm} <span className="text-[10px] md:text-xs text-slate-400 font-medium">cm</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Date */}
-            <div className="flex items-center gap-1.5 md:gap-2 text-slate-500 dark:text-slate-400 text-xs md:text-sm font-medium">
-              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-              <span className="break-words">{formattedDate}</span>
-            </div>
-
-            {/* Notes */}
-            {catchData.notes && (
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 md:p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                <div className="text-[9px] md:text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5 md:mb-2">Note</div>
-                <p className="text-xs md:text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed break-words">{catchData.notes}</p>
-              </div>
-            )}
-
-            {/* Like/Comment buttons */}
-            <div className="flex items-center gap-2 md:gap-3 pt-2 md:pt-3 border-t border-gray-200 dark:border-slate-700">
-              <button
-                onClick={handleLike}
-                disabled={isLiking && !!user}
-                className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 ${catchData.is_liked_by_current_user && user
-                  ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40'
-                  : 'text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500'
-                  }`}
-                style={{
-                  transform: 'translateZ(0)',
-                  willChange: 'transform, background-color'
-                }}
-              >
-                <Heart
-                  className={`w-4 h-4 md:w-5 md:h-5 ${catchData.is_liked_by_current_user && user ? 'fill-current text-red-600' : ''}`}
-                  style={{
-                    transform: likeAnimation ? 'translateZ(0) scale(1.2)' : 'translateZ(0) scale(1)',
-                    willChange: 'transform',
-                    transition: 'transform 0.2s ease-out'
-                  }}
-                />
-                <span className="text-xs md:text-sm font-semibold">{catchData.like_count || 0}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  if (!user) {
-                    onAuthRequired?.();
-                    return;
-                  }
-                  setShowCommentForm(!showCommentForm);
-                }}
-                className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium transition-all duration-200 touch-manipulation min-h-[44px] flex-1 text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500"
-                style={{
-                  transform: 'translateZ(0)',
-                  willChange: 'transform, background-color'
-                }}
-              >
-                <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-xs md:text-sm font-semibold">{catchData.comment_count || 0}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Comments Section */}
-          <div className="p-3 md:p-4 pt-0 border-t border-gray-200 dark:border-slate-700">
-            <h4 className="text-xs md:text-sm font-semibold text-gray-900 dark:text-slate-50 mb-2 md:mb-3">Comentarii ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})</h4>
-
-            {/* Comment Form - available for authenticated users when showCommentForm is true */}
-            {showCommentForm && user && (
-              <div className="mb-4 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Lasă un comentariu..."
-                  className="min-h-[60px] text-sm mb-2 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) {
-                      handleSubmitComment();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleSubmitComment}
-                  disabled={!newComment.trim() || isSubmittingComment}
-                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-sm py-2 px-3 h-auto touch-manipulation"
-                  size="sm"
-                >
-                  <Send className="w-4 h-4 mr-1.5" />
-                  {isSubmittingComment ? 'Se trimite...' : 'Trimite'}
-                </Button>
-              </div>
-            )}
-
-            {/* Comments List - Show all comments including replies */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto overscroll-contain custom-scrollbar">
-                  {comments.length === 0 ? (
-                    <div className="text-center py-6 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
-                      <MessageCircle className="w-8 h-8 text-gray-300 dark:text-slate-500 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Nu există comentarii încă</p>
-                      <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Fii primul care comentează!</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Render all root comments */}
-                      {comments.map((comment) => (
-                        <CommentItem
-                          key={comment.id}
-                          comment={comment}
-                          user={user}
-                          isCatchOwner={isCatchOwner}
-                          replyingTo={replyingTo}
-                          setReplyingTo={setReplyingTo}
-                          replyText={replyText}
-                          setReplyText={setReplyText}
-                          handleSubmitReply={handleSubmitReply}
-                          editingComment={editingComment}
-                          setEditingComment={setEditingComment}
-                          editText={editText}
-                          setEditText={setEditText}
-                          handleEditComment={handleEditComment}
-                          deletingComment={deletingComment}
-                          handleDeleteComment={handleDeleteComment}
-                          handleDeleteCommentAsOwner={handleDeleteCommentAsOwner}
-                          getR2ImageUrlProxy={getR2ImageUrlProxy}
-                        />
-                      ))}
-                    </>
-                  )}
+              {/* Comment Form - available for authenticated users when showCommentForm is true */}
+              {showCommentForm && user && (
+                <div className="mb-4 bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Lasă un comentariu..."
+                    className="min-h-[60px] text-sm mb-2 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-50 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.ctrlKey) {
+                        handleSubmitComment();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleSubmitComment}
+                    disabled={!newComment.trim() || isSubmittingComment}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-sm py-2 px-3 h-auto touch-manipulation"
+                    size="sm"
+                  >
+                    <Send className="w-4 h-4 mr-1.5" />
+                    {isSubmittingComment ? 'Se trimite...' : 'Trimite'}
+                  </Button>
                 </div>
+              )}
 
-            {/* Internal Links + Report Button */}
-            <div className="mt-6 pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
-              {(catchData.fish_species || catchData.fishing_locations) ? (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
-                  <span className="text-gray-400 dark:text-slate-500">Vezi și alte capturi:</span>
-                  {catchData.fish_species && (
-                    <Link
-                      to={`/records?species=${createSlug(catchData.fish_species.name)}`}
-                      className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      de {catchData.fish_species.name}
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </Link>
-                  )}
-                  {catchData.fishing_locations && (
-                    <>
-                      <span className="text-gray-300 dark:text-slate-600">•</span>
+              {/* Comments List - Show all comments including replies */}
+              <div className="space-y-2 max-h-[400px] overflow-y-auto overscroll-contain custom-scrollbar">
+                {comments.length === 0 ? (
+                  <div className="text-center py-6 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
+                    <MessageCircle className="w-8 h-8 text-gray-300 dark:text-slate-500 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Nu există comentarii încă</p>
+                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Fii primul care comentează!</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Render all root comments */}
+                    {comments.map((comment) => (
+                      <CommentItem
+                        key={comment.id}
+                        comment={comment}
+                        user={user}
+                        isCatchOwner={isCatchOwner}
+                        replyingTo={replyingTo}
+                        setReplyingTo={setReplyingTo}
+                        replyText={replyText}
+                        setReplyText={setReplyText}
+                        handleSubmitReply={handleSubmitReply}
+                        editingComment={editingComment}
+                        setEditingComment={setEditingComment}
+                        editText={editText}
+                        setEditText={setEditText}
+                        handleEditComment={handleEditComment}
+                        deletingComment={deletingComment}
+                        handleDeleteComment={handleDeleteComment}
+                        handleDeleteCommentAsOwner={handleDeleteCommentAsOwner}
+                        getR2ImageUrlProxy={getR2ImageUrlProxy}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+
+              {/* Internal Links + Report Button */}
+              <div className="mt-6 pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
+                {(catchData.fish_species || catchData.fishing_locations) ? (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-slate-400">
+                    <span className="text-gray-400 dark:text-slate-500">Vezi și alte capturi:</span>
+                    {catchData.fish_species && (
                       <Link
-                        to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
+                        to={`/records?species=${createSlug(catchData.fish_species.name)}`}
                         className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="truncate max-w-[120px]">
-                          {(() => {
-                            const type = catchData.fishing_locations?.type || '';
-                            const name = catchData.fishing_locations?.name || '';
-                            if (type === 'lac' || type === 'baraj') return `pe ${name}`;
-                            if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
-                            if (type === 'mare') return `pe ${name}`;
-                            if (type === 'delta') return `în ${name}`;
-                            return `de la ${name}`;
-                          })()}
-                        </span>
+                        de {catchData.fish_species.name}
                         <ExternalLink className="w-2.5 h-2.5" />
                       </Link>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div></div>
-              )}
-              {!isCatchOwner && (
-                <div className="flex flex-col items-end gap-1 flex-shrink-0 relative">
-                  <button 
-                    ref={reportButtonRef}
-                    className="flex items-center gap-1 text-[9px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors opacity-70 hover:opacity-100"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (!user) {
-                        setIsAuthRequiredModalOpen(true);
-                        return;
-                      }
-                      setShowReportInput(!showReportInput);
-                    }}
-                  >
-                    <AlertCircle className="w-2.5 h-2.5" />
-                    Raportează
-                  </button>
-                  
-                  {/* Popup motiv - jos, magnetic legat de buton, fără overlay */}
-                  {showReportInput && popupPosition && typeof document !== 'undefined' && createPortal(
-                    <div
-                      id={`report-popup-catch-${catchData.id}`}
-                      className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg p-3 flex flex-col gap-2"
-                      style={{
-                        position: 'fixed',
-                        top: `${popupPosition.top}px`,
-                        left: `${popupPosition.left}px`,
-                        zIndex: 1000,
-                        width: isMobile ? '280px' : '320px'
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <textarea
-                        value={reportReason}
-                        onChange={(e) => setReportReason(e.target.value)}
-                        placeholder="Motivul raportării (min. 10 caractere)..."
-                        className="text-xs p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded text-gray-900 dark:text-slate-50 resize-none"
-                        style={{ minHeight: '80px', fontSize: '0.6875rem' }}
-                        maxLength={500}
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-slate-400">
-                        <span className={reportReason.trim().length < 10 ? 'text-red-500' : ''}>
-                          {reportReason.trim().length < 10 
-                            ? `Mai sunt necesare ${10 - reportReason.trim().length} caractere`
-                            : `${500 - reportReason.length} caractere rămase`}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setShowReportInput(false);
-                            setReportReason('');
-                          }}
-                          className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 underline text-[10px]"
+                    )}
+                    {catchData.fishing_locations && (
+                      <>
+                        <span className="text-gray-300 dark:text-slate-600">•</span>
+                        <Link
+                          to={`/records?location=${createSlug(catchData.fishing_locations.name)}`}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          Anulează
-                        </button>
-                      </div>
-                      {/* Buton separat pentru trimitere */}
-                      <button
-                        onClick={async () => {
-                          if (!user) {
-                            setIsAuthRequiredModalOpen(true);
-                            return;
-                          }
-                          if (reportReason.trim().length < 10) {
-                            toast.error('Motivul trebuie să aibă minim 10 caractere');
-                            return;
-                          }
-                          setIsSubmittingReport(true);
-                          try {
-                            const { error } = await supabase
-                              .from('reports')
-                              .insert({
-                                report_type: 'catch',
-                                item_id: catchData.id,
-                                item_url: username ? `${window.location.origin}/profile/${username}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}` : `${window.location.origin}/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`,
-                                message: reportReason.trim(),
-                                reporter_id: user.id,
-                                status: 'pending',
-                                created_at: new Date().toISOString()
-                              });
-                            if (error) throw error;
-                            toast.success('Raportare trimisă cu succes!');
-                            setShowReportInput(false);
-                            setReportReason('');
-                          } catch (error: any) {
-                            console.error('Error submitting report:', error);
-                            toast.error('Eroare la trimiterea raportării');
-                          } finally {
-                            setIsSubmittingReport(false);
-                          }
+                          <span className="truncate max-w-[120px]">
+                            {(() => {
+                              const type = catchData.fishing_locations?.type || '';
+                              const name = catchData.fishing_locations?.name || '';
+                              if (type === 'lac' || type === 'baraj') return `pe ${name}`;
+                              if (type === 'rau' || type === 'fluviu') return `pe râul ${name}`;
+                              if (type === 'mare') return `pe ${name}`;
+                              if (type === 'delta') return `în ${name}`;
+                              return `de la ${name}`;
+                            })()}
+                          </span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div></div>
+                )}
+                {!isCatchOwner && (
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0 relative">
+                    <button
+                      ref={reportButtonRef}
+                      className="flex items-center gap-1 text-[9px] text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors opacity-70 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!user) {
+                          setIsAuthRequiredModalOpen(true);
+                          return;
+                        }
+                        setShowReportInput(!showReportInput);
+                      }}
+                    >
+                      <AlertCircle className="w-2.5 h-2.5" />
+                      Raportează
+                    </button>
+
+                    {/* Popup motiv - jos, magnetic legat de buton, fără overlay */}
+                    {showReportInput && popupPosition && typeof document !== 'undefined' && createPortal(
+                      <div
+                        id={`report-popup-catch-${catchData.id}`}
+                        className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg p-3 flex flex-col gap-2"
+                        style={{
+                          position: 'fixed',
+                          top: `${popupPosition.top}px`,
+                          left: `${popupPosition.left}px`,
+                          zIndex: 1000,
+                          width: isMobile ? '280px' : '320px'
                         }}
-                        disabled={isSubmittingReport || reportReason.trim().length < 10}
-                        className="text-xs px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {isSubmittingReport ? '⏳ Se trimite...' : 'Trimite raport'}
-                      </button>
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Image Zoom */}
-      {isZoomOpen && catchData.photo_url && (
-        <ImageZoom
-          src={getR2ImageUrlProxy(catchData.photo_url)}
-          alt={catchData.fish_species?.name || 'Captură'}
-          onClose={() => setIsZoomOpen(false)}
-        />
-      )}
-
-
-      <AuthRequiredModal
-        isOpen={isAuthRequiredModalOpen}
-        onClose={() => setIsAuthRequiredModalOpen(false)}
-        onLogin={() => {
-          setIsAuthRequiredModalOpen(false);
-          setAuthModalMode('login');
-          setIsAuthModalOpen(true);
-        }}
-        onRegister={() => {
-          setIsAuthRequiredModalOpen(false);
-          setAuthModalMode('register');
-          setIsAuthModalOpen(true);
-        }}
-        title="Autentificare necesară"
-        message="Trebuie să fii autentificat pentru a raporta o captură."
-        actionName="raportarea unei capturi"
-      />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialMode={authModalMode}
-      />
-
-      {/* Delete Comment Modal */}
-      {deleteCommentModalOpen && commentToDelete && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70"
-          onClick={() => {
-            setDeleteCommentModalOpen(false);
-            setCommentToDelete(null);
-            setDeleteReason('');
-          }}
-        >
-          <div
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-gray-200 dark:border-slate-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Șterge comentariul
-              </h3>
-              <button
-                onClick={() => {
-                  setDeleteCommentModalOpen(false);
-                  setCommentToDelete(null);
-                  setDeleteReason('');
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {commentToDelete.isOwnerDelete && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Motivul ștergerii <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={deleteReason}
-                  onChange={(e) => setDeleteReason(e.target.value)}
-                  placeholder="Motivul este obligatoriu (minim 3 caractere)..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows={3}
-                  required
-                />
-                {deleteReason && deleteReason.trim().length < 3 && (
-                  <p className="mt-1 text-xs text-red-500">Minim 3 caractere</p>
+                        <textarea
+                          value={reportReason}
+                          onChange={(e) => setReportReason(e.target.value)}
+                          placeholder="Motivul raportării (min. 10 caractere)..."
+                          className="text-xs p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded text-gray-900 dark:text-slate-50 resize-none"
+                          style={{ minHeight: '80px', fontSize: '0.6875rem' }}
+                          maxLength={500}
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-slate-400">
+                          <span className={reportReason.trim().length < 10 ? 'text-red-500' : ''}>
+                            {reportReason.trim().length < 10
+                              ? `Mai sunt necesare ${10 - reportReason.trim().length} caractere`
+                              : `${500 - reportReason.length} caractere rămase`}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setShowReportInput(false);
+                              setReportReason('');
+                            }}
+                            className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 underline text-[10px]"
+                          >
+                            Anulează
+                          </button>
+                        </div>
+                        {/* Buton separat pentru trimitere */}
+                        <button
+                          onClick={async () => {
+                            if (!user) {
+                              setIsAuthRequiredModalOpen(true);
+                              return;
+                            }
+                            if (reportReason.trim().length < 10) {
+                              toast.error('Motivul trebuie să aibă minim 10 caractere');
+                              return;
+                            }
+                            setIsSubmittingReport(true);
+                            try {
+                              const { error } = await supabase
+                                .from('reports')
+                                .insert({
+                                  report_type: 'catch',
+                                  item_id: catchData.id,
+                                  item_url: username ? `${window.location.origin}/profile/${username}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}` : `${window.location.origin}/profile/${catchData.user_id}${catchData.global_id ? `#catch-${catchData.global_id}` : `?catch=${catchData.id}`}`,
+                                  message: reportReason.trim(),
+                                  reporter_id: user.id,
+                                  status: 'pending',
+                                  created_at: new Date().toISOString()
+                                });
+                              if (error) throw error;
+                              toast.success('Raportare trimisă cu succes!');
+                              setShowReportInput(false);
+                              setReportReason('');
+                            } catch (error: any) {
+                              console.error('Error submitting report:', error);
+                              toast.error('Eroare la trimiterea raportării');
+                            } finally {
+                              setIsSubmittingReport(false);
+                            }
+                          }}
+                          disabled={isSubmittingReport || reportReason.trim().length < 10}
+                          className="text-xs px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isSubmittingReport ? '⏳ Se trimite...' : 'Trimite raport'}
+                        </button>
+                      </div>,
+                      document.body
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-
-            {!commentToDelete.isOwnerDelete && (
-              <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-                Ești sigur că vrei să ștergi acest comentariu?
-              </p>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDeleteCommentModalOpen(false);
-                  setCommentToDelete(null);
-                  setDeleteReason('');
-                }}
-                className="flex-1"
-              >
-                Anulează
-              </Button>
-              <Button
-                onClick={confirmDeleteComment}
-                disabled={commentToDelete.isOwnerDelete && (!deleteReason || deleteReason.trim().length < 3)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Șterge
-              </Button>
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Image Zoom */}
+        {isZoomOpen && catchData.photo_url && (
+          <ImageZoom
+            src={getR2ImageUrlProxy(catchData.photo_url)}
+            alt={catchData.fish_species?.name || 'Captură'}
+            onClose={() => setIsZoomOpen(false)}
+          />
+        )}
+
+
+        <AuthRequiredModal
+          isOpen={isAuthRequiredModalOpen}
+          onClose={() => setIsAuthRequiredModalOpen(false)}
+          onLogin={() => {
+            setIsAuthRequiredModalOpen(false);
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onRegister={() => {
+            setIsAuthRequiredModalOpen(false);
+            setAuthModalMode('register');
+            setIsAuthModalOpen(true);
+          }}
+          title="Autentificare necesară"
+          message="Trebuie să fii autentificat pentru a raporta o captură."
+          actionName="raportarea unei capturi"
+        />
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode={authModalMode}
+        />
+
+        {/* Delete Comment Modal */}
+        {deleteCommentModalOpen && commentToDelete && (
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70"
+            onClick={() => {
+              setDeleteCommentModalOpen(false);
+              setCommentToDelete(null);
+              setDeleteReason('');
+            }}
+          >
+            <div
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-gray-200 dark:border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Șterge comentariul
+                </h3>
+                <button
+                  onClick={() => {
+                    setDeleteCommentModalOpen(false);
+                    setCommentToDelete(null);
+                    setDeleteReason('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {commentToDelete.isOwnerDelete && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                    Motivul ștergerii <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Motivul este obligatoriu (minim 3 caractere)..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={3}
+                    required
+                  />
+                  {deleteReason && deleteReason.trim().length < 3 && (
+                    <p className="mt-1 text-xs text-red-500">Minim 3 caractere</p>
+                  )}
+                </div>
+              )}
+
+              {!commentToDelete.isOwnerDelete && (
+                <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
+                  Ești sigur că vrei să ștergi acest comentariu?
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteCommentModalOpen(false);
+                    setCommentToDelete(null);
+                    setDeleteReason('');
+                  }}
+                  className="flex-1"
+                >
+                  Anulează
+                </Button>
+                <Button
+                  onClick={confirmDeleteComment}
+                  disabled={commentToDelete.isOwnerDelete && (!deleteReason || deleteReason.trim().length < 3)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Șterge
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 };
@@ -1344,11 +1381,11 @@ const CommentItem: React.FC<{
   handleDeleteCommentAsOwner,
   getR2ImageUrlProxy
 }) => {
-  const isCommentOwner = user?.id === comment.user_id;
-  const isEditing = editingComment === comment.id;
-  const isReplying = replyingTo === comment.id;
+    const isCommentOwner = user?.id === comment.user_id;
+    const isEditing = editingComment === comment.id;
+    const isReplying = replyingTo === comment.id;
 
-  return (
+    return (
       <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
         {/* Main Comment */}
         <div className="p-2.5 sm:p-3">
