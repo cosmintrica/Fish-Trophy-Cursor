@@ -383,9 +383,11 @@ export default function MobileOptimizedCategories({ onSubcategoryClick }: Mobile
                           style={{ marginRight: '0.25rem' }}
                         />
                       )}
-                      <div style={{ fontSize: '0.875rem' }}>
-                        {subcategory.icon || '📝'}
-                      </div>
+                      {showIcons && (
+                        <div style={{ fontSize: '0.875rem' }}>
+                          {subcategory.icon || '📝'}
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: theme.text, marginBottom: '0.125rem' }}>
                           {subcategory.name}

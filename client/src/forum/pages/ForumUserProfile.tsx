@@ -138,17 +138,18 @@ export default function ForumUserProfile() {
   const { websiteData, organizationData } = useStructuredData();
 
 
-  // Get rank icon helper
-  const getRankIcon = (rank: string) => {
-    const rankIcons: { [key: string]: string } = {
-      'ou_de_peste': '🥚',
-      'pui_de_peste': '🐟',
-      'pescar_incepator': '🎣',
-      'pescar_experimentat': '🐠',
-      'pescar_expert': '🦈',
-      'maestru_pescuit': '👑',
+  // Get rank display helper (icon + label + color)
+  const getRankDisplay = (rank: string) => {
+    const rankMap: Record<string, { label: string; emoji: string; color: string }> = {
+      'ou_de_peste': { label: 'Ou de Pește', emoji: '🥚', color: '#9ca3af' },
+      'puiet': { label: 'Puiet', emoji: '🐟', color: '#60a5fa' },
+      'pui_de_crap': { label: 'Pui de Crap', emoji: '🐠', color: '#34d399' },
+      'crap_junior': { label: 'Crap Junior', emoji: '🎣', color: '#fbbf24' },
+      'crap_senior': { label: 'Crap Senior', emoji: '🏆', color: '#fb923c' },
+      'maestru_pescar': { label: 'Maestru Pescar', emoji: '💎', color: '#f472b6' },
+      'legenda_apelor': { label: 'Legenda Apelor', emoji: '👑', color: '#a78bfa' }
     };
-    return rankIcons[rank] || '🎣';
+    return rankMap[rank] || { label: rank, emoji: '🎣', color: theme.textSecondary };
   };
 
   // Format date helper
@@ -330,7 +331,7 @@ export default function ForumUserProfile() {
                   alignItems: 'center',
                   gap: '0.5rem',
                   flexWrap: 'wrap',
-                  marginBottom: '0.25rem'
+                  marginBottom: '0.125rem'
                 }}>
                   <h1 style={{
                     fontSize: 'clamp(1.125rem, 3vw, 1.5rem)',
@@ -341,18 +342,6 @@ export default function ForumUserProfile() {
                   }}>
                     {userProfile.username}
                   </h1>
-                  <span style={{
-                    fontSize: 'clamp(1rem, 2.5vw, 1.25rem)'
-                  }}>
-                    {getRankIcon(userProfile.rank)}
-                  </span>
-                  <span style={{
-                    fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
-                    color: theme.textSecondary,
-                    fontWeight: '500'
-                  }}>
-                    {userProfile.rank.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </span>
                   {userProfile.is_online && (
                     <span style={{
                       fontSize: '0.625rem',
@@ -372,6 +361,23 @@ export default function ForumUserProfile() {
                     </span>
                   )}
                 </div>
+                {/* Rank - Sub username, mai mic */}
+                {(() => {
+                  const rankInfo = getRankDisplay(userProfile.rank);
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)',
+                      color: rankInfo.color,
+                      marginTop: '0.125rem'
+                    }}>
+                      <span>{rankInfo.emoji}</span>
+                      <span style={{ fontWeight: '500' }}>{rankInfo.label}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* Signature - Compact */}
                 {userProfile.signature && (
