@@ -913,7 +913,7 @@ export default function AdminCategories() {
                                                                 }}
                                                             >
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                                                                    {(subforum.show_icon !== false) && (
+                                                                    {showSubforumIcons && (subforum.show_icon !== false) && (
                                                                         <span style={{ fontSize: '1rem' }}>{subforum.icon || '📁'}</span>
                                                                     )}
                                                                     <div>
