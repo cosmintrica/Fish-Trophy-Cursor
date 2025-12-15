@@ -73,6 +73,7 @@ export default function AdminCategories() {
             } else {
                 showToast(`Iconurile categoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
                 queryClient.invalidateQueries({ queryKey: ['categories'] });
+                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
             }
         } catch (error) {
             setShowCategoryIcons(previousValue);
@@ -96,6 +97,7 @@ export default function AdminCategories() {
                 console.log('[AdminCategories] Successfully set subcategory icons');
                 showToast(`Iconurile subcategoriilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
                 queryClient.invalidateQueries({ queryKey: ['categories'] });
+                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
             }
         } catch (error) {
             console.error('[AdminCategories] Exception setting subcategory icons:', error);
@@ -115,7 +117,9 @@ export default function AdminCategories() {
                 showToast('Eroare la salvare', 'error');
             } else {
                 showToast(`Iconurile subforumurilor ${newValue ? 'au fost activate' : 'au fost dezactivate'}`, 'success');
+                // Invalidează atât categoriile, cât și query-urile pentru subcategory/subforum
                 queryClient.invalidateQueries({ queryKey: ['categories'] });
+                queryClient.invalidateQueries({ queryKey: ['subcategory-or-subforum'] });
             }
         } catch (error) {
             setShowSubforumIcons(previousValue);
