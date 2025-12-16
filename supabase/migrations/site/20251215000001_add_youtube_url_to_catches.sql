@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS youtube_url TEXT;
 
 -- Add comment for documentation
 COMMENT ON COLUMN public.catches.youtube_url IS 'YouTube video URL (separate from video_url which is for uploaded videos)';
+
