@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase';
 import ReadStatusMarker from '../components/ReadStatusMarker';
 import { useMultipleTopicsReadStatus, useMultipleSubcategoriesUnreadStatus, useMultipleSubforumsUnreadStatus } from '../hooks/useTopicReadStatus';
 import { usePrefetch } from '../hooks/usePrefetch';
-import { useSubcategoryOrSubforum } from '../hooks/useSubcategoryOrSubforum';
+import { useForumContext } from '../hooks/useForumContext';
 import SEOHead from '../../components/SEOHead';
 import { useStructuredData } from '../../hooks/useStructuredData';
 import NotFound404 from '../../components/NotFound404';
@@ -40,81 +40,41 @@ export default function CategoryPage() {
   // Slug-ul din URL poate fi categorie, subcategorie sau subforum
   const slugToUse = subcategoryOrSubforumSlug || categoryIdFromParams;
 
-  // State pentru a detecta dacă slug-ul este categorie
-  const [isCategory, setIsCategory] = useState(false);
-  const [checkingCategory, setCheckingCategory] = useState(true); // Default true la început
+  // -- SEQUENTIAL PROBING (Option A) --
+  // 1. Try Subcategory
+  const ctxSubcategory = useForumContext({
+    slug: slugToUse,
+    expectedType: 'subcategory'
+  });
 
+  const subcategoryFailed = !ctxSubcategory.isLoading && ctxSubcategory.data && !ctxSubcategory.data.type;
 
+  // 2. Try Subforum
+  const ctxSubforum = useForumContext({
+    slug: slugToUse,
+    expectedType: 'subforum',
+    options: { enabled: !!subcategoryFailed }
+  });
 
-  const [categoryData, setCategoryData] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const subforumFailed = subcategoryFailed && !ctxSubforum.isLoading && ctxSubforum.data && !ctxSubforum.data.type;
 
-  // Folosim React Query hook pentru subcategorie/subforum - cache automat, fără flickering
-  // IMPORTANT: Nu mai trecem categorySlug - slug-urile sunt unice global
-  const { data: subcategoryOrSubforumData, isLoading: loadingSubcategoryOrSubforum } = useSubcategoryOrSubforum(
-    undefined, // categorySlug nu mai este necesar
-    slugToUse // potentialSlug poate fi subcategorySlug sau categorySlug
-  );
+  // 3. Try Category
+  const ctxCategory = useForumContext({
+    slug: slugToUse,
+    expectedType: 'category',
+    options: { enabled: !!subforumFailed }
+  });
 
-  // Detectăm dacă slug-ul este categorie (dacă hook-ul nu găsește subcategorie/subforum)
-  useEffect(() => {
-    // 1. Dacă avem deja date despre subcategorie/subforum (găsit de hook)
-    if (subcategoryOrSubforumData && subcategoryOrSubforumData.type) {
-      setCheckingCategory(false);
-      setIsCategory(false);
-      setCategoryData(null);
-      return;
-    }
-
-    // 2. Dacă hook-ul încă încarcă
-    if (loadingSubcategoryOrSubforum) {
-      setCheckingCategory(true);
-      return;
-    }
-
-    // 3. Dacă hook-ul a terminat și nu a găsit nimic → Verificăm manual dacă e categorie
-    const checkIfCategory = async () => {
-      if (!slugToUse) {
-        setCheckingCategory(false);
-        setIsCategory(false);
-        setCategoryData(null);
-        return;
-      }
-
-      try {
-        const { data: category, error } = await supabase
-          .from('forum_categories')
-          .select('id, name, slug')
-          .eq('slug', slugToUse)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error checking category:', error);
-          setIsCategory(false);
-          setCategoryData(null);
-        } else if (category) {
-          setIsCategory(true);
-          setCategoryData(category);
-        } else {
-          setIsCategory(false);
-          setCategoryData(null);
-        }
-      } catch (error) {
-        console.error('Error checking category:', error);
-        setIsCategory(false);
-        setCategoryData(null);
-      } finally {
-        setCheckingCategory(false);
-      }
-    };
-
-    checkIfCategory();
-  }, [slugToUse, subcategoryOrSubforumData, loadingSubcategoryOrSubforum]);
+  // MERGE RESULTS
+  const effectiveContext = ctxSubcategory.data?.type ? ctxSubcategory.data : (ctxSubforum.data?.type ? ctxSubforum.data : ctxCategory.data);
+  const loadingForumData = ctxSubcategory.isLoading || (subcategoryFailed && ctxSubforum.isLoading) || (subforumFailed && ctxCategory.isLoading);
+  const isCategory = effectiveContext?.type === 'category';
+  const subcategoryId = effectiveContext?.type === 'subcategory' ? effectiveContext.entity?.id : null;
+  const subforumId = effectiveContext?.type === 'subforum' ? effectiveContext.entity?.id : null;
+  const breadcrumbs = effectiveContext?.breadcrumbs || [];
 
   // Extragem datele din hook folosind useMemo pentru performanță
   const {
-    subcategoryId,
-    subforumId,
     subcategoryName,
     subcategoryDescription,
     subforumName,
@@ -123,10 +83,8 @@ export default function CategoryPage() {
     parentCategory,
     subforums,
   } = useMemo(() => {
-    if (!subcategoryOrSubforumData) {
+    if (!effectiveContext) {
       return {
-        subcategoryId: null,
-        subforumId: null,
         subcategoryName: '',
         subcategoryDescription: '',
         subforumName: '',
@@ -137,50 +95,51 @@ export default function CategoryPage() {
       };
     }
 
-    if (subcategoryOrSubforumData.type === 'subcategory' && subcategoryOrSubforumData.subcategory) {
+    const entity = effectiveContext.entity;
+    const parent = effectiveContext.hierarchy?.parent;
+    const children = effectiveContext.hierarchy?.children || [];
+
+    if (effectiveContext.type === 'subcategory') {
       return {
-        subcategoryId: subcategoryOrSubforumData.subcategory.id,
-        subforumId: null,
-        subcategoryName: subcategoryOrSubforumData.subcategory.name,
-        subcategoryDescription: subcategoryOrSubforumData.subcategory.description || '',
+        subcategoryName: entity?.name || '',
+        subcategoryDescription: entity?.description || '',
         subforumName: '',
         subforumDescription: '',
-        categoryDescription: (subcategoryOrSubforumData.parentCategory as any)?.description || '',
-        parentCategory: subcategoryOrSubforumData.parentCategory,
-        subforums: subcategoryOrSubforumData.subforums,
+        categoryDescription: parent?.description || '',
+        parentCategory: parent,
+        subforums: children,
       };
     }
 
-    if (subcategoryOrSubforumData.type === 'subforum' && subcategoryOrSubforumData.subforum) {
+    if (effectiveContext.type === 'subforum') {
       return {
-        subcategoryId: null,
-        subforumId: subcategoryOrSubforumData.subforum.id,
         subcategoryName: '',
         subcategoryDescription: '',
-        subforumName: subcategoryOrSubforumData.subforum.name,
-        subforumDescription: subcategoryOrSubforumData.subforum.description || '',
-        categoryDescription: (subcategoryOrSubforumData.parentCategory as any)?.description || '',
-        parentCategory: subcategoryOrSubforumData.parentCategory,
+        subforumName: entity?.name || '',
+        subforumDescription: entity?.description || '',
+        categoryDescription: parent?.description || '',
+        parentCategory: parent,
         subforums: [],
       };
     }
 
     return {
-      subcategoryId: null,
-      subforumId: null,
       subcategoryName: '',
       subcategoryDescription: '',
       subforumName: '',
       subforumDescription: '',
-      categoryDescription: '',
+      categoryDescription: entity?.description || '',
       parentCategory: null,
-      subforums: [],
+      subforums: children,
     };
-  }, [subcategoryOrSubforumData]);
+  }, [effectiveContext]);
 
-
-  const [categoryName, setCategoryName] = useState<string>('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  // Alias names for Category View (isCategory)
+  const categoryData = isCategory ? effectiveContext?.entity : null;
+  const categoryName = isCategory ? effectiveContext?.entity?.name : '';
+  const categoryId = isCategory ? effectiveContext?.entity?.id : null;
+  const categorySubcategories = isCategory ? (effectiveContext?.hierarchy?.children || []) : [];
+  const loadingSubcategories = loadingForumData;
 
   // Supabase hooks - folosește subcategoryId sau subforumId (UUID) pentru query (intern folosim UUID, extern slug)
   const { topics, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId, 1, 50, subforumId || undefined);
@@ -230,8 +189,6 @@ export default function CategoryPage() {
   // Folosim parentCategory pentru breadcrumbs (nu mai avem categorySlug în URL)
   const displayCategorySlug = parentCategory?.slug || categoryData?.slug || null;
   const displayCategoryName = parentCategory?.name || categoryName || categoryData?.name || '';
-  const [categorySubcategories, setCategorySubcategories] = useState<any[]>([]);
-  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Hook pentru status-ul read/unread al subcategoriilor (pentru pagina de categorie)
@@ -254,7 +211,7 @@ export default function CategoryPage() {
   );
 
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Settings pentru afișarea icon-urilor - folosim React Query pentru actualizări imediate
   const { value: showSubcategoryIcons } = useForumSetting('show_subcategory_icons', false);
   const { value: showSubforumIcons } = useForumSetting('show_subforum_icons', false);
@@ -285,76 +242,24 @@ export default function CategoryPage() {
   // NOTĂ: Acest useEffect a fost eliminat - nu mai avem categorySlug în URL
   // Redirect-ul este gestionat de useSubcategoryOrSubforum hook
 
-  // Load category and subcategories when it's just a category (not subcategory)
-  useEffect(() => {
-    const loadCategory = async () => {
-      if (!isCategory || !categoryData || subcategoryId || subforumId) {
-        // Nu e doar categorie, sau nu avem datele categoriei
-        return;
-      }
+  // Manual category loading removed - now handled by useForumContext (Option A - Category probing)
 
-      try {
-        setLoadingSubcategories(true);
-
-        // Caută categoria după slug (folosim categoryData dacă există, altfel slugToUse)
-        const slugToCheck = categoryData?.slug || slugToUse;
-        if (!slugToCheck) return;
-
-        const { data: category, error: catError } = await supabase
-          .from('forum_categories')
-          .select('id, name, description, slug')
-          .eq('slug', slugToCheck)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (category) {
-          setCategoryName(category.name);
-          setCategoryId(category.id);
-
-          // Încarcă subcategoriile pentru această categorie
-          const { data: subcategories, error: subcatsError } = await supabase
-            .from('forum_subcategories')
-            .select('id, name, description, slug, icon, sort_order')
-            .eq('category_id', category.id)
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true });
-
-          if (!subcatsError && subcategories) {
-            setCategorySubcategories(subcategories || []);
-          } else {
-            setCategorySubcategories([]);
-          }
-        } else {
-          setCategoryName('');
-          setCategoryId(null);
-          setCategorySubcategories([]);
-        }
-      } catch (error) {
-        console.error('Error loading category:', error);
-        setCategorySubcategories([]);
-      } finally {
-        setLoadingSubcategories(false);
-      }
-    };
-
-    loadCategory();
-  }, [isCategory, categoryData, subcategoryId, subforumId]);
 
   const handleTopicClick = (topic: { id: string; slug?: string }) => {
     const topicSlug = topic.slug || topic.id;
     // IMPORTANT: Folosim slug-ul exact din subcategoryOrSubforumData pentru a evita erorile
     // Verificăm mai întâi dacă avem date despre subcategorie/subforum
     let subcategorySlugToUse: string | undefined = undefined;
-    
+
     // Folosim datele din hook dacă sunt disponibile
-    if (subcategoryOrSubforumData) {
-      if (subcategoryOrSubforumData.type === 'subcategory' && subcategoryOrSubforumData.subcategory?.slug) {
-        subcategorySlugToUse = subcategoryOrSubforumData.subcategory.slug;
-      } else if (subcategoryOrSubforumData.type === 'subforum' && subcategoryOrSubforumData.subforum?.slug) {
-        subcategorySlugToUse = subcategoryOrSubforumData.subforum.slug;
+    if (effectiveContext) {
+      if (effectiveContext.type === 'subcategory' && effectiveContext.entity?.slug) {
+        subcategorySlugToUse = effectiveContext.entity.slug;
+      } else if (effectiveContext.type === 'subforum' && effectiveContext.entity?.slug) {
+        subcategorySlugToUse = effectiveContext.entity.slug;
       }
     }
-    
+
     // Fallback: folosim slug-ul din URL sau din useMemo
     if (!subcategorySlugToUse) {
       // Încercăm să folosim slug-ul din parentCategory sau din datele extrase
@@ -364,13 +269,13 @@ export default function CategoryPage() {
         subcategorySlugToUse = slugToUse;
       }
     }
-    
+
     // Dacă tot nu avem slug, folosim slug-ul din URL ca fallback final
     if (!subcategorySlugToUse) {
       console.error('No subcategory/subforum slug found for topic navigation');
       return;
     }
-    
+
     navigate(`/forum/${subcategorySlugToUse}/${topicSlug}`);
   };
 
@@ -387,25 +292,25 @@ export default function CategoryPage() {
 
     // Overlay color pentru pinned/important topics
     const overlayColor = topic.is_pinned ? '#f59e0b' : isImportant ? '#ef4444' : null;
-    
+
     return (
       <div
         key={topic.id}
         className="topic-item"
         style={{
-          padding: isMobile ? '0.5rem' : '0.75rem',
+          padding: isMobile ? '0.5rem' : '0.75rem 1rem',
           borderBottom: `1px solid ${theme.border}`,
           display: isMobile ? 'flex' : 'grid',
           flexDirection: isMobile ? 'column' : undefined,
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 50px 80px 80px 180px',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 40px 100px 100px 220px',
           gap: isMobile ? '0.5rem' : '0.75rem',
-          alignItems: isMobile ? 'flex-start' : 'stretch',
+          alignItems: isMobile ? 'flex-start' : 'center',
           cursor: 'pointer',
           transition: 'background-color 0.2s',
           width: '100%',
           maxWidth: '100%',
           boxSizing: 'border-box',
-          backgroundColor: overlayColor ? `${overlayColor}0D` : 'transparent', // 5% opacity (0D = ~5% in hex)
+          backgroundColor: overlayColor ? `${overlayColor}0D` : 'transparent',
           position: 'relative'
         }}
         onMouseEnter={(e) => {
@@ -418,7 +323,7 @@ export default function CategoryPage() {
           // Prefetch topic-ul când utilizatorul trece cu mouse-ul
           const topicSlug = (topic as any).slug;
           if (topicSlug) {
-            prefetchTopic(topicSlug, subforumId ? slugToUse : undefined);
+            prefetchTopic(topicSlug, slugToUse, effectiveContext?.type === 'subforum');
           }
         }}
         onMouseLeave={(e) => {
@@ -428,13 +333,13 @@ export default function CategoryPage() {
         onClick={() => handleTopicClick(topic)}
       >
         {/* Topic info - Layout diferit pe mobil - Coloana 1 */}
-        <div 
-          style={{ 
-            gridColumn: isMobile ? undefined : '1',
-            display: 'flex', 
-            alignItems: 'flex-start', 
-            gap: '0.75rem', 
-            minWidth: 0 
+        <div
+          style={{
+            gridColumn: '1',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            minWidth: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.125rem', flexShrink: 0 }}>
@@ -486,10 +391,11 @@ export default function CategoryPage() {
         </div>
 
         {/* Iconuri Important/Pinned - coloană separată, înainte de Răspunsuri - Coloana 2 - Ascuns pe mobil */}
-        <div 
+        <div
           className="hidden sm:flex"
           style={{
             gridColumn: '2',
+            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.5rem',
@@ -497,18 +403,18 @@ export default function CategoryPage() {
           }}
         >
           {isImportant && (
-            <Star style={{ 
-              width: '1rem', 
-              height: '1rem', 
-              color: '#ef4444', 
+            <Star style={{
+              width: '1rem',
+              height: '1rem',
+              color: '#ef4444',
               fill: '#ef4444',
               flexShrink: 0
             }} />
           )}
           {topic.is_pinned && (
-            <Pin style={{ 
-              width: '1rem', 
-              height: '1rem', 
+            <Pin style={{
+              width: '1rem',
+              height: '1rem',
               color: '#f59e0b',
               flexShrink: 0
             }} />
@@ -516,53 +422,52 @@ export default function CategoryPage() {
         </div>
 
         {/* Răspunsuri - Coloana 3 - Ascuns pe mobil */}
-        <div 
+        <div
           className="hidden sm:flex"
           style={{
             gridColumn: '3',
+            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '0.875rem',
             fontWeight: '600',
             color: theme.success || '#059669',
-            width: '100%',
-            minWidth: 0
+            textAlign: 'center'
           }}
         >
           {topic.reply_count}
         </div>
 
         {/* Vizualizări - Coloana 4 - Ascuns pe mobil */}
-        <div 
+        <div
           className="hidden sm:flex"
           style={{
             gridColumn: '4',
+            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '0.875rem',
             fontWeight: '600',
             color: theme.textSecondary,
-            width: '100%',
-            minWidth: 0
+            textAlign: 'center'
           }}
         >
           {topic.view_count.toLocaleString('ro-RO')}
         </div>
 
         {/* Ultima postare - Coloana 5 - Ascuns pe mobil */}
-        <div 
+        <div
           className="hidden sm:flex"
           style={{
             gridColumn: '5',
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-end',
             justifyContent: 'center',
             textAlign: 'right',
             fontSize: '0.75rem',
             color: theme.textSecondary,
-            paddingRight: '0.5rem',
-            width: '100%',
-            minWidth: 0
+            paddingRight: '0.5rem'
           }}
         >
           {(topic as any).last_post_at ? (
@@ -724,7 +629,7 @@ export default function CategoryPage() {
         })()}
       />
       <ForumLayout user={forumUserToLayoutUser(forumUser)} onLogin={() => { }} onLogout={handleLogout}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1rem 0.75rem', width: '100%', overflowX: 'hidden' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '1.5rem 1rem', width: '100%', overflowX: 'hidden' }}>
           {/* Breadcrumbs: FishTrophy › Categorie › SubCategorie - Toate linkuri funcționale */}
           <nav style={{
             marginBottom: isMobile ? '0.5rem' : '1.5rem',
@@ -832,18 +737,30 @@ export default function CategoryPage() {
 
           {/* Loading state - afișăm skeleton când se încarcă datele pentru subcategorie/subforum */}
           {/* IMPORTANT: Nu afișăm conținutul categoriei când se încarcă datele pentru subcategorie/subforum */}
-          {((loadingSubcategoryOrSubforum || checkingCategory) && !isCategory) ? (
+          {/* Unified Loading State: Prevent "Cascade" */}
+          {(loadingForumData || (effectiveContext && topicsIsLoading && !isCategory)) ? (
             <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              padding: '2rem',
+              alignItems: 'center',
+              justifyContent: 'center',
               backgroundColor: theme.surface,
               borderRadius: '1rem',
               border: `1px solid ${theme.border}`,
-              padding: '2rem',
-              textAlign: 'center',
-              color: theme.textSecondary
+              minHeight: '400px'
             }}>
-              Se încarcă...
+              <div className="animate-spin" style={{
+                width: '3rem',
+                height: '3rem',
+                border: `4px solid ${theme.border}`,
+                borderTop: `4px solid ${theme.primary}`,
+                borderRadius: '50%'
+              }} />
+              <div style={{ color: theme.textSecondary }}>Se încarcă conținutul...</div>
             </div>
-          ) : !loadingSubcategoryOrSubforum && !checkingCategory && slugToUse && !subcategoryId && !subforumId && !isCategory ? (
+          ) : (!loadingForumData && slugToUse && !subcategoryId && !subforumId && !isCategory) ? (
             <NotFound404 />
           ) : (
             <>
@@ -1012,7 +929,7 @@ export default function CategoryPage() {
                             )}
                             {/* Verifică atât setarea globală, cât și setarea individuală show_icon */}
                             {showSubforumIcons && (subforum.show_icon !== false) && (
-                              <div style={{ 
+                              <div style={{
                                 fontSize: '1.25rem',
                                 alignSelf: 'center',
                                 flexShrink: 0,
@@ -1034,8 +951,8 @@ export default function CategoryPage() {
                               )}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: theme.textSecondary, textAlign: 'right' }}>
-                              <div>{subforum.topicCount || 0} subiecte</div>
-                              <div>{subforum.postCount || 0} postări</div>
+                              <div>{subforum.stats?.total_topics || 0} subiecte</div>
+                              <div>{subforum.stats?.total_posts || 0} postări</div>
                             </div>
                           </div>
                         ))}
@@ -1098,21 +1015,23 @@ export default function CategoryPage() {
                             <div className="hidden sm:grid" style={{
                               backgroundColor: theme.background,
                               borderBottom: `1px solid ${theme.border}`,
-                              padding: '0.75rem',
-                              gridTemplateColumns: '1fr 50px 80px 80px 180px',
+                              padding: '0.75rem 1rem',
+                              gridTemplateColumns: 'minmax(0, 1fr) 40px 100px 100px 220px',
                               gap: '0.75rem',
                               alignItems: 'center',
                               fontSize: '0.75rem',
                               fontWeight: '600',
                               color: theme.textSecondary,
                               textTransform: 'uppercase',
-                              letterSpacing: '0.025em'
+                              letterSpacing: '0.025em',
+                              boxSizing: 'border-box',
+                              width: '100%'
                             }}>
                               <div style={{ gridColumn: '1' }}>Topicuri Fixate</div>
-                              <div style={{ gridColumn: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
-                              <div style={{ gridColumn: '3', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Răspunsuri</div>
-                              <div style={{ gridColumn: '4', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Vizualizări</div>
-                              <div style={{ gridColumn: '5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', width: '100%', minWidth: 0 }}>Ultima postare</div>
+                              <div style={{ gridColumn: '2' }}></div>
+                              <div style={{ gridColumn: '3', textAlign: 'center', paddingLeft: '1rem' }}>Răspunsuri</div>
+                              <div style={{ gridColumn: '4', textAlign: 'center', paddingLeft: '1rem' }}>Vizualizări</div>
+                              <div style={{ gridColumn: '5', textAlign: 'right', paddingRight: '0.5rem' }}>Ultima postare</div>
                             </div>
                             {/* Lista sticky topics */}
                             {stickyTopics.map((topic) => renderTopicItem(topic))}
@@ -1141,25 +1060,26 @@ export default function CategoryPage() {
                           }}>
                             Topic
                           </div>
-                          {/* Header pentru topicuri normale */}
                           <div className="hidden sm:grid" style={{
                             backgroundColor: theme.background,
                             borderBottom: `1px solid ${theme.border}`,
-                            padding: '0.75rem',
-                            gridTemplateColumns: '1fr 50px 80px 80px 180px',
+                            padding: '0.75rem 1rem',
+                            gridTemplateColumns: 'minmax(0, 1fr) 40px 100px 100px 220px',
                             gap: '0.75rem',
                             alignItems: 'center',
                             fontSize: '0.75rem',
                             fontWeight: '600',
                             color: theme.textSecondary,
                             textTransform: 'uppercase',
-                            letterSpacing: '0.025em'
+                            letterSpacing: '0.025em',
+                            boxSizing: 'border-box',
+                            width: '100%'
                           }}>
                             <div style={{ gridColumn: '1' }}>Topic</div>
-                            <div style={{ gridColumn: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
-                            <div style={{ gridColumn: '3', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Răspunsuri</div>
-                            <div style={{ gridColumn: '4', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>Vizualizări</div>
-                            <div style={{ gridColumn: '5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', width: '100%', minWidth: 0 }}>Ultima postare</div>
+                            <div style={{ gridColumn: '2' }}></div>
+                            <div style={{ gridColumn: '3', textAlign: 'center', paddingLeft: '1rem' }}>Răspunsuri</div>
+                            <div style={{ gridColumn: '4', textAlign: 'center', paddingLeft: '1rem' }}>Vizualizări</div>
+                            <div style={{ gridColumn: '5', textAlign: 'right', paddingRight: '0.5rem' }}>Ultima postare</div>
                           </div>
 
                           {/* Important Topics - doar badge, fără chenar separat, apar primele în listă */}
@@ -1264,15 +1184,12 @@ export default function CategoryPage() {
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
               categoryName={subcategoryName || subforumName || categoryName || ''}
-              categoryId={slugToUse || ''}
+              categoryId={breadcrumbs.find(b => b.type === 'category')?.slug || slugToUse || ''}
               subcategoryId={subcategoryId}
               subforumId={subforumId}
               isSubforum={!!subforumId}
               onSuccess={() => {
                 setShowCreateModal(false);
-                // Invalidate topics query
-                // queryClient is not available here directly unless we use useQueryClient hook
-                // But CreateTopicEditor handles its own invalidation usually, or we can trust the topics list to auto-refresh due to key change
               }}
               user={{
                 username: forumUser.username,

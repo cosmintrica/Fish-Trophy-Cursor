@@ -8,6 +8,11 @@
 // Export all types
 export * from './types'
 
+// Context
+export {
+    getForumContext
+} from './context'
+
 // Reputation System
 export {
     calculateReputationPower,

@@ -662,8 +662,7 @@ export default function MessageContainer({
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.75rem',
-                    animation: 'fadeIn 0.3s ease-in-out'
+                    gap: '0.75rem'
                   }}
                 >
                   {/* Editor Toolbar */}
@@ -853,11 +852,7 @@ export default function MessageContainer({
                 </div>
               ) : (
                 /* Conținut normal al postului */
-                <div
-                  style={{
-                    animation: 'fadeIn 0.3s ease-in-out'
-                  }}
-                >
+                <div>
                   <div
                     ref={contentRef}
                     style={{
