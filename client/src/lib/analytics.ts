@@ -76,7 +76,7 @@ class AnalyticsTracker {
         return;
       }
 
-      const response = await fetch('https://ipapi.co/json/');
+      const response = await fetch('/api/geo');
       if (response.ok) {
         const data = await response.json();
         this.userCountry = data.country_name || 'România';
