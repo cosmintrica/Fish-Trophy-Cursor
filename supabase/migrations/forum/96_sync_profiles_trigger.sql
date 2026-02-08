@@ -1,6 +1,9 @@
--- Migration: Sync Profiles updates to Forum Users
--- Description: Automatically updates forum_users when profiles (username/avatar) changes
--- Author: Antigravity
+-- =============================================
+-- Migration 96: Sync Profiles to Forum Users
+-- =============================================
+-- Descriere: Trigger automat pentru sincronizarea modificărilor de username/avatar din profiles în forum_users.
+-- Motiv: Previne desincronizarea datelor (nume vechi/poze vechi pe forum după update pe site).
+-- =============================================
 
 -- 1. Create Sync Function
 CREATE OR REPLACE FUNCTION public.sync_profiles_to_forum()
