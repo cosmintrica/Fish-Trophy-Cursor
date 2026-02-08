@@ -7,16 +7,46 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Helper to check if there's likely a session in localStorage (sync check to prevent flash)
+const getStoredSession = (): { user: User; session: Session } | null => {
+  try {
+    // Supabase stores auth data with this key pattern
+    const keys = Object.keys(localStorage).filter(key =>
+      key.startsWith('sb-') && key.endsWith('-auth-token')
+    );
+
+    if (keys.length > 0) {
+      const stored = localStorage.getItem(keys[0]);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Check if session is not expired
+        if (parsed?.expires_at && parsed.expires_at * 1000 > Date.now()) {
+          return {
+            user: parsed.user,
+            session: parsed as Session
+          };
+        }
+      }
+    }
+  } catch {
+    // localStorage not available or parse error
+  }
+  return null;
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize from localStorage synchronously to prevent flash
+  const storedAuth = getStoredSession();
+  const [user, setUser] = useState<User | null>(storedAuth?.user ?? null);
+  const [session, setSession] = useState<Session | null>(storedAuth?.session ?? null);
+  // Only show loading if we DON'T have a stored session (prevents flash for logged-in users)
+  const [loading, setLoading] = useState(!storedAuth);
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session with error handling
+    // Get initial session with error handling (validates localStorage data with server)
     supabase.auth.getSession()
       .then(({ data, error }: { data: { session: Session | null } | null; error: unknown }) => {
         const session = data?.session ?? null;
@@ -26,7 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (!is403) {
             console.error('Error getting session:', error);
           }
-          
+
           // If 403 and no session, just clear state (normal case)
           if (is403 && !session) {
             if (mounted) {
@@ -36,7 +66,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }
             return;
           }
-          
+
           // If 403 with potential session, try to refresh
           if (is403 && session) {
             supabase.auth.refreshSession()
@@ -86,14 +116,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       });
 
-    // Set loading to false after a very short timeout to prevent white screen
-    // Reduced to 200ms for instant mobile loading (auth usually resolves in <100ms)
-    // This is a safety timeout - most auth checks complete instantly
-    const timeout = setTimeout(() => {
-      if (mounted) {
-        setLoading(false);
-      }
-    }, 200); // 200ms timeout (optimized for mobile - auth is usually instant)
+    // Safety timeout removed - localStorage sync prevents flash, and getSession() handles all cases
+    // The old 200ms timeout caused race conditions where loading=false before user was set
 
     // Listen for auth changes with error handling
     const {
@@ -103,7 +127,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
+
         // Check if user needs to complete profile (has no username) - async, non-blocking
         // This is important because:
         // 1. Username is required for public profiles (/profile/:username)
@@ -113,13 +137,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           // Don't block loading, check in background after a short delay
           setTimeout(() => {
             if (!mounted) return;
-            
+
             (async () => {
               try {
                 // Check if user is a Google OAuth user (has provider metadata)
                 const providers = session.user.app_metadata?.providers || [];
                 const isGoogleOAuth = providers.includes('google');
-                
+
                 if (isGoogleOAuth) {
                   // For Google OAuth users, ALWAYS require profile completion (username + password)
                   // We can't directly check if password is set, so we'll always show the modal
@@ -129,13 +153,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     .select('username')
                     .eq('id', session.user.id)
                     .maybeSingle();
-                  
+
                   if (!mounted) return; // Component unmounted, don't update state
-                  
+
                   // Check if profile completion flag exists in user metadata
                   // If user has completed profile before, we can skip (but we'll still check)
                   const hasCompletedProfile = session.user.user_metadata?.profile_completed === true;
-                  
+
                   // Always show modal for Google OAuth users to ensure password is set
                   // unless they've explicitly completed it before
                   if (!hasCompletedProfile) {
@@ -155,9 +179,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     .select('username')
                     .eq('id', session.user.id)
                     .maybeSingle();
-                  
+
                   if (!mounted) return;
-                  
+
                   if (!error && profile && (!profile.username || profile.username.trim() === '')) {
                     setNeedsProfileCompletion(true);
                   } else {
@@ -180,7 +204,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     return () => {
       mounted = false;
-      clearTimeout(timeout); // Cleanup timeout
       subscription.unsubscribe();
     };
   }, []);
@@ -203,9 +226,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (username) metadata.username = username.toLowerCase().trim();
     // Don't include county_id and city_id in metadata - they're not used by trigger
     // They can be updated later in the profile if needed
-    
+
     console.log('Signing up user with metadata:', { email, hasDisplayName: !!displayName, hasUsername: !!username });
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -213,7 +236,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         data: metadata,
       },
     });
-    
+
     if (error) {
       console.error('Signup error:', error);
       throw error;
@@ -239,12 +262,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           },
         },
       });
-      
+
       if (error) {
         console.error('Google OAuth error:', error);
         throw error;
       }
-      
+
       // OAuth redirect will happen, so we don't need to return anything
     } catch (err: any) {
       console.error('Error in signInWithGoogle:', err);
