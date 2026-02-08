@@ -1,4 +1,5 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const handler = async (event) => {
   // Handle CORS preflight
@@ -61,7 +62,7 @@ export const handler = async (event) => {
     // Get the image URL from query parameter
     // Try multiple methods to extract the URL
     let imageUrl = null;
-    
+
     // Method 1: queryStringParameters (most common in production)
     if (event.queryStringParameters?.url) {
       imageUrl = event.queryStringParameters.url;
@@ -121,7 +122,7 @@ export const handler = async (event) => {
         }
       }
     }
-    
+
     // Decode if needed (only if URL contains encoded characters)
     // queryStringParameters already decodes the URL, so we only need to decode if it came from rawQuery
     if (imageUrl) {
@@ -167,19 +168,19 @@ export const handler = async (event) => {
         allKeys: Object.keys(event),
         headers: event.headers ? Object.keys(event.headers) : null
       };
-      
+
       console.error('Missing url parameter. Full event:', JSON.stringify(debugInfo, null, 2));
-      
+
       // In development, return detailed debug info
       const isDev = process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development';
-      
+
       return {
         statusCode: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: 'Missing url parameter',
           debug: isDev ? debugInfo : {
             hasQueryParams: !!event.queryStringParameters,
@@ -211,17 +212,17 @@ export const handler = async (event) => {
     // Where R2_PUBLIC_URL might include bucket name: https://...r2.cloudflarestorage.com/fishtrophy-content
     // And key is: username/category/subCategory/fileName
     let key = imageUrl;
-    
+
     // Parse URL to get pathname
     try {
       const url = new URL(imageUrl);
       let pathname = url.pathname;
-      
+
       // Remove leading slash
       if (pathname.startsWith('/')) {
         pathname = pathname.substring(1);
       }
-      
+
       // If pathname starts with bucket name, remove it
       // R2_PUBLIC_URL might be: https://...r2.cloudflarestorage.com/fishtrophy-content
       // So pathname might be: fishtrophy-content/username/category/...
@@ -284,14 +285,46 @@ export const handler = async (event) => {
       if (process.env.NETLIFY_DEV) {
         console.log('Calling GetObjectCommand with:', { Bucket: R2_BUCKET_NAME, Key: key });
       }
-      
+
       const getObjectCommand = new GetObjectCommand({
         Bucket: R2_BUCKET_NAME,
         Key: key
       });
 
+      // Check if this is a video file by extension
+      const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.m4v', '.wmv', '.flv', '.ogv'];
+      const isVideoFile = videoExtensions.some(ext => key.toLowerCase().endsWith(ext));
+
+      if (isVideoFile) {
+        // For video files, generate a signed URL and redirect
+        // This avoids memory limits and allows direct streaming from R2
+        if (process.env.NETLIFY_DEV) {
+          console.log('Video file detected, generating signed URL for:', key);
+        }
+
+        const signedUrl = await getSignedUrl(s3Client, getObjectCommand, {
+          expiresIn: 3600 // 1 hour expiration
+        });
+
+        if (process.env.NETLIFY_DEV) {
+          console.log('Generated signed URL for video');
+        }
+
+        // Redirect to the signed URL
+        return {
+          statusCode: 302,
+          headers: {
+            'Location': signedUrl,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'private, max-age=3500' // Cache slightly less than signed URL expiration
+          },
+          body: ''
+        };
+      }
+
+      // For non-video files (images), continue with the original proxy logic
       const response = await s3Client.send(getObjectCommand);
-      
+
       // Get the image data
       // response.Body is a stream in AWS SDK v3
       const chunks = [];
@@ -317,7 +350,7 @@ export const handler = async (event) => {
       console.error('Error fetching image from R2:', error);
       const errorMessage = error.message || 'Unknown error';
       const errorCode = error.name || 'UnknownError';
-      
+
       // Handle specific AWS errors
       let statusCode = 500;
       if (errorCode === 'NoSuchKey' || errorCode === 'NotFound') {
@@ -327,14 +360,14 @@ export const handler = async (event) => {
       } else if (errorCode === 'InvalidArgument' || errorCode === 'InvalidRequest') {
         statusCode = 400;
       }
-      
+
       return {
         statusCode: statusCode,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: `Failed to fetch image: ${errorMessage}`,
           code: errorCode,
           key: key.substring(0, 100) // Truncate for security
@@ -349,7 +382,7 @@ export const handler = async (event) => {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
