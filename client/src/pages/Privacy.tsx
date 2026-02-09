@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 // Hook-uri safe care returnează valori default dacă nu sunt în context
 function useSafeForumAuth() {
   try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { useAuth } = require('@/forum/hooks/useAuth');
     // eslint-disable-next-line react-hooks/rules-of-hooks
     return useAuth();

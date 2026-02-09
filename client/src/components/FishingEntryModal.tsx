@@ -596,7 +596,6 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
         }
 
         return presignedData.publicUrl;
-        return presignedData.publicUrl;
       } catch (error: any) {
         console.error('Presigned URL upload failed:', error);
 
@@ -733,877 +732,877 @@ const FishingEntryModal: React.FC<FishingEntryModalProps> = ({
     }
 
     setIsSubmitting(true);
-  setIsUploading(true);
-  const toastId = toast.loading(isEdit ? 'Se actualizează...' : 'Se salvează...', { id: 'fishing-entry' });
+    setIsUploading(true);
+    const toastId = toast.loading(isEdit ? 'Se actualizează...' : 'Se salvează...', { id: 'fishing-entry' });
 
-  try {
-    // Get username for file path
-    if (!userUsername) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.username) {
-        throw new Error('Username-ul nu este disponibil');
-      }
-      setUserUsername(profile.username);
-    }
-
-    const username = userUsername || user.id;
-
-    // Upload new photos
-    const photoUrls: string[] = [...formData.photo_urls];
-    for (const file of formData.photo_files) {
-      const url = await uploadFileToR2(file, 'photo', entry?.id);
-      photoUrls.push(url);
-    }
-
-    // Upload new video
-    let videoUrl = formData.video_url;
-    if (formData.video_file) {
-      videoUrl = await uploadFileToR2(formData.video_file, 'video', entry?.id);
-    } else {
-      // Keep existing URL if we are editing and didn't upload new file
-      // Ensure we don't keep youtube links as video_url
-      if (isEdit && entry?.video_url && !(entry.video_url.includes('youtube.com') || entry.video_url.includes('youtu.be'))) {
-        videoUrl = entry.video_url;
-      }
-    }
-
-    setIsUploading(false);
-
-    // Delete files marked for deletion (only on save, not on cancel)
-    // This happens AFTER upload but BEFORE database update
-    if (photosToDelete.length > 0) {
-      for (const photoUrl of photosToDelete) {
-        await deleteFileFromR2(photoUrl).catch(err => {
-          console.warn('Failed to delete photo from R2:', err);
-        });
-      }
-    }
-
-    if (videoToDelete) {
-      await deleteFileFromR2(videoToDelete).catch(err => {
-        console.warn('Failed to delete video from R2:', err);
-      });
-    }
-
-    if (isRecord) {
-      // Handle record submission/update
-      if (isEdit && entry) {
-        // Update record
-        // Find species name from selected species_id
-        const selectedSpecies = species.find(s => s.id === formData.species_id);
-        const speciesName = selectedSpecies?.name || entry.fish_species?.name || 'Unknown';
-
-        // Find location name from selected location_id
-        const selectedLocationObj = locations.find(l => l.id === selectedLocation);
-        const locationName = selectedLocationObj?.name || entry.fishing_locations?.name || 'Unknown';
-
-        const updateData: any = {
-          species_id: formData.species_id,
-          species_name: speciesName, // Required field
-          weight: parseFloat(formData.weight),
-          length: formData.length_cm ? Math.round(parseFloat(formData.length_cm)) : null, // records use 'length' (integer)
-          location_id: selectedLocation,
-          location_name: locationName, // Optional but good to have
-          date_caught: formData.captured_at.split('T')[0], // records use date_caught (date)
-          time_caught: formData.captured_at.split('T')[1] || null, // records use time_caught (time)
-          notes: formData.notes || null,
-          image_url: photoUrls.length > 0 ? photoUrls[0] : null, // Main image
-          extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
-          video_url: videoUrl,
-          youtube_url: formData.youtube_url || null, // Save youtube URL
-          updated_at: new Date().toISOString()
-        };
-
-        if (entry.status === 'rejected') {
-          updateData.status = 'pending';
-        }
-
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          throw new Error('Utilizatorul nu este autentificat');
-        }
-
-        let query = supabase
-          .from('records')
-          .update(updateData)
-          .eq('id', entry.id);
-
-        if (!isAdmin) {
-          query = query.eq('user_id', authUser.id);
-        }
-
-        const { data: updatedRecord, error: updateError } = await query.select().single();
-
-        if (updateError) {
-          throw new Error(updateError.message || 'Eroare la actualizarea recordului');
-        }
-
-        if (entry.status === 'rejected') {
-          toast.success('Record actualizat și trimis din nou pentru aprobare!', { id: toastId });
-        } else {
-          toast.success('Record actualizat cu succes!', { id: toastId });
-        }
-      } else {
-        // Create new record
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          throw new Error('Utilizatorul nu este autentificat');
-        }
-
-        // Find species name from selected species_id
-        const selectedSpecies = species.find(s => s.id === formData.species_id);
-        const speciesName = selectedSpecies?.name || 'Unknown';
-
-        // Find location name from selected location_id
-        const selectedLocationObj = locations.find(l => l.id === selectedLocation);
-        const locationName = selectedLocationObj?.name || 'Unknown';
-
-        const recordData = {
-          user_id: authUser.id,
-          species_id: formData.species_id,
-          species_name: speciesName, // Required field
-          weight: parseFloat(formData.weight),
-          length: Math.round(parseFloat(formData.length_cm)),
-          location_id: selectedLocation,
-          location_name: locationName, // Optional but good to have
-          date_caught: formData.captured_at.split('T')[0],
-          time_caught: formData.captured_at.split('T')[1] || null,
-          notes: formData.notes || null,
-          image_url: photoUrls[0] || null, // records use image_url, not photo_url
-          extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
-          video_url: videoUrl,
-          youtube_url: formData.youtube_url || null, // Save youtube URL
-          status: 'pending'
-        };
-
-        const { data: newRecord, error: insertError } = await supabase
-          .from('records')
-          .insert([recordData])
-          .select()
+    try {
+      // Get username for file path
+      if (!userUsername) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
           .single();
 
-        if (insertError) {
-          throw new Error(insertError.message || 'Eroare la crearea recordului');
+        if (!profile?.username) {
+          throw new Error('Username-ul nu este disponibil');
         }
-
-        toast.success('Record trimis cu succes! Va fi verificat de administratori.', { id: toastId });
+        setUserUsername(profile.username);
       }
-    } else {
-      // Handle catch submission/update
-      if (isEdit && entry) {
-        // Update catch
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          throw new Error('Utilizatorul nu este autentificat');
-        }
 
-        const updateData: any = {
-          species_id: formData.species_id || null,
-          location_id: selectedLocation || null,
-          weight: formData.weight ? parseFloat(formData.weight) : null,
-          length_cm: formData.length_cm ? parseFloat(formData.length_cm) : null,
-          captured_at: formData.captured_at,
-          notes: formData.notes || null,
-          photo_url: photoUrls[0] || null, // First photo is main
-          extra_images: photoUrls.slice(1), // Rest are extra
-          video_url: videoUrl || null,
-          youtube_url: formData.youtube_url || null, // Save youtube URL
-          global_id: formData.global_id,
-          is_public: formData.is_public,
-          updated_at: new Date().toISOString()
-        };
+      const username = userUsername || user.id;
 
-        const { error: updateError } = await supabase
-          .from('catches')
-          .update(updateData)
-          .eq('id', entry.id)
-          .eq('user_id', authUser.id);
+      // Upload new photos
+      const photoUrls: string[] = [...formData.photo_urls];
+      for (const file of formData.photo_files) {
+        const url = await uploadFileToR2(file, 'photo', entry?.id);
+        photoUrls.push(url);
+      }
 
-        if (updateError) {
-          throw new Error(updateError.message || 'Eroare la actualizarea capturii');
-        }
-
-        toast.success('Captură actualizată cu succes!', { id: toastId });
+      // Upload new video
+      let videoUrl = formData.video_url;
+      if (formData.video_file) {
+        videoUrl = await uploadFileToR2(formData.video_file, 'video', entry?.id);
       } else {
-        // Create new catch
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          throw new Error('Utilizatorul nu este autentificat');
+        // Keep existing URL if we are editing and didn't upload new file
+        // Ensure we don't keep youtube links as video_url
+        if (isEdit && entry?.video_url && !(entry.video_url.includes('youtube.com') || entry.video_url.includes('youtu.be'))) {
+          videoUrl = entry.video_url;
         }
+      }
 
-        const catchData = {
-          user_id: authUser.id,
-          species_id: formData.species_id || null,
-          location_id: selectedLocation || null,
-          weight: formData.weight ? parseFloat(formData.weight) : null,
-          length_cm: formData.length_cm ? parseFloat(formData.length_cm) : null,
-          captured_at: formData.captured_at,
-          notes: formData.notes || null,
-          photo_url: photoUrls.length > 0 ? photoUrls[0] : null,
-          extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [],
-          video_url: videoUrl || null,
-          youtube_url: formData.youtube_url || null, // Save youtube URL
-          is_public: formData.is_public
-        };
+      setIsUploading(false);
 
-        const { error: insertError } = await supabase
-          .from('catches')
-          .insert([catchData]);
-
-        if (insertError) {
-          throw new Error(insertError.message || 'Eroare la crearea capturii');
+      // Delete files marked for deletion (only on save, not on cancel)
+      // This happens AFTER upload but BEFORE database update
+      if (photosToDelete.length > 0) {
+        for (const photoUrl of photosToDelete) {
+          await deleteFileFromR2(photoUrl).catch(err => {
+            console.warn('Failed to delete photo from R2:', err);
+          });
         }
-
-        toast.success('Captură adăugată cu succes!', { id: toastId });
       }
-    }
 
-    // Cleanup preview URLs
-    if (previewUrls.photos) {
-      previewUrls.photos.forEach(url => URL.revokeObjectURL(url));
-    }
-    if (previewUrls.video) {
-      URL.revokeObjectURL(previewUrls.video);
-    }
-
-    onSuccess();
-    onClose();
-  } catch (error: any) {
-    console.error(`Error ${isEdit ? 'updating' : 'creating'} ${type}:`, error);
-    toast.error(error.message || `Eroare la ${isEdit ? 'actualizarea' : 'crearea'} ${isRecord ? 'recordului' : 'capturii'}`, { id: toastId });
-  } finally {
-    setIsSubmitting(false);
-    setIsUploading(false);
-  }
-};
-
-const handleDeleteClick = () => {
-  if (!entry || !onDelete) return;
-  setShowDeleteConfirm(true);
-};
-
-const handleDelete = async () => {
-  if (!entry || !onDelete) return;
-
-  setShowDeleteConfirm(false);
-
-  const toastId = toast.loading('Se șterge...', { id: 'delete-entry' });
-
-  try {
-    if (!user) {
-      throw new Error('Trebuie să fii autentificat');
-    }
-
-    // Get file URLs before deletion for R2 cleanup
-    let filesToDelete: string[] = [];
-
-    if (isRecord) {
-      // Records: image_url and video_url
-      if (entry.image_url) {
-        filesToDelete.push(entry.image_url);
-      }
-      if (entry.video_url) {
-        filesToDelete.push(entry.video_url);
-      }
-    } else {
-      // Catches: photo_url and video_url (photo_url is singular, not photo_urls)
-      if (entry.photo_url) {
-        filesToDelete.push(entry.photo_url);
-      }
-      if (entry.video_url) {
-        filesToDelete.push(entry.video_url);
-      }
-    }
-
-    // Delete files from R2 first
-    if (filesToDelete.length > 0) {
-      toast.loading(`Se șterg ${filesToDelete.length} fișier${filesToDelete.length > 1 ? 'e' : ''} din R2...`, { id: toastId });
-
-      for (const fileUrl of filesToDelete) {
-        await deleteFileFromR2(fileUrl).catch(err => {
-          console.warn('Failed to delete file from R2:', fileUrl, err);
-          // Continue even if R2 deletion fails
+      if (videoToDelete) {
+        await deleteFileFromR2(videoToDelete).catch(err => {
+          console.warn('Failed to delete video from R2:', err);
         });
       }
+
+      if (isRecord) {
+        // Handle record submission/update
+        if (isEdit && entry) {
+          // Update record
+          // Find species name from selected species_id
+          const selectedSpecies = species.find(s => s.id === formData.species_id);
+          const speciesName = selectedSpecies?.name || entry.fish_species?.name || 'Unknown';
+
+          // Find location name from selected location_id
+          const selectedLocationObj = locations.find(l => l.id === selectedLocation);
+          const locationName = selectedLocationObj?.name || entry.fishing_locations?.name || 'Unknown';
+
+          const updateData: any = {
+            species_id: formData.species_id,
+            species_name: speciesName, // Required field
+            weight: parseFloat(formData.weight),
+            length: formData.length_cm ? Math.round(parseFloat(formData.length_cm)) : null, // records use 'length' (integer)
+            location_id: selectedLocation,
+            location_name: locationName, // Optional but good to have
+            date_caught: formData.captured_at.split('T')[0], // records use date_caught (date)
+            time_caught: formData.captured_at.split('T')[1] || null, // records use time_caught (time)
+            notes: formData.notes || null,
+            image_url: photoUrls.length > 0 ? photoUrls[0] : null, // Main image
+            extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
+            video_url: videoUrl,
+            youtube_url: formData.youtube_url || null, // Save youtube URL
+            updated_at: new Date().toISOString()
+          };
+
+          if (entry.status === 'rejected') {
+            updateData.status = 'pending';
+          }
+
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) {
+            throw new Error('Utilizatorul nu este autentificat');
+          }
+
+          let query = supabase
+            .from('records')
+            .update(updateData)
+            .eq('id', entry.id);
+
+          if (!isAdmin) {
+            query = query.eq('user_id', authUser.id);
+          }
+
+          const { data: updatedRecord, error: updateError } = await query.select().single();
+
+          if (updateError) {
+            throw new Error(updateError.message || 'Eroare la actualizarea recordului');
+          }
+
+          if (entry.status === 'rejected') {
+            toast.success('Record actualizat și trimis din nou pentru aprobare!', { id: toastId });
+          } else {
+            toast.success('Record actualizat cu succes!', { id: toastId });
+          }
+        } else {
+          // Create new record
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) {
+            throw new Error('Utilizatorul nu este autentificat');
+          }
+
+          // Find species name from selected species_id
+          const selectedSpecies = species.find(s => s.id === formData.species_id);
+          const speciesName = selectedSpecies?.name || 'Unknown';
+
+          // Find location name from selected location_id
+          const selectedLocationObj = locations.find(l => l.id === selectedLocation);
+          const locationName = selectedLocationObj?.name || 'Unknown';
+
+          const recordData = {
+            user_id: authUser.id,
+            species_id: formData.species_id,
+            species_name: speciesName, // Required field
+            weight: parseFloat(formData.weight),
+            length: Math.round(parseFloat(formData.length_cm)),
+            location_id: selectedLocation,
+            location_name: locationName, // Optional but good to have
+            date_caught: formData.captured_at.split('T')[0],
+            time_caught: formData.captured_at.split('T')[1] || null,
+            notes: formData.notes || null,
+            image_url: photoUrls[0] || null, // records use image_url, not photo_url
+            extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [], // Additional images
+            video_url: videoUrl,
+            youtube_url: formData.youtube_url || null, // Save youtube URL
+            status: 'pending'
+          };
+
+          const { data: newRecord, error: insertError } = await supabase
+            .from('records')
+            .insert([recordData])
+            .select()
+            .single();
+
+          if (insertError) {
+            throw new Error(insertError.message || 'Eroare la crearea recordului');
+          }
+
+          toast.success('Record trimis cu succes! Va fi verificat de administratori.', { id: toastId });
+        }
+      } else {
+        // Handle catch submission/update
+        if (isEdit && entry) {
+          // Update catch
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) {
+            throw new Error('Utilizatorul nu este autentificat');
+          }
+
+          const updateData: any = {
+            species_id: formData.species_id || null,
+            location_id: selectedLocation || null,
+            weight: formData.weight ? parseFloat(formData.weight) : null,
+            length_cm: formData.length_cm ? parseFloat(formData.length_cm) : null,
+            captured_at: formData.captured_at,
+            notes: formData.notes || null,
+            photo_url: photoUrls[0] || null, // First photo is main
+            extra_images: photoUrls.slice(1), // Rest are extra
+            video_url: videoUrl || null,
+            youtube_url: formData.youtube_url || null, // Save youtube URL
+            global_id: formData.global_id,
+            is_public: formData.is_public,
+            updated_at: new Date().toISOString()
+          };
+
+          const { error: updateError } = await supabase
+            .from('catches')
+            .update(updateData)
+            .eq('id', entry.id)
+            .eq('user_id', authUser.id);
+
+          if (updateError) {
+            throw new Error(updateError.message || 'Eroare la actualizarea capturii');
+          }
+
+          toast.success('Captură actualizată cu succes!', { id: toastId });
+        } else {
+          // Create new catch
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) {
+            throw new Error('Utilizatorul nu este autentificat');
+          }
+
+          const catchData = {
+            user_id: authUser.id,
+            species_id: formData.species_id || null,
+            location_id: selectedLocation || null,
+            weight: formData.weight ? parseFloat(formData.weight) : null,
+            length_cm: formData.length_cm ? parseFloat(formData.length_cm) : null,
+            captured_at: formData.captured_at,
+            notes: formData.notes || null,
+            photo_url: photoUrls.length > 0 ? photoUrls[0] : null,
+            extra_images: photoUrls.length > 1 ? photoUrls.slice(1) : [],
+            video_url: videoUrl || null,
+            youtube_url: formData.youtube_url || null, // Save youtube URL
+            is_public: formData.is_public
+          };
+
+          const { error: insertError } = await supabase
+            .from('catches')
+            .insert([catchData]);
+
+          if (insertError) {
+            throw new Error(insertError.message || 'Eroare la crearea capturii');
+          }
+
+          toast.success('Captură adăugată cu succes!', { id: toastId });
+        }
+      }
+
+      // Cleanup preview URLs
+      if (previewUrls.photos) {
+        previewUrls.photos.forEach(url => URL.revokeObjectURL(url));
+      }
+      if (previewUrls.video) {
+        URL.revokeObjectURL(previewUrls.video);
+      }
+
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} ${type}:`, error);
+      toast.error(error.message || `Eroare la ${isEdit ? 'actualizarea' : 'crearea'} ${isRecord ? 'recordului' : 'capturii'}`, { id: toastId });
+    } finally {
+      setIsSubmitting(false);
+      setIsUploading(false);
     }
+  };
 
-    const tableName = isRecord ? 'records' : 'catches';
+  const handleDeleteClick = () => {
+    if (!entry || !onDelete) return;
+    setShowDeleteConfirm(true);
+  };
 
-    // Delete from database
-    toast.loading('Se șterge din baza de date...', { id: toastId });
+  const handleDelete = async () => {
+    if (!entry || !onDelete) return;
 
-    console.log('Deleting from database:', {
-      tableName,
-      entryId: entry.id,
-      userId: user.id,
-      entryUserId: (entry as any).user_id
-    });
+    setShowDeleteConfirm(false);
 
-    // First, verify the entry exists and belongs to the user
-    const { data: verifyData, error: verifyError } = await supabase
-      .from(tableName)
-      .select('id, user_id')
-      .eq('id', entry.id)
-      .eq('user_id', user.id)
-      .single();
+    const toastId = toast.loading('Se șterge...', { id: 'delete-entry' });
 
-    if (verifyError || !verifyData) {
-      console.error('Entry verification failed:', verifyError);
-      throw new Error(verifyError?.message || 'Recordul nu a fost găsit sau nu îți aparține');
+    try {
+      if (!user) {
+        throw new Error('Trebuie să fii autentificat');
+      }
+
+      // Get file URLs before deletion for R2 cleanup
+      let filesToDelete: string[] = [];
+
+      if (isRecord) {
+        // Records: image_url and video_url
+        if (entry.image_url) {
+          filesToDelete.push(entry.image_url);
+        }
+        if (entry.video_url) {
+          filesToDelete.push(entry.video_url);
+        }
+      } else {
+        // Catches: photo_url and video_url (photo_url is singular, not photo_urls)
+        if (entry.photo_url) {
+          filesToDelete.push(entry.photo_url);
+        }
+        if (entry.video_url) {
+          filesToDelete.push(entry.video_url);
+        }
+      }
+
+      // Delete files from R2 first
+      if (filesToDelete.length > 0) {
+        toast.loading(`Se șterg ${filesToDelete.length} fișier${filesToDelete.length > 1 ? 'e' : ''} din R2...`, { id: toastId });
+
+        for (const fileUrl of filesToDelete) {
+          await deleteFileFromR2(fileUrl).catch(err => {
+            console.warn('Failed to delete file from R2:', fileUrl, err);
+            // Continue even if R2 deletion fails
+          });
+        }
+      }
+
+      const tableName = isRecord ? 'records' : 'catches';
+
+      // Delete from database
+      toast.loading('Se șterge din baza de date...', { id: toastId });
+
+      console.log('Deleting from database:', {
+        tableName,
+        entryId: entry.id,
+        userId: user.id,
+        entryUserId: (entry as any).user_id
+      });
+
+      // First, verify the entry exists and belongs to the user
+      const { data: verifyData, error: verifyError } = await supabase
+        .from(tableName)
+        .select('id, user_id')
+        .eq('id', entry.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (verifyError || !verifyData) {
+        console.error('Entry verification failed:', verifyError);
+        throw new Error(verifyError?.message || 'Recordul nu a fost găsit sau nu îți aparține');
+      }
+
+      // Now delete
+      const { data: deleteData, error: deleteError } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', entry.id)
+        .eq('user_id', user.id)
+        .select();
+
+      console.log('Delete result:', { deleteData, deleteError });
+
+      if (deleteError) {
+        console.error('Delete error details:', deleteError);
+        throw deleteError;
+      }
+
+      // Verify deletion was successful
+      if (!deleteData || deleteData.length === 0) {
+        console.warn('Delete returned no data - entry may not have been deleted');
+        throw new Error('Recordul nu a putut fi șters. Verifică permisiunile.');
+      }
+
+      toast.success(`${isRecord ? 'Record' : 'Captură'} ștearsă cu succes!`, { id: toastId });
+      onDelete();
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error(`Error deleting ${type}:`, error);
+      toast.error(error.message || `Eroare la ștergerea ${isRecord ? 'recordului' : 'capturii'}`, { id: toastId });
     }
+  };
 
-    // Now delete
-    const { data: deleteData, error: deleteError } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', entry.id)
-      .eq('user_id', user.id)
-      .select();
+  if (!isOpen) return null;
 
-    console.log('Delete result:', { deleteData, deleteError });
-
-    if (deleteError) {
-      console.error('Delete error details:', deleteError);
-      throw deleteError;
-    }
-
-    // Verify deletion was successful
-    if (!deleteData || deleteData.length === 0) {
-      console.warn('Delete returned no data - entry may not have been deleted');
-      throw new Error('Recordul nu a putut fi șters. Verifică permisiunile.');
-    }
-
-    toast.success(`${isRecord ? 'Record' : 'Captură'} ștearsă cu succes!`, { id: toastId });
-    onDelete();
-    onSuccess();
-    onClose();
-  } catch (error: any) {
-    console.error(`Error deleting ${type}:`, error);
-    toast.error(error.message || `Eroare la ștergerea ${isRecord ? 'recordului' : 'capturii'}`, { id: toastId });
-  }
-};
-
-if (!isOpen) return null;
-
-return (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-    <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
-      <CardHeader className="sticky top-0 bg-white dark:bg-slate-800 z-10 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">{getTitle()}</CardTitle>
-          <div className="flex items-center gap-2">
-            {isEdit && onDelete && (
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+        <CardHeader className="sticky top-0 bg-white dark:bg-slate-800 z-10 border-b border-gray-200 dark:border-slate-700">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">{getTitle()}</CardTitle>
+            <div className="flex items-center gap-2">
+              {isEdit && onDelete && (
+                <button
+                  onClick={handleDeleteClick}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-red-600 dark:text-red-400"
+                  disabled={isSubmitting || isUploading}
+                  title={`Șterge ${isRecord ? 'recordul' : 'captura'}`}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
               <button
-                onClick={handleDeleteClick}
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-red-600 dark:text-red-400"
+                onClick={() => {
+                  // Reset deletion tracking when canceling (don't delete from R2)
+                  setPhotosToDelete([]);
+                  setVideoToDelete(null);
+                  onClose();
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-600 dark:text-slate-200"
                 disabled={isSubmitting || isUploading}
-                title={`Șterge ${isRecord ? 'recordul' : 'captura'}`}
               >
-                <Trash2 className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
-            )}
-            <button
-              onClick={() => {
-                // Reset deletion tracking when canceling (don't delete from R2)
-                setPhotosToDelete([]);
-                setVideoToDelete(null);
-                onClose();
-              }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-600 dark:text-slate-200"
-              disabled={isSubmitting || isUploading}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-6 bg-white dark:bg-slate-800">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Species and Location on same row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Species Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="species" className="text-sm font-medium text-gray-900 dark:text-white">
-                Specia {speciesRequired && <span className="text-red-500">*</span>}
-                {!speciesRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
-              </Label>
-              <div className="space-y-2 relative">
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder={formData.species_id ? "Specia selectată" : "Caută specia..."}
-                    value={speciesSearchTerm}
-                    onChange={(e) => setSpeciesSearchTerm(e.target.value)}
-                    className={`w-full pr-10 ${formData.species_id ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
-                    required={speciesRequired}
-                  />
-                  {formData.species_id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({ ...prev, species_id: '' }));
-                        setSpeciesSearchTerm('');
-                      }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Șterge
-                    </button>
-                  )}
-                </div>
-
-                {speciesSearchTerm.trim() && !formData.species_id && (
-                  <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
-                    {getFilteredSpecies().length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 dark:text-slate-400">
-                        <div className="text-sm">Nu s-au găsit specii pentru "{speciesSearchTerm}"</div>
-                      </div>
-                    ) : (
-                      getFilteredSpecies().map((s) => (
-                        <div
-                          key={s.id}
-                          className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
-                          onClick={() => {
-                            setFormData(prev => ({ ...prev, species_id: s.id }));
-                            setSpeciesSearchTerm(s.name);
-                          }}
-                        >
-                          <div className="font-medium text-gray-900 dark:text-white">{s.name}</div>
-                          {s.scientific_name && (
-                            <div className="text-sm text-gray-500 dark:text-slate-400 italic">{s.scientific_name}</div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Location Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium text-gray-900 dark:text-white">
-                Locația de pescuit {locationRequired && <span className="text-red-500">*</span>}
-                {!locationRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
-              </Label>
-              <div className="space-y-2 relative">
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder={selectedLocation ? "Locația selectată" : "Caută locația..."}
-                    value={locationSearchTerm}
-                    onChange={(e) => setLocationSearchTerm(e.target.value)}
-                    className={`w-full pr-10 ${selectedLocation ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
-                    required={locationRequired}
-                  />
-                  {selectedLocation && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedLocation('');
-                        setLocationSearchTerm('');
-                      }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Șterge
-                    </button>
-                  )}
-                </div>
-
-                {locationSearchTerm.trim() && !selectedLocation && (
-                  <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
-                    {getFilteredLocations().length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 dark:text-slate-400">
-                        <div className="text-sm">Nu s-au găsit locații pentru "{locationSearchTerm}"</div>
-                      </div>
-                    ) : (
-                      getFilteredLocations().map((l) => (
-                        <div
-                          key={l.id}
-                          className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
-                          onClick={() => {
-                            setSelectedLocation(l.id);
-                            setLocationSearchTerm(l.name);
-                          }}
-                        >
-                          <div className="font-medium text-gray-900 dark:text-white">{l.name.replace(/_/g, ' ')}</div>
-                          <div className="text-sm text-gray-500 dark:text-slate-400 capitalize">
-                            {l.type.replace(/_/g, ' ')} • {l.county}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
-
-          {/* Date and Weight/Length - Full width on same row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="captured_at" className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Data și ora capturării <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="captured_at"
-                type="datetime-local"
-                value={formData.captured_at}
-                onChange={(e) => handleInputChange('captured_at', e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
-                <Scale className="w-4 h-4" />
-                Greutatea (kg) {weightRequired && <span className="text-red-500">*</span>}
-                {!weightRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
-              </Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                min="0"
-                value={formData.weight}
-                onChange={(e) => handleInputChange('weight', e.target.value)}
-                placeholder="ex: 2.5"
-                className="w-full"
-                required={weightRequired}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="length_cm" className="text-sm font-medium flex items-center gap-2">
-                <Ruler className="w-4 h-4" />
-                Lungimea (cm) {lengthRequired && <span className="text-red-500">*</span>}
-                {!lengthRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
-              </Label>
-              <Input
-                id="length_cm"
-                type="number"
-                step="0.1"
-                min="0"
-                value={formData.length_cm}
-                onChange={(e) => handleInputChange('length_cm', e.target.value)}
-                placeholder="ex: 45.2"
-                className="w-full"
-                required={lengthRequired}
-              />
-            </div>
-          </div>
-
-          {/* Photos and Video */}
-          <div className="space-y-4">
+        </CardHeader>
+        <CardContent className="p-6 bg-white dark:bg-slate-800">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Species and Location on same row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Photo Upload */}
+              {/* Species Selection */}
               <div className="space-y-2">
-                <Label htmlFor="photos" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
-                  <Camera className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-                  Fotografii {photosRequired && <span className="text-red-500">*</span>}
-                  {!photosRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
+                <Label htmlFor="species" className="text-sm font-medium text-gray-900 dark:text-white">
+                  Specia {speciesRequired && <span className="text-red-500">*</span>}
+                  {!speciesRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
                 </Label>
-                <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-4 text-center hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-all duration-200 group">
-                  <input
-                    type="file"
-                    id="photos"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => {
-                      handleFileSelect(e.target.files, 'photo');
-                      e.target.value = '';
-                    }}
-                    className="hidden"
-                  />
-                  <label htmlFor="photos" className="cursor-pointer block">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 flex items-center justify-center transition-colors">
-                      <Camera className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                <div className="space-y-2 relative">
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder={formData.species_id ? "Specia selectată" : "Caută specia..."}
+                      value={speciesSearchTerm}
+                      onChange={(e) => setSpeciesSearchTerm(e.target.value)}
+                      className={`w-full pr-10 ${formData.species_id ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
+                      required={speciesRequired}
+                    />
+                    {formData.species_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, species_id: '' }));
+                          setSpeciesSearchTerm('');
+                        }}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Șterge
+                      </button>
+                    )}
+                  </div>
+
+                  {speciesSearchTerm.trim() && !formData.species_id && (
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
+                      {getFilteredSpecies().length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 dark:text-slate-400">
+                          <div className="text-sm">Nu s-au găsit specii pentru "{speciesSearchTerm}"</div>
+                        </div>
+                      ) : (
+                        getFilteredSpecies().map((s) => (
+                          <div
+                            key={s.id}
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, species_id: s.id }));
+                              setSpeciesSearchTerm(s.name);
+                            }}
+                          >
+                            <div className="font-medium text-gray-900 dark:text-white">{s.name}</div>
+                            {s.scientific_name && (
+                              <div className="text-sm text-gray-500 dark:text-slate-400 italic">{s.scientific_name}</div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
-                    <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">Adaugă fotografii</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">JPG, PNG până la 10MB</p>
-                  </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Location Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-900 dark:text-white">
+                  Locația de pescuit {locationRequired && <span className="text-red-500">*</span>}
+                  {!locationRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
+                </Label>
+                <div className="space-y-2 relative">
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder={selectedLocation ? "Locația selectată" : "Caută locația..."}
+                      value={locationSearchTerm}
+                      onChange={(e) => setLocationSearchTerm(e.target.value)}
+                      className={`w-full pr-10 ${selectedLocation ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'} text-gray-900 dark:text-white`}
+                      required={locationRequired}
+                    />
+                    {selectedLocation && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedLocation('');
+                          setLocationSearchTerm('');
+                        }}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Șterge
+                      </button>
+                    )}
+                  </div>
+
+                  {locationSearchTerm.trim() && !selectedLocation && (
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg absolute z-50 w-full bg-white dark:bg-slate-800 shadow-lg">
+                      {getFilteredLocations().length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 dark:text-slate-400">
+                          <div className="text-sm">Nu s-au găsit locații pentru "{locationSearchTerm}"</div>
+                        </div>
+                      ) : (
+                        getFilteredLocations().map((l) => (
+                          <div
+                            key={l.id}
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0"
+                            onClick={() => {
+                              setSelectedLocation(l.id);
+                              setLocationSearchTerm(l.name);
+                            }}
+                          >
+                            <div className="font-medium text-gray-900 dark:text-white">{l.name.replace(/_/g, ' ')}</div>
+                            <div className="text-sm text-gray-500 dark:text-slate-400 capitalize">
+                              {l.type.replace(/_/g, ' ')} • {l.county}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Date and Weight/Length - Full width on same row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="captured_at" className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Data și ora capturării <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="captured_at"
+                  type="datetime-local"
+                  value={formData.captured_at}
+                  onChange={(e) => handleInputChange('captured_at', e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="weight" className="text-sm font-medium flex items-center gap-2">
+                  <Scale className="w-4 h-4" />
+                  Greutatea (kg) {weightRequired && <span className="text-red-500">*</span>}
+                  {!weightRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
+                </Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.weight}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
+                  placeholder="ex: 2.5"
+                  className="w-full"
+                  required={weightRequired}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="length_cm" className="text-sm font-medium flex items-center gap-2">
+                  <Ruler className="w-4 h-4" />
+                  Lungimea (cm) {lengthRequired && <span className="text-red-500">*</span>}
+                  {!lengthRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
+                </Label>
+                <Input
+                  id="length_cm"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.length_cm}
+                  onChange={(e) => handleInputChange('length_cm', e.target.value)}
+                  placeholder="ex: 45.2"
+                  className="w-full"
+                  required={lengthRequired}
+                />
+              </div>
+            </div>
+
+            {/* Photos and Video */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="photos" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
+                    <Camera className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                    Fotografii {photosRequired && <span className="text-red-500">*</span>}
+                    {!photosRequired && <span className="text-gray-500 dark:text-slate-400">(opțional)</span>}
+                  </Label>
+                  <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-4 text-center hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-all duration-200 group">
+                    <input
+                      type="file"
+                      id="photos"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        handleFileSelect(e.target.files, 'photo');
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+                    <label htmlFor="photos" className="cursor-pointer block">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 flex items-center justify-center transition-colors">
+                        <Camera className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">Adaugă fotografii</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">JPG, PNG până la 10MB</p>
+                    </label>
+                  </div>
+
+                  {/* Photo Previews */}
+                  {(formData.photo_urls.length > 0 || formData.photo_files.length > 0) && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {previewUrls.photos?.map((url, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600">
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Photo Previews */}
-                {(formData.photo_urls.length > 0 || formData.photo_files.length > 0) && (
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {previewUrls.photos?.map((url, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600">
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
+
+
+                {/* Video Upload - Reverted to Simple Box */}
+                <div className="space-y-2">
+                  <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
+                    <Video className="w-4 h-4 text-green-500 dark:text-green-400" />
+                    Video (Obligatoriu) {videoRequired && <span className="text-red-500">*</span>}
+                  </Label>
+                  <div className="border-2 border-dashed border-green-300 dark:border-green-700 rounded-xl p-4 text-center hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-all duration-200 group relative">
+                    <input
+                      type="file"
+                      id="video"
+                      accept="video/mp4,video/quicktime,video/x-msvideo,video/avi"
+                      onChange={(e) => {
+                        handleFileSelect(e.target.files, 'video');
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+
+                    {!previewUrls.video && !formData.video_url ? (
+                      <label htmlFor="video" className="cursor-pointer block">
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
+                          <Video className="w-6 h-6 text-green-500 dark:text-green-400" />
+                        </div>
+                        <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Încarcă videoclip</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">MP4, MOV, AVI până la 100MB</p>
+                      </label>
+                    ) : (
+                      <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 bg-black">
+                        <video
+                          src={previewUrls.video || getR2ImageUrlProxy(formData.video_url || '')}
+                          controls
                           className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
-                          onClick={() => removePhoto(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                          onClick={removeVideo}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 z-10"
                         >
-                          <X className="w-3 h-3" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
-
-
-
-              {/* Video Upload - Reverted to Simple Box */}
-              <div className="space-y-2">
-                <Label htmlFor="video" className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-200">
-                  <Video className="w-4 h-4 text-green-500 dark:text-green-400" />
-                  Video (Obligatoriu) {videoRequired && <span className="text-red-500">*</span>}
-                </Label>
-                <div className="border-2 border-dashed border-green-300 dark:border-green-700 rounded-xl p-4 text-center hover:border-green-500 dark:hover:border-green-500 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-all duration-200 group relative">
-                  <input
-                    type="file"
-                    id="video"
-                    accept="video/mp4,video/quicktime,video/x-msvideo,video/avi"
-                    onChange={(e) => {
-                      handleFileSelect(e.target.files, 'video');
-                      e.target.value = '';
-                    }}
-                    className="hidden"
-                  />
-
-                  {!previewUrls.video && !formData.video_url ? (
-                    <label htmlFor="video" className="cursor-pointer block">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
-                        <Video className="w-6 h-6 text-green-500 dark:text-green-400" />
-                      </div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Încarcă videoclip</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">MP4, MOV, AVI până la 100MB</p>
-                    </label>
-                  ) : (
-                    <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 bg-black">
-                      <video
-                        src={previewUrls.video || getR2ImageUrlProxy(formData.video_url || '')}
-                        controls
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={removeVideo}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 z-10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* YouTube Link - Full Width below Media */}
-          <div className="space-y-2">
-            <Label htmlFor="youtube-url" className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-white">
-              <Youtube className="w-4 h-4 text-red-600" />
-              Link YouTube (Opțional)
-            </Label>
-            <div className="relative">
-              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                id="youtube-url"
-                placeholder="https://www.youtube.com/watch?v=... sau https://youtube.com/shorts/..."
-                value={formData.youtube_url}
-                onChange={handleYouTubeUrlChange}
-                className="pl-9"
+            {/* YouTube Link - Full Width below Media */}
+            <div className="space-y-2">
+              <Label htmlFor="youtube-url" className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-white">
+                <Youtube className="w-4 h-4 text-red-600" />
+                Link YouTube (Opțional)
+              </Label>
+              <div className="relative">
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="youtube-url"
+                  placeholder="https://www.youtube.com/watch?v=... sau https://youtube.com/shorts/..."
+                  value={formData.youtube_url}
+                  onChange={handleYouTubeUrlChange}
+                  className="pl-9"
+                />
+              </div>
+              {formData.youtube_url && (
+                <div className={`text-xs flex items-center gap-1.5 ${extractYouTubeId(formData.youtube_url) ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                  {extractYouTubeId(formData.youtube_url) ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                      Link YouTube valid
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3 h-3" />
+                      Link YouTube nevalid
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-white">
+                <FileText className="w-4 h-4" />
+                Note suplimentare
+              </Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                placeholder="Detalii despre captură, tehnica folosită, vremea, etc."
+                rows={3}
+                className="w-full bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-50 placeholder-gray-500 dark:placeholder-slate-400"
               />
             </div>
-            {formData.youtube_url && (
-              <div className={`text-xs flex items-center gap-1.5 ${extractYouTubeId(formData.youtube_url) ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                {extractYouTubeId(formData.youtube_url) ? (
+
+            {/* Privacy (only for catches) */}
+            {!isRecord && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-900 dark:text-white">Captură publică (vizibilă pentru toți)</Label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-xs text-gray-600 dark:text-slate-200">{formData.is_public ? 'Public' : 'Privat'}</span>
+                    <div
+                      onClick={() => handleInputChange('is_public', !formData.is_public)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_public ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-300 dark:bg-slate-700'
+                        }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-200 transition-transform ${formData.is_public ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                      />
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="submit"
+                disabled={isSubmitting || isUploading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                {(isSubmitting || isUploading) ? (
                   <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    Link YouTube valid
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    {getSubmitText()}
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="w-3 h-3" />
-                    Link YouTube nevalid
+                    <Upload className="w-4 h-4 mr-2" />
+                    {getSubmitText()}
                   </>
                 )}
-              </div>
-            )}
-          </div>
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-white">
-              <FileText className="w-4 h-4" />
-              Note suplimentare
-            </Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Detalii despre captură, tehnica folosită, vremea, etc."
-              rows={3}
-              className="w-full bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-50 placeholder-gray-500 dark:placeholder-slate-400"
-            />
-          </div>
-
-          {/* Privacy (only for catches) */}
-          {!isRecord && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-gray-900 dark:text-white">Captură publică (vizibilă pentru toți)</Label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-xs text-gray-600 dark:text-slate-200">{formData.is_public ? 'Public' : 'Privat'}</span>
-                  <div
-                    onClick={() => handleInputChange('is_public', !formData.is_public)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_public ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-300 dark:bg-slate-700'
-                      }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-200 transition-transform ${formData.is_public ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                    />
-                  </div>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Submit Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="submit"
-              disabled={isSubmitting || isUploading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-            >
-              {(isSubmitting || isUploading) ? (
-                <>
-                  <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  {getSubmitText()}
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  {getSubmitText()}
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                // Reset deletion tracking when canceling (don't delete from R2)
-                // The form will be reset when modal reopens via useEffect
-                setPhotosToDelete([]);
-                setVideoToDelete(null);
-                onClose();
-              }}
-              disabled={isSubmitting || isUploading}
-              className="px-6 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-            >
-              Anulează
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-
-    {/* Delete Confirmation Modal */}
-    {
-      showDeleteConfirm && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '1rem'
-          }}
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '0.75rem',
-              padding: '1.5rem',
-              maxWidth: '450px',
-              width: '100%',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              marginBottom: '1rem'
-            }}>
-              <div style={{
-                width: '2.5rem',
-                height: '2.5rem',
-                borderRadius: '50%',
-                backgroundColor: '#fee2e2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <AlertTriangle style={{ color: '#dc2626', width: '1.5rem', height: '1.5rem' }} />
-              </div>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: '#111827',
-                margin: 0
-              }}>
-                Șterge {isRecord ? 'recordul' : 'captura'}
-              </h3>
-            </div>
-
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              marginBottom: '1.5rem',
-              lineHeight: '1.5'
-            }}>
-              Ești sigur că vrei să ștergi această {isRecord ? 'record' : 'captură'}? Această acțiune nu poate fi anulată.
-            </p>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => {
+                  // Reset deletion tracking when canceling (don't delete from R2)
+                  // The form will be reset when modal reopens via useEffect
+                  setPhotosToDelete([]);
+                  setVideoToDelete(null);
+                  onClose();
+                }}
                 disabled={isSubmitting || isUploading}
-                className="px-6"
+                className="px-6 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
               >
                 Anulează
               </Button>
-              <Button
-                type="button"
-                onClick={handleDelete}
-                disabled={isSubmitting || isUploading}
-                className="px-6 bg-red-600 hover:bg-red-700 text-white"
-              >
-                {(isSubmitting || isUploading) ? 'Se șterge...' : 'Șterge'}
-              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Modal */}
+      {
+        showDeleteConfirm && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '1rem'
+            }}
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                maxWidth: '450px',
+                width: '100%',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  borderRadius: '50%',
+                  backgroundColor: '#fee2e2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <AlertTriangle style={{ color: '#dc2626', width: '1.5rem', height: '1.5rem' }} />
+                </div>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  Șterge {isRecord ? 'recordul' : 'captura'}
+                </h3>
+              </div>
+
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                marginBottom: '1.5rem',
+                lineHeight: '1.5'
+              }}>
+                Ești sigur că vrei să ștergi această {isRecord ? 'record' : 'captură'}? Această acțiune nu poate fi anulată.
+              </p>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isSubmitting || isUploading}
+                  className="px-6"
+                >
+                  Anulează
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isSubmitting || isUploading}
+                  className="px-6 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {(isSubmitting || isUploading) ? 'Se șterge...' : 'Șterge'}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )
-    }
-  </div >
-);
+        )
+      }
+    </div >
+  );
 };
 
 export default FishingEntryModal;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Pin, Lock, Star } from 'lucide-react';
 import ShareButton from '../../components/ShareButton';
 import { useTopics } from '../hooks/useTopics';
@@ -32,6 +32,11 @@ export default function CategoryPage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Pagination - extract page from URL
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = 50;
 
   const handleLogout = async () => {
     await signOut();
@@ -142,7 +147,7 @@ export default function CategoryPage() {
   const loadingSubcategories = loadingForumData;
 
   // Supabase hooks - folosește subcategoryId sau subforumId (UUID) pentru query (intern folosim UUID, extern slug)
-  const { topics, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId, 1, 50, subforumId || undefined);
+  const { topics, total, loading: supabaseLoading, isLoading: topicsIsLoading, error: topicsError, refetch: refetchTopics } = useTopics(subcategoryId, page, pageSize, subforumId || undefined);
 
 
 
@@ -236,6 +241,13 @@ export default function CategoryPage() {
 
     return () => clearTimeout(ensureTop);
   }, [location.pathname]);
+
+  // Scroll to top when page number changes (pagination)
+  useEffect(() => {
+    if (page > 1) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [page]);
 
   // loadHierarchy a fost eliminat - folosim useSubcategoryOrSubforum hook care face tot ce trebuie
 
@@ -1113,6 +1125,121 @@ export default function CategoryPage() {
                             <MessageSquare style={{ width: '1rem', height: '1rem' }} />
                             Topic nou
                           </button>
+                        </div>
+                      )}
+
+                      {/* Pagination Controls */}
+                      {total > pageSize && (
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          marginTop: '1.5rem',
+                          padding: '1rem',
+                          backgroundColor: theme.surface,
+                          borderRadius: '0.75rem',
+                          border: `1px solid ${theme.border}`
+                        }}>
+                          {/* Previous Button */}
+                          <button
+                            onClick={() => navigate(`?page=${page - 1}`)}
+                            disabled={page <= 1}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: '0.5rem',
+                              backgroundColor: page <= 1 ? theme.background : theme.surface,
+                              color: page <= 1 ? theme.textSecondary : theme.text,
+                              cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                              fontWeight: '500',
+                              fontSize: '0.875rem',
+                              opacity: page <= 1 ? 0.5 : 1
+                            }}
+                          >
+                            ← Anterior
+                          </button>
+
+                          {/* Page Numbers */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}>
+                            {(() => {
+                              const totalPages = Math.ceil(total / pageSize);
+                              const pages: (number | string)[] = [];
+
+                              // Always show first page
+                              pages.push(1);
+
+                              // Add ellipsis if needed
+                              if (page > 3) pages.push('...');
+
+                              // Pages around current
+                              for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+                                if (!pages.includes(i)) pages.push(i);
+                              }
+
+                              // Add ellipsis if needed
+                              if (page < totalPages - 2) pages.push('...');
+
+                              // Always show last page (if > 1)
+                              if (totalPages > 1 && !pages.includes(totalPages)) pages.push(totalPages);
+
+                              return pages.map((p, idx) =>
+                                p === '...' ? (
+                                  <span key={`ellipsis-${idx}`} style={{ padding: '0.5rem', color: theme.textSecondary }}>...</span>
+                                ) : (
+                                  <button
+                                    key={p}
+                                    onClick={() => navigate(`?page=${p}`)}
+                                    style={{
+                                      minWidth: '2.5rem',
+                                      padding: '0.5rem 0.75rem',
+                                      border: `1px solid ${page === p ? theme.primary : theme.border}`,
+                                      borderRadius: '0.5rem',
+                                      backgroundColor: page === p ? theme.primary : theme.surface,
+                                      color: page === p ? 'white' : theme.text,
+                                      cursor: 'pointer',
+                                      fontWeight: page === p ? '600' : '500',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  >
+                                    {p}
+                                  </button>
+                                )
+                              );
+                            })()}
+                          </div>
+
+                          {/* Next Button */}
+                          <button
+                            onClick={() => navigate(`?page=${page + 1}`)}
+                            disabled={page >= Math.ceil(total / pageSize)}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: '0.5rem',
+                              backgroundColor: page >= Math.ceil(total / pageSize) ? theme.background : theme.surface,
+                              color: page >= Math.ceil(total / pageSize) ? theme.textSecondary : theme.text,
+                              cursor: page >= Math.ceil(total / pageSize) ? 'not-allowed' : 'pointer',
+                              fontWeight: '500',
+                              fontSize: '0.875rem',
+                              opacity: page >= Math.ceil(total / pageSize) ? 0.5 : 1
+                            }}
+                          >
+                            Următor →
+                          </button>
+
+                          {/* Page Info */}
+                          <span style={{
+                            marginLeft: '0.75rem',
+                            fontSize: '0.8rem',
+                            color: theme.textSecondary
+                          }}>
+                            Pagina {page} din {Math.ceil(total / pageSize)} ({total} topicuri)
+                          </span>
                         </div>
                       )}
 

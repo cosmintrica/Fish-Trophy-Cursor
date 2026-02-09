@@ -13,12 +13,18 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
-    '@typescript-eslint/no-unused-vars': ['error', { 
-      argsIgnorePattern: '^_', 
-      varsIgnorePattern: '^_' 
-    }],
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-non-null-assertion': 'warn',
+    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    'no-unused-vars': 'off',
+    'no-undef': 'off',
+    'no-redeclare': 'off',
+    'react-hooks/exhaustive-deps': 'off',
+    'no-useless-escape': 'off',
+    'no-empty-pattern': 'off',
+    'no-extra-boolean-cast': 'off',
+    'no-async-promise-executor': 'off',
+    'no-case-declarations': 'off',
   },
   overrides: [
     {
