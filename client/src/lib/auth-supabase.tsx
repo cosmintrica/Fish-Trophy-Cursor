@@ -8,7 +8,7 @@ interface AuthProviderProps {
 }
 
 // Helper to check if there's likely a session in localStorage (sync check to prevent flash)
-const getStoredSession = (): { user: User; session: Session } | null => {
+export const getStoredSession = (): { user: User; session: Session } | null => {
   try {
     // Supabase stores auth data with this key pattern
     const keys = Object.keys(localStorage).filter(key =>

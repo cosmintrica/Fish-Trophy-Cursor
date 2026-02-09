@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { getStoredSession } from '../../lib/auth-supabase';
 import type { ForumUser } from '../types/forum';
 import { useAuth as useMainAuth } from '../../hooks/useAuth';
 
@@ -28,8 +29,16 @@ export const useAuth = () => {
 export const useAuthProvider = () => {
   const mainAuth = useMainAuth();
   const [forumUser, setForumUser] = useState<ForumUser | null>(null);
+
   // Sync loading state with main auth - prevents false redirects when auth re-evaluates
-  const [loading, setLoading] = useState(true); // Start as loading until we verify auth
+  // Initialize from main auth or localStorage check to prevent flash for guests
+  const [loading, setLoading] = useState(() => {
+    if (!mainAuth.loading) return mainAuth.loading;
+    // If main auth is loading, check if we have a stored session
+    // If NO session in storage, we are definitely a guest -> not loading
+    const stored = getStoredSession();
+    return !!stored;
+  });
 
   // Actualizează last_seen_at și rank pentru utilizatorii online
   useEffect(() => {
